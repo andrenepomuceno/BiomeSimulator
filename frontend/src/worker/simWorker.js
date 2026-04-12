@@ -23,7 +23,8 @@
 
 import { SimulationEngine } from '../engine/simulation.js';
 import { DEFAULT_CONFIG } from '../engine/config.js';
-import { TERRAIN_NAMES } from '../engine/world.js';
+import { TERRAIN_NAMES, World } from '../engine/world.js';
+import { Animal } from '../engine/entities.js';
 
 let engine = null;
 let running = false;
@@ -177,6 +178,89 @@ self.onmessage = function (e) {
         }
       }
       self.postMessage({ type: 'tileInfo', x, y, info });
+      break;
+    }
+
+    case 'saveState': {
+      if (!engine || !engine.world) {
+        self.postMessage({ type: 'savedState', data: null });
+        break;
+      }
+      const sw = engine.world;
+      const saveData = {
+        config: sw.config,
+        width: sw.width,
+        height: sw.height,
+        clock: sw.clock.toDict(),
+        terrain: Array.from(sw.terrain),
+        waterProximity: Array.from(sw.waterProximity),
+        plantType: Array.from(sw.plantType),
+        plantStage: Array.from(sw.plantStage),
+        plantAge: Array.from(sw.plantAge),
+        plantFruit: Array.from(sw.plantFruit),
+        animals: sw.animals.filter(a => a.alive).map(a => a.toDict()),
+        nextAnimalId: sw._nextId,
+        statsHistory: sw.statsHistory,
+      };
+      self.postMessage({ type: 'savedState', data: saveData });
+      break;
+    }
+
+    case 'loadState': {
+      const d = e.data.state;
+      if (!d) break;
+      const loadConfig = d.config || DEFAULT_CONFIG;
+      engine = new SimulationEngine(loadConfig);
+
+      const lw = new World(loadConfig);
+      lw.width = d.width;
+      lw.height = d.height;
+      const size = d.width * d.height;
+      lw.terrain = new Uint8Array(d.terrain);
+      lw.waterProximity = new Uint8Array(d.waterProximity);
+      lw.plantType = new Uint8Array(d.plantType);
+      lw.plantStage = new Uint8Array(d.plantStage);
+      lw.plantAge = new Uint16Array(d.plantAge);
+      lw.plantFruit = new Uint8Array(d.plantFruit);
+      lw.clock.tick = d.clock.tick;
+      lw._nextId = d.nextAnimalId || 1000;
+      lw.statsHistory = d.statsHistory || [];
+
+      // Restore animals
+      for (const ad of d.animals) {
+        const speciesConfig = loadConfig.animal_species[ad.species];
+        const animal = new Animal(ad.id, ad.x, ad.y, ad.species, speciesConfig);
+        animal.energy = ad.energy;
+        animal.hunger = ad.hunger;
+        animal.thirst = ad.thirst;
+        animal.age = ad.age;
+        animal.alive = ad.alive;
+        animal.state = ad.state;
+        lw.animals.push(animal);
+      }
+      if (lw._nextId <= Math.max(...lw.animals.map(a => a.id), 0)) {
+        lw._nextId = Math.max(...lw.animals.map(a => a.id), 0) + 1;
+      }
+
+      engine.world = lw;
+      engine.spatialHash.rebuild(lw.animals.filter(a => a.alive));
+
+      running = false;
+      paused = true;
+      stopLoop();
+
+      self.postMessage({
+        type: 'worldReady',
+        width: lw.width,
+        height: lw.height,
+        seed: 0,
+        terrain: new Uint8Array(lw.terrain).buffer,
+        waterProximity: new Uint8Array(lw.waterProximity).buffer,
+        plantType: new Uint8Array(lw.plantType).buffer,
+        plantStage: new Uint8Array(lw.plantStage).buffer,
+        animals: lw.animals.filter(a => a.alive).map(a => a.toDict()),
+        clock: lw.clock.toDict(),
+      });
       break;
     }
   }

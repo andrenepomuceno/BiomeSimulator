@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import useSimStore from '../store/simulationStore';
-import { STATE_NAMES } from '../utils/terrainColors';
+import { STATE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES } from '../utils/terrainColors';
 
 function Bar({ label, value, max, color, description }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
@@ -70,22 +70,22 @@ export default function EntityInspector() {
         </div>
         <div className="stat-row">
           <span className="stat-label">Water Distance</span>
-          <span className="stat-value">{t.water_proximity} tiles</span>
+          <span className="stat-value">{t.waterProximity} tiles</span>
         </div>
-        {t.plant && t.plant.type !== 'none' && (
+        {t.plant && t.plant.type !== 0 && t.plant.type !== 'none' && (
           <>
-            <h6 className="mt-2">Plant</h6>
+            <h6 className="mt-2">🌿 Plant</h6>
             <div className="stat-row">
               <span className="stat-label">Type</span>
-              <span className="stat-value" style={{ textTransform: 'capitalize' }}>{t.plant.type}</span>
+              <span className="stat-value">{PLANT_TYPE_NAMES[t.plant.type] || t.plant.type}</span>
             </div>
             <div className="stat-row">
               <span className="stat-label">Stage</span>
-              <span className="stat-value" style={{ textTransform: 'capitalize' }}>{t.plant.stage}</span>
+              <span className="stat-value">{PLANT_STAGE_NAMES[t.plant.stage] || t.plant.stage}</span>
             </div>
             <div className="stat-row">
               <span className="stat-label">Age</span>
-              <span className="stat-value">{t.plant.age}</span>
+              <span className="stat-value">{t.plant.age} ticks</span>
             </div>
             <div className="stat-row">
               <span className="stat-label">Has Fruit</span>

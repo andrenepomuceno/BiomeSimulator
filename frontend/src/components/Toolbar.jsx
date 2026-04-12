@@ -11,11 +11,18 @@ const TOOLS = [
   { id: 'ERASE', label: '🗑️ Erase' },
 ];
 
-export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange }) {
+export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle }) {
   const { paused, running, tps, clock, tool, setTool } = useSimStore();
 
   return (
     <div className="toolbar">
+      {/* Menu button */}
+      <button className="btn btn-sim btn-sm" onClick={onMenuToggle} title="Menu (Esc)">
+        ☰
+      </button>
+
+      <div style={{ width: 1, height: 24, background: '#1a1a4e', margin: '0 4px' }} />
+
       {/* Sim controls */}
       {!running || paused ? (
         <button className="btn btn-sim btn-sm" onClick={running ? onResume : onStart}>

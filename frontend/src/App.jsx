@@ -1,13 +1,13 @@
 /**
  * App — main layout wiring canvas, sidebar, toolbar, and all hooks together.
  */
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import useSimStore from './store/simulationStore';
 import { useSimulation } from './hooks/useSimulation';
 import { useEditor } from './hooks/useEditor';
 import { GameRenderer } from './renderer/GameRenderer';
 import Toolbar from './components/Toolbar';
-import ControlPanel from './components/ControlPanel';
+import GameMenu from './components/GameMenu';
 import TerrainEditor from './components/TerrainEditor';
 import EntityInspector from './components/EntityInspector';
 import StatsPanel from './components/StatsPanel';
@@ -18,6 +18,7 @@ export default function App() {
   const rendererRef = useRef(null);
   const { postCmd } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
@@ -123,6 +124,10 @@ export default function App() {
         else if (paused) _handleResume();
         else _handlePause();
       }
+
+      if (e.code === 'Escape') {
+        setMenuOpen(prev => !prev);
+      }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -134,8 +139,25 @@ export default function App() {
     }
   }
 
+  function _handleSave(callback) {
+    useSimStore.getState().setSaveCallback(callback);
+    postCmd('saveState');
+  }
+
+  function _handleLoad(data) {
+    postCmd('loadState', { state: data });
+    useSimStore.getState().setSimState({ running: false, paused: true });
+  }
+
   return (
     <div className="app-container">
+      <GameMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNewGame={(p) => _handleReset(p)}
+        onSave={_handleSave}
+        onLoad={_handleLoad}
+      />
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Toolbar
           onStart={_handleStart}
@@ -144,6 +166,7 @@ export default function App() {
           onStep={_handleStep}
           onReset={() => _handleReset()}
           onSpeedChange={_handleSpeedChange}
+          onMenuToggle={() => setMenuOpen(true)}
         />
         <div className="canvas-area" ref={canvasContainerRef} />
       </div>
@@ -153,7 +176,6 @@ export default function App() {
         <TerrainEditor />
         <StatsPanel />
         <Minimap onNavigate={_handleMinimapNavigate} />
-        <ControlPanel onRegenerate={_handleReset} />
       </div>
     </div>
   );

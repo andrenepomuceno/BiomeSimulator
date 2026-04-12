@@ -71,6 +71,15 @@ export function useSimulation() {
         case 'entityRemoved':
           // No-op; entity will disappear in next tick
           break;
+
+        case 'savedState': {
+          const cb = store._saveCallback;
+          if (cb && msg.data) {
+            cb(msg.data);
+            store.setSaveCallback(null);
+          }
+          break;
+        }
       }
     };
 

@@ -194,3 +194,104 @@ html, body, #root {
   color: #999;
   font-size: 0.7rem;
 }
+
+/* ── Game Menu Modal ── */
+
+.game-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.game-menu-modal {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 12px;
+  width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.game-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #0f3460;
+}
+
+.game-menu-header h5 {
+  margin: 0;
+  color: #53a8b6;
+  font-size: 1.1rem;
+}
+
+.game-menu-tabs {
+  display: flex;
+  border-bottom: 1px solid #0f3460;
+}
+
+.game-menu-tab {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 0.8rem;
+  border: none;
+  background: transparent;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.game-menu-tab:hover {
+  color: #e0e0e0;
+  background: rgba(83, 168, 182, 0.1);
+}
+
+.game-menu-tab.active {
+  color: #53a8b6;
+  border-bottom: 2px solid #53a8b6;
+  background: rgba(83, 168, 182, 0.05);
+}
+
+.game-menu-body {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.game-menu-body h6 {
+  color: #53a8b6;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.gm-field {
+  margin-bottom: 10px;
+}
+
+.gm-field label {
+  display: block;
+  font-size: 0.78rem;
+  color: #ccc;
+  margin-bottom: 2px;
+}
+
+.gm-field input[type="range"] {
+  width: 100%;
+  accent-color: #53a8b6;
+}
+
+.gm-field .form-control {
+  background: #1a1a3e;
+  border: 1px solid #0f3460;
+  color: #e0e0e0;
+}

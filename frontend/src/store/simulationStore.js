@@ -60,6 +60,10 @@ const useSimStore = create((set, get) => ({
   // Viewport
   viewport: { x: 0, y: 0, w: 100, h: 100 },
   setViewport: (v) => set({ viewport: v }),
+
+  // Save callback (set temporarily when saving)
+  _saveCallback: null,
+  setSaveCallback: (fn) => set({ _saveCallback: fn }),
 }));
 
 export default useSimStore;

@@ -46,6 +46,24 @@ export const PLANT_COLORS = {
   '3_4': [180, 50, 50, 250],   // fruiting — red
 };
 
+// Plant type names (keys match flora.js constants)
+export const PLANT_TYPE_NAMES = {
+  0: 'None',
+  1: 'Grass',
+  2: 'Bush',
+  3: 'Tree',
+};
+
+// Plant stage names
+export const PLANT_STAGE_NAMES = {
+  0: 'None',
+  1: 'Seed',
+  2: 'Sprout',
+  3: 'Mature',
+  4: 'Fruiting',
+  5: 'Dead',
+};
+
 // Animal species colors
 export const ANIMAL_COLORS = {
   HERBIVORE: 0x44bb44,  // green

@@ -11,7 +11,7 @@ const TOOLS = [
   { id: 'ERASE', label: '🗑️ Erase' },
 ];
 
-export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle }) {
+export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onReportToggle }) {
   const { paused, running, tps, clock, tool, setTool } = useSimStore();
 
   return (
@@ -70,6 +70,10 @@ export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, o
         />
         <span>{tps} tps</span>
       </div>
+
+      <button className="btn btn-sim btn-sm" onClick={onReportToggle} title="Simulation Report">
+        📈 Report
+      </button>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import TerrainEditor from './components/TerrainEditor';
 import EntityInspector from './components/EntityInspector';
 import StatsPanel from './components/StatsPanel';
 import Minimap from './components/Minimap';
+import SimulationReport from './components/SimulationReport';
 
 export default function App() {
   const canvasContainerRef = useRef(null);
@@ -19,6 +20,7 @@ export default function App() {
   const { postCmd } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
@@ -175,6 +177,7 @@ export default function App() {
         onSave={_handleSave}
         onLoad={_handleLoad}
       />
+      <SimulationReport open={reportOpen} onClose={() => setReportOpen(false)} />
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Toolbar
           onStart={_handleStart}
@@ -184,6 +187,7 @@ export default function App() {
           onReset={() => _handleReset()}
           onSpeedChange={_handleSpeedChange}
           onMenuToggle={() => setMenuOpen(true)}
+          onReportToggle={() => setReportOpen(true)}
         />
         <div className="main-area">
           <div className="sidebar sidebar-left">

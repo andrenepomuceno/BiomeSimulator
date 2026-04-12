@@ -197,16 +197,17 @@ function spreadSeeds(world) {
     const j = Math.floor(Math.random() * (i + 1));
     [fruiting[i], fruiting[j]] = [fruiting[j], fruiting[i]];
   }
-  const maxAttempts = Math.min(fruiting.length, 500);
+  const maxAttempts = Math.min(fruiting.length, 800);
 
   for (let n = 0; n < maxAttempts; n++) {
-    if (Math.random() > 0.02) continue; // 2% chance
+    if (Math.random() > 0.06) continue; // 6% chance per fruiting plant
     const idx = fruiting[n];
     const x = idx % w, y = Math.floor(idx / w);
     const ptype = world.plantType[idx];
 
     const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
-    const nx = x + dir[0], ny = y + dir[1];
+    const spread = 1 + Math.floor(Math.random() * 3); // 1-3 tiles
+    const nx = x + dir[0] * spread, ny = y + dir[1] * spread;
     if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
 
     const ni = ny * w + nx;

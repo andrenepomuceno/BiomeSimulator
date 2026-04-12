@@ -15,8 +15,8 @@ export const REPRO_HERMAPHRODITE = 'HERMAPHRODITE'; // any two can mate
 
 export const DEFAULT_CONFIG = {
   // Map generation
-  map_width: 500,
-  map_height: 500,
+  map_width: 1000,
+  map_height: 1000,
   sea_level: 0.38,
   island_count: 5,
   island_size_factor: 0.3,

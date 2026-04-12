@@ -42,6 +42,7 @@ export class SimulationEngine {
     w.plantStage.fill(0);
     w.plantAge.fill(0);
     w.plantChanges = [];
+    w.activePlantTiles.clear();
 
     // Reset animals
     w.animals = [];
@@ -95,19 +96,31 @@ export class SimulationEngine {
     processPlants(w);
 
     // Process fauna
+    const deadThisTick = [];
     for (const animal of w.animals) {
       if (animal.alive) {
         decideAndAct(animal, w, this.spatialHash);
+        // Incremental spatial hash update — only re-hash if cell changed
+        this.spatialHash.update(animal);
+        if (!animal.alive) {
+          // Animal died this tick — remove from hash
+          deadThisTick.push(animal);
+        }
       }
     }
 
-    // Rebuild spatial hash
-    this.spatialHash.rebuild(w.animals.filter(a => a.alive));
+    // Remove dead animals from spatial hash
+    for (const dead of deadThisTick) {
+      this.spatialHash.remove(dead);
+    }
 
-    // Clean up dead animals that have lingered for 200+ ticks
-    if (w.clock.tick % 50 === 0) {
+    // Clean up dead animals — adaptive interval based on population
+    const tick = w.clock.tick;
+    const totalAnimals = w.animals.length;
+    const cleanupInterval = totalAnimals > 1500 ? 10 : totalAnimals > 800 ? 25 : 50;
+    if (tick % cleanupInterval === 0) {
       w.animals = w.animals.filter(a =>
-        a.alive || (a._deathTick != null && w.clock.tick - a._deathTick < 200)
+        a.alive || (a._deathTick != null && tick - a._deathTick < 200)
       );
     }
 
@@ -206,6 +219,7 @@ export class SimulationEngine {
       w.plantType[idx] = TYPE_MAP[entityType];
       w.plantStage[idx] = S_ADULT;
       w.plantAge[idx] = 100;
+      w.activePlantTiles.add(idx);
       return { type: entityType, x, y };
     }
 

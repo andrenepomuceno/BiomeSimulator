@@ -63,6 +63,9 @@ export class World {
     this.plantStage = new Uint8Array(size);  // 0=none, 1=seed, 2=youngSprout, 3=adultSprout, 4=adult, 5=fruit, 6=dead
     this.plantAge = new Uint16Array(size);
 
+    // Active plant tile indices — avoids iterating empty tiles
+    this.activePlantTiles = new Set();
+
     // Animals
     this.animals = [];
 
@@ -125,8 +128,7 @@ export class World {
 
     let plantsTotal = 0, fruits = 0;
     const plantCounts = {};
-    const size = this.width * this.height;
-    for (let i = 0; i < size; i++) {
+    for (const i of this.activePlantTiles) {
       const t = this.plantType[i];
       const s = this.plantStage[i];
       if (t > 0 && s > 0 && s < 6) {

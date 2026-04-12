@@ -6,6 +6,10 @@ import { WATER } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
 import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_NONE, P_NONE } from './flora.js';
+import { buildDecisionIntervals } from './animalSpecies.js';
+
+// Decision interval per species (ticks between full AI evaluations)
+const DECISION_INTERVALS = buildDecisionIntervals();
 
 /**
  * Process one tick for an animal: decide action, execute it.
@@ -23,10 +27,22 @@ export function decideAndAct(animal, world, spatialHash) {
     return;
   }
 
-  // Ongoing states
+  // Ongoing states always process
   if (animal.state === AnimalState.SLEEPING) { _doSleep(animal); return; }
   if (animal.state === AnimalState.EATING)   { _doEat(animal, world); return; }
   if (animal.state === AnimalState.DRINKING) { _doDrink(animal, world); return; }
+
+  // Stagger: between decision ticks, just continue current action
+  const interval = DECISION_INTERVALS[animal.species] || 2;
+  if (animal.id % interval !== world.clock.tick % interval) {
+    // Continue following path or stay idle
+    if (animal.path.length && animal.pathIndex < animal.path.length) {
+      _followPath(animal, world);
+    } else {
+      animal.applyEnergyCost('IDLE');
+    }
+    return;
+  }
 
   // --- Opportunistic: drink if adjacent to water and even slightly thirsty ---
   if (animal.thirst > 25 && world.isWaterAdjacent(animal.x, animal.y)) {
@@ -43,6 +59,7 @@ export function decideAndAct(animal, world, spatialHash) {
       world.plantType[idx] = P_NONE;
       world.plantStage[idx] = S_NONE;
       world.plantAge[idx] = 0;
+      world.activePlantTiles.delete(idx);
       animal.state = AnimalState.EATING;
       animal.applyEnergyCost('EAT');
       animal.hunger = Math.max(0, animal.hunger - 40);
@@ -146,6 +163,21 @@ function _doDrink(animal /*, world */) {
 
 // ---- Seek behaviors ----
 
+// Max ticks before a cached path is considered stale
+const PATH_CACHE_TTL = 15;
+
+function _hasValidPath(animal, tick) {
+  return animal.path.length > 0 &&
+    animal.pathIndex < animal.path.length &&
+    (tick - animal._pathTick) < PATH_CACHE_TTL;
+}
+
+function _setPath(animal, path, tick) {
+  animal.path = path;
+  animal.pathIndex = 0;
+  animal._pathTick = tick;
+}
+
 function _seekWater(animal, world) {
   // Already adjacent? Drink immediately
   if (world.isWaterAdjacent(animal.x, animal.y)) {
@@ -154,8 +186,8 @@ function _seekWater(animal, world) {
     return;
   }
 
-  // Already following a path? Continue
-  if (animal.path.length && animal.pathIndex < animal.path.length) {
+  // Already following a path? Continue if still fresh
+  if (_hasValidPath(animal, world.clock.tick)) {
     _followPath(animal, world);
     return;
   }
@@ -178,8 +210,7 @@ function _seekWater(animal, world) {
   if (best) {
     // Path to an adjacent walkable tile near the water
     const pathLimit = desperate ? 80 : 50;
-    animal.path = aStar(animal.x, animal.y, best[0], best[1], world, pathLimit);
-    animal.pathIndex = 0;
+    _setPath(animal, aStar(animal.x, animal.y, best[0], best[1], world, pathLimit), world.clock.tick);
   }
 
   if (animal.path.length) {
@@ -198,6 +229,7 @@ function _seekPlantFood(animal, world) {
     world.plantType[idx] = P_NONE;
     world.plantStage[idx] = S_NONE;
     world.plantAge[idx] = 0;
+    world.activePlantTiles.delete(idx);
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
     animal.hunger = Math.max(0, animal.hunger - 40);
@@ -214,66 +246,47 @@ function _seekPlantFood(animal, world) {
     return;
   }
 
-  // Already following food path? Continue
-  if (animal.path.length && animal.pathIndex < animal.path.length) {
+  // Already following food path? Continue if fresh
+  if (_hasValidPath(animal, world.clock.tick)) {
     _followPath(animal, world);
     return;
   }
 
-  // Search nearby for food — prioritize fruit, fallback to mature plants
+  // Spiral search: check nearest tiles first, early-exit on fruit found
   const r = animal.visionRange;
-  let bestFruit = null, bestFruitDist = Infinity;
-  let bestPlant = null, bestPlantDist = Infinity;
+  const maxR = animal.hunger > 65 ? Math.min(animal.visionRange * 3, 25) : r;
+  let bestFruit = null, bestPlant = null;
 
-  for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r; dx <= r; dx++) {
-      const nx = animal.x + dx, ny = animal.y + dy;
-      if (!world.isInBounds(nx, ny)) continue;
-      const ni = world.idx(nx, ny);
-      const d = Math.abs(dx) + Math.abs(dy);
-      if (d === 0) continue;
+  for (let ring = 1; ring <= maxR; ring++) {
+    // Scan the perimeter of this ring (Manhattan distance = ring)
+    for (let dx = -ring; dx <= ring; dx++) {
+      const absdy = ring - Math.abs(dx);
+      const dys = absdy === 0 ? [0] : [-absdy, absdy];
+      for (const dy of dys) {
+        const nx = animal.x + dx, ny = animal.y + dy;
+        if (!world.isInBounds(nx, ny)) continue;
+        const ni = world.idx(nx, ny);
 
-      if (world.plantStage[ni] === S_FRUIT && d < bestFruitDist) {
-        bestFruitDist = d;
-        bestFruit = [nx, ny];
-      } else if (world.plantType[ni] > 0 && world.plantStage[ni] >= S_ADULT_SPROUT && d < bestPlantDist) {
-        bestPlantDist = d;
-        bestPlant = [nx, ny];
+        if (world.plantStage[ni] === S_FRUIT) {
+          bestFruit = [nx, ny];
+          break; // Fruit found at this ring — use it
+        } else if (!bestPlant && world.plantType[ni] > 0 && world.plantStage[ni] >= S_ADULT_SPROUT) {
+          bestPlant = [nx, ny];
+        }
       }
+      if (bestFruit) break;
     }
+    // Early exit: found fruit (best option) — stop expanding
+    if (bestFruit) break;
+    // If we found a plant within vision range, stop expanding beyond vision (unless desperate)
+    if (bestPlant && ring >= r) break;
   }
 
   const target = bestFruit || bestPlant;
   if (target) {
-    animal.path = aStar(animal.x, animal.y, target[0], target[1], world, 40);
-    animal.pathIndex = 0;
+    const pathLimit = target === bestFruit ? 40 : 60;
+    _setPath(animal, aStar(animal.x, animal.y, target[0], target[1], world, pathLimit), world.clock.tick);
     if (animal.path.length) { _followPath(animal, world); return; }
-  }
-
-  // Nothing nearby — expand search when very hungry
-  if (animal.hunger > 65) {
-    const bigR = Math.min(animal.visionRange * 3, 25);
-    for (let dy = -bigR; dy <= bigR; dy += 2) {
-      for (let dx = -bigR; dx <= bigR; dx += 2) {
-        const nx = animal.x + dx, ny = animal.y + dy;
-        if (!world.isInBounds(nx, ny)) continue;
-        const ni = world.idx(nx, ny);
-        const d = Math.abs(dx) + Math.abs(dy);
-        if (world.plantStage[ni] === S_FRUIT && d < bestFruitDist) {
-          bestFruitDist = d;
-          bestFruit = [nx, ny];
-        } else if (world.plantType[ni] > 0 && world.plantStage[ni] >= S_ADULT_SPROUT && d < bestPlantDist) {
-          bestPlantDist = d;
-          bestPlant = [nx, ny];
-        }
-      }
-    }
-    const farTarget = bestFruit || bestPlant;
-    if (farTarget) {
-      animal.path = aStar(animal.x, animal.y, farTarget[0], farTarget[1], world, 60);
-      animal.pathIndex = 0;
-      if (animal.path.length) { _followPath(animal, world); return; }
-    }
   }
 
   _randomWalk(animal, world);
@@ -294,8 +307,7 @@ function _seekPrey(animal, world, spatialHash) {
     if (dist <= 1) {
       _attack(animal, target, world);
     } else {
-      animal.path = aStar(animal.x, animal.y, target.x, target.y, world, 30);
-      animal.pathIndex = 0;
+      _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30), world.clock.tick);
       animal.state = AnimalState.RUNNING;
       for (let s = 0; s < animal.speed; s++) {
         _followPath(animal, world);
@@ -312,6 +324,7 @@ function _seekPrey(animal, world, spatialHash) {
       world.plantType[idx] = P_NONE;
       world.plantStage[idx] = S_NONE;
       world.plantAge[idx] = 0;
+      world.activePlantTiles.delete(idx);
       animal.state = AnimalState.EATING;
       animal.applyEnergyCost('EAT');
       animal.hunger = Math.max(0, animal.hunger - 20);
@@ -333,6 +346,7 @@ function _seekOmnivoreFood(animal, world, spatialHash) {
     world.plantType[idx] = P_NONE;
     world.plantStage[idx] = S_NONE;
     world.plantAge[idx] = 0;
+    world.activePlantTiles.delete(idx);
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
     animal.hunger = Math.max(0, animal.hunger - 40);
@@ -363,8 +377,7 @@ function _seekOmnivoreFood(animal, world, spatialHash) {
       if (dist <= 1) {
         _attack(animal, target, world);
       } else {
-        animal.path = aStar(animal.x, animal.y, target.x, target.y, world, 30);
-        animal.pathIndex = 0;
+        _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30), world.clock.tick);
         animal.state = AnimalState.RUNNING;
         for (let s = 0; s < animal.speed; s++) {
           _followPath(animal, world);
@@ -468,6 +481,16 @@ function _doMate(animal, mate, world) {
   mate.applyEnergyCost('MATE');
   animal.mateCooldown = 100;
   mate.mateCooldown = 100;
+
+  // Enforce population cap
+  const maxPop = animal._config.max_population;
+  if (maxPop) {
+    let count = 0;
+    for (const a of world.animals) {
+      if (a.alive && a.species === animal.species) count++;
+    }
+    if (count >= maxPop) return;
+  }
 
   // Spawn baby nearby
   let bx = animal.x, by = animal.y;

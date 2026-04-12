@@ -30,6 +30,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.12,
     thirst_rate: 0.14,
     initial_count: 100,
+    max_population: 5000,
+    decision_interval: 2,
   },
 
   SQUIRREL: {
@@ -57,6 +59,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.13,
     thirst_rate: 0.13,
     initial_count: 60,
+    max_population: 5000,
+    decision_interval: 2,
   },
 
   BEETLE: {
@@ -84,6 +88,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.07,
     thirst_rate: 0.08,
     initial_count: 80,
+    max_population: 5000,
+    decision_interval: 3,
   },
 
   GOAT: {
@@ -111,6 +117,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.10,
     thirst_rate: 0.12,
     initial_count: 40,
+    max_population: 5000,
+    decision_interval: 2,
   },
 
   DEER: {
@@ -138,6 +146,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.11,
     thirst_rate: 0.13,
     initial_count: 40,
+    max_population: 5000,
+    decision_interval: 2,
   },
 
   FOX: {
@@ -165,6 +175,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.14,
     thirst_rate: 0.12,
     initial_count: 32,
+    max_population: 5000,
+    decision_interval: 2,
   },
 
   WOLF: {
@@ -192,6 +204,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.16,
     thirst_rate: 0.12,
     initial_count: 20,
+    max_population: 5000,
+    decision_interval: 2,
   },
 
   BOAR: {
@@ -219,6 +233,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.13,
     thirst_rate: 0.11,
     initial_count: 30,
+    max_population: 5000,
+    decision_interval: 2,
   },
 
   BEAR: {
@@ -246,6 +262,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.15,
     thirst_rate: 0.10,
     initial_count: 12,
+    max_population: 5000,
+    decision_interval: 3,
   },
 
   RACCOON: {
@@ -273,6 +291,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.13,
     thirst_rate: 0.12,
     initial_count: 25,
+    max_population: 5000,
+    decision_interval: 2,
   },
 
   CROW: {
@@ -300,6 +320,8 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.12,
     thirst_rate: 0.11,
     initial_count: 35,
+    max_population: 5000,
+    decision_interval: 2,
   },
 };
 
@@ -325,6 +347,17 @@ export function buildAnimalSpeciesConfig() {
     cfg[key] = simParams;
   }
   return cfg;
+}
+
+/**
+ * Build `decision_intervals` map: species → ticks between full AI evaluations.
+ */
+export function buildDecisionIntervals() {
+  const intervals = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    intervals[key] = sp.decision_interval || 2;
+  }
+  return intervals;
 }
 
 /**

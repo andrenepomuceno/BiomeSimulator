@@ -11,11 +11,16 @@ export class EntityLayer {
     this._textures = null;
     this._texturesReady = false;
 
+    // Sprite pool for recycling
+    this._pool = [];
+
     // Selection marker
     this._selectedId = null;
     this._selectionGfx = new PIXI.Graphics();
     this._selectionGfx.visible = false;
     this._selectionTick = 0;
+    this._lastSelX = -1;
+    this._lastSelY = -1;
     this.container.addChild(this._selectionGfx);
   }
 
@@ -23,6 +28,27 @@ export class EntityLayer {
     if (this._texturesReady) return;
     this._textures = generateEmojiTextures();
     this._texturesReady = true;
+  }
+
+  _acquireSprite(tex) {
+    let sprite;
+    if (this._pool.length > 0) {
+      sprite = this._pool.pop();
+      sprite.texture = tex;
+      sprite.visible = true;
+      sprite.alpha = 1;
+    } else {
+      sprite = new PIXI.Sprite(tex);
+      sprite.anchor.set(0.5);
+    }
+    this.container.addChild(sprite);
+    return sprite;
+  }
+
+  _releaseSprite(sprite) {
+    sprite.visible = false;
+    this.container.removeChild(sprite);
+    this._pool.push(sprite);
   }
 
   /**
@@ -53,10 +79,8 @@ export class EntityLayer {
       if (!tex) continue;
 
       if (!sprite) {
-        sprite = new PIXI.Sprite(tex);
-        sprite.anchor.set(0.5);
+        sprite = this._acquireSprite(tex);
         sprite._texKey = texKey;
-        this.container.addChild(sprite);
         this._sprites.set(a.id, sprite);
       }
 
@@ -96,11 +120,10 @@ export class EntityLayer {
       }
     }
 
-    // Remove sprites for animals no longer visible
+    // Return sprites for animals no longer visible to the pool
     for (const [id, sprite] of this._sprites) {
       if (!seen.has(id)) {
-        this.container.removeChild(sprite);
-        sprite.destroy();
+        this._releaseSprite(sprite);
         this._sprites.delete(id);
       }
     }
@@ -126,7 +149,19 @@ export class EntityLayer {
       return;
     }
 
+    // Only redraw if position changed
+    const moved = sprite.x !== this._lastSelX || sprite.y !== this._lastSelY;
     this._selectionTick++;
+
+    // Redraw every 4th tick for pulse, or immediately on move
+    if (!moved && this._selectionTick % 4 !== 0) {
+      gfx.x = sprite.x;
+      gfx.y = sprite.y;
+      return;
+    }
+
+    this._lastSelX = sprite.x;
+    this._lastSelY = sprite.y;
     const pulse = 0.9 + 0.1 * Math.sin(this._selectionTick * 0.12);
     const radius = 0.45 * pulse;
 

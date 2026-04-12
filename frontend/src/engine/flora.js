@@ -162,26 +162,36 @@ export function seedInitialPlants(world) {
     world.plantType[idx] = ptype;
     world.plantStage[idx] = stage;
     world.plantAge[idx] = age;
+    world.activePlantTiles.add(idx);
   }
 }
 
 /**
  * Process one tick of the plant lifecycle.
+ * Uses active-tile tracking and 4-phase staggering to reduce per-tick cost.
  */
+const PLANT_TICK_PHASES = 4;
+
 export function processPlants(world) {
-  const w = world.width, h = world.height;
-  const size = w * h;
+  const w = world.width;
   const wpThreshold = world.config.water_proximity_threshold ?? 10;
+  const currentPhase = world.clock.tick % PLANT_TICK_PHASES;
   world.plantChanges = [];
 
-  // --- Age alive plants and process stage transitions ---
-  for (let i = 0; i < size; i++) {
+  // --- Age alive plants and process stage transitions (staggered) ---
+  for (const i of world.activePlantTiles) {
+    // Stagger: only process tiles whose index matches current phase
+    if (i % PLANT_TICK_PHASES !== currentPhase) continue;
+
     const ptype = world.plantType[i];
     const stage = world.plantStage[i];
-    if (ptype === P_NONE || stage === S_NONE || stage >= S_DEAD) continue;
+    if (ptype === P_NONE || stage === S_NONE || stage >= S_DEAD) {
+      world.activePlantTiles.delete(i);
+      continue;
+    }
 
-    // Age
-    world.plantAge[i]++;
+    // Age by PLANT_TICK_PHASES to compensate for staggering
+    world.plantAge[i] += PLANT_TICK_PHASES;
 
     const terrain = world.terrain[i];
     const terrainMult = TERRAIN_GROWTH_MULT[terrain] || 1.0;
@@ -189,7 +199,7 @@ export function processPlants(world) {
     // Dirt terrain: random chance to kill the plant each tick
     if (terrain === DIRT) {
       const deathChance = DIRT_DEATH_CHANCE[stage] || 0;
-      if (deathChance > 0 && Math.random() < deathChance) {
+      if (deathChance > 0 && Math.random() < deathChance * PLANT_TICK_PHASES) {
         world.plantStage[i] = S_DEAD;
         const x = i % w, y = Math.floor(i / w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
@@ -234,14 +244,19 @@ export function processPlants(world) {
   }
 
   // --- Dead plants decompose ---
-  for (let i = 0; i < size; i++) {
+  const toRemove = [];
+  for (const i of world.activePlantTiles) {
     if (world.plantStage[i] === S_DEAD) {
       const x = i % w, y = Math.floor(i / w);
       world.plantType[i] = P_NONE;
       world.plantStage[i] = S_NONE;
       world.plantAge[i] = 0;
       world.plantChanges.push([x, y, P_NONE, S_NONE]);
+      toRemove.push(i);
     }
+  }
+  for (const i of toRemove) {
+    world.activePlantTiles.delete(i);
   }
 
   // --- Adult plants produce offspring ---
@@ -256,18 +271,25 @@ const DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1]
 function produceOffspring(world) {
   const w = world.width, h = world.height;
 
-  // Collect all adult plants
+  // Collect all adult plants from active tiles only
   const adults = [];
-  for (let i = 0; i < w * h; i++) {
+  for (const i of world.activePlantTiles) {
     if (world.plantStage[i] === S_ADULT) adults.push(i);
   }
+
+  // Dynamic cap — reduce attempts when plant coverage is high
+  const coverage = world.activePlantTiles.size / (w * h);
+  const baseCap = 800;
+  const dynamicCap = coverage > 0.6 ? Math.floor(baseCap * 0.25)
+    : coverage > 0.4 ? Math.floor(baseCap * 0.5)
+    : baseCap;
 
   // Shuffle to avoid positional bias
   for (let i = adults.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [adults[i], adults[j]] = [adults[j], adults[i]];
   }
-  const maxAttempts = Math.min(adults.length, 800);
+  const maxAttempts = Math.min(adults.length, dynamicCap);
 
   for (let n = 0; n < maxAttempts; n++) {
     const idx = adults[n];
@@ -295,6 +317,7 @@ function produceOffspring(world) {
     world.plantType[ni] = ptype;
     world.plantStage[ni] = offspringStage;
     world.plantAge[ni] = 0;
+    world.activePlantTiles.add(ni);
     world.plantChanges.push([nx, ny, ptype, offspringStage]);
   }
 }

@@ -124,6 +124,8 @@ export class GameRenderer {
       return;
     }
     this._tileSelectionTick++;
+    // Only redraw every 4th tick for pulse animation
+    if (this._tileSelectionTick % 4 !== 0 && gfx.visible) return;
     const pulse = 0.85 + 0.15 * Math.sin(this._tileSelectionTick * 0.1);
 
     gfx.clear();

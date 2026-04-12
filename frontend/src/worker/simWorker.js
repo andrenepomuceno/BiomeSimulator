@@ -48,11 +48,13 @@ function stopLoop() {
 
 function doTick() {
   if (!engine || !engine.world) return;
+  const t0 = performance.now();
   engine.tick();
-  postTickState();
+  const tickMs = performance.now() - t0;
+  postTickState(tickMs);
 }
 
-function postTickState() {
+function postTickState(tickMs = 0) {
   const w = engine.world;
   const animals = [];
   for (const a of w.animals) {
@@ -70,6 +72,9 @@ function postTickState() {
   if (w.clock.tick % 10 === 0) {
     msg.stats = w.getStats();
     msg.stats.tick = w.clock.tick;
+    msg.stats.tickMs = tickMs;
+    msg.stats.animalCount = w.animals.length;
+    msg.stats.activePlants = w.activePlantTiles.size;
     msg.statsHistory = w.statsHistory;
   }
 

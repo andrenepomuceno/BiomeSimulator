@@ -53,6 +53,7 @@ export class Animal {
     this.targetY = null;
     this.path = [];
     this.pathIndex = 0;
+    this._pathTick = 0; // tick when path was last computed
 
     this.mateCooldown = 0;
     this.attackCooldown = 0;

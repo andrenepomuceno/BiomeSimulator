@@ -1,7 +1,7 @@
 /**
  * Animal AI — state machine and decision logic.
  */
-import { Animal, AnimalState } from './entities.js';
+import { Animal, AnimalState, LifeStage } from './entities.js';
 import { WATER } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
@@ -19,6 +19,7 @@ export function decideAndAct(animal, world, spatialHash) {
   if (animal.age > animal.maxAge || animal.energy <= 0) {
     animal.alive = false;
     animal.state = AnimalState.DEAD;
+    animal._deathTick = world.clock.tick;
     return;
   }
 
@@ -108,7 +109,7 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 7. Mating opportunity
-  if (animal.age >= animal.matureAge && animal.mateCooldown <= 0 && animal.energy > 50) {
+  if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && animal.energy > 50) {
     const mate = _findMate(animal, spatialHash);
     if (mate) { _doMate(animal, mate, world); return; }
   }
@@ -380,7 +381,7 @@ function _seekOmnivoreFood(animal, world, spatialHash) {
 
 // ---- Combat ----
 
-function _attack(attacker, defender /*, world */) {
+function _attack(attacker, defender, world) {
   attacker.state = AnimalState.ATTACKING;
   attacker.applyEnergyCost('ATTACK');
   attacker.attackCooldown = 3;
@@ -392,6 +393,7 @@ function _attack(attacker, defender /*, world */) {
   if (defender.energy <= 0) {
     defender.alive = false;
     defender.state = AnimalState.DEAD;
+    defender._deathTick = world.clock.tick;
     attacker.hunger = Math.max(0, attacker.hunger - 70);
     attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + 15);
     attacker.state = AnimalState.EATING;
@@ -442,7 +444,7 @@ function _findMate(animal, spatialHash) {
   const repro = animal._config.reproduction || REPRO_SEXUAL;
   const candidates = nearby.filter(e => {
     if (e.species !== animal.species || !e.alive || e.id === animal.id) return false;
-    if (e.age < e.matureAge || e.mateCooldown > 0 || e.energy <= 50) return false;
+    if (e.lifeStage !== LifeStage.ADULT || e.mateCooldown > 0 || e.energy <= 50) return false;
     // Sex compatibility check
     if (repro === REPRO_SEXUAL) {
       // Need opposite sex

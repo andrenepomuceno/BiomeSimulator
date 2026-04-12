@@ -126,3 +126,11 @@ export const STATE_NAMES = {
   8: 'Mating',
   9: 'Dead',
 };
+
+// Animal life stage names
+export const LIFE_STAGE_NAMES = {
+  0: '🍼 Filhote',
+  1: '🌱 Jovem',
+  2: '🌿 Adulto Jovem',
+  3: '🌳 Adulto',
+};

@@ -46,6 +46,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 1100,
     mature_age: 80,
+    life_stage_ages: [25, 50, 80],
     attack_power: 1,
     defense: 1,
     energy_costs: {
@@ -72,6 +73,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 80,
     max_age: 800,
     mature_age: 60,
+    life_stage_ages: [15, 35, 60],
     attack_power: 1,
     defense: 4,
     energy_costs: {
@@ -98,6 +100,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 2000,
     mature_age: 200,
+    life_stage_ages: [60, 120, 200],
     attack_power: 3,
     defense: 5,
     energy_costs: {
@@ -124,6 +127,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 1800,
     mature_age: 160,
+    life_stage_ages: [50, 100, 160],
     attack_power: 2,
     defense: 3,
     energy_costs: {
@@ -150,6 +154,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 1400,
     mature_age: 160,
+    life_stage_ages: [50, 100, 160],
     attack_power: 6,
     defense: 4,
     energy_costs: {
@@ -176,6 +181,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 1600,
     mature_age: 200,
+    life_stage_ages: [60, 120, 200],
     attack_power: 9,
     defense: 6,
     energy_costs: {
@@ -202,6 +208,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 1600,
     mature_age: 180,
+    life_stage_ages: [55, 110, 180],
     attack_power: 5,
     defense: 5,
     energy_costs: {
@@ -228,6 +235,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 2200,
     mature_age: 250,
+    life_stage_ages: [75, 150, 250],
     attack_power: 10,
     defense: 8,
     energy_costs: {
@@ -254,6 +262,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 1200,
     mature_age: 100,
+    life_stage_ages: [30, 60, 100],
     attack_power: 3,
     defense: 3,
     energy_costs: {
@@ -280,6 +289,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 1000,
     mature_age: 80,
+    life_stage_ages: [25, 50, 80],
     attack_power: 2,
     defense: 1,
     energy_costs: {

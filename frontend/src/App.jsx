@@ -62,7 +62,7 @@ export default function App() {
   useEffect(() => {
     if (rendererRef.current && animals.length >= 0) {
       const app = rendererRef.current.app;
-      rendererRef.current.entityLayer.update(animals, app.renderer);
+      rendererRef.current.entityLayer.update(animals, app.renderer, clock.tick);
     }
   }, [animals]);
 

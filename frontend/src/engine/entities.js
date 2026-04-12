@@ -16,6 +16,13 @@ export const AnimalState = {
   DEAD: 9,
 };
 
+export const LifeStage = {
+  BABY: 0,
+  YOUNG: 1,
+  YOUNG_ADULT: 2,
+  ADULT: 3,
+};
+
 export class Animal {
   constructor(id, x, y, species, config) {
     this.id = id;
@@ -49,6 +56,7 @@ export class Animal {
 
     this.mateCooldown = 0;
     this.attackCooldown = 0;
+    this._deathTick = null;
   }
 
   get speed() { return this._config.speed; }
@@ -56,6 +64,15 @@ export class Animal {
   get maxEnergy() { return this._config.max_energy; }
   get maxAge() { return this._config.max_age; }
   get matureAge() { return this._config.mature_age; }
+
+  get lifeStage() {
+    const ages = this._config.life_stage_ages;
+    if (!ages) return this.age >= this.matureAge ? LifeStage.ADULT : LifeStage.YOUNG;
+    if (this.age < ages[0]) return LifeStage.BABY;
+    if (this.age < ages[1]) return LifeStage.YOUNG;
+    if (this.age < ages[2]) return LifeStage.YOUNG_ADULT;
+    return LifeStage.ADULT;
+  }
 
   energyCost(actionName) {
     return this._config.energy_costs[actionName] || 0;
@@ -88,6 +105,8 @@ export class Animal {
       thirst: Math.round(this.thirst * 10) / 10,
       age: this.age,
       alive: this.alive,
+      lifeStage: this.lifeStage,
+      _deathTick: this._deathTick,
     };
   }
 }

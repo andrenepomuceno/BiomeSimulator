@@ -104,9 +104,11 @@ export class SimulationEngine {
     // Rebuild spatial hash
     this.spatialHash.rebuild(w.animals.filter(a => a.alive));
 
-    // Clean up dead animals every 50 ticks
+    // Clean up dead animals that have lingered for 200+ ticks
     if (w.clock.tick % 50 === 0) {
-      w.animals = w.animals.filter(a => a.alive);
+      w.animals = w.animals.filter(a =>
+        a.alive || (a._deathTick != null && w.clock.tick - a._deathTick < 200)
+      );
     }
 
     // Record stats every 10 ticks
@@ -134,8 +136,10 @@ export class SimulationEngine {
 
     const animalsData = [];
     for (const a of w.animals) {
-      if (a.alive && a.x >= x1 && a.x < x2 && a.y >= y1 && a.y < y2) {
-        animalsData.push(a.toDict());
+      if (a.x >= x1 && a.x < x2 && a.y >= y1 && a.y < y2) {
+        if (a.alive || a.state === 9) {
+          animalsData.push(a.toDict());
+        }
       }
     }
 
@@ -217,6 +221,7 @@ export class SimulationEngine {
       if (a.id === entityId) {
         a.alive = false;
         a.state = 9; // DEAD
+        a._deathTick = this.world.clock.tick;
         this.spatialHash.remove(a);
         return true;
       }

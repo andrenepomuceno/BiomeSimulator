@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import useSimStore from '../store/simulationStore';
-import { STATE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
+import { STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
 import ANIMAL_SPECIES from '../engine/animalSpecies';
 import { getPlantByTypeId } from '../engine/plantSpecies';
 
@@ -139,6 +139,12 @@ export default function EntityInspector() {
           <span className="stat-value">{STATE_NAMES[e.state] || 'Unknown'}</span>
         </div>
         <div className="text-muted" style={{ fontSize: '0.6rem', marginBottom: 4 }}>Current behavior of this entity</div>
+        {e.state !== 9 && (
+          <div className="stat-row">
+            <span className="stat-label">Life Stage</span>
+            <span className="stat-value">{LIFE_STAGE_NAMES[e.lifeStage] || 'Unknown'}</span>
+          </div>
+        )}
         <div className="stat-row">
           <span className="stat-label">Position</span>
           <span className="stat-value">({e.x}, {e.y})</span>

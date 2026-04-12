@@ -39,7 +39,7 @@ export class EntityLayer {
    * @param {Array} animals - [{id, x, y, species, state, energy}, ...]
    * @param {PIXI.Renderer} renderer - (unused, kept for API compat)
    */
-  update(animals, renderer) {
+  update(animals, renderer, currentTick = 0) {
     this._ensureTextures();
 
     const seen = new Set();
@@ -70,14 +70,25 @@ export class EntityLayer {
       sprite.x = a.x + 0.5;
       sprite.y = a.y + 0.5;
 
-      // Scale: 64px texture → ~1 tile.  Base scale 0.018, range 0.012–0.024
+      // Scale: 64px texture → ~1 tile.  Base scale 0.018, range varies by life stage
       const baseScale = 0.018;
       const energyFactor = 0.8 + (a.energy / 200) * 0.4;
-      sprite.scale.set(baseScale * energyFactor);
+      const stageFactor = a.state === 9 ? 1.0
+        : a.lifeStage === 0 ? 0.5
+        : a.lifeStage === 1 ? 0.7
+        : a.lifeStage === 2 ? 0.85
+        : 1.0;
+      sprite.scale.set(baseScale * energyFactor * stageFactor);
 
       // Alpha based on state
       if (a.state === 9) {
-        sprite.alpha = 0.45;
+        // Fade skull over its 200-tick lifespan
+        if (a._deathTick != null && currentTick > 0) {
+          const elapsed = currentTick - a._deathTick;
+          sprite.alpha = Math.max(0.05, 0.5 * (1 - elapsed / 200));
+        } else {
+          sprite.alpha = 0.45;
+        }
       } else if (a.state === 5) {
         sprite.alpha = 0.65;
       } else {

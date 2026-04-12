@@ -159,15 +159,16 @@ Renders animals as emoji sprites with state-dependent appearance.
 
 | Method | Description |
 |--------|-------------|
-| `update(animals, renderer)` | Reposition sprites, manage sprite pool |
+| `update(animals, renderer, currentTick)` | Reposition sprites, manage sprite pool, apply life stage scaling and skull fade |
 
 ### Sprite Behavior
 
 | Property | Rule |
 |----------|------|
-| Texture | Species emoji (🐰 🐿️ 🪲 🐐 🦌 🦊 🐺), or 💤 (sleeping), 💀 (dead) |
-| Scale | `0.018 × (0.8 + energy/200 × 0.4)` — larger when healthy |
-| Alpha | 1.0 normal, 0.65 sleeping, 0.45 dead |
+| Texture | Species emoji (🐰 🐿️ 🪲 🐐 🦌 🦊 🐺 🐗 🐻 🦝 🐦‍⬛), or 💤 (sleeping), 💀 (dead) |
+| Scale | `0.018 × energyFactor × stageFactor` — varies by life stage and health |
+| Stage Scale | Baby 0.5×, Young 0.7×, Young Adult 0.85×, Adult 1.0× |
+| Alpha | 1.0 normal, 0.65 sleeping, fading 0.5→0.05 for dead (over 200 ticks) |
 
 ### Sprite Pool
 
@@ -183,7 +184,7 @@ Generates PIXI textures from emoji characters via offscreen canvas.
 
 | Function | Returns |
 |----------|---------|
-| `generateEmojiTextures()` | `{RABBIT, SQUIRREL, ..., SLEEPING, DEAD}` — 9 textures |
+| `generateEmojiTextures()` | `{RABBIT, SQUIRREL, ..., SLEEPING, DEAD}` — 13 textures |
 | `generatePlantEmojiTextures()` | `{'${type}_${stage}': Texture}` — 24 textures |
 
 - 64×64px canvas per emoji
@@ -200,7 +201,7 @@ Worker sends tick message
 useSimulation hook → Store (animals, plantChanges, clock)
   ↓
 App.jsx useEffect hooks
-  ├── renderer.entityLayer.update(animals)
+  ├── renderer.entityLayer.update(animals, renderer, clock.tick)
   ├── renderer.updatePlants(plantChanges)
   └── renderer.setNight(clock.is_night)
   ↓
@@ -209,6 +210,6 @@ Pixi.js renders at 60fps
 
 ### Viewport Culling
 
-- Animals are filtered to current viewport in the worker (`getStateForViewport`)
+- Animals are filtered to current viewport in the worker (`getStateForViewport`) — includes both alive and recently dead animals
 - Plant emojis are viewport-scoped in `PlantLayer.updateEmojis()`
 - Terrain and plant pixel overlays cover the full map (single texture each)

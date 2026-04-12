@@ -60,7 +60,7 @@ Main Thread: useSimulation.onmessage
   → store.setStats(stats)
   ↓
 React: App.jsx useEffect hooks
-  → renderer.entityLayer.update(animals)
+  → renderer.entityLayer.update(animals, renderer, clock.tick)
   → renderer.updatePlants(plantChanges)
   → renderer.setNight(clock.is_night)
   ↓
@@ -190,7 +190,7 @@ App
 │   └── StatsPanel (population counters + chart)
 ├── Canvas Area (Pixi.js via GameRenderer)
 └── Sidebar Right
-    ├── EntityInspector (selected entity/tile details)
+    ├── EntityInspector (selected entity/tile details, life stage display)
     └── TerrainEditor (brush settings, entity palette)
 ```
 

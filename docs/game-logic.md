@@ -19,7 +19,7 @@ Each tick, every alive animal runs `decideAndAct()`, which evaluates priorities 
 | 7 | Predator in vision range (herbivores only) | Flee |
 | 8 | Hunger > 30 (moderate) | Proactive food seeking |
 | 9 | Thirst > 35 (moderate) | Proactive water seeking |
-| 10 | Mature + cooldown=0 + energy > 50 | Find mate |
+| 10 | Adult + cooldown=0 + energy > 50 | Find mate |
 | 11 | Has existing path | Follow path |
 | 12 | Else | Random walk |
 
@@ -99,7 +99,7 @@ minimum damage = 1
 
 | Condition | Value |
 |-----------|-------|
-| Age | ≥ `mature_age` |
+| Life Stage | `ADULT` (LifeStage 3) |
 | Energy | > 50 |
 | Mate cooldown | = 0 |
 | Nearby mate | Within radius 3 |
@@ -115,8 +115,8 @@ minimum damage = 1
 ### Offspring
 
 - Baby spawns at parent's position
-- Initial energy: 60% of species max
-- Age: 0
+- Initial energy: 40% of species max
+- Age: 0 (Life Stage: BABY)
 - Both parents enter `MATING` state
 - Both parents receive `mateCooldown = 100` ticks
 
@@ -193,7 +193,48 @@ On world generation:
 | Starvation | Energy ≤ 0 |
 | Old age | Age ≥ `max_age` |
 | Predation | Energy ≤ 0 from combat |
+| Manual removal | Player uses ERASE tool |
 
 - Dead animals are marked `alive = false`, state = `DEAD`
-- Rendered with 45% opacity
-- Removed from the animal array every 50 ticks (cleanup cycle)
+- A `_deathTick` timestamp is recorded for fade timing
+- Dead animals remain on the map as 💀 skulls for **200 ticks**
+- Skull alpha fades from 0.5 → 0.05 over the 200-tick window
+- After 200 ticks, the entity is permanently removed from the animal array
+- Cleanup runs every 50 ticks
+
+---
+
+## Life Stages
+
+Animals progress through four life stages based on their age and species-specific `life_stage_ages` thresholds:
+
+| Stage | Enum | Sprite Scale | Description |
+|-------|------|-------------|-------------|
+| 🍼 Filhote (Baby) | 0 | 0.5× | Newborn, cannot mate |
+| 🌱 Jovem (Young) | 1 | 0.7× | Growing, cannot mate |
+| 🌿 Adulto Jovem (Young Adult) | 2 | 0.85× | Near maturity, cannot mate |
+| 🌳 Adulto (Adult) | 3 | 1.0× | Full size, can reproduce |
+
+### Stage Thresholds
+
+Each species defines `life_stage_ages: [baby→young, young→young_adult, young_adult→adult]`:
+
+| Species | Baby → Young | Young → Young Adult | Young Adult → Adult |
+|---------|-------------|--------------------|-----------|
+| 🐰 Rabbit | 30 | 60 | 100 |
+| 🐿️ Squirrel | 25 | 50 | 80 |
+| 🪲 Beetle | 15 | 35 | 60 |
+| 🐐 Goat | 60 | 120 | 200 |
+| 🦌 Deer | 50 | 100 | 160 |
+| 🦊 Fox | 50 | 100 | 160 |
+| 🐺 Wolf | 60 | 120 | 200 |
+| 🐗 Boar | 55 | 110 | 180 |
+| 🐻 Bear | 75 | 150 | 250 |
+| 🦝 Raccoon | 30 | 60 | 100 |
+| 🐦‍⬛ Crow | 25 | 50 | 80 |
+
+### Gameplay Effects
+
+- **Mating** requires `LifeStage.ADULT` (both partners)
+- **Sprite size** scales with life stage for visual progression
+- The `lifeStage` field is included in `toDict()` and shown in the Entity Inspector

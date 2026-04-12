@@ -87,13 +87,17 @@ This file is the **single source of truth** for all animal data. `config.js` der
 
 | Species | Diet | Speed | Vision | Max Energy | Max Age | Attack | Defense | Initial Count |
 |---------|------|-------|--------|-----------|---------|--------|---------|---------------|
-| 🐰 Rabbit | Herbivore | 1 | 8 | 90 | 1200 | 1 | 2 | 25 |
-| 🐿️ Squirrel | Herbivore | 1 | 9 | 80 | 1100 | 1 | 1 | 15 |
-| 🪲 Beetle | Herbivore | 1 | 5 | 60 | 800 | 1 | 4 | 20 |
-| 🐐 Goat | Herbivore | 1 | 10 | 140 | 2000 | 3 | 5 | 10 |
-| 🦌 Deer | Herbivore | 2 | 12 | 130 | 1800 | 2 | 3 | 10 |
-| 🦊 Fox | Carnivore | 2 | 12 | 120 | 1400 | 6 | 4 | 8 |
-| 🐺 Wolf | Carnivore | 2 | 14 | 150 | 1600 | 9 | 6 | 5 |
+| 🐰 Rabbit | Herbivore | 1 | 8 | 90 | 1200 | 1 | 2 | 100 |
+| 🐿️ Squirrel | Herbivore | 1 | 9 | 80 | 1100 | 1 | 1 | 60 |
+| 🪲 Beetle | Herbivore | 1 | 5 | 60 | 800 | 1 | 4 | 80 |
+| 🐐 Goat | Herbivore | 1 | 10 | 140 | 2000 | 3 | 5 | 40 |
+| 🦌 Deer | Herbivore | 2 | 12 | 130 | 1800 | 2 | 3 | 40 |
+| 🦊 Fox | Carnivore | 2 | 12 | 120 | 1400 | 6 | 4 | 32 |
+| 🐺 Wolf | Carnivore | 2 | 14 | 150 | 1600 | 9 | 6 | 20 |
+| 🐗 Boar | Omnivore | 1 | 10 | 140 | 1600 | 5 | 5 | 30 |
+| 🐻 Bear | Omnivore | 1 | 12 | 180 | 2200 | 10 | 8 | 12 |
+| 🦝 Raccoon | Omnivore | 1 | 9 | 90 | 1200 | 3 | 3 | 25 |
+| 🐦‍⬛ Crow | Omnivore | 2 | 14 | 70 | 1000 | 2 | 1 | 35 |
 
 ### Species Data Fields
 
@@ -112,6 +116,7 @@ This file is the **single source of truth** for all animal data. `config.js` der
   max_thirst: 100,        // thirst cap
   max_age: 1200,          // ticks until death from old age
   mature_age: 100,        // ticks before eligible to mate
+  life_stage_ages: [30, 60, 100], // [baby→young, young→young_adult, young_adult→adult]
   attack_power: 1,        // damage dealt in combat
   defense: 2,             // reduces incoming damage
   energy_costs: {         // energy per tick by action
@@ -130,11 +135,12 @@ This file is the **single source of truth** for all animal data. `config.js` der
 | Export | Type | Description |
 |--------|------|-------------|
 | `default` (ANIMAL_SPECIES) | Object | Full registry keyed by species ID |
-| `ALL_ANIMAL_IDS` | Array | All 7 species keys |
+| `ALL_ANIMAL_IDS` | Array | All 11 species keys |
 | `HERBIVORE_IDS` | Array | 5 herbivore species keys |
 | `CARNIVORE_IDS` | Array | 2 carnivore species keys |
+| `OMNIVORE_IDS` | Array | 4 omnivore species keys |
 | `buildAnimalSpeciesConfig()` | Function | Returns sim-only params (strips display fields) |
-| `buildInitialAnimalCounts()` | Function | Returns `{RABBIT: 25, ...}` from registry |
+| `buildInitialAnimalCounts()` | Function | Returns `{RABBIT: 100, ...}` from registry |
 
 ---
 
@@ -201,13 +207,23 @@ ATTACKING=6, FLEEING=7, MATING=8
 DEAD=9
 ```
 
+### Life Stages
+
+```
+BABY=0 → YOUNG=1 → YOUNG_ADULT=2 → ADULT=3
+```
+
+Stage is determined by comparing `animal.age` against `life_stage_ages` thresholds from the species config. Only `ADULT` animals can mate.
+
 ### `Animal` Class
 
 ```javascript
 const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 ```
 
-**Core Properties:** `id`, `x`, `y`, `species`, `diet`, `sex`, `state`, `energy`, `hunger`, `thirst`, `age`, `alive`
+**Core Properties:** `id`, `x`, `y`, `species`, `diet`, `sex`, `state`, `energy`, `hunger`, `thirst`, `age`, `alive`, `_deathTick`
+
+**Computed:** `lifeStage` (getter, derived from age + `life_stage_ages`)
 
 **Pathfinding:** `targetX/Y`, `path` (waypoint array), `pathIndex`
 
@@ -220,7 +236,7 @@ const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 | `energyCost(action)` | Lookup cost from species config |
 | `applyEnergyCost(action)` | Subtract cost, clamp to [0, maxEnergy] |
 | `tickNeeds()` | Increment hunger/thirst by species rate, tick cooldowns |
-| `toDict()` | Serializable snapshot for renderer/UI |
+| `toDict()` | Serializable snapshot for renderer/UI (includes `lifeStage`, `_deathTick`) |
 
 **Sex Assignment:** `SEXUAL` → 50% male / 50% female. `HERMAPHRODITE` / `ASEXUAL` → assigned directly.
 
@@ -246,9 +262,11 @@ engine.tick();           // advance one step
 3. For each alive animal:
      decideAndAct(animal, world, spatialHash)
 4. Rebuild spatialHash           — re-index all alive animals
-5. Every 50 ticks: cull dead animals from array
+5. Every 50 ticks: cull dead animals that have lingered ≥ 200 ticks
 6. Every 10 ticks: record stats snapshot (max 1000)
 ```
+
+**Dead animal lifecycle:** When an animal dies, `_deathTick` is recorded. Dead animals remain in the array (and are visible as 💀 skulls) for 200 ticks, then are permanently removed.
 
 ### Public Methods
 

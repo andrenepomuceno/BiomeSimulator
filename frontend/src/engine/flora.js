@@ -185,11 +185,10 @@ const DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1]
 function spreadSeeds(world) {
   const w = world.width, h = world.height;
 
-  // Collect fruiting plants (capped at 500 for performance)
+  // Collect all fruiting plants (no cap — avoids top-of-map bias)
   const fruiting = [];
   for (let i = 0; i < w * h; i++) {
     if (world.plantStage[i] === S_FRUITING) fruiting.push(i);
-    if (fruiting.length >= 2000) break; // collect a pool
   }
 
   // Shuffle and cap attempts

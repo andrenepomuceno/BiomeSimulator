@@ -107,6 +107,10 @@ export class Animal {
       age: this.age,
       alive: this.alive,
       lifeStage: this.lifeStage,
+      mateCooldown: this.mateCooldown,
+      attackCooldown: this.attackCooldown,
+      targetX: this.targetX,
+      targetY: this.targetY,
       _deathTick: this._deathTick,
     };
   }

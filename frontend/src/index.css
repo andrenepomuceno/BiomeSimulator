@@ -209,6 +209,25 @@ html, body, #root {
   font-size: 0.7rem;
 }
 
+/* Inspector badges & grid */
+.inspector-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.inspector-badge.badge-dead {
+  background: #555;
+  color: #aaa;
+}
+
+.inspector-grid .stat-row {
+  padding: 1px 0;
+}
+
 /* ── Game Menu Modal ── */
 
 .game-menu-overlay {

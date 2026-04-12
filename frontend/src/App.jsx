@@ -22,7 +22,7 @@ export default function App() {
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
-    clock, stats, worldReady,
+    clock, stats, worldReady, selectedEntity, selectedTile,
   } = useSimStore();
 
   // Initialize renderer
@@ -79,6 +79,18 @@ export default function App() {
       rendererRef.current.setNight(clock.is_night);
     }
   }, [clock.is_night, clock.tick]);
+
+  // Sync selection marker to renderer
+  useEffect(() => {
+    if (!rendererRef.current) return;
+    if (selectedEntity) {
+      rendererRef.current.setSelectedEntity(selectedEntity.id);
+    } else if (selectedTile) {
+      rendererRef.current.setSelectedTile(selectedTile.x, selectedTile.y);
+    } else {
+      rendererRef.current.clearSelection();
+    }
+  }, [selectedEntity, selectedTile]);
 
   // --- Actions ---
 

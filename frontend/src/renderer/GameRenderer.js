@@ -40,6 +40,12 @@ export class GameRenderer {
     this.worldContainer.addChild(this.plantLayer.container);
     this.worldContainer.addChild(this.entityLayer.container);
 
+    // Tile selection marker
+    this._tileSelectionGfx = new PIXI.Graphics();
+    this._tileSelectionGfx.visible = false;
+    this._tileSelectionTick = 0;
+    this.worldContainer.addChild(this._tileSelectionGfx);
+
     // Camera
     this.camera = new Camera(this.worldContainer, this.app.screen, () => {
       this._onViewportChanged();
@@ -52,6 +58,13 @@ export class GameRenderer {
     this.app.view.addEventListener('wheel', (e) => this.camera.onWheel(e), { passive: false });
     this._setupDrag();
     this._setupClick();
+
+    // Continuous selection marker update (works even when simulation is paused)
+    this._selectedTile = null;
+    this.app.ticker.add(() => {
+      this.entityLayer._updateSelectionMarker();
+      this._updateTileSelectionMarker();
+    });
 
     // Resize handling
     this._resizeObserver = new ResizeObserver(() => {
@@ -78,6 +91,50 @@ export class GameRenderer {
 
   updateEntities(animals) {
     this.entityLayer.update(animals);
+  }
+
+  setSelectedEntity(id) {
+    this.entityLayer.setSelectedId(id);
+    this._tileSelectionGfx.visible = false;
+    this._selectedTile = null;
+  }
+
+  setSelectedTile(x, y) {
+    this.entityLayer.setSelectedId(null);
+    if (x == null || y == null) {
+      this._tileSelectionGfx.visible = false;
+      this._selectedTile = null;
+    } else {
+      this._selectedTile = { x, y };
+      this._tileSelectionTick = 0;
+      this._updateTileSelectionMarker();
+    }
+  }
+
+  clearSelection() {
+    this.entityLayer.setSelectedId(null);
+    this._tileSelectionGfx.visible = false;
+    this._selectedTile = null;
+  }
+
+  _updateTileSelectionMarker() {
+    const gfx = this._tileSelectionGfx;
+    if (!this._selectedTile) {
+      gfx.visible = false;
+      return;
+    }
+    this._tileSelectionTick++;
+    const pulse = 0.85 + 0.15 * Math.sin(this._tileSelectionTick * 0.1);
+
+    gfx.clear();
+    gfx.lineStyle(0.08 * pulse, 0xffdd44, 0.85);
+    gfx.drawRect(
+      this._selectedTile.x + 0.04,
+      this._selectedTile.y + 0.04,
+      0.92,
+      0.92
+    );
+    gfx.visible = true;
   }
 
   setNight(isNight) {

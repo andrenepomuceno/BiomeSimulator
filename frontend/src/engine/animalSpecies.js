@@ -29,7 +29,7 @@ const ANIMAL_SPECIES = {
     },
     hunger_rate: 0.12,
     thirst_rate: 0.14,
-    initial_count: 25,
+    initial_count: 100,
   },
 
   SQUIRREL: {
@@ -55,7 +55,7 @@ const ANIMAL_SPECIES = {
     },
     hunger_rate: 0.13,
     thirst_rate: 0.13,
-    initial_count: 15,
+    initial_count: 60,
   },
 
   BEETLE: {
@@ -81,7 +81,7 @@ const ANIMAL_SPECIES = {
     },
     hunger_rate: 0.07,
     thirst_rate: 0.08,
-    initial_count: 20,
+    initial_count: 80,
   },
 
   GOAT: {
@@ -107,7 +107,7 @@ const ANIMAL_SPECIES = {
     },
     hunger_rate: 0.10,
     thirst_rate: 0.12,
-    initial_count: 10,
+    initial_count: 40,
   },
 
   DEER: {
@@ -133,7 +133,7 @@ const ANIMAL_SPECIES = {
     },
     hunger_rate: 0.11,
     thirst_rate: 0.13,
-    initial_count: 10,
+    initial_count: 40,
   },
 
   FOX: {
@@ -159,7 +159,7 @@ const ANIMAL_SPECIES = {
     },
     hunger_rate: 0.14,
     thirst_rate: 0.12,
-    initial_count: 8,
+    initial_count: 32,
   },
 
   WOLF: {
@@ -185,7 +185,7 @@ const ANIMAL_SPECIES = {
     },
     hunger_rate: 0.16,
     thirst_rate: 0.12,
-    initial_count: 5,
+    initial_count: 20,
   },
 };
 

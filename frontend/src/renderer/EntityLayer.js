@@ -10,6 +10,13 @@ export class EntityLayer {
     this._sprites = new Map(); // id → PIXI.Sprite
     this._textures = null;
     this._texturesReady = false;
+
+    // Selection marker
+    this._selectedId = null;
+    this._selectionGfx = new PIXI.Graphics();
+    this._selectionGfx.visible = false;
+    this._selectionTick = 0;
+    this.container.addChild(this._selectionGfx);
   }
 
   _ensureTextures() {
@@ -86,5 +93,44 @@ export class EntityLayer {
         this._sprites.delete(id);
       }
     }
+
+  }
+
+  setSelectedId(id) {
+    this._selectedId = id;
+    if (id == null) {
+      this._selectionGfx.visible = false;
+    }
+  }
+
+  _updateSelectionMarker() {
+    const gfx = this._selectionGfx;
+    if (this._selectedId == null) {
+      gfx.visible = false;
+      return;
+    }
+    const sprite = this._sprites.get(this._selectedId);
+    if (!sprite) {
+      gfx.visible = false;
+      return;
+    }
+
+    this._selectionTick++;
+    const pulse = 0.9 + 0.1 * Math.sin(this._selectionTick * 0.12);
+    const radius = 0.45 * pulse;
+
+    gfx.clear();
+    gfx.lineStyle(0.06, 0xffdd44, 0.9);
+    gfx.drawCircle(0, 0, radius);
+    // Inner subtle ring
+    gfx.lineStyle(0.03, 0xffffff, 0.5);
+    gfx.drawCircle(0, 0, radius * 0.75);
+
+    gfx.x = sprite.x;
+    gfx.y = sprite.y;
+    gfx.visible = true;
+
+    // Ensure marker renders on top
+    this.container.setChildIndex(gfx, this.container.children.length - 1);
   }
 }

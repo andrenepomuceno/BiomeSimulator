@@ -1,9 +1,11 @@
 /**
  * EntityInspector — shows details of selected entity or tile.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { STATE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
+import ANIMAL_SPECIES from '../engine/animalSpecies';
+import { getPlantByTypeId } from '../engine/plantSpecies';
 
 function Bar({ label, value, max, color, description }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
@@ -17,6 +19,94 @@ function Bar({ label, value, max, color, description }) {
         <div className="entity-bar-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
       {description && <div className="text-muted" style={{ fontSize: '0.6rem', marginTop: 1 }}>{description}</div>}
+    </div>
+  );
+}
+
+function EnergyCostTable({ costs }) {
+  const ACTION_LABELS = {
+    IDLE: '💤 Idle', WALK: '🚶 Walk', RUN: '🏃 Run',
+    EAT: '🍽️ Eat', DRINK: '💧 Drink', SLEEP: '😴 Sleep',
+    ATTACK: '⚔️ Attack', MATE: '💕 Mate', FLEE: '🏃‍♂️ Flee',
+  };
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px 6px', fontSize: '0.65rem' }}>
+      {Object.entries(costs).map(([action, cost]) => (
+        <div key={action} className="d-flex justify-content-between">
+          <span className="text-muted">{ACTION_LABELS[action] || action}</span>
+          <span style={{ color: cost < 0 ? '#4ecdc4' : '#ff6b6b' }}>{cost > 0 ? `-${cost}` : `+${Math.abs(cost)}`}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const STAGE_LABELS = ['Seed', 'Sprout', 'Mature', 'Fruiting'];
+const WATER_AFFINITY_LABELS = { low: '🏜️ Low', medium: '💧 Medium', high: '🌊 High' };
+
+function PlantAttributes({ typeId }) {
+  const [open, setOpen] = useState(false);
+  const sp = getPlantByTypeId(typeId);
+  if (!sp) return null;
+  return (
+    <div className="mt-2">
+      <div
+        className="d-flex justify-content-between align-items-center"
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+        onClick={() => setOpen(o => !o)}
+      >
+        <h6 className="mb-0" style={{ fontSize: '0.75rem' }}>📋 Plant Attributes</h6>
+        <span style={{ fontSize: '0.7rem' }}>{open ? '▾' : '▸'}</span>
+      </div>
+      {open && (
+        <div className="mt-1">
+          <div className="stat-row"><span className="stat-label">Reproduction</span><span className="stat-value">{sp.sex}</span></div>
+          <div className="stat-row"><span className="stat-label">Water Affinity</span><span className="stat-value">{WATER_AFFINITY_LABELS[sp.waterAffinity] || sp.waterAffinity}</span></div>
+          <div className="stat-row"><span className="stat-label">Fruit Spoil Age</span><span className="stat-value">{sp.fruitSpoilAge} ticks</span></div>
+          <h6 className="mt-2 mb-1" style={{ fontSize: '0.7rem' }}>🌱 Growth Stages</h6>
+          <div style={{ fontSize: '0.65rem' }}>
+            {sp.stageAges.map((age, i) => (
+              <div key={i} className="d-flex justify-content-between">
+                <span className="text-muted">{STAGE_LABELS[i]} → {STAGE_LABELS[i + 1] || 'Dead'}</span>
+                <span>{age} ticks</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SpeciesAttributes({ species }) {
+  const [open, setOpen] = useState(false);
+  const sp = ANIMAL_SPECIES[species];
+  if (!sp) return null;
+  return (
+    <div className="mt-2">
+      <div
+        className="d-flex justify-content-between align-items-center"
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+        onClick={() => setOpen(o => !o)}
+      >
+        <h6 className="mb-0" style={{ fontSize: '0.75rem' }}>📋 Species Attributes</h6>
+        <span style={{ fontSize: '0.7rem' }}>{open ? '▾' : '▸'}</span>
+      </div>
+      {open && (
+        <div className="mt-1">
+          <div className="stat-row"><span className="stat-label">Speed</span><span className="stat-value">{sp.speed}</span></div>
+          <div className="stat-row"><span className="stat-label">Vision Range</span><span className="stat-value">{sp.vision_range}</span></div>
+          <div className="stat-row"><span className="stat-label">Max Energy</span><span className="stat-value">{sp.max_energy}</span></div>
+          <div className="stat-row"><span className="stat-label">Max Age</span><span className="stat-value">{sp.max_age}</span></div>
+          <div className="stat-row"><span className="stat-label">Mature Age</span><span className="stat-value">{sp.mature_age}</span></div>
+          <div className="stat-row"><span className="stat-label">Attack Power</span><span className="stat-value">{sp.attack_power}</span></div>
+          <div className="stat-row"><span className="stat-label">Defense</span><span className="stat-value">{sp.defense}</span></div>
+          <div className="stat-row"><span className="stat-label">Hunger Rate</span><span className="stat-value">{sp.hunger_rate}/tick</span></div>
+          <div className="stat-row"><span className="stat-label">Thirst Rate</span><span className="stat-value">{sp.thirst_rate}/tick</span></div>
+          <h6 className="mt-2 mb-1" style={{ fontSize: '0.7rem' }}>⚡ Energy Costs</h6>
+          <EnergyCostTable costs={sp.energy_costs} />
+        </div>
+      )}
     </div>
   );
 }
@@ -59,6 +149,7 @@ export default function EntityInspector() {
         <Bar label="⚡ Energy" value={e.energy} max={e.species === 'WOLF' ? 130 : e.species === 'GOAT' ? 120 : e.species === 'DEER' ? 110 : e.species === 'FOX' ? 100 : e.species === 'RABBIT' ? 80 : e.species === 'SQUIRREL' ? 70 : e.species === 'BEETLE' ? 50 : 100} color="#4ecdc4" />
         <Bar label="🍖 Hunger" value={e.hunger} max={100} color="#ff6b6b" />
         <Bar label="💧 Thirst" value={e.thirst} max={100} color="#4d96ff" />
+        <SpeciesAttributes species={e.species} />
       </div>
     );
   }
@@ -102,6 +193,7 @@ export default function EntityInspector() {
               <span className="stat-label">Has Fruit</span>
               <span className="stat-value">{t.plant.fruit ? '🍎 Yes' : 'No'}</span>
             </div>
+            <PlantAttributes typeId={t.plant.type} />
           </>
         )}
       </div>

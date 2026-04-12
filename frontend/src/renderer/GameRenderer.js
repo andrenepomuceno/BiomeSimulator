@@ -73,6 +73,7 @@ export class GameRenderer {
 
   updatePlants(plantChanges) {
     this.plantLayer.applyChanges(plantChanges);
+    this._updatePlantEmojis();
   }
 
   updateEntities(animals) {
@@ -99,6 +100,12 @@ export class GameRenderer {
     if (this.onViewportChange) {
       this.onViewportChange(vp);
     }
+    this._updatePlantEmojis();
+  }
+
+  _updatePlantEmojis() {
+    const vp = this.camera.getViewportTiles();
+    this.plantLayer.updateEmojis(vp.x, vp.y, vp.w, vp.h, this.camera.zoom);
   }
 
   _setupDrag() {

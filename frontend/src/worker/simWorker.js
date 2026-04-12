@@ -108,6 +108,29 @@ self.onmessage = function (e) {
       startLoop();
       break;
 
+    case 'reset': {
+      if (!engine) break;
+      stopLoop();
+      running = false;
+      paused = true;
+      engine.resetSimulation();
+      const rw = engine.world;
+
+      self.postMessage({
+        type: 'worldReady',
+        width: rw.width,
+        height: rw.height,
+        seed: 0,
+        terrain: new Uint8Array(rw.terrain).buffer,
+        waterProximity: new Uint8Array(rw.waterProximity).buffer,
+        plantType: new Uint8Array(rw.plantType).buffer,
+        plantStage: new Uint8Array(rw.plantStage).buffer,
+        animals: rw.animals.filter(a => a.alive).map(a => a.toDict()),
+        clock: rw.clock.toDict(),
+      });
+      break;
+    }
+
     case 'pause':
       paused = true;
       stopLoop();

@@ -32,6 +32,34 @@ export class SimulationEngine {
     return seed;
   }
 
+  /**
+   * Reset simulation state (animals, plants, clock, stats) while preserving the terrain map.
+   */
+  resetSimulation() {
+    const w = this.world;
+    // Reset plants
+    w.plantType.fill(0);
+    w.plantStage.fill(0);
+    w.plantAge.fill(0);
+    w.plantFruit.fill(0);
+    w.plantChanges = [];
+
+    // Reset animals
+    w.animals = [];
+    w._nextId = 1;
+
+    // Reset clock
+    w.clock.tick = 0;
+
+    // Reset stats
+    w.statsHistory = [];
+
+    // Re-seed plants and animals
+    seedInitialPlants(w);
+    this._spawnAnimals();
+    this.spatialHash.rebuild(w.animals);
+  }
+
   _spawnAnimals() {
     const w = this.world;
     const counts = this.config.initial_animal_counts || {};

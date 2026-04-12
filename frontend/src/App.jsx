@@ -101,7 +101,12 @@ export default function App() {
     postCmd('step');
   }
 
-  function _handleReset(params = {}) {
+  function _handleReset() {
+    postCmd('reset');
+    useSimStore.getState().setSimState({ running: false, paused: true });
+  }
+
+  function _handleNewGame(params = {}) {
     postCmd('generate', { config: params });
     useSimStore.getState().setSimState({ running: false, paused: true });
   }
@@ -154,7 +159,7 @@ export default function App() {
       <GameMenu
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        onNewGame={(p) => _handleReset(p)}
+        onNewGame={(p) => _handleNewGame(p)}
         onSave={_handleSave}
         onLoad={_handleLoad}
       />

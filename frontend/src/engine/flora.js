@@ -43,6 +43,20 @@ const STAGE_AGES = {
   [P_CARROT]:      [12, 50, 120, 400],
 };
 
+// Terrain growth multipliers: higher = faster effective aging
+const TERRAIN_GROWTH_MULT = {
+  [GRASS]: 1.0,   // grass terrain boosts growth by 20%
+  [DIRT]:  0.5,   // dirt terrain slows growth by 30%
+};
+
+// Per-tick chance a plant on dirt dies prematurely (seeds/sprouts are more fragile)
+const DIRT_DEATH_CHANCE = {
+  [S_SEED]:     0.003,  // 0.3% per tick
+  [S_SPROUT]:   0.002,  // 0.2% per tick
+  [S_MATURE]:   0.0008, // 0.08% per tick
+  [S_FRUITING]: 0.0005, // 0.05% per tick
+};
+
 /**
  * Scatter initial plants on eligible terrain tiles.
  */
@@ -137,10 +151,24 @@ export function processPlants(world) {
     // Age
     world.plantAge[i]++;
 
-    // Effective age with water proximity bonus
-    const effectiveAge = world.waterProximity[i] < wpThreshold
-      ? Math.floor(world.plantAge[i] * 1.3)
-      : world.plantAge[i];
+    const terrain = world.terrain[i];
+    const terrainMult = TERRAIN_GROWTH_MULT[terrain] || 1.0;
+
+    // Dirt terrain: random chance to kill the plant each tick
+    if (terrain === DIRT) {
+      const deathChance = DIRT_DEATH_CHANCE[stage] || 0;
+      if (deathChance > 0 && Math.random() < deathChance) {
+        world.plantStage[i] = S_DEAD;
+        world.plantFruit[i] = 0;
+        const x = i % w, y = Math.floor(i / w);
+        world.plantChanges.push([x, y, ptype, S_DEAD]);
+        continue;
+      }
+    }
+
+    // Effective age with water proximity bonus and terrain modifier
+    const waterMult = world.waterProximity[i] < wpThreshold ? 1.3 : 1.0;
+    const effectiveAge = Math.floor(world.plantAge[i] * waterMult * terrainMult);
 
     const ages = STAGE_AGES[ptype];
     let newStage = stage;
@@ -213,6 +241,9 @@ function spreadSeeds(world) {
     if (world.plantType[ni] !== P_NONE) continue;
     const terrain = world.terrain[ni];
     if (terrain !== GRASS && terrain !== DIRT) continue;
+
+    // Seeds are less likely to take root on dirt
+    if (terrain === DIRT && Math.random() > 0.4) continue;
 
     world.plantType[ni] = ptype;
     world.plantStage[ni] = S_SEED;

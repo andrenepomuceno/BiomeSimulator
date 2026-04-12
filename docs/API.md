@@ -1,98 +1,128 @@
-# EcoGame API Reference
+# EcoGame Worker Message API Reference
 
-Complete reference for the EcoGame backend REST API and WebSocket events.
+Complete reference for the Web Worker message protocol used between the main thread (React UI) and the simulation worker.
 
-**Base URL:** `http://localhost:5000`  
-**Content Types:** JSON (`application/json`) for most endpoints; MessagePack (`application/x-msgpack`) for terrain data.
+**Communication:** `postMessage` / `onmessage` via the standard Web Worker API.
 
 ---
 
 ## Table of Contents
 
-- [Map Endpoints](#map-endpoints)
-- [Simulation Control](#simulation-control)
-- [Entity Endpoints](#entity-endpoints)
-- [Statistics](#statistics)
-- [WebSocket Events](#websocket-events)
+- [Main → Worker Commands](#main--worker-commands)
+- [Worker → Main Messages](#worker--main-messages)
 - [Data Types](#data-types)
 
 ---
 
-## Map Endpoints
+## Main → Worker Commands
 
-### POST `/api/map/generate`
+All commands are sent via `worker.postMessage({ cmd, ...params })`.
 
-Generate a new terrain map and populate it with plants and animals according to the current configuration.
+### `generate`
 
-**Request Body** (optional — all fields are optional overrides):
+Generate a new terrain map, populate it with plants and animals, and return the full world state.
 
-```json
-{
-  "map_width": 500,
-  "map_height": 500,
-  "sea_level": 0.38,
-  "island_count": 5,
-  "island_size_factor": 0.3,
-  "seed": 42
-}
+```javascript
+worker.postMessage({
+  cmd: 'generate',
+  config: {           // optional — all fields override DEFAULT_CONFIG
+    map_width: 500,
+    map_height: 500,
+    sea_level: 0.38,
+    island_count: 5,
+    island_size_factor: 0.3,
+    seed: 42,
+    initial_herbivore_count: 50,
+    initial_carnivore_count: 15,
+    initial_plant_density: 0.15,
+  }
+});
 ```
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `map_width` | int | 500 | Grid width in tiles |
-| `map_height` | int | 500 | Grid height in tiles |
-| `sea_level` | float | 0.38 | Height threshold for water (0.0–1.0) |
-| `island_count` | int | 5 | Number of island blobs |
-| `island_size_factor` | float | 0.3 | Relative island radius (0.0–1.0) |
-| `seed` | int\|null | null | Random seed (null = random) |
+| `config.map_width` | int | 500 | Grid width in tiles |
+| `config.map_height` | int | 500 | Grid height in tiles |
+| `config.sea_level` | float | 0.38 | Height threshold for water (0.0–1.0) |
+| `config.island_count` | int | 5 | Number of island blobs |
+| `config.island_size_factor` | float | 0.3 | Relative island radius (0.0–1.0) |
+| `config.seed` | int\|null | null | Random seed (null = random) |
+| `config.initial_herbivore_count` | int | 50 | Starting herbivore population |
+| `config.initial_carnivore_count` | int | 15 | Starting carnivore population |
+| `config.initial_plant_density` | float | 0.15 | Fraction of eligible tiles seeded |
 
-**Response:** `200 OK` — MessagePack binary
-
-```
-{
-  "width": 500,
-  "height": 500,
-  "terrain": <bytes>,        // uint8 flat array [height × width], row-major
-  "water_proximity": <bytes>, // uint8 flat array [height × width]
-  "seed": 42
-}
-```
-
-**Terrain byte values:**
-
-| Value | Terrain |
-|---|---|
-| 0 | Water |
-| 1 | Sand |
-| 2 | Dirt |
-| 3 | Grass |
-| 4 | Rock |
+**Response:** Worker posts a `worldReady` message (see below).
 
 ---
 
-### GET `/api/map/terrain`
+### `start`
 
-Get the current terrain without regenerating.
+Start the simulation tick loop.
 
-**Response:** `200 OK` — MessagePack binary (same format as `/api/map/generate` without `seed`).
-
-**Error:** `400` if no world has been generated yet.
+```javascript
+worker.postMessage({ cmd: 'start' });
+```
 
 ---
 
-### POST `/api/map/edit`
+### `pause`
 
-Edit terrain tiles in bulk. Used by the terrain paint tool.
+Pause the simulation tick loop.
 
-**Request Body:**
+```javascript
+worker.postMessage({ cmd: 'pause' });
+```
 
-```json
-{
-  "changes": [
-    { "x": 10, "y": 20, "terrain": 3 },
-    { "x": 11, "y": 20, "terrain": 3 }
+---
+
+### `resume`
+
+Resume a paused simulation.
+
+```javascript
+worker.postMessage({ cmd: 'resume' });
+```
+
+---
+
+### `step`
+
+Advance the simulation by exactly one tick.
+
+```javascript
+worker.postMessage({ cmd: 'step' });
+```
+
+**Response:** Worker posts a `tick` message.
+
+---
+
+### `setSpeed`
+
+Set the simulation speed in ticks per second.
+
+```javascript
+worker.postMessage({ cmd: 'setSpeed', tps: 16 });
+```
+
+| Field | Type | Range | Description |
+|---|---|---|---|
+| `tps` | int | 1–120 | Target ticks per second |
+
+---
+
+### `editTerrain`
+
+Apply terrain edits in bulk. Used by the terrain paint tool.
+
+```javascript
+worker.postMessage({
+  cmd: 'editTerrain',
+  changes: [
+    { x: 10, y: 20, terrain: 3 },
+    { x: 11, y: 20, terrain: 3 },
   ]
-}
+});
 ```
 
 | Field | Type | Description |
@@ -102,349 +132,191 @@ Edit terrain tiles in bulk. Used by the terrain paint tool.
 | `changes[].y` | int | Tile Y coordinate |
 | `changes[].terrain` | int | New terrain type (0–4) |
 
-**Response:** `200 OK`
-
-```json
-{ "ok": true }
-```
+Water proximity is automatically recomputed after edits.
 
 ---
 
-## Simulation Control
-
-### POST `/api/sim/start`
-
-Start the simulation loop in a background thread.
-
-**Response:** `200 OK`
-
-```json
-{ "ok": true, "paused": false }
-```
-
----
-
-### POST `/api/sim/pause`
-
-Pause the running simulation.
-
-**Response:** `200 OK`
-
-```json
-{ "ok": true, "paused": true }
-```
-
----
-
-### POST `/api/sim/resume`
-
-Resume a paused simulation.
-
-**Response:** `200 OK`
-
-```json
-{ "ok": true, "paused": false }
-```
-
----
-
-### POST `/api/sim/step`
-
-Advance the simulation by exactly one tick. Works only when paused.
-
-**Response:** `200 OK`
-
-```json
-{ "ok": true }
-```
-
----
-
-### POST `/api/sim/reset`
-
-Stop the simulation, regenerate terrain with optional config overrides, and return the new terrain.
-
-**Request Body** (optional):
-
-```json
-{
-  "map_width": 500,
-  "map_height": 500,
-  "sea_level": 0.38,
-  "island_count": 5,
-  "island_size_factor": 0.3,
-  "seed": null,
-  "initial_herbivore_count": 50,
-  "initial_carnivore_count": 15,
-  "initial_plant_density": 0.15
-}
-```
-
-**Response:** `200 OK` — MessagePack binary (same format as `/api/map/generate`).
-
----
-
-### POST `/api/sim/speed`
-
-Set the simulation speed in ticks per second.
-
-**Request Body:**
-
-```json
-{ "tps": 16 }
-```
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `tps` | int | 10 | Ticks per second (1–60) |
-
-**Response:** `200 OK`
-
-```json
-{ "ok": true, "tps": 16 }
-```
-
----
-
-### GET `/api/sim/status`
-
-Get the full simulation state including world info, clock, and all animals.
-
-**Response (no world):** `200 OK`
-
-```json
-{
-  "running": false,
-  "paused": true,
-  "world": null
-}
-```
-
-**Response (with world):** `200 OK`
-
-```json
-{
-  "running": true,
-  "paused": false,
-  "tps": 10,
-  "tick": 142,
-  "day": 0,
-  "time_of_day": 0.71,
-  "is_night": false,
-  "width": 500,
-  "height": 500,
-  "animals": [
-    {
-      "id": 1,
-      "species": "HERBIVORE",
-      "x": 234.5,
-      "y": 102.3,
-      "state": 1,
-      "energy": 85.2,
-      "hunger": 30.1,
-      "thirst": 22.0,
-      "age": 142,
-      "hp": 50
-    }
-  ]
-}
-```
-
----
-
-## Entity Endpoints
-
-### POST `/api/entity/place`
+### `placeEntity`
 
 Place a new entity at the specified coordinates.
 
-**Request Body:**
-
-```json
-{
-  "type": "HERBIVORE",
-  "x": 100,
-  "y": 200
-}
+```javascript
+worker.postMessage({ cmd: 'placeEntity', entityType: 'HERBIVORE', x: 100, y: 200 });
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `type` | string | `"HERBIVORE"` or `"CARNIVORE"` |
+| `entityType` | string | `"HERBIVORE"`, `"CARNIVORE"`, `"TREE"`, `"BUSH"`, or `"GRASS_PLANT"` |
 | `x` | int | Tile X coordinate |
 | `y` | int | Tile Y coordinate |
 
-**Response:** `200 OK` — Returns the created entity object.
-
-**Error:** `400` if placement fails (e.g., water tile).
+**Response:** Worker posts an `entityPlaced` message.
 
 ---
 
-### GET `/api/entity/:id`
+### `removeEntity`
 
-Get detailed information about a specific animal.
+Remove an animal entity by ID.
 
-**Response:** `200 OK`
-
-```json
-{
-  "id": 1,
-  "species": "HERBIVORE",
-  "x": 234.5,
-  "y": 102.3,
-  "state": 1,
-  "state_name": "WALK",
-  "energy": 85.2,
-  "hunger": 30.1,
-  "thirst": 22.0,
-  "age": 142,
-  "hp": 50,
-  "max_energy": 100,
-  "max_hunger": 100,
-  "max_thirst": 100
-}
+```javascript
+worker.postMessage({ cmd: 'removeEntity', entityId: 42 });
 ```
 
-**Error:** `404` if entity not found.
+| Field | Type | Description |
+|---|---|---|
+| `entityId` | int | The animal's unique ID |
+
+**Response:** Worker posts an `entityRemoved` message.
 
 ---
 
-### DELETE `/api/entity/:id`
+### `getTileInfo`
 
-Remove an entity from the simulation.
+Query detailed information about a specific tile.
 
-**Response:** `200 OK`
-
-```json
-{ "ok": true }
+```javascript
+worker.postMessage({ cmd: 'getTileInfo', x: 100, y: 200 });
 ```
 
-**Error:** `404` if entity not found.
+**Response:** Worker posts a `tileInfo` message.
 
 ---
 
-## Statistics
+## Worker → Main Messages
 
-### GET `/api/stats`
+All messages arrive via `worker.onmessage = (e) => { const msg = e.data; ... }`.
 
-Get current population counts and historical data for charting.
+### `worldReady`
 
-**Response:** `200 OK`
+Sent after a `generate` command completes. Contains the full initial world state.
 
-```json
+```javascript
 {
-  "current": {
-    "herbivores": 49,
-    "carnivores": 10,
-    "plants": 131352,
-    "fruits": 121824,
-    "tick": 142,
-    "day": 0,
-    "time_of_day": 0.71,
-    "is_night": false
-  },
-  "history": [
-    {
-      "tick": 0,
-      "herbivores": 50,
-      "carnivores": 15,
-      "plants": 130000,
-      "fruits": 120000
-    }
-  ]
-}
-```
-
-The `history` array contains up to the last **200** recorded snapshots.
-
----
-
-### GET `/api/tile/:x/:y`
-
-Get detailed information about a specific tile, including terrain type and plant data.
-
-**Response:** `200 OK`
-
-```json
-{
-  "x": 100,
-  "y": 200,
-  "terrain": "grass",
-  "terrain_id": 3,
-  "water_proximity": 5,
-  "plant": {
-    "type": "bush",
-    "stage": "mature",
-    "age": 245,
-    "fruit": false
+  type: 'worldReady',
+  width: 500,
+  height: 500,
+  seed: 42,
+  terrain: ArrayBuffer,       // Uint8Array, flat [height × width], row-major
+  waterProximity: ArrayBuffer, // Uint8Array, flat [height × width]
+  plantType: ArrayBuffer,      // Uint8Array, flat [height × width]
+  plantStage: ArrayBuffer,     // Uint8Array, flat [height × width]
+  animals: [ ... ],            // Array of animal dicts
+  clock: {
+    tick: 0,
+    day: 0,
+    tick_in_day: 0,
+    is_night: false,
+    ticks_per_day: 200,
   }
 }
 ```
 
-**Error:** `400` if coordinates are out of bounds or no world exists.
+The `terrain`, `waterProximity`, `plantType`, and `plantStage` fields are `ArrayBuffer`s that should be wrapped with `new Uint8Array(buffer)`.
 
 ---
 
-## WebSocket Events
+### `tick`
 
-The server uses Socket.IO for real-time communication. Connect to `http://localhost:5000` (or via the Vite proxy at `http://localhost:3000`).
+Sent after each simulation tick. Contains the current state.
 
-### Client → Server
-
-#### `viewport`
-
-Report the client's current viewport so the server only sends entities within the visible area.
-
-```json
+```javascript
 {
-  "x": 100,
-  "y": 50,
-  "w": 80,
-  "h": 60
+  type: 'tick',
+  clock: {
+    tick: 143,
+    day: 0,
+    tick_in_day: 143,
+    is_night: false,
+    ticks_per_day: 200,
+  },
+  animals: [
+    {
+      id: 1,
+      species: 'HERBIVORE',
+      x: 234,
+      y: 102,
+      state: 1,
+      energy: 85.2,
+      hunger: 30.1,
+      thirst: 22.0,
+      age: 143,
+      alive: true,
+    }
+  ],
+  plantChanges: [
+    [10, 20, 2, 3],   // [x, y, plantType, plantStage]
+    [15, 25, 0, 0],
+  ],
+  // Included every 10 ticks:
+  stats: {
+    tick: 140,
+    herbivores: 49,
+    carnivores: 10,
+    plants_grass: 50000,
+    plants_bush: 30000,
+    plants_tree: 20000,
+    plants_total: 100000,
+    fruits: 15000,
+  },
+  statsHistory: [ ... ],  // Last 1000 stat snapshots
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `x` | int | Left tile coordinate of viewport |
-| `y` | int | Top tile coordinate of viewport |
-| `w` | int | Viewport width in tiles |
-| `h` | int | Viewport height in tiles |
+---
 
-This should be emitted whenever the camera moves or zooms.
+### `tileInfo`
 
-### Server → Client
+Response to a `getTileInfo` command.
 
-#### `tick`
-
-Emitted after each simulation tick. Contains the current simulation state scoped to the client's viewport. Data is serialized as **MessagePack binary**.
-
-Decoded payload:
-
-```json
+```javascript
 {
-  "tick": 143,
-  "day": 0,
-  "time_of_day": 0.715,
-  "is_night": false,
-  "animals": [
-    {
-      "id": 1,
-      "species": "HERBIVORE",
-      "x": 234.5,
-      "y": 102.3,
-      "state": 1,
-      "energy": 85.0,
-      "hunger": 30.4,
-      "thirst": 22.3,
-      "age": 143,
-      "hp": 50
-    }
-  ],
-  "plant_changes": [
-    { "x": 10, "y": 20, "type": 2, "stage": 3, "fruit": true },
-    { "x": 15, "y": 25, "type": 0, "stage": 0, "fruit": false }
-  ]
+  type: 'tileInfo',
+  x: 100,
+  y: 200,
+  info: {
+    terrain: 'grass',
+    waterProximity: 5,
+    plant: {
+      type: 2,      // 0=none, 1=grass, 2=bush, 3=tree
+      stage: 3,     // 0=none, 1=seed, 2=sprout, 3=mature, 4=fruiting, 5=dead
+      age: 245,
+      fruit: 0,
+    },
+    animals: [
+      { id: 1, species: 'HERBIVORE', x: 100, y: 200, ... }
+    ]
+  }
+}
+```
+
+Returns `info: null` if coordinates are out of bounds.
+
+---
+
+### `entityPlaced`
+
+Confirmation after a `placeEntity` command.
+
+```javascript
+{
+  type: 'entityPlaced',
+  entity: { id: 66, species: 'HERBIVORE', x: 100, y: 200, ... }
+  // or entity: { type: 'TREE', x: 100, y: 200 } for plants
+  // or entity: null if placement failed
+}
+```
+
+---
+
+### `entityRemoved`
+
+Confirmation after a `removeEntity` command.
+
+```javascript
+{
+  type: 'entityRemoved',
+  entityId: 42,
+  ok: true   // false if entity not found
 }
 ```
 
@@ -464,12 +336,12 @@ Decoded payload:
 
 ### Plant Types
 
-| ID | Name | Growth Rate | Max Age | Spread Chance |
-|---|---|---|---|---|
-| 0 | None | — | — | — |
-| 1 | Grass | 1.0 | 300 | 2% |
-| 2 | Bush | 0.5 | 800 | 1% |
-| 3 | Tree | 0.2 | 2000 | 0.5% |
+| ID | Name | Stage Ages (seed→sprout→mature→fruiting→dead) |
+|---|---|---|
+| 0 | None | — |
+| 1 | Grass | 10, 40, 80, 300 |
+| 2 | Bush | 20, 80, 200, 800 |
+| 3 | Tree | 50, 200, 500, 2000 |
 
 ### Plant Stages
 
@@ -487,14 +359,14 @@ Decoded payload:
 | ID | Name | Description |
 |---|---|---|
 | 0 | Idle | Standing still |
-| 1 | Walk | Moving at normal speed |
-| 2 | Run | Moving at increased speed |
-| 3 | Eat | Consuming food |
-| 4 | Drink | Consuming water |
-| 5 | Sleep | Resting to recover energy |
-| 6 | Attack | In combat |
-| 7 | Flee | Running from predator |
-| 8 | Mate | Reproducing |
+| 1 | Walking | Moving at normal speed |
+| 2 | Running | Moving at increased speed |
+| 3 | Eating | Consuming food |
+| 4 | Drinking | Consuming water |
+| 5 | Sleeping | Resting to recover energy |
+| 6 | Attacking | In combat |
+| 7 | Fleeing | Running from predator |
+| 8 | Mating | Reproducing |
 | 9 | Dead | No longer active |
 
 ### Animal Species

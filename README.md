@@ -1,9 +1,8 @@
 # EcoGame — Ecosystem Simulation
 
-A browser-based 2D ecosystem simulation featuring procedural terrain generation, plant lifecycle management, and autonomous animal AI with energy systems — all rendered in real time through a PixiJS-powered frontend.
+A browser-based 2D ecosystem simulation featuring procedural terrain generation, plant lifecycle management, and autonomous animal AI with energy systems — all running client-side in a Web Worker and rendered in real time with PixiJS.
 
-![Stack](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
-![Stack](https://img.shields.io/badge/Flask-3.x-lightgrey?logo=flask)
+![Stack](https://img.shields.io/badge/JavaScript-ES2022-f7df1e?logo=javascript)
 ![Stack](https://img.shields.io/badge/React-18-61dafb?logo=react)
 ![Stack](https://img.shields.io/badge/PixiJS-7-e91e63?logo=webgl)
 
@@ -18,7 +17,7 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 - [Configuration](#configuration)
 - [Controls](#controls)
 - [Tech Stack](#tech-stack)
-- [API Reference](#api-reference)
+- [Worker API Reference](#worker-api-reference)
 - [License](#license)
 
 ---
@@ -26,7 +25,7 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 ## Features
 
 ### Terrain
-- Procedural island generation using multi-octave Perlin noise (pure NumPy, no external noise libraries)
+- Procedural island generation using multi-octave Perlin noise (pure JavaScript)
 - Five terrain types: **Water**, **Sand**, **Dirt**, **Grass**, **Rock**
 - Configurable sea level, island count, island size, and random seed
 - Real-time terrain editing (paint brush tool)
@@ -34,7 +33,7 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 ### Flora
 - Three plant types: **Grass**, **Bush**, **Tree**
 - Four lifecycle stages: Seed → Sprout → Mature → Fruiting → Dead
-- Vectorized plant processing via NumPy structured arrays (~100k+ plants per tick)
+- Loop-based plant processing over parallel TypedArrays (~250k tiles)
 - Water proximity bonus accelerates growth near water bodies
 - Seed spreading with configurable rates per plant type
 
@@ -54,9 +53,10 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 
 ### Simulation
 - Day/night cycle with configurable duration
-- Adjustable simulation speed (1–60 ticks per second)
+- Adjustable simulation speed (1–120 ticks per second)
 - Pause, resume, single-step, and reset controls
 - Real-time population statistics and history charts
+- Entire engine runs in a Web Worker — zero main-thread blocking
 
 ### Rendering
 - PixiJS WebGL 2D renderer with terrain-as-texture approach (1 pixel = 1 tile)
@@ -77,37 +77,33 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Browser (React + PixiJS)              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │
-│  │ Toolbar  │ │ Control  │ │  Stats   │ │  Terrain  │  │
-│  │          │ │  Panel   │ │  Panel   │ │  Editor   │  │
-│  └──────────┘ └──────────┘ └──────────┘ └───────────┘  │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │         PixiJS Canvas (GameRenderer)             │   │
-│  │   TerrainLayer ← PlantLayer ← EntityLayer       │   │
-│  │   Camera (pan/zoom) + Night overlay              │   │
-│  └──────────────────────────────────────────────────┘   │
-│                     │ REST + WebSocket                   │
-└─────────────────────┼───────────────────────────────────┘
-                      │  Vite dev proxy (:3000 → :5000)
-┌─────────────────────┼───────────────────────────────────┐
-│                Flask + SocketIO (:5000)                  │
-│  ┌──────────┐ ┌──────────────┐ ┌────────────────────┐  │
-│  │  REST    │ │  WebSocket   │ │  SimulationRunner   │  │
-│  │  Routes  │ │  Events      │ │  (background thread)│  │
-│  └──────────┘ └──────────────┘ └────────┬───────────┘  │
-│                                          │              │
-│  ┌──────────┐ ┌──────────┐ ┌────────────┴───────────┐  │
-│  │  Flora   │ │  Fauna   │ │  World (terrain, grid,  │  │
-│  │ (NumPy)  │ │ (AI/FSM) │ │   plants, animals)     │  │
-│  └──────────┘ └──────────┘ └────────────────────────┘  │
-│  ┌──────────┐ ┌──────────┐ ┌────────────────────────┐  │
-│  │ MapGen   │ │ Spatial  │ │  A* Pathfinding        │  │
-│  │ (Perlin) │ │  Hash    │ │  (bounded)             │  │
-│  └──────────┘ └──────────┘ └────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                   Browser (React + PixiJS)                │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐   │
+│  │ Toolbar  │ │ Control  │ │  Stats   │ │  Terrain  │   │
+│  │          │ │  Panel   │ │  Panel   │ │  Editor   │   │
+│  └──────────┘ └──────────┘ └──────────┘ └───────────┘   │
+│  ┌───────────────────────────────────────────────────┐   │
+│  │         PixiJS Canvas (GameRenderer)              │   │
+│  │   TerrainLayer ← PlantLayer ← EntityLayer        │   │
+│  │   Camera (pan/zoom) + Night overlay               │   │
+│  └───────────────────────────────────────────────────┘   │
+│        │ postMessage                                     │
+│  ┌─────┴─────────────────────────────────────────────┐   │
+│  │              Web Worker (simWorker.js)             │   │
+│  │  ┌──────────────────────────────────────────────┐ │   │
+│  │  │          SimulationEngine                    │ │   │
+│  │  │  Clock → Flora → Fauna AI → Spatial Hash     │ │   │
+│  │  └──────────────────────────────────────────────┘ │   │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────────────┐  │   │
+│  │  │ MapGen   │ │ Spatial  │ │ A* Pathfinding   │  │   │
+│  │  │ (Perlin) │ │  Hash    │ │ (bounded)        │  │   │
+│  │  └──────────┘ └──────────┘ └──────────────────┘  │   │
+│  └───────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────┘
 ```
+
+No backend server is needed. The entire simulation runs in the browser.
 
 ---
 
@@ -115,7 +111,6 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 
 ### Prerequisites
 
-- **Python 3.10+** (tested on 3.14)
 - **Node.js 18+** and npm
 
 ### 1. Clone the repository
@@ -125,17 +120,7 @@ git clone <repo-url>
 cd ecogame
 ```
 
-### 2. Start the backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-python app.py
-```
-
-The Flask server starts on **http://localhost:5000**.
-
-### 3. Start the frontend
+### 2. Install and run
 
 ```bash
 cd frontend
@@ -143,11 +128,11 @@ npm install
 npm run dev
 ```
 
-The Vite dev server starts on **http://localhost:3000** and proxies API/WebSocket requests to the backend.
+The Vite dev server starts on **http://localhost:3000**.
 
-### 4. Open the app
+### 3. Open the app
 
-Navigate to **http://localhost:3000** in your browser.
+Navigate to **http://localhost:3000** in your browser. The simulation world generates automatically on load.
 
 ---
 
@@ -155,26 +140,20 @@ Navigate to **http://localhost:3000** in your browser.
 
 ```
 ecogame/
-├── backend/
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── routes.py            # REST API endpoints
-│   │   └── socket_events.py     # WebSocket event handlers
-│   ├── engine/
-│   │   ├── __init__.py
-│   │   ├── behaviors.py         # Animal AI state machine
-│   │   ├── entities.py          # Animal data model
-│   │   ├── flora.py             # Vectorized plant lifecycle
-│   │   ├── map_generator.py     # Procedural terrain generation
-│   │   ├── pathfinding.py       # A* pathfinding
-│   │   ├── simulation.py        # Simulation loop manager
-│   │   ├── spatial_hash.py      # Spatial hash for neighbor queries
-│   │   └── world.py             # World state container
-│   ├── app.py                   # Flask application factory
-│   ├── config.py                # Default simulation config
-│   └── requirements.txt         # Python dependencies
 ├── frontend/
 │   ├── src/
+│   │   ├── engine/
+│   │   │   ├── behaviors.js         # Animal AI state machine
+│   │   │   ├── config.js            # Default simulation parameters
+│   │   │   ├── entities.js          # Animal data model
+│   │   │   ├── flora.js             # Plant lifecycle processing
+│   │   │   ├── mapGenerator.js      # Procedural terrain generation (Perlin noise)
+│   │   │   ├── pathfinding.js       # A* pathfinding (bounded, binary heap)
+│   │   │   ├── simulation.js        # SimulationEngine — tick pipeline
+│   │   │   ├── spatialHash.js       # Spatial hash for neighbor queries
+│   │   │   └── world.js             # World state container (TypedArrays)
+│   │   ├── worker/
+│   │   │   └── simWorker.js         # Web Worker entry point
 │   │   ├── components/
 │   │   │   ├── ControlPanel.jsx     # Map generation & population sliders
 │   │   │   ├── EntityInspector.jsx  # Entity detail panel on click
@@ -183,8 +162,8 @@ ecogame/
 │   │   │   ├── TerrainEditor.jsx    # Terrain brush controls
 │   │   │   └── Toolbar.jsx          # Top toolbar (tools, sim controls)
 │   │   ├── hooks/
-│   │   │   ├── useEditor.js         # Editor tool logic
-│   │   │   └── useSimulation.js     # WebSocket connection & state sync
+│   │   │   ├── useEditor.js         # Editor tool logic (via Worker messages)
+│   │   │   └── useSimulation.js     # Web Worker lifecycle & state sync
 │   │   ├── renderer/
 │   │   │   ├── Camera.js            # Pan/zoom/viewport
 │   │   │   ├── EntityLayer.js       # Animal sprite pool
@@ -194,14 +173,15 @@ ecogame/
 │   │   ├── store/
 │   │   │   └── simulationStore.js   # Zustand state management
 │   │   ├── utils/
-│   │   │   ├── msgpack.js           # MessagePack encode/decode
 │   │   │   └── terrainColors.js     # Terrain type → RGBA color map
 │   │   ├── App.jsx                  # Main application component
 │   │   ├── index.css                # Global styles
 │   │   └── main.jsx                 # React entry point
 │   ├── index.html                   # HTML shell
 │   ├── package.json                 # Node dependencies
-│   └── vite.config.js               # Vite dev server + proxy config
+│   └── vite.config.js               # Vite dev server config
+├── docs/
+│   └── API.md                       # Worker message API reference
 ├── .gitignore
 └── README.md
 ```
@@ -210,7 +190,7 @@ ecogame/
 
 ## Configuration
 
-All simulation parameters are defined in [`backend/config.py`](backend/config.py). Key parameters:
+All simulation parameters are defined in [`frontend/src/engine/config.js`](frontend/src/engine/config.js). Key parameters:
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -251,58 +231,54 @@ Most of these can be adjusted through the UI control panel before generating a w
 | **Erase** | Remove entity at clicked position |
 
 ### Speed Slider
-Adjusts the simulation speed from **1** to **60** ticks per second.
+Adjusts the simulation speed from **1** to **120** ticks per second.
 
 ---
 
 ## Tech Stack
 
-### Backend
-| Technology | Purpose |
-|---|---|
-| **Flask 3.x** | HTTP REST API |
-| **Flask-SocketIO** | WebSocket for real-time tick streaming |
-| **eventlet** | Async worker for SocketIO |
-| **NumPy** | Vectorized terrain generation and plant processing |
-| **msgpack** | Binary serialization for terrain data |
-
-### Frontend
 | Technology | Purpose |
 |---|---|
 | **React 18** | UI component framework |
-| **Vite** | Dev server with HMR and proxy |
+| **Vite** | Dev server with HMR |
 | **PixiJS 7** | WebGL 2D rendering engine |
+| **Web Worker** | Off-main-thread simulation engine |
 | **Zustand** | Lightweight state management |
 | **Chart.js** | Population history graphs |
 | **Bootstrap 5** | UI styling |
-| **Socket.IO Client** | WebSocket connection |
-| **msgpack-lite** | Binary deserialization |
 
 ---
 
-## API Reference
+## Worker API Reference
 
-See the full API documentation in [`docs/API.md`](docs/API.md).
+See the full message API documentation in [`docs/API.md`](docs/API.md).
 
-### Quick Reference
+The simulation runs in a Web Worker. The main thread communicates via `postMessage`:
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/map/generate` | Generate a new world |
-| `GET` | `/api/map/terrain` | Get current terrain (msgpack) |
-| `POST` | `/api/map/edit` | Edit terrain tiles |
-| `POST` | `/api/sim/start` | Start simulation |
-| `POST` | `/api/sim/pause` | Pause simulation |
-| `POST` | `/api/sim/resume` | Resume simulation |
-| `POST` | `/api/sim/step` | Single tick step |
-| `POST` | `/api/sim/reset` | Reset and regenerate |
-| `POST` | `/api/sim/speed` | Set ticks per second |
-| `GET` | `/api/sim/status` | Full simulation state |
-| `POST` | `/api/entity/place` | Place a new entity |
-| `GET` | `/api/entity/:id` | Get entity details |
-| `DELETE` | `/api/entity/:id` | Remove an entity |
-| `GET` | `/api/stats` | Population statistics |
-| `GET` | `/api/tile/:x/:y` | Tile information |
+### Main → Worker (commands)
+
+| Command | Description |
+|---|---|
+| `generate` | Generate a new world |
+| `start` | Start simulation loop |
+| `pause` | Pause simulation |
+| `resume` | Resume simulation |
+| `step` | Advance one tick |
+| `setSpeed` | Change ticks per second |
+| `editTerrain` | Apply terrain edits |
+| `placeEntity` | Place a new animal or plant |
+| `removeEntity` | Remove an entity by ID |
+| `getTileInfo` | Query tile details |
+
+### Worker → Main (events)
+
+| Message Type | Description |
+|---|---|
+| `worldReady` | Terrain + initial state after generation |
+| `tick` | Per-tick update (animals, plant changes, stats) |
+| `tileInfo` | Response to getTileInfo query |
+| `entityPlaced` | Confirmation of entity placement |
+| `entityRemoved` | Confirmation of entity removal |
 
 ---
 

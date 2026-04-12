@@ -110,6 +110,24 @@ export default function App() {
     postCmd('setSpeed', { tps });
   }
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    function onKeyDown(e) {
+      // Ignore when typing in inputs
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        const { running, paused } = useSimStore.getState();
+        if (!running) _handleStart();
+        else if (paused) _handleResume();
+        else _handlePause();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   function _handleMinimapNavigate(x, y) {
     if (rendererRef.current) {
       rendererRef.current.centerOn(x, y);

@@ -5,7 +5,7 @@ import React from 'react';
 import useSimStore from '../store/simulationStore';
 import { STATE_NAMES } from '../utils/terrainColors';
 
-function Bar({ label, value, max, color }) {
+function Bar({ label, value, max, color, description }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
     <div className="mb-1">
@@ -16,6 +16,7 @@ function Bar({ label, value, max, color }) {
       <div className="entity-bar">
         <div className="entity-bar-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
+      {description && <div className="text-muted" style={{ fontSize: '0.6rem', marginTop: 1 }}>{description}</div>}
     </div>
   );
 }
@@ -37,17 +38,20 @@ export default function EntityInspector() {
           <span className="stat-label">State</span>
           <span className="stat-value">{STATE_NAMES[e.state] || 'Unknown'}</span>
         </div>
+        <div className="text-muted" style={{ fontSize: '0.6rem', marginBottom: 4 }}>Current behavior of this entity</div>
         <div className="stat-row">
           <span className="stat-label">Position</span>
           <span className="stat-value">({e.x}, {e.y})</span>
         </div>
+        <div className="text-muted" style={{ fontSize: '0.6rem', marginBottom: 4 }}>Grid coordinates (x, y) on the map</div>
         <div className="stat-row">
           <span className="stat-label">Age</span>
           <span className="stat-value">{e.age}</span>
         </div>
-        <Bar label="Energy" value={e.energy} max={100} color="#4ecdc4" />
-        <Bar label="Hunger" value={e.hunger} max={100} color="#ff6b6b" />
-        <Bar label="Thirst" value={e.thirst} max={100} color="#4d96ff" />
+        <div className="text-muted" style={{ fontSize: '0.6rem', marginBottom: 4 }}>Ticks lived. Entity dies when reaching max age</div>
+        <Bar label="⚡ Energy" value={e.energy} max={100} color="#4ecdc4" description="Stamina for actions. Depleted by moving, eating, attacking. Restored by sleeping." />
+        <Bar label="🍖 Hunger" value={e.hunger} max={100} color="#ff6b6b" description="Food need. Increases over time. High hunger drains energy. Reduced by eating." />
+        <Bar label="💧 Thirst" value={e.thirst} max={100} color="#4d96ff" description="Water need. Increases over time. High thirst drains energy. Reduced by drinking." />
       </div>
     );
   }

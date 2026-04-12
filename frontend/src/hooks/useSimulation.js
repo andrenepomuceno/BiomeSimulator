@@ -39,7 +39,16 @@ export function useSimulation() {
 
         case 'tick':
           if (msg.clock) store.setClock(msg.clock);
-          if (msg.animals) store.setAnimals(msg.animals);
+          if (msg.animals) {
+            store.setAnimals(msg.animals);
+            // Update selected entity with fresh data if one is inspected
+            const sel = store.selectedEntity;
+            if (sel) {
+              const updated = msg.animals.find(a => a.id === sel.id);
+              if (updated) store.setSelectedEntity(updated);
+              else store.clearSelection(); // entity died / removed
+            }
+          }
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
           if (msg.stats) store.setStats(msg.stats);
           if (msg.statsHistory) store.setStatsHistory(msg.statsHistory);

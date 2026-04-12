@@ -50,8 +50,16 @@ export function useSimulation() {
             }
           }
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
+          if (msg.fruitChanges) store.setFruitChanges(msg.fruitChanges);
           if (msg.stats) store.setStats(msg.stats);
           if (msg.statsHistory) store.setStatsHistory(msg.statsHistory);
+          // Refresh selected tile info each tick so plant data stays current
+          {
+            const tile = store.selectedTile;
+            if (tile && workerRef.current) {
+              workerRef.current.postMessage({ cmd: 'getTileInfo', x: tile.x, y: tile.y });
+            }
+          }
           break;
 
         case 'tileInfo':

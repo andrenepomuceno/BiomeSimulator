@@ -1,0 +1,196 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.canvas-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #0a0a1a;
+}
+
+.sidebar {
+  width: 320px;
+  background: #16213e;
+  border-left: 1px solid #0f3460;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid #0f3460;
+}
+
+.sidebar-section h6 {
+  color: #53a8b6;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #0f3460;
+  border-bottom: 1px solid #1a1a4e;
+  flex-shrink: 0;
+}
+
+.toolbar .btn {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-sim {
+  background: #53a8b6;
+  border: none;
+  color: #fff;
+}
+.btn-sim:hover {
+  background: #3d8b98;
+  color: #fff;
+}
+.btn-sim.active {
+  background: #e94560;
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.speed-control input[type="range"] {
+  width: 100px;
+}
+
+.speed-control span {
+  font-size: 0.75rem;
+  min-width: 50px;
+}
+
+.day-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: #1a1a4e;
+}
+
+.day-indicator.night {
+  background: #1a1a3e;
+  color: #8ecae6;
+}
+
+.day-indicator.day {
+  background: #3a3a0e;
+  color: #ffd166;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  padding: 2px 0;
+}
+
+.stat-label {
+  color: #999;
+}
+
+.stat-value {
+  font-weight: bold;
+}
+
+.entity-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: #333;
+  margin: 2px 0;
+  overflow: hidden;
+}
+
+.entity-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.tool-btn {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  border: 1px solid #0f3460;
+  background: #1a1a3e;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.tool-btn.active {
+  background: #53a8b6;
+  color: #fff;
+  border-color: #53a8b6;
+}
+
+.terrain-palette {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.terrain-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.terrain-swatch.active {
+  border-color: #fff;
+}
+
+.minimap-container {
+  padding: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.minimap-canvas {
+  border: 1px solid #0f3460;
+  cursor: pointer;
+}
+
+.entity-info {
+  font-size: 0.8rem;
+}
+
+.entity-info .label {
+  color: #999;
+  font-size: 0.7rem;
+}

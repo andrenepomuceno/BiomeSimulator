@@ -2,9 +2,8 @@
  * Animal species library — canonical registry of all animal species.
  *
  * Each entry defines the species' simulation parameters, display info,
- * and default initial count. config.js reads from here.
+ * and default initial count. config.js derives its fauna config from here.
  */
-import { REPRO_SEXUAL } from './config.js';
 
 const ANIMAL_SPECIES = {
   RABBIT: {
@@ -12,7 +11,7 @@ const ANIMAL_SPECIES = {
     name: 'Rabbit',
     emoji: '🐰',
     diet: 'HERBIVORE',
-    reproduction: REPRO_SEXUAL,
+    reproduction: 'SEXUAL',
     color: 0x66cc66,
     speed: 1,
     vision_range: 8,
@@ -38,7 +37,7 @@ const ANIMAL_SPECIES = {
     name: 'Squirrel',
     emoji: '🐿️',
     diet: 'HERBIVORE',
-    reproduction: REPRO_SEXUAL,
+    reproduction: 'SEXUAL',
     color: 0xcc8844,
     speed: 1,
     vision_range: 9,
@@ -64,7 +63,7 @@ const ANIMAL_SPECIES = {
     name: 'Beetle',
     emoji: '🪲',
     diet: 'HERBIVORE',
-    reproduction: REPRO_SEXUAL,
+    reproduction: 'SEXUAL',
     color: 0x556633,
     speed: 1,
     vision_range: 5,
@@ -90,7 +89,7 @@ const ANIMAL_SPECIES = {
     name: 'Goat',
     emoji: '🐐',
     diet: 'HERBIVORE',
-    reproduction: REPRO_SEXUAL,
+    reproduction: 'SEXUAL',
     color: 0xbbbbbb,
     speed: 1,
     vision_range: 10,
@@ -116,7 +115,7 @@ const ANIMAL_SPECIES = {
     name: 'Deer',
     emoji: '🦌',
     diet: 'HERBIVORE',
-    reproduction: REPRO_SEXUAL,
+    reproduction: 'SEXUAL',
     color: 0xcc9955,
     speed: 2,
     vision_range: 12,
@@ -142,7 +141,7 @@ const ANIMAL_SPECIES = {
     name: 'Fox',
     emoji: '🦊',
     diet: 'CARNIVORE',
-    reproduction: REPRO_SEXUAL,
+    reproduction: 'SEXUAL',
     color: 0xdd8833,
     speed: 2,
     vision_range: 12,
@@ -168,7 +167,7 @@ const ANIMAL_SPECIES = {
     name: 'Wolf',
     emoji: '🐺',
     diet: 'CARNIVORE',
-    reproduction: REPRO_SEXUAL,
+    reproduction: 'SEXUAL',
     color: 0xdd4444,
     speed: 2,
     vision_range: 14,

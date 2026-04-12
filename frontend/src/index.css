@@ -19,6 +19,12 @@ html, body, #root {
   width: 100vw;
 }
 
+.main-area {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
 .canvas-area {
   flex: 1;
   position: relative;
@@ -27,12 +33,20 @@ html, body, #root {
 }
 
 .sidebar {
-  width: 320px;
+  width: 280px;
   background: #16213e;
-  border-left: 1px solid #0f3460;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-left {
+  border-right: 1px solid #0f3460;
+}
+
+.sidebar-right {
+  border-left: 1px solid #0f3460;
 }
 
 .sidebar-section {

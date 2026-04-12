@@ -173,14 +173,17 @@ export default function App() {
           onSpeedChange={_handleSpeedChange}
           onMenuToggle={() => setMenuOpen(true)}
         />
-        <div className="canvas-area" ref={canvasContainerRef} />
-      </div>
-
-      <div className="sidebar">
-        <EntityInspector />
-        <TerrainEditor />
-        <StatsPanel />
-        <Minimap onNavigate={_handleMinimapNavigate} />
+        <div className="main-area">
+          <div className="sidebar sidebar-left">
+            <Minimap onNavigate={_handleMinimapNavigate} />
+            <StatsPanel />
+          </div>
+          <div className="canvas-area" ref={canvasContainerRef} />
+          <div className="sidebar sidebar-right">
+            <EntityInspector />
+            <TerrainEditor />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -3,34 +3,19 @@
  */
 import React, { useState, useRef } from 'react';
 import useSimStore from '../store/simulationStore';
+import ANIMAL_SPECIES, { buildInitialAnimalCounts } from '../engine/animalSpecies';
+
+const SLIDER_MAX = { HERBIVORE: 100, CARNIVORE: 40 };
 
 const defaultParams = {
-  map_width: 1000,
-  map_height: 1000,
+  map_width: 500,
+  map_height: 500,
   sea_level: 0.38,
   island_count: 5,
   island_size_factor: 0.3,
   seed: '',
-  initial_animal_counts: {
-    RABBIT: 25,
-    SQUIRREL: 15,
-    BEETLE: 20,
-    GOAT: 10,
-    DEER: 10,
-    FOX: 8,
-    WOLF: 5,
-  },
-  initial_plant_density: 0.15,
-};
-
-const SPECIES_DISPLAY = {
-  RABBIT:   { emoji: '🐰', name: 'Rabbit',   max: 100 },
-  SQUIRREL: { emoji: '🐿️', name: 'Squirrel', max: 80 },
-  BEETLE:   { emoji: '🪲', name: 'Beetle',   max: 100 },
-  GOAT:     { emoji: '🐐', name: 'Goat',     max: 50 },
-  DEER:     { emoji: '🦌', name: 'Deer',     max: 50 },
-  FOX:      { emoji: '🦊', name: 'Fox',      max: 40 },
-  WOLF:     { emoji: '🐺', name: 'Wolf',     max: 30 },
+  initial_animal_counts: buildInitialAnimalCounts(),
+  initial_plant_density: 0.1,
 };
 
 const TABS = ['new', 'save', 'load'];
@@ -155,10 +140,10 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
 
               <h6 className="mt-3">🐾 Population</h6>
 
-              {Object.entries(SPECIES_DISPLAY).map(([key, sp]) => (
+              {Object.entries(ANIMAL_SPECIES).map(([key, sp]) => (
                 <div className="gm-field" key={key}>
                   <label>{sp.emoji} {sp.name}: {params.initial_animal_counts[key]}</label>
-                  <input type="range" min={0} max={sp.max}
+                  <input type="range" min={0} max={SLIDER_MAX[sp.diet] || 100}
                     value={params.initial_animal_counts[key]}
                     onChange={e => setParams(p => ({ ...p, initial_animal_counts: { ...p.initial_animal_counts, [key]: +e.target.value } }))} />
                 </div>

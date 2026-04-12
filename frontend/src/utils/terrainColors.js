@@ -29,36 +29,41 @@ export const TERRAIN_NAMES = {
 // Plant types: 0=none, 1=grass, 2=strawberry, 3=blueberry, 4=apple_tree, 5=mango_tree, 6=carrot
 // Plant stages: 0=none, 1=seed, 2=sprout, 3=mature, 4=fruiting, 5=dead
 export const PLANT_COLORS = {
-  // Grass
-  '1_1': [120, 180, 80, 80],
-  '1_2': [80, 160, 50, 140],
-  '1_3': [50, 140, 30, 200],
-  '1_4': [200, 60, 60, 220],
-  // Strawberry
-  '2_1': [100, 160, 70, 80],
-  '2_2': [60, 140, 40, 160],
-  '2_3': [30, 120, 20, 220],
-  '2_4': [220, 40, 60, 230],   // red strawberries
-  // Blueberry
-  '3_1': [90, 140, 100, 80],
-  '3_2': [60, 120, 80, 160],
-  '3_3': [40, 100, 60, 220],
-  '3_4': [80, 50, 180, 230],   // purple blueberries
-  // Apple Tree
-  '4_1': [80, 120, 60, 60],
-  '4_2': [40, 100, 30, 140],
-  '4_3': [20, 80, 10, 240],
-  '4_4': [180, 50, 50, 250],   // red apples
-  // Mango Tree
-  '5_1': [90, 130, 50, 60],
-  '5_2': [50, 110, 25, 140],
-  '5_3': [30, 90, 15, 240],
-  '5_4': [220, 160, 40, 250],  // yellow mangoes
-  // Carrot
-  '6_1': [140, 160, 80, 70],
-  '6_2': [120, 140, 50, 140],
-  '6_3': [100, 120, 30, 200],
-  '6_4': [230, 120, 30, 220],  // orange carrots
+  // Grass — subtle green, low-profile ground cover
+  '1_1': [130, 170, 80,  40],     // seed: faint yellow-green
+  '1_2': [90,  165, 60,  100],    // sprout: light green
+  '1_3': [55,  145, 35,  170],    // mature: rich green
+  '1_4': [180, 200, 60,  200],    // fruiting: bright lime with seeds
+
+  // Strawberry — green to vivid red
+  '2_1': [110, 160, 80,  45],     // seed: faint green
+  '2_2': [70,  150, 55,  110],    // sprout: medium green
+  '2_3': [40,  130, 30,  190],    // mature: deep green leaves
+  '2_4': [230, 40,  55,  240],    // fruiting: vivid red strawberries
+
+  // Blueberry — green to deep purple-blue
+  '3_1': [100, 140, 110, 45],     // seed: faint blue-green
+  '3_2': [65,  130, 90,  110],    // sprout: teal-green
+  '3_3': [45,  110, 70,  190],    // mature: dark green bush
+  '3_4': [90,  45,  200, 240],    // fruiting: vibrant purple
+
+  // Apple Tree — green to bright red
+  '4_1': [80,  110, 55,  35],     // seed: dim green
+  '4_2': [45,  100, 35,  100],    // sprout: small green
+  '4_3': [25,  85,  15,  210],    // mature: deep forest green (tree canopy)
+  '4_4': [200, 45,  40,  250],    // fruiting: bright red apples
+
+  // Mango Tree — green to golden yellow
+  '5_1': [85,  120, 50,  35],     // seed: dim green
+  '5_2': [50,  108, 30,  100],    // sprout: small green
+  '5_3': [30,  95,  18,  210],    // mature: deep green (tree canopy)
+  '5_4': [240, 180, 35,  250],    // fruiting: golden mangoes
+
+  // Carrot — green tops to bright orange
+  '6_1': [140, 150, 90,  40],     // seed: faint tan
+  '6_2': [110, 145, 55,  105],    // sprout: green shoots
+  '6_3': [80,  130, 40,  185],    // mature: green tops
+  '6_4': [240, 130, 25,  235],    // fruiting: bright orange carrots
 };
 
 // Plant type names (keys match flora.js constants)

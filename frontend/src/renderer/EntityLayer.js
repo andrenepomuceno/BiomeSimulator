@@ -1,48 +1,39 @@
 /**
- * EntityLayer — renders animals as colored circles using a PixiJS sprite pool.
+ * EntityLayer — renders animals as emoji sprites using a PixiJS sprite pool.
  */
 import * as PIXI from 'pixi.js';
-import { ANIMAL_COLORS } from '../utils/terrainColors';
-
-// Pre-generate circle textures
-function makeCircleTexture(renderer, color, radius) {
-  const g = new PIXI.Graphics();
-  g.beginFill(color);
-  g.drawCircle(radius, radius, radius);
-  g.endFill();
-  // Outline
-  g.lineStyle(0.3, 0xffffff, 0.5);
-  g.drawCircle(radius, radius, radius);
-  return renderer ? renderer.generateTexture(g) : null;
-}
+import { generateEmojiTextures } from '../utils/emojiTextures';
 
 export class EntityLayer {
   constructor() {
     this.container = new PIXI.Container();
     this._sprites = new Map(); // id → PIXI.Sprite
-    this._textures = {};
+    this._textures = null;
     this._texturesReady = false;
   }
 
-  _ensureTextures(renderer) {
+  _ensureTextures() {
     if (this._texturesReady) return;
-    for (const [species, color] of Object.entries(ANIMAL_COLORS)) {
-      this._textures[species] = makeCircleTexture(renderer, color, 4);
-    }
-    // Sleeping texture (gray)
-    this._textures['SLEEPING'] = makeCircleTexture(renderer, 0x888888, 4);
+    this._textures = generateEmojiTextures();
     this._texturesReady = true;
+  }
+
+  /**
+   * Get the texture key for an animal based on its state and species.
+   */
+  _getTexKey(a) {
+    if (a.state === 9) return 'DEAD';
+    if (a.state === 5) return 'SLEEPING';
+    return a.species;
   }
 
   /**
    * Update all visible animals.
    * @param {Array} animals - [{id, x, y, species, state, energy}, ...]
-   * @param {PIXI.Renderer} renderer - for texture generation
+   * @param {PIXI.Renderer} renderer - (unused, kept for API compat)
    */
   update(animals, renderer) {
-    if (renderer) {
-      this._ensureTextures(renderer);
-    }
+    this._ensureTextures();
 
     const seen = new Set();
 
@@ -50,34 +41,41 @@ export class EntityLayer {
       seen.add(a.id);
       let sprite = this._sprites.get(a.id);
 
+      const texKey = this._getTexKey(a);
+      const tex = this._textures[texKey] || this._textures[a.species];
+      if (!tex) continue;
+
       if (!sprite) {
-        // Create new sprite
-        const texKey = a.state === 5 ? 'SLEEPING' : a.species;
-        const tex = this._textures[texKey] || this._textures['HERBIVORE'];
-        if (!tex) continue;
         sprite = new PIXI.Sprite(tex);
         sprite.anchor.set(0.5);
-        sprite.scale.set(0.25);
+        sprite._texKey = texKey;
         this.container.addChild(sprite);
         this._sprites.set(a.id, sprite);
       }
 
-      // Update position (center of tile)
+      // Swap texture if state changed
+      if (sprite._texKey !== texKey) {
+        sprite.texture = tex;
+        sprite._texKey = texKey;
+      }
+
+      // Position (center of tile)
       sprite.x = a.x + 0.5;
       sprite.y = a.y + 0.5;
 
-      // Update tint based on state
-      if (a.state === 5) { // sleeping
-        sprite.alpha = 0.5;
-      } else if (a.state === 9) { // dead
-        sprite.alpha = 0.2;
+      // Scale: 64px texture → ~1 tile.  Base scale 0.018, range 0.012–0.024
+      const baseScale = 0.018;
+      const energyFactor = 0.8 + (a.energy / 200) * 0.4;
+      sprite.scale.set(baseScale * energyFactor);
+
+      // Alpha based on state
+      if (a.state === 9) {
+        sprite.alpha = 0.45;
+      } else if (a.state === 5) {
+        sprite.alpha = 0.65;
       } else {
         sprite.alpha = 1;
       }
-
-      // Scale by energy
-      const scale = 0.15 + (a.energy / 200) * 0.2;
-      sprite.scale.set(scale);
     }
 
     // Remove sprites for animals no longer visible

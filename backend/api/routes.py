@@ -33,12 +33,16 @@ def generate_map():
     # Return terrain as msgpack binary
     terrain_bytes = _sim.world.terrain.tobytes()
     water_prox_bytes = _sim.world.water_proximity.tobytes()
+    plant_types_bytes = _sim.world.plant_grid["type"].tobytes()
+    plant_stages_bytes = _sim.world.plant_grid["stage"].tobytes()
 
     data = msgpack.packb({
         "width": _sim.world.width,
         "height": _sim.world.height,
         "terrain": terrain_bytes,
         "water_proximity": water_prox_bytes,
+        "plant_types": plant_types_bytes,
+        "plant_stages": plant_stages_bytes,
         "seed": seed,
     })
 
@@ -114,12 +118,16 @@ def reset_sim():
     seed = _sim.generate_world()
     terrain_bytes = _sim.world.terrain.tobytes()
     water_prox_bytes = _sim.world.water_proximity.tobytes()
+    plant_types_bytes = _sim.world.plant_grid["type"].tobytes()
+    plant_stages_bytes = _sim.world.plant_grid["stage"].tobytes()
 
     data = msgpack.packb({
         "width": _sim.world.width,
         "height": _sim.world.height,
         "terrain": terrain_bytes,
         "water_proximity": water_prox_bytes,
+        "plant_types": plant_types_bytes,
+        "plant_stages": plant_stages_bytes,
         "seed": seed,
     })
 

@@ -4,9 +4,9 @@
 import { create } from 'zustand';
 
 const useSimStore = create((set, get) => ({
-  // Connection
-  connected: false,
-  setConnected: (v) => set({ connected: v }),
+  // Worker reference (set once by useSimulation)
+  worker: null,
+  setWorker: (w) => set({ worker: w }),
 
   // World
   mapWidth: 0,

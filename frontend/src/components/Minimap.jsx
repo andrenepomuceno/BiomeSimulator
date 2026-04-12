@@ -9,21 +9,18 @@ const MINIMAP_SIZE = 200;
 
 export default function Minimap({ onNavigate }) {
   const canvasRef = useRef(null);
+  const terrainImgRef = useRef(null);
   const { terrainData, mapWidth, mapHeight, viewport } = useSimStore();
 
-  // Draw terrain
+  // Build terrain ImageData when terrain changes
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !terrainData || !mapWidth) return;
+    if (!terrainData || !mapWidth) return;
 
-    const ctx = canvas.getContext('2d');
     const scale = MINIMAP_SIZE / Math.max(mapWidth, mapHeight);
     const cw = Math.ceil(mapWidth * scale);
     const ch = Math.ceil(mapHeight * scale);
-    canvas.width = cw;
-    canvas.height = ch;
 
-    const imgData = ctx.createImageData(cw, ch);
+    const imgData = new ImageData(cw, ch);
     const pixels = imgData.data;
 
     for (let my = 0; my < ch; my++) {
@@ -41,22 +38,24 @@ export default function Minimap({ onNavigate }) {
       }
     }
 
-    ctx.putImageData(imgData, 0, 0);
+    terrainImgRef.current = imgData;
   }, [terrainData, mapWidth, mapHeight]);
 
-  // Draw viewport rect
+  // Draw terrain + viewport rect (redraws fully each time viewport moves)
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !mapWidth) return;
+    const imgData = terrainImgRef.current;
+    if (!canvas || !imgData || !mapWidth) return;
 
+    canvas.width = imgData.width;
+    canvas.height = imgData.height;
     const ctx = canvas.getContext('2d');
-    const scale = MINIMAP_SIZE / Math.max(mapWidth, mapHeight);
 
-    // Redraw terrain first (simple approach)
-    // For performance, we could use a separate overlay canvas
-    // But minimap is small, so this is fine
+    // Redraw terrain base
+    ctx.putImageData(imgData, 0, 0);
 
     // Draw viewport rectangle
+    const scale = MINIMAP_SIZE / Math.max(mapWidth, mapHeight);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
     ctx.strokeRect(
@@ -65,7 +64,7 @@ export default function Minimap({ onNavigate }) {
       viewport.w * scale,
       viewport.h * scale
     );
-  }, [viewport, mapWidth, mapHeight]);
+  }, [viewport, mapWidth, mapHeight, terrainData]);
 
   const handleClick = useCallback((e) => {
     if (!mapWidth || !onNavigate) return;

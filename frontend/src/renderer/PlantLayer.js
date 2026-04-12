@@ -73,14 +73,29 @@ export class PlantLayer {
   }
 
   /**
-   * Full plant grid update from initial load.
+   * Full plant grid update from initial load using flat binary arrays.
    */
-  setFullGrid(plantGrid, width, height) {
-    // plantGrid: structured data from backend — we receive it as changes
-    // For initial load, clear and apply
-    if (this._pixels) {
-      this._pixels.fill(0);
+  setFromArrays(types, stages, width, height) {
+    if (!this._pixels) return;
+    this._pixels.fill(0);
+
+    for (let i = 0; i < types.length; i++) {
+      const t = types[i];
+      const s = stages[i];
+      if (t === 0 || s === 0 || s === 5) continue;
+      const key = `${t}_${s}`;
+      const color = PLANT_COLORS[key] || [100, 200, 100, 150];
+      const pi = i * 4;
+      this._pixels[pi] = color[0];
+      this._pixels[pi + 1] = color[1];
+      this._pixels[pi + 2] = color[2];
+      this._pixels[pi + 3] = color[3];
     }
-    this.applyChanges(plantGrid);
+
+    if (this._baseTexture && this._baseTexture.resource) {
+      this._baseTexture.resource.data = this._pixels;
+      this._baseTexture.resource.update();
+      this._baseTexture.update();
+    }
   }
 }

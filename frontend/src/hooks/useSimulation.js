@@ -1,74 +1,82 @@
 /**
- * useSimulation hook — manages WebSocket connection and sim state syncing.
+ * useSimulation hook — manages Web Worker and sim state syncing.
  */
 import { useEffect, useRef, useCallback } from 'react';
-import { io } from 'socket.io-client';
-import { decode } from '../utils/msgpack';
 import useSimStore from '../store/simulationStore';
 
 export function useSimulation() {
-  const socketRef = useRef(null);
-  const {
-    setConnected, setClock, setAnimals, setPltChanges, setStats,
-    viewport, setViewport,
-  } = useSimStore();
+  const workerRef = useRef(null);
 
   useEffect(() => {
-    const socket = io('/', {
-      transports: ['websocket'],
-      path: '/socket.io',
-    });
-    socketRef.current = socket;
+    const worker = new Worker(
+      new URL('../worker/simWorker.js', import.meta.url),
+      { type: 'module' }
+    );
+    workerRef.current = worker;
+    useSimStore.getState().setWorker(worker);
 
-    socket.on('connect', () => {
-      setConnected(true);
-      // Send initial viewport
-      socket.emit('viewport', viewport);
-    });
+    worker.onmessage = (e) => {
+      const msg = e.data;
+      const store = useSimStore.getState();
 
-    socket.on('disconnect', () => {
-      setConnected(false);
-    });
-
-    socket.on('tick', (data) => {
-      try {
-        let state;
-        if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
-          state = decode(data);
-        } else if (data instanceof Blob) {
-          // Handle blob
-          data.arrayBuffer().then(buf => {
-            const s = decode(buf);
-            _applyState(s);
+      switch (msg.type) {
+        case 'worldReady': {
+          const terrain = new Uint8Array(msg.terrain);
+          const plantType = new Uint8Array(msg.plantType);
+          const plantStage = new Uint8Array(msg.plantStage);
+          store.setTerrain(terrain, msg.width, msg.height);
+          store.setAnimals(msg.animals || []);
+          store.setClock(msg.clock);
+          // Store plant arrays for renderer (App.jsx reads these)
+          useSimStore.setState({
+            worldReady: {
+              terrain, plantType, plantStage,
+              width: msg.width, height: msg.height, seed: msg.seed,
+            },
           });
-          return;
-        } else {
-          state = data;
+          break;
         }
-        _applyState(state);
-      } catch (e) {
-        console.warn('Failed to decode tick:', e);
-      }
-    });
 
-    function _applyState(state) {
-      if (state.clock) setClock(state.clock);
-      if (state.animals) setAnimals(state.animals);
-      if (state.plant_changes) setPltChanges(state.plant_changes);
-      if (state.stats) setStats(state.stats);
-    }
+        case 'tick':
+          if (msg.clock) store.setClock(msg.clock);
+          if (msg.animals) store.setAnimals(msg.animals);
+          if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
+          if (msg.stats) store.setStats(msg.stats);
+          if (msg.statsHistory) store.setStatsHistory(msg.statsHistory);
+          break;
+
+        case 'tileInfo':
+          if (msg.info) {
+            if (msg.info.animals && msg.info.animals.length > 0) {
+              store.setSelectedEntity(msg.info.animals[0]);
+            } else {
+              store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
+            }
+          }
+          break;
+
+        case 'entityPlaced':
+          // No-op; entity will appear in next tick
+          break;
+
+        case 'entityRemoved':
+          // No-op; entity will disappear in next tick
+          break;
+      }
+    };
 
     return () => {
-      socket.disconnect();
+      worker.terminate();
+      workerRef.current = null;
+      useSimStore.getState().setWorker(null);
     };
   }, []);
 
-  const sendViewport = useCallback((vp) => {
-    setViewport(vp);
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('viewport', vp);
+  const postCmd = useCallback((cmd, data = {}) => {
+    if (workerRef.current) {
+      workerRef.current.postMessage({ cmd, ...data });
     }
-  }, [setViewport]);
+  }, []);
 
-  return { sendViewport };
+  return { postCmd };
 }

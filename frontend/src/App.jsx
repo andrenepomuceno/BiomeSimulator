@@ -6,7 +6,6 @@ import useSimStore from './store/simulationStore';
 import { useSimulation } from './hooks/useSimulation';
 import { useEditor } from './hooks/useEditor';
 import { GameRenderer } from './renderer/GameRenderer';
-import { fetchMsgpack } from './utils/msgpack';
 import Toolbar from './components/Toolbar';
 import ControlPanel from './components/ControlPanel';
 import TerrainEditor from './components/TerrainEditor';
@@ -17,12 +16,12 @@ import Minimap from './components/Minimap';
 export default function App() {
   const canvasContainerRef = useRef(null);
   const rendererRef = useRef(null);
-  const { sendViewport } = useSimulation();
+  const { postCmd } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
-    clock, stats, setTerrain, setSimState, setStats, setStatsHistory,
+    clock, stats, worldReady,
   } = useSimStore();
 
   // Initialize renderer
@@ -30,7 +29,6 @@ export default function App() {
     if (!canvasContainerRef.current) return;
 
     const onViewportChange = (vp) => {
-      sendViewport(vp);
       useSimStore.getState().setViewport(vp);
     };
 
@@ -41,14 +39,23 @@ export default function App() {
     const renderer = new GameRenderer(canvasContainerRef.current, onViewportChange, onTileClick);
     rendererRef.current = renderer;
 
-    // Initial map generation
-    _generateMap();
+    // Generate initial map via worker
+    postCmd('generate');
 
     return () => {
       renderer.destroy();
       rendererRef.current = null;
     };
   }, []);
+
+  // When world is ready from worker, set up renderer
+  useEffect(() => {
+    if (!worldReady || !rendererRef.current) return;
+    const { terrain, plantType, plantStage, width, height } = worldReady;
+
+    rendererRef.current.setTerrain(terrain, width, height);
+    rendererRef.current.plantLayer.setFromArrays(plantType, plantStage, width, height);
+  }, [worldReady]);
 
   // Update entities when animals change
   useEffect(() => {
@@ -72,88 +79,35 @@ export default function App() {
     }
   }, [clock.is_night, clock.tick]);
 
-  // Fetch stats periodically
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/stats');
-        const data = await res.json();
-        if (data.current) setStats(data.current);
-        if (data.history) setStatsHistory(data.history);
-      } catch (e) { /* ignore */ }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
   // --- Actions ---
 
-  async function _generateMap(params = {}) {
-    try {
-      const data = await fetchMsgpack('/api/map/generate', {
-        method: 'POST',
-        body: JSON.stringify(params),
-      });
-
-      const terrainArr = new Uint8Array(data.terrain);
-      setTerrain(terrainArr, data.width, data.height);
-
-      if (rendererRef.current) {
-        rendererRef.current.setTerrain(terrainArr, data.width, data.height);
-      }
-
-      // Get initial sim state
-      const statusRes = await fetch('/api/sim/status');
-      const status = await statusRes.json();
-      setSimState({ running: status.running, paused: status.paused, tps: status.tps });
-      if (status.stats) setStats(status.stats);
-    } catch (e) {
-      console.error('Failed to generate map:', e);
-    }
+  function _handleStart() {
+    postCmd('start');
+    useSimStore.getState().setSimState({ running: true, paused: false });
   }
 
-  async function _handleStart() {
-    await fetch('/api/sim/start', { method: 'POST' });
-    setSimState({ running: true, paused: false });
+  function _handlePause() {
+    postCmd('pause');
+    useSimStore.getState().setSimState({ paused: true });
   }
 
-  async function _handlePause() {
-    await fetch('/api/sim/pause', { method: 'POST' });
-    setSimState({ paused: true });
+  function _handleResume() {
+    postCmd('resume');
+    useSimStore.getState().setSimState({ paused: false });
   }
 
-  async function _handleResume() {
-    await fetch('/api/sim/resume', { method: 'POST' });
-    setSimState({ paused: false });
+  function _handleStep() {
+    postCmd('step');
   }
 
-  async function _handleStep() {
-    await fetch('/api/sim/step', { method: 'POST' });
+  function _handleReset(params = {}) {
+    postCmd('generate', { config: params });
+    useSimStore.getState().setSimState({ running: false, paused: true });
   }
 
-  async function _handleReset(params = {}) {
-    try {
-      const data = await fetchMsgpack('/api/sim/reset', {
-        method: 'POST',
-        body: JSON.stringify(params),
-      });
-      const terrainArr = new Uint8Array(data.terrain);
-      setTerrain(terrainArr, data.width, data.height);
-      if (rendererRef.current) {
-        rendererRef.current.setTerrain(terrainArr, data.width, data.height);
-      }
-      setSimState({ running: false, paused: true });
-    } catch (e) {
-      console.error('Failed to reset:', e);
-    }
-  }
-
-  async function _handleSpeedChange(tps) {
+  function _handleSpeedChange(tps) {
     useSimStore.getState().setSimState({ tps });
-    await fetch('/api/sim/speed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tps }),
-    });
+    postCmd('setSpeed', { tps });
   }
 
   function _handleMinimapNavigate(x, y) {

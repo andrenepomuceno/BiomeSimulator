@@ -147,7 +147,7 @@ export default function EntityInspector() {
           <span className="stat-label">Age</span>
           <span className="stat-value">{e.age}</span>
         </div>
-        <Bar label="⚡ Energy" value={e.energy} max={e.species === 'WOLF' ? 130 : e.species === 'GOAT' ? 120 : e.species === 'DEER' ? 110 : e.species === 'FOX' ? 100 : e.species === 'RABBIT' ? 80 : e.species === 'SQUIRREL' ? 70 : e.species === 'BEETLE' ? 50 : 100} color="#4ecdc4" />
+        <Bar label="⚡ Energy" value={e.energy} max={ANIMAL_SPECIES[e.species]?.max_energy || 100} color="#4ecdc4" />
         <Bar label="🍖 Hunger" value={e.hunger} max={100} color="#ff6b6b" />
         <Bar label="💧 Thirst" value={e.thirst} max={100} color="#4d96ff" />
         <SpeciesAttributes species={e.species} />

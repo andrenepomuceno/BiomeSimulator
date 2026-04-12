@@ -35,7 +35,7 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // --- Opportunistic: eat if standing on food and even slightly hungry ---
-  if (animal.hunger > 20 && animal.diet === 'HERBIVORE') {
+  if (animal.hunger > 20 && (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE')) {
     const idx = world.idx(animal.x, animal.y);
     if (world.plantStage[idx] === S_FRUIT) {
       // Eat fruit — consume entirely (tile becomes empty)
@@ -69,6 +69,8 @@ export function decideAndAct(animal, world, spatialHash) {
   if (animal.hunger > 45) {
     if (animal.diet === 'HERBIVORE') {
       _seekPlantFood(animal, world);
+    } else if (animal.diet === 'OMNIVORE') {
+      _seekOmnivoreFood(animal, world, spatialHash);
     } else {
       _seekPrey(animal, world, spatialHash);
     }
@@ -81,8 +83,8 @@ export function decideAndAct(animal, world, spatialHash) {
     return;
   }
 
-  // 4. Flee from predators (herbivores only)
-  if (animal.diet === 'HERBIVORE') {
+  // 4. Flee from predators (herbivores and omnivores from stronger predators)
+  if (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE') {
     const threat = _findNearestThreat(animal, spatialHash);
     if (threat) { _fleeFrom(animal, threat, world); return; }
   }
@@ -91,6 +93,8 @@ export function decideAndAct(animal, world, spatialHash) {
   if (animal.hunger > 30) {
     if (animal.diet === 'HERBIVORE') {
       _seekPlantFood(animal, world);
+    } else if (animal.diet === 'OMNIVORE') {
+      _seekOmnivoreFood(animal, world, spatialHash);
     } else {
       _seekPrey(animal, world, spatialHash);
     }
@@ -277,7 +281,7 @@ function _seekPlantFood(animal, world) {
 function _seekPrey(animal, world, spatialHash) {
   // Carnivores can also eat fruit opportunistically when very hungry and no prey
   const nearby = spatialHash.queryRadius(animal.x, animal.y, animal.visionRange);
-  const prey = nearby.filter(e => e.diet === 'HERBIVORE' && e.alive && e.id !== animal.id);
+  const prey = nearby.filter(e => (e.diet === 'HERBIVORE' || e.diet === 'OMNIVORE') && e.alive && e.id !== animal.id);
 
   if (prey.length) {
     const target = prey.reduce((a, b) =>
@@ -318,6 +322,62 @@ function _seekPrey(animal, world, spatialHash) {
   _randomWalk(animal, world);
 }
 
+/**
+ * Omnivore food-seeking: prefer plants first, hunt small prey when hungrier.
+ */
+function _seekOmnivoreFood(animal, world, spatialHash) {
+  // Try eating plant on current tile first
+  const idx = world.idx(animal.x, animal.y);
+  if (world.plantStage[idx] === S_FRUIT) {
+    world.plantType[idx] = P_NONE;
+    world.plantStage[idx] = S_NONE;
+    world.plantAge[idx] = 0;
+    animal.state = AnimalState.EATING;
+    animal.applyEnergyCost('EAT');
+    animal.hunger = Math.max(0, animal.hunger - 40);
+    world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
+    return;
+  }
+  if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
+    world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
+    animal.state = AnimalState.EATING;
+    animal.hunger = Math.max(0, animal.hunger - 25);
+    world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
+    return;
+  }
+
+  // When very hungry, try hunting small prey (weaker than self)
+  if (animal.hunger > 55) {
+    const nearby = spatialHash.queryRadius(animal.x, animal.y, animal.visionRange);
+    const prey = nearby.filter(e =>
+      e.alive && e.id !== animal.id && e.diet === 'HERBIVORE' &&
+      e._config.defense < animal._config.attack_power
+    );
+    if (prey.length) {
+      const target = prey.reduce((a, b) =>
+        (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
+        (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
+      );
+      const dist = Math.abs(target.x - animal.x) + Math.abs(target.y - animal.y);
+      if (dist <= 1) {
+        _attack(animal, target, world);
+      } else {
+        animal.path = aStar(animal.x, animal.y, target.x, target.y, world, 30);
+        animal.pathIndex = 0;
+        animal.state = AnimalState.RUNNING;
+        for (let s = 0; s < animal.speed; s++) {
+          _followPath(animal, world);
+        }
+        animal.applyEnergyCost('RUN');
+      }
+      return;
+    }
+  }
+
+  // Fallback: seek plants in vision range
+  _seekPlantFood(animal, world);
+}
+
 // ---- Combat ----
 
 function _attack(attacker, defender /*, world */) {
@@ -342,7 +402,15 @@ function _attack(attacker, defender /*, world */) {
 
 function _findNearestThreat(animal, spatialHash) {
   const nearby = spatialHash.queryRadius(animal.x, animal.y, animal.visionRange);
-  const threats = nearby.filter(e => e.diet === 'CARNIVORE' && e.alive && e.id !== animal.id);
+  const threats = nearby.filter(e => {
+    if (!e.alive || e.id === animal.id) return false;
+    if (e.diet === 'CARNIVORE') return true;
+    // Omnivores only fear stronger omnivores/carnivores
+    if (animal.diet === 'OMNIVORE' && e.diet === 'OMNIVORE') {
+      return e._config.attack_power > animal._config.attack_power + 2;
+    }
+    return false;
+  });
   if (!threats.length) return null;
   return threats.reduce((a, b) =>
     (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=

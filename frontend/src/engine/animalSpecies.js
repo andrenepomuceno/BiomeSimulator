@@ -187,6 +187,110 @@ const ANIMAL_SPECIES = {
     thirst_rate: 0.12,
     initial_count: 20,
   },
+
+  BOAR: {
+    id: 'BOAR',
+    name: 'Boar',
+    emoji: '🐗',
+    diet: 'OMNIVORE',
+    reproduction: 'SEXUAL',
+    color: 0x885533,
+    speed: 1,
+    vision_range: 10,
+    max_energy: 140,
+    max_hunger: 100,
+    max_thirst: 100,
+    max_age: 1600,
+    mature_age: 180,
+    attack_power: 5,
+    defense: 5,
+    energy_costs: {
+      IDLE: 0.03, WALK: 0.13, RUN: 0.45,
+      EAT: 0.07, DRINK: 0.07, SLEEP: -3.2,
+      ATTACK: 1.5, MATE: 2.0, FLEE: 0.5,
+    },
+    hunger_rate: 0.13,
+    thirst_rate: 0.11,
+    initial_count: 30,
+  },
+
+  BEAR: {
+    id: 'BEAR',
+    name: 'Bear',
+    emoji: '🐻',
+    diet: 'OMNIVORE',
+    reproduction: 'SEXUAL',
+    color: 0x8B4513,
+    speed: 1,
+    vision_range: 12,
+    max_energy: 180,
+    max_hunger: 100,
+    max_thirst: 100,
+    max_age: 2200,
+    mature_age: 250,
+    attack_power: 10,
+    defense: 8,
+    energy_costs: {
+      IDLE: 0.04, WALK: 0.16, RUN: 0.6,
+      EAT: 0.10, DRINK: 0.10, SLEEP: -4.0,
+      ATTACK: 2.5, MATE: 3.0, FLEE: 0.7,
+    },
+    hunger_rate: 0.15,
+    thirst_rate: 0.10,
+    initial_count: 12,
+  },
+
+  RACCOON: {
+    id: 'RACCOON',
+    name: 'Raccoon',
+    emoji: '🦝',
+    diet: 'OMNIVORE',
+    reproduction: 'SEXUAL',
+    color: 0x778899,
+    speed: 1,
+    vision_range: 9,
+    max_energy: 90,
+    max_hunger: 100,
+    max_thirst: 100,
+    max_age: 1200,
+    mature_age: 100,
+    attack_power: 3,
+    defense: 3,
+    energy_costs: {
+      IDLE: 0.02, WALK: 0.10, RUN: 0.35,
+      EAT: 0.05, DRINK: 0.05, SLEEP: -2.8,
+      ATTACK: 0.9, MATE: 1.5, FLEE: 0.35,
+    },
+    hunger_rate: 0.13,
+    thirst_rate: 0.12,
+    initial_count: 25,
+  },
+
+  CROW: {
+    id: 'CROW',
+    name: 'Crow',
+    emoji: '🐦‍⬛',
+    diet: 'OMNIVORE',
+    reproduction: 'SEXUAL',
+    color: 0x333344,
+    speed: 2,
+    vision_range: 14,
+    max_energy: 70,
+    max_hunger: 100,
+    max_thirst: 100,
+    max_age: 1000,
+    mature_age: 80,
+    attack_power: 2,
+    defense: 1,
+    energy_costs: {
+      IDLE: 0.02, WALK: 0.08, RUN: 0.3,
+      EAT: 0.04, DRINK: 0.04, SLEEP: -2.5,
+      ATTACK: 0.6, MATE: 1.2, FLEE: 0.25,
+    },
+    hunger_rate: 0.12,
+    thirst_rate: 0.11,
+    initial_count: 35,
+  },
 };
 
 /** Ordered list of all species keys */
@@ -197,6 +301,9 @@ export const HERBIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet =
 
 /** Only carnivore keys */
 export const CARNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === 'CARNIVORE');
+
+/** Only omnivore keys */
+export const OMNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === 'OMNIVORE');
 
 /**
  * Build the `animal_species` config object (without display-only fields).

@@ -38,6 +38,10 @@ export const PLANT_TYPE_NAMES = {
   4: 'Apple Tree',
   5: 'Mango Tree',
   6: 'Carrot',
+  7: 'Sunflower',
+  8: 'Tomato',
+  9: 'Mushroom',
+  10: 'Oak Tree',
 };
 
 // Plant sex/reproduction display names
@@ -54,6 +58,10 @@ export const PLANT_TYPE_SEX = {
   4: 'HERMAPHRODITE',  // Apple Tree
   5: 'HERMAPHRODITE',  // Mango Tree
   6: 'ASEXUAL',        // Carrot
+  7: 'HERMAPHRODITE',  // Sunflower
+  8: 'HERMAPHRODITE',  // Tomato
+  9: 'ASEXUAL',        // Mushroom
+  10: 'HERMAPHRODITE', // Oak Tree
 };
 
 // Plant stage names
@@ -76,6 +84,10 @@ export const ANIMAL_COLORS = {
   DEER:     0xcc9955,  // tan
   FOX:      0xdd8833,  // orange
   WOLF:     0xdd4444,  // red
+  BOAR:     0x885533,  // brown
+  BEAR:     0x8B4513,  // saddle brown
+  RACCOON:  0x778899,  // slate gray
+  CROW:     0x333344,  // dark blue-gray
 };
 
 // Species display info
@@ -87,6 +99,10 @@ export const SPECIES_INFO = {
   DEER:     { emoji: '🦌', name: 'Deer',     diet: 'Herbivore' },
   FOX:      { emoji: '🦊', name: 'Fox',      diet: 'Carnivore' },
   WOLF:     { emoji: '🐺', name: 'Wolf',     diet: 'Carnivore' },
+  BOAR:     { emoji: '🐗', name: 'Boar',     diet: 'Omnivore' },
+  BEAR:     { emoji: '🐻', name: 'Bear',     diet: 'Omnivore' },
+  RACCOON:  { emoji: '🦝', name: 'Raccoon',  diet: 'Omnivore' },
+  CROW:     { emoji: '🐦‍⬛', name: 'Crow',     diet: 'Omnivore' },
 };
 
 // Sex display names

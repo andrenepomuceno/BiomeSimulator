@@ -4,6 +4,7 @@
 import { Animal, AnimalState } from './entities.js';
 import { WATER } from './world.js';
 import { aStar } from './pathfinding.js';
+import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
 
 /**
  * Process one tick for an animal: decide action, execute it.
@@ -40,7 +41,7 @@ export function decideAndAct(animal, world, spatialHash) {
 
   // 2. Critical hunger → seek food
   if (animal.hunger > 70) {
-    if (animal.species === 'HERBIVORE') {
+    if (animal.diet === 'HERBIVORE') {
       _seekPlantFood(animal, world);
     } else {
       _seekPrey(animal, world, spatialHash);
@@ -55,7 +56,7 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 4. Flee from predators (herbivores only)
-  if (animal.species === 'HERBIVORE') {
+  if (animal.diet === 'HERBIVORE') {
     const threat = _findNearestThreat(animal, spatialHash);
     if (threat) { _fleeFrom(animal, threat, world); return; }
   }
@@ -178,7 +179,7 @@ function _seekPlantFood(animal, world) {
 
 function _seekPrey(animal, world, spatialHash) {
   const nearby = spatialHash.queryRadius(animal.x, animal.y, animal.visionRange);
-  const prey = nearby.filter(e => e.species === 'HERBIVORE' && e.alive && e.id !== animal.id);
+  const prey = nearby.filter(e => e.diet === 'HERBIVORE' && e.alive && e.id !== animal.id);
 
   if (!prey.length) { _randomWalk(animal, world); return; }
 
@@ -224,7 +225,7 @@ function _attack(attacker, defender /*, world */) {
 
 function _findNearestThreat(animal, spatialHash) {
   const nearby = spatialHash.queryRadius(animal.x, animal.y, animal.visionRange);
-  const threats = nearby.filter(e => e.species === 'CARNIVORE' && e.alive && e.id !== animal.id);
+  const threats = nearby.filter(e => e.diet === 'CARNIVORE' && e.alive && e.id !== animal.id);
   if (!threats.length) return null;
   return threats.reduce((a, b) =>
     (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
@@ -253,10 +254,19 @@ function _fleeFrom(animal, threat, world) {
 
 function _findMate(animal, spatialHash) {
   const nearby = spatialHash.queryRadius(animal.x, animal.y, 3);
-  const candidates = nearby.filter(e =>
-    e.species === animal.species && e.alive && e.id !== animal.id &&
-    e.age >= e.matureAge && e.mateCooldown <= 0 && e.energy > 50
-  );
+  const repro = animal._config.reproduction || REPRO_SEXUAL;
+  const candidates = nearby.filter(e => {
+    if (e.species !== animal.species || !e.alive || e.id === animal.id) return false;
+    if (e.age < e.matureAge || e.mateCooldown > 0 || e.energy <= 50) return false;
+    // Sex compatibility check
+    if (repro === REPRO_SEXUAL) {
+      // Need opposite sex
+      if (animal.sex === SEX_MALE && e.sex !== SEX_FEMALE) return false;
+      if (animal.sex === SEX_FEMALE && e.sex !== SEX_MALE) return false;
+    }
+    // HERMAPHRODITE and ASEXUAL can mate with any same-species
+    return true;
+  });
   if (!candidates.length) return null;
   return candidates.reduce((a, b) =>
     (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=

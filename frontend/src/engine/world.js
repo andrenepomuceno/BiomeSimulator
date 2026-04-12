@@ -116,21 +116,23 @@ export class World {
 
   getStats() {
     let herbivores = 0, carnivores = 0;
+    const speciesCounts = {};
     for (const a of this.animals) {
       if (!a.alive) continue;
-      if (a.species === 'HERBIVORE') herbivores++;
+      speciesCounts[a.species] = (speciesCounts[a.species] || 0) + 1;
+      if (a.diet === 'HERBIVORE') herbivores++;
       else carnivores++;
     }
 
-    let grassCount = 0, bushCount = 0, treeCount = 0, fruits = 0;
+    let plantsTotal = 0, fruits = 0;
+    const plantCounts = {};
     const size = this.width * this.height;
     for (let i = 0; i < size; i++) {
       const t = this.plantType[i];
       const s = this.plantStage[i];
       if (t > 0 && s > 0 && s < 5) {
-        if (t === 1) grassCount++;
-        else if (t === 2) bushCount++;
-        else if (t === 3) treeCount++;
+        plantCounts[t] = (plantCounts[t] || 0) + 1;
+        plantsTotal++;
       }
       if (this.plantFruit[i]) fruits++;
     }
@@ -138,10 +140,9 @@ export class World {
     return {
       herbivores,
       carnivores,
-      plants_grass: grassCount,
-      plants_bush: bushCount,
-      plants_tree: treeCount,
-      plants_total: grassCount + bushCount + treeCount,
+      species: speciesCounts,
+      plants_total: plantsTotal,
+      plant_types: plantCounts,
       fruits,
     };
   }

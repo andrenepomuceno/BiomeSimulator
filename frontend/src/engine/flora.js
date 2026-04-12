@@ -5,9 +5,25 @@ import { WATER, GRASS, DIRT } from './world.js';
 
 // Plant types
 export const P_NONE = 0;
-export const P_GRASS = 1;
-export const P_BUSH = 2;
-export const P_TREE = 3;
+export const P_GRASS = 1;        // Wild grass — asexual
+export const P_STRAWBERRY = 2;   // Strawberry — hermaphrodite
+export const P_BLUEBERRY = 3;    // Blueberry — hermaphrodite
+export const P_APPLE_TREE = 4;   // Apple tree — hermaphrodite
+export const P_MANGO_TREE = 5;   // Mango tree — hermaphrodite
+export const P_CARROT = 6;       // Carrot — asexual
+
+// All placeable plant types
+export const ALL_PLANT_TYPES = [P_GRASS, P_STRAWBERRY, P_BLUEBERRY, P_APPLE_TREE, P_MANGO_TREE, P_CARROT];
+
+// Plant sex/reproduction mode (display + seed spreading behavior)
+export const PLANT_SEX = {
+  [P_GRASS]: 'ASEXUAL',
+  [P_STRAWBERRY]: 'HERMAPHRODITE',
+  [P_BLUEBERRY]: 'HERMAPHRODITE',
+  [P_APPLE_TREE]: 'HERMAPHRODITE',
+  [P_MANGO_TREE]: 'HERMAPHRODITE',
+  [P_CARROT]: 'ASEXUAL',
+};
 
 // Plant stages
 export const S_NONE = 0;
@@ -19,9 +35,12 @@ export const S_DEAD = 5;
 
 // Growth thresholds per type: [seed→sprout, sprout→mature, mature→fruiting, fruiting→dead]
 const STAGE_AGES = {
-  [P_GRASS]: [10, 40, 80, 300],
-  [P_BUSH]: [20, 80, 200, 800],
-  [P_TREE]: [50, 200, 500, 2000],
+  [P_GRASS]:       [10, 40, 80, 300],
+  [P_STRAWBERRY]:  [15, 60, 150, 500],
+  [P_BLUEBERRY]:   [20, 80, 200, 700],
+  [P_APPLE_TREE]:  [50, 200, 500, 2000],
+  [P_MANGO_TREE]:  [60, 250, 600, 2200],
+  [P_CARROT]:      [12, 50, 120, 400],
 };
 
 /**
@@ -53,11 +72,29 @@ export function seedInitialPlants(world) {
     let ptype;
     const r = Math.random();
     if (wp < 5) {
-      ptype = r < 0.3 ? P_GRASS : r < 0.65 ? P_BUSH : P_TREE;
+      // Near water: more berries and trees
+      if (r < 0.15) ptype = P_GRASS;
+      else if (r < 0.30) ptype = P_STRAWBERRY;
+      else if (r < 0.45) ptype = P_BLUEBERRY;
+      else if (r < 0.65) ptype = P_APPLE_TREE;
+      else if (r < 0.85) ptype = P_MANGO_TREE;
+      else ptype = P_CARROT;
     } else if (wp < 15) {
-      ptype = r < 0.5 ? P_GRASS : r < 0.8 ? P_BUSH : P_TREE;
+      // Medium distance: balanced
+      if (r < 0.25) ptype = P_GRASS;
+      else if (r < 0.40) ptype = P_STRAWBERRY;
+      else if (r < 0.55) ptype = P_BLUEBERRY;
+      else if (r < 0.70) ptype = P_APPLE_TREE;
+      else if (r < 0.82) ptype = P_MANGO_TREE;
+      else ptype = P_CARROT;
     } else {
-      ptype = r < 0.7 ? P_GRASS : r < 0.9 ? P_BUSH : P_TREE;
+      // Far from water: more grass and carrots
+      if (r < 0.35) ptype = P_GRASS;
+      else if (r < 0.45) ptype = P_STRAWBERRY;
+      else if (r < 0.55) ptype = P_BLUEBERRY;
+      else if (r < 0.65) ptype = P_APPLE_TREE;
+      else if (r < 0.75) ptype = P_MANGO_TREE;
+      else ptype = P_CARROT;
     }
 
     // Random initial stage

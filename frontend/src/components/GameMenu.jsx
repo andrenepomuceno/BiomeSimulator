@@ -11,9 +11,26 @@ const defaultParams = {
   island_count: 5,
   island_size_factor: 0.3,
   seed: '',
-  initial_herbivore_count: 50,
-  initial_carnivore_count: 15,
+  initial_animal_counts: {
+    RABBIT: 25,
+    SQUIRREL: 15,
+    BEETLE: 20,
+    GOAT: 10,
+    DEER: 10,
+    FOX: 8,
+    WOLF: 5,
+  },
   initial_plant_density: 0.15,
+};
+
+const SPECIES_DISPLAY = {
+  RABBIT:   { emoji: '🐰', name: 'Rabbit',   max: 100 },
+  SQUIRREL: { emoji: '🐿️', name: 'Squirrel', max: 80 },
+  BEETLE:   { emoji: '🪲', name: 'Beetle',   max: 100 },
+  GOAT:     { emoji: '🐐', name: 'Goat',     max: 50 },
+  DEER:     { emoji: '🦌', name: 'Deer',     max: 50 },
+  FOX:      { emoji: '🦊', name: 'Fox',      max: 40 },
+  WOLF:     { emoji: '🐺', name: 'Wolf',     max: 30 },
 };
 
 const TABS = ['new', 'save', 'load'];
@@ -138,19 +155,14 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
 
               <h6 className="mt-3">🐾 Population</h6>
 
-              <div className="gm-field">
-                <label>🐰 Herbivores: {params.initial_herbivore_count}</label>
-                <input type="range" min={0} max={200}
-                  value={params.initial_herbivore_count}
-                  onChange={e => set('initial_herbivore_count', +e.target.value)} />
-              </div>
-
-              <div className="gm-field">
-                <label>🐺 Carnivores: {params.initial_carnivore_count}</label>
-                <input type="range" min={0} max={100}
-                  value={params.initial_carnivore_count}
-                  onChange={e => set('initial_carnivore_count', +e.target.value)} />
-              </div>
+              {Object.entries(SPECIES_DISPLAY).map(([key, sp]) => (
+                <div className="gm-field" key={key}>
+                  <label>{sp.emoji} {sp.name}: {params.initial_animal_counts[key]}</label>
+                  <input type="range" min={0} max={sp.max}
+                    value={params.initial_animal_counts[key]}
+                    onChange={e => setParams(p => ({ ...p, initial_animal_counts: { ...p.initial_animal_counts, [key]: +e.target.value } }))} />
+                </div>
+              ))}
 
               <div className="gm-field">
                 <label>🌿 Plant Density: {(params.initial_plant_density * 100).toFixed(0)}%</label>

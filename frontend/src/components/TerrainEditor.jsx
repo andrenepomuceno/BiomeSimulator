@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import useSimStore from '../store/simulationStore';
-import { TERRAIN_COLORS, TERRAIN_NAMES, WATER, SAND, DIRT, GRASS, ROCK } from '../utils/terrainColors';
+import { TERRAIN_COLORS, TERRAIN_NAMES, WATER, SAND, DIRT, GRASS, ROCK, SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
 
 const TERRAIN_TYPES = [WATER, SAND, DIRT, GRASS, ROCK];
 
@@ -40,22 +40,39 @@ export default function TerrainEditor() {
   }
 
   if (tool === 'PLACE_ENTITY') {
+    const ANIMAL_TYPES = Object.keys(SPECIES_INFO);
+    const PLANT_PLACE_TYPES = [
+      { key: 'GRASS_PLANT', emoji: '🌱', label: 'Grass' },
+      { key: 'STRAWBERRY', emoji: '🍓', label: 'Strawberry' },
+      { key: 'BLUEBERRY', emoji: '🫐', label: 'Blueberry' },
+      { key: 'APPLE_TREE', emoji: '🍎', label: 'Apple Tree' },
+      { key: 'MANGO_TREE', emoji: '🥭', label: 'Mango Tree' },
+      { key: 'CARROT', emoji: '🥕', label: 'Carrot' },
+    ];
     return (
       <div className="sidebar-section">
         <h6>Place Entity</h6>
-        <div className="d-flex flex-wrap gap-1">
-          {['HERBIVORE', 'CARNIVORE', 'TREE', 'BUSH', 'GRASS_PLANT'].map(t => (
+        <div className="small text-muted mb-1">Animals</div>
+        <div className="d-flex flex-wrap gap-1 mb-2">
+          {ANIMAL_TYPES.map(t => (
             <button
               key={t}
               className={`tool-btn ${placeEntityType === t ? 'active' : ''}`}
               onClick={() => setPlaceEntityType(t)}
             >
-              {t === 'HERBIVORE' && '🐰 '}
-              {t === 'CARNIVORE' && '🐺 '}
-              {t === 'TREE' && '🌳 '}
-              {t === 'BUSH' && '🌿 '}
-              {t === 'GRASS_PLANT' && '🌱 '}
-              {t.replace('_', ' ')}
+              {SPECIES_INFO[t].emoji} {SPECIES_INFO[t].name}
+            </button>
+          ))}
+        </div>
+        <div className="small text-muted mb-1">Plants</div>
+        <div className="d-flex flex-wrap gap-1">
+          {PLANT_PLACE_TYPES.map(p => (
+            <button
+              key={p.key}
+              className={`tool-btn ${placeEntityType === p.key ? 'active' : ''}`}
+              onClick={() => setPlaceEntityType(p.key)}
+            >
+              {p.emoji} {p.label}
             </button>
           ))}
         </div>

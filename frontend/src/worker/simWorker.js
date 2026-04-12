@@ -229,6 +229,7 @@ self.onmessage = function (e) {
       // Restore animals
       for (const ad of d.animals) {
         const speciesConfig = loadConfig.animal_species[ad.species];
+        if (!speciesConfig) continue;
         const animal = new Animal(ad.id, ad.x, ad.y, ad.species, speciesConfig);
         animal.energy = ad.energy;
         animal.hunger = ad.hunger;
@@ -236,6 +237,8 @@ self.onmessage = function (e) {
         animal.age = ad.age;
         animal.alive = ad.alive;
         animal.state = ad.state;
+        if (ad.sex) animal.sex = ad.sex;
+        if (ad.diet) animal.diet = ad.diet;
         lw.animals.push(animal);
       }
       if (lw._nextId <= Math.max(...lw.animals.map(a => a.id), 0)) {

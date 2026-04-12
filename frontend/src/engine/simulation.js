@@ -6,7 +6,7 @@ import { World, WATER, ROCK } from './world.js';
 import { Animal } from './entities.js';
 import { SpatialHash } from './spatialHash.js';
 import { generateTerrain, computeWaterProximity } from './mapGenerator.js';
-import { seedInitialPlants, processPlants, P_TREE, P_BUSH, P_GRASS, S_MATURE } from './flora.js';
+import { seedInitialPlants, processPlants, P_APPLE_TREE, P_MANGO_TREE, P_STRAWBERRY, P_BLUEBERRY, P_GRASS, P_CARROT, S_MATURE } from './flora.js';
 import { decideAndAct } from './behaviors.js';
 
 export class SimulationEngine {
@@ -34,13 +34,11 @@ export class SimulationEngine {
 
   _spawnAnimals() {
     const w = this.world;
-    const entries = [
-      ['HERBIVORE', this.config.initial_herbivore_count ?? 50],
-      ['CARNIVORE', this.config.initial_carnivore_count ?? 15],
-    ];
+    const counts = this.config.initial_animal_counts || {};
 
-    for (const [species, count] of entries) {
+    for (const [species, count] of Object.entries(counts)) {
       const speciesConfig = this.config.animal_species[species];
+      if (!speciesConfig) continue;
       let placed = 0, attempts = 0;
       while (placed < count && attempts < count * 50) {
         const x = Math.floor(Math.random() * w.width);
@@ -157,15 +155,21 @@ export class SimulationEngine {
     const w = this.world;
     if (!w.isInBounds(x, y)) return null;
 
-    if (entityType === 'HERBIVORE' || entityType === 'CARNIVORE') {
-      const speciesConfig = w.config.animal_species[entityType];
+    // Animal placement
+    const speciesConfig = w.config.animal_species[entityType];
+    if (speciesConfig) {
       const animal = new Animal(w.nextId(), x, y, entityType, speciesConfig);
       w.animals.push(animal);
       this.spatialHash.insert(animal);
       return animal.toDict();
     }
 
-    const TYPE_MAP = { TREE: P_TREE, BUSH: P_BUSH, GRASS_PLANT: P_GRASS };
+    // Plant placement
+    const TYPE_MAP = {
+      APPLE_TREE: P_APPLE_TREE, MANGO_TREE: P_MANGO_TREE,
+      STRAWBERRY: P_STRAWBERRY, BLUEBERRY: P_BLUEBERRY,
+      GRASS_PLANT: P_GRASS, CARROT: P_CARROT,
+    };
     if (TYPE_MAP[entityType] !== undefined) {
       const idx = w.idx(x, y);
       w.plantType[idx] = TYPE_MAP[entityType];

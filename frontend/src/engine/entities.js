@@ -1,6 +1,7 @@
 /**
- * Animal entity with state machine.
+ * Animal entity with state machine and sex system.
  */
+import { SEX_MALE, SEX_FEMALE, SEX_ASEXUAL, SEX_HERMAPHRODITE, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
 
 export const AnimalState = {
   IDLE: 0,
@@ -20,9 +21,20 @@ export class Animal {
     this.id = id;
     this.x = x;
     this.y = y;
-    this.species = species; // "HERBIVORE" or "CARNIVORE"
+    this.species = species; // "RABBIT", "WOLF", etc.
+    this.diet = config.diet || 'HERBIVORE'; // "HERBIVORE" or "CARNIVORE"
     this.state = AnimalState.IDLE;
     this._config = config;
+
+    // Assign sex based on reproduction mode
+    const repro = config.reproduction || REPRO_SEXUAL;
+    if (repro === REPRO_SEXUAL) {
+      this.sex = Math.random() < 0.5 ? SEX_MALE : SEX_FEMALE;
+    } else if (repro === REPRO_HERMAPHRODITE) {
+      this.sex = SEX_HERMAPHRODITE;
+    } else {
+      this.sex = SEX_ASEXUAL;
+    }
 
     this.energy = config.max_energy * 0.8;
     this.hunger = 10 + Math.random() * 20;
@@ -68,6 +80,8 @@ export class Animal {
       x: this.x,
       y: this.y,
       species: this.species,
+      diet: this.diet,
+      sex: this.sex,
       state: this.state,
       energy: Math.round(this.energy * 10) / 10,
       hunger: Math.round(this.hunger * 10) / 10,

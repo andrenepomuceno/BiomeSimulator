@@ -54,7 +54,7 @@ const useSimStore = create((set, get) => ({
   brushSize: 1,
   setBrushSize: (s) => set({ brushSize: s }),
 
-  placeEntityType: 'HERBIVORE',
+  placeEntityType: 'RABBIT',
   setPlaceEntityType: (t) => set({ placeEntityType: t }),
 
   // Viewport

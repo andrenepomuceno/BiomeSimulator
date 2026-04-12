@@ -14,8 +14,8 @@ const PLANT_SPECIES = {
     fruitEmoji: '🌾',
     sex: 'ASEXUAL',
     reproduction: 'SEED',
-    productionChance: 0.008,
-    stageAges: [10, 40, 80, 300],
+    productionChance: 0.015,
+    stageAges: [6, 25, 50, 200],
     fruitSpoilAge: 60,
     colors: {
       seed:        [130, 170, 80,  40],
@@ -36,7 +36,7 @@ const PLANT_SPECIES = {
     fruitEmoji: '🍓',
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
-    productionChance: 0.005,
+    productionChance: 0.01,
     stageAges: [15, 60, 150, 500],
     fruitSpoilAge: 80,
     colors: {
@@ -58,7 +58,7 @@ const PLANT_SPECIES = {
     fruitEmoji: '🫐',
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
-    productionChance: 0.005,
+    productionChance: 0.01,
     stageAges: [20, 80, 200, 700],
     fruitSpoilAge: 90,
     colors: {
@@ -80,7 +80,7 @@ const PLANT_SPECIES = {
     fruitEmoji: '🍎',
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
-    productionChance: 0.003,
+    productionChance: 0.007,
     stageAges: [50, 200, 500, 2000],
     fruitSpoilAge: 100,
     colors: {
@@ -102,7 +102,7 @@ const PLANT_SPECIES = {
     fruitEmoji: '🥭',
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
-    productionChance: 0.003,
+    productionChance: 0.007,
     stageAges: [60, 250, 600, 2200],
     fruitSpoilAge: 100,
     colors: {
@@ -124,7 +124,7 @@ const PLANT_SPECIES = {
     fruitEmoji: '🥕',
     sex: 'ASEXUAL',
     reproduction: 'SEED',
-    productionChance: 0.006,
+    productionChance: 0.012,
     stageAges: [12, 50, 120, 400],
     fruitSpoilAge: 120,
     colors: {

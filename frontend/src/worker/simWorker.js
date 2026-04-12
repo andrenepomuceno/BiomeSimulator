@@ -190,7 +190,6 @@ self.onmessage = function (e) {
           type: w.plantType[idx],
           stage: w.plantStage[idx],
           age: w.plantAge[idx],
-          fruit: w.plantFruit[idx],
         },
       };
       // Find animals on this tile
@@ -220,7 +219,6 @@ self.onmessage = function (e) {
         plantType: Array.from(sw.plantType),
         plantStage: Array.from(sw.plantStage),
         plantAge: Array.from(sw.plantAge),
-        plantFruit: Array.from(sw.plantFruit),
         animals: sw.animals.filter(a => a.alive).map(a => a.toDict()),
         nextAnimalId: sw._nextId,
         statsHistory: sw.statsHistory,
@@ -244,7 +242,6 @@ self.onmessage = function (e) {
       lw.plantType = new Uint8Array(d.plantType);
       lw.plantStage = new Uint8Array(d.plantStage);
       lw.plantAge = new Uint16Array(d.plantAge);
-      lw.plantFruit = new Uint8Array(d.plantFruit);
       lw.clock.tick = d.clock.tick;
       lw._nextId = d.nextAnimalId || 1000;
       lw.statsHistory = d.statsHistory || [];

@@ -1,7 +1,13 @@
 /**
  * Flora system — plant lifecycle with loop-based processing.
+ *
+ * Stages: SEED → YOUNG_SPROUT → ADULT_SPROUT → ADULT → DEAD
+ * Adult plants produce offspring in adjacent cells:
+ *   - Fruit producers place S_FRUIT (edible, decays to S_SEED)
+ *   - Seed producers place S_SEED directly
  */
 import { WATER, GRASS, DIRT } from './world.js';
+import { buildStageAges, buildFruitSpoilAges, buildProductionChances, buildReproductionModes } from './plantSpecies.js';
 
 // Plant types
 export const P_NONE = 0;
@@ -28,33 +34,37 @@ export const PLANT_SEX = {
 // Plant stages
 export const S_NONE = 0;
 export const S_SEED = 1;
-export const S_SPROUT = 2;
-export const S_MATURE = 3;
-export const S_FRUITING = 4;
-export const S_DEAD = 5;
+export const S_YOUNG_SPROUT = 2;
+export const S_ADULT_SPROUT = 3;
+export const S_ADULT = 4;
+export const S_FRUIT = 5;
+export const S_DEAD = 6;
 
-// Growth thresholds per type: [seed→sprout, sprout→mature, mature→fruiting, fruiting→dead]
-const STAGE_AGES = {
-  [P_GRASS]:       [10, 40, 80, 300],
-  [P_STRAWBERRY]:  [15, 60, 150, 500],
-  [P_BLUEBERRY]:   [20, 80, 200, 700],
-  [P_APPLE_TREE]:  [50, 200, 500, 2000],
-  [P_MANGO_TREE]:  [60, 250, 600, 2200],
-  [P_CARROT]:      [12, 50, 120, 400],
-};
+// Growth thresholds per type: [seed→youngSprout, youngSprout→adultSprout, adultSprout→adult, adult→dead]
+const STAGE_AGES = buildStageAges();
+
+// Fruit spoil ages per type (ticks before S_FRUIT decays to S_SEED)
+const FRUIT_SPOIL_AGES = buildFruitSpoilAges();
+
+// Production chance per type (per-tick probability for adult to produce offspring)
+const PRODUCTION_CHANCES = buildProductionChances();
+
+// Reproduction mode per type: 'FRUIT' or 'SEED'
+const REPRODUCTION_MODES = buildReproductionModes();
 
 // Terrain growth multipliers: higher = faster effective aging
 const TERRAIN_GROWTH_MULT = {
-  [GRASS]: 1.0,   // grass terrain boosts growth by 20%
-  [DIRT]:  0.5,   // dirt terrain slows growth by 30%
+  [GRASS]: 1.2,   // grass terrain boosts growth by 20%
+  [DIRT]:  0.7,   // dirt terrain slows growth by 30%
 };
 
 // Per-tick chance a plant on dirt dies prematurely (seeds/sprouts are more fragile)
 const DIRT_DEATH_CHANCE = {
-  [S_SEED]:     0.003,  // 0.3% per tick
-  [S_SPROUT]:   0.002,  // 0.2% per tick
-  [S_MATURE]:   0.0008, // 0.08% per tick
-  [S_FRUITING]: 0.0005, // 0.05% per tick
+  [S_SEED]:          0.003,  // 0.3% per tick
+  [S_YOUNG_SPROUT]:  0.002,  // 0.2% per tick
+  [S_ADULT_SPROUT]:  0.001,  // 0.1% per tick
+  [S_ADULT]:         0.0005, // 0.05% per tick
+  [S_FRUIT]:         0.002,  // 0.2% per tick (fruit on dirt rots faster)
 };
 
 /**
@@ -115,21 +125,23 @@ export function seedInitialPlants(world) {
     const sr = Math.random();
     let stage, age;
     const ages = STAGE_AGES[ptype];
-    if (sr < 0.33) {
+    if (sr < 0.25) {
       stage = S_SEED;
       age = Math.floor(Math.random() * ages[0]);
-    } else if (sr < 0.66) {
-      stage = S_SPROUT;
+    } else if (sr < 0.50) {
+      stage = S_YOUNG_SPROUT;
       age = ages[0] + Math.floor(Math.random() * (ages[1] - ages[0]));
-    } else {
-      stage = S_MATURE;
+    } else if (sr < 0.75) {
+      stage = S_ADULT_SPROUT;
       age = ages[1] + Math.floor(Math.random() * (ages[2] - ages[1]));
+    } else {
+      stage = S_ADULT;
+      age = ages[2] + Math.floor(Math.random() * (ages[3] - ages[2]) * 0.3);
     }
 
     world.plantType[idx] = ptype;
     world.plantStage[idx] = stage;
     world.plantAge[idx] = age;
-    world.plantFruit[idx] = 0;
   }
 }
 
@@ -159,11 +171,22 @@ export function processPlants(world) {
       const deathChance = DIRT_DEATH_CHANCE[stage] || 0;
       if (deathChance > 0 && Math.random() < deathChance) {
         world.plantStage[i] = S_DEAD;
-        world.plantFruit[i] = 0;
         const x = i % w, y = Math.floor(i / w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
         continue;
       }
+    }
+
+    // Fruit stage: age and check spoil → decay to seed
+    if (stage === S_FRUIT) {
+      const spoilAge = FRUIT_SPOIL_AGES[ptype] || 80;
+      if (world.plantAge[i] >= spoilAge) {
+        world.plantStage[i] = S_SEED;
+        world.plantAge[i] = 0;
+        const x = i % w, y = Math.floor(i / w);
+        world.plantChanges.push([x, y, ptype, S_SEED]);
+      }
+      continue;
     }
 
     // Effective age with water proximity bonus and terrain modifier
@@ -174,15 +197,13 @@ export function processPlants(world) {
     let newStage = stage;
 
     if (stage === S_SEED && effectiveAge >= ages[0]) {
-      newStage = S_SPROUT;
-    } else if (stage === S_SPROUT && effectiveAge >= ages[1]) {
-      newStage = S_MATURE;
-    } else if (stage === S_MATURE && effectiveAge >= ages[2]) {
-      newStage = S_FRUITING;
-      world.plantFruit[i] = 1;
-    } else if (stage === S_FRUITING && effectiveAge >= ages[3]) {
+      newStage = S_YOUNG_SPROUT;
+    } else if (stage === S_YOUNG_SPROUT && effectiveAge >= ages[1]) {
+      newStage = S_ADULT_SPROUT;
+    } else if (stage === S_ADULT_SPROUT && effectiveAge >= ages[2]) {
+      newStage = S_ADULT;
+    } else if (stage === S_ADULT && effectiveAge >= ages[3]) {
       newStage = S_DEAD;
-      world.plantFruit[i] = 0;
     }
 
     if (newStage !== stage) {
@@ -199,38 +220,43 @@ export function processPlants(world) {
       world.plantType[i] = P_NONE;
       world.plantStage[i] = S_NONE;
       world.plantAge[i] = 0;
-      world.plantFruit[i] = 0;
       world.plantChanges.push([x, y, P_NONE, S_NONE]);
     }
   }
 
-  // --- Seed spreading from fruiting plants ---
-  spreadSeeds(world);
+  // --- Adult plants produce offspring ---
+  produceOffspring(world);
 }
 
 const DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
 
-function spreadSeeds(world) {
+/**
+ * Adult plants produce fruits or seeds in adjacent empty tiles.
+ */
+function produceOffspring(world) {
   const w = world.width, h = world.height;
 
-  // Collect all fruiting plants (no cap — avoids top-of-map bias)
-  const fruiting = [];
+  // Collect all adult plants
+  const adults = [];
   for (let i = 0; i < w * h; i++) {
-    if (world.plantStage[i] === S_FRUITING) fruiting.push(i);
+    if (world.plantStage[i] === S_ADULT) adults.push(i);
   }
 
-  // Shuffle and cap attempts
-  for (let i = fruiting.length - 1; i > 0; i--) {
+  // Shuffle to avoid positional bias
+  for (let i = adults.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [fruiting[i], fruiting[j]] = [fruiting[j], fruiting[i]];
+    [adults[i], adults[j]] = [adults[j], adults[i]];
   }
-  const maxAttempts = Math.min(fruiting.length, 800);
+  const maxAttempts = Math.min(adults.length, 800);
 
   for (let n = 0; n < maxAttempts; n++) {
-    if (Math.random() > 0.06) continue; // 6% chance per fruiting plant
-    const idx = fruiting[n];
-    const x = idx % w, y = Math.floor(idx / w);
+    const idx = adults[n];
     const ptype = world.plantType[idx];
+    const chance = PRODUCTION_CHANCES[ptype] || 0.005;
+    if (Math.random() > chance) continue;
+
+    const x = idx % w, y = Math.floor(idx / w);
+    const mode = REPRODUCTION_MODES[ptype] || 'SEED';
 
     const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
     const spread = 1 + Math.floor(Math.random() * 3); // 1-3 tiles
@@ -245,10 +271,10 @@ function spreadSeeds(world) {
     // Seeds are less likely to take root on dirt
     if (terrain === DIRT && Math.random() > 0.4) continue;
 
+    const offspringStage = mode === 'FRUIT' ? S_FRUIT : S_SEED;
     world.plantType[ni] = ptype;
-    world.plantStage[ni] = S_SEED;
+    world.plantStage[ni] = offspringStage;
     world.plantAge[ni] = 0;
-    world.plantFruit[ni] = 0;
-    world.plantChanges.push([nx, ny, ptype, S_SEED]);
+    world.plantChanges.push([nx, ny, ptype, offspringStage]);
   }
 }

@@ -4,6 +4,7 @@
  */
 import * as PIXI from 'pixi.js';
 import { SPECIES_INFO } from './terrainColors';
+import { buildPlantEmojiMap } from '../engine/plantSpecies';
 
 const TEX_SIZE = 64;
 const FONT_SIZE = 48;
@@ -48,23 +49,10 @@ export function generateEmojiTextures() {
 
 /**
  * Plant emoji map: "plantType_stage" → emoji string.
- * Types: 1=Grass, 2=Strawberry, 3=Blueberry, 4=Apple Tree, 5=Mango Tree, 6=Carrot
- * Stages: 1=Seed, 2=Sprout, 3=Mature, 4=Fruiting
+ * Built from plantSpecies.js canonical registry.
+ * Stages: 1=Seed, 2=Young Sprout, 3=Adult Sprout, 4=Adult, 5=Fruit
  */
-const PLANT_EMOJI_MAP = {
-  // Grass
-  '1_1': '🌱', '1_2': '🌿', '1_3': '🌾', '1_4': '🌾',
-  // Strawberry
-  '2_1': '🌱', '2_2': '🌿', '2_3': '☘️', '2_4': '🍓',
-  // Blueberry
-  '3_1': '🌱', '3_2': '🌿', '3_3': '☘️', '3_4': '🫐',
-  // Apple Tree
-  '4_1': '🌱', '4_2': '🌿', '4_3': '🌳', '4_4': '🍎',
-  // Mango Tree
-  '5_1': '🌱', '5_2': '🌿', '5_3': '🌳', '5_4': '🥭',
-  // Carrot
-  '6_1': '🌱', '6_2': '🌿', '6_3': '🥬', '6_4': '🥕',
-};
+const PLANT_EMOJI_MAP = buildPlantEmojiMap();
 
 let _plantTextures = null;
 

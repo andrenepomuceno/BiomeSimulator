@@ -41,7 +41,7 @@ function EnergyCostTable({ costs }) {
   );
 }
 
-const STAGE_LABELS = ['Seed', 'Sprout', 'Mature', 'Fruiting'];
+const STAGE_LABELS = ['Seed', 'Young Sprout', 'Adult Sprout', 'Adult', 'Fruit'];
 const WATER_AFFINITY_LABELS = { low: '🏜️ Low', medium: '💧 Medium', high: '🌊 High' };
 
 function PlantAttributes({ typeId }) {
@@ -60,8 +60,9 @@ function PlantAttributes({ typeId }) {
       </div>
       {open && (
         <div className="mt-1">
-          <div className="stat-row"><span className="stat-label">Reproduction</span><span className="stat-value">{sp.sex}</span></div>
+          <div className="stat-row"><span className="stat-label">Reproduction</span><span className="stat-value">{sp.reproduction} ({sp.sex})</span></div>
           <div className="stat-row"><span className="stat-label">Water Affinity</span><span className="stat-value">{WATER_AFFINITY_LABELS[sp.waterAffinity] || sp.waterAffinity}</span></div>
+          <div className="stat-row"><span className="stat-label">Production Chance</span><span className="stat-value">{(sp.productionChance * 100).toFixed(1)}%/tick</span></div>
           <div className="stat-row"><span className="stat-label">Fruit Spoil Age</span><span className="stat-value">{sp.fruitSpoilAge} ticks</span></div>
           <h6 className="mt-2 mb-1" style={{ fontSize: '0.7rem' }}>🌱 Growth Stages</h6>
           <div style={{ fontSize: '0.65rem' }}>
@@ -189,10 +190,12 @@ export default function EntityInspector() {
               <span className="stat-label">Age</span>
               <span className="stat-value">{t.plant.age} ticks</span>
             </div>
-            <div className="stat-row">
-              <span className="stat-label">Has Fruit</span>
-              <span className="stat-value">{t.plant.fruit ? '🍎 Yes' : 'No'}</span>
-            </div>
+            {t.plant.stage === 5 && (
+              <div className="stat-row">
+                <span className="stat-label">Has Fruit</span>
+                <span className="stat-value">🍎 Yes</span>
+              </div>
+            )}
             <PlantAttributes typeId={t.plant.type} />
           </>
         )}

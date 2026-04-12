@@ -6,7 +6,7 @@ import { World, WATER, ROCK } from './world.js';
 import { Animal } from './entities.js';
 import { SpatialHash } from './spatialHash.js';
 import { generateTerrain, computeWaterProximity } from './mapGenerator.js';
-import { seedInitialPlants, processPlants, P_APPLE_TREE, P_MANGO_TREE, P_STRAWBERRY, P_BLUEBERRY, P_GRASS, P_CARROT, S_MATURE } from './flora.js';
+import { seedInitialPlants, processPlants, P_APPLE_TREE, P_MANGO_TREE, P_STRAWBERRY, P_BLUEBERRY, P_GRASS, P_CARROT, S_ADULT } from './flora.js';
 import { decideAndAct } from './behaviors.js';
 
 export class SimulationEngine {
@@ -41,7 +41,6 @@ export class SimulationEngine {
     w.plantType.fill(0);
     w.plantStage.fill(0);
     w.plantAge.fill(0);
-    w.plantFruit.fill(0);
     w.plantChanges = [];
 
     // Reset animals
@@ -201,9 +200,8 @@ export class SimulationEngine {
     if (TYPE_MAP[entityType] !== undefined) {
       const idx = w.idx(x, y);
       w.plantType[idx] = TYPE_MAP[entityType];
-      w.plantStage[idx] = S_MATURE;
+      w.plantStage[idx] = S_ADULT;
       w.plantAge[idx] = 100;
-      w.plantFruit[idx] = 0;
       return { type: entityType, x, y };
     }
 

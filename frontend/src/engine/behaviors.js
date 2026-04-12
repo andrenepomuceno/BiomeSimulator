@@ -5,6 +5,7 @@ import { Animal, AnimalState } from './entities.js';
 import { WATER } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
+import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_NONE, P_NONE } from './flora.js';
 
 /**
  * Process one tick for an animal: decide action, execute it.
@@ -36,15 +37,18 @@ export function decideAndAct(animal, world, spatialHash) {
   // --- Opportunistic: eat if standing on food and even slightly hungry ---
   if (animal.hunger > 20 && animal.diet === 'HERBIVORE') {
     const idx = world.idx(animal.x, animal.y);
-    if (world.plantFruit[idx] > 0) {
-      world.plantFruit[idx] = 0;
+    if (world.plantStage[idx] === S_FRUIT) {
+      // Eat fruit — consume entirely (tile becomes empty)
+      world.plantType[idx] = P_NONE;
+      world.plantStage[idx] = S_NONE;
+      world.plantAge[idx] = 0;
       animal.state = AnimalState.EATING;
       animal.applyEnergyCost('EAT');
       animal.hunger = Math.max(0, animal.hunger - 40);
-      world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
+      world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
       return;
     }
-    if (animal.hunger > 35 && world.plantType[idx] > 0 && world.plantStage[idx] >= 3) {
+    if (animal.hunger > 35 && world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
       world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
       animal.state = AnimalState.EATING;
       animal.hunger = Math.max(0, animal.hunger - 25);
@@ -184,18 +188,20 @@ function _seekWater(animal, world) {
 function _seekPlantFood(animal, world) {
   const idx = world.idx(animal.x, animal.y);
 
-  // Eat fruit on current tile (best food)
-  if (world.plantFruit[idx] > 0) {
-    world.plantFruit[idx] = 0;
+  // Eat fruit on current tile (best food — consumes tile entirely)
+  if (world.plantStage[idx] === S_FRUIT) {
+    world.plantType[idx] = P_NONE;
+    world.plantStage[idx] = S_NONE;
+    world.plantAge[idx] = 0;
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
     animal.hunger = Math.max(0, animal.hunger - 40);
-    world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
+    world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
     return;
   }
 
-  // Eat mature/fruiting plant on current tile
-  if (world.plantType[idx] > 0 && world.plantStage[idx] >= 3) {
+  // Eat adult sprout or adult plant on current tile (degrade stage)
+  if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
     world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
     animal.state = AnimalState.EATING;
     animal.hunger = Math.max(0, animal.hunger - 25);
@@ -222,10 +228,10 @@ function _seekPlantFood(animal, world) {
       const d = Math.abs(dx) + Math.abs(dy);
       if (d === 0) continue;
 
-      if (world.plantFruit[ni] > 0 && d < bestFruitDist) {
+      if (world.plantStage[ni] === S_FRUIT && d < bestFruitDist) {
         bestFruitDist = d;
         bestFruit = [nx, ny];
-      } else if (world.plantType[ni] > 0 && world.plantStage[ni] >= 3 && d < bestPlantDist) {
+      } else if (world.plantType[ni] > 0 && world.plantStage[ni] >= S_ADULT_SPROUT && d < bestPlantDist) {
         bestPlantDist = d;
         bestPlant = [nx, ny];
       }
@@ -248,10 +254,10 @@ function _seekPlantFood(animal, world) {
         if (!world.isInBounds(nx, ny)) continue;
         const ni = world.idx(nx, ny);
         const d = Math.abs(dx) + Math.abs(dy);
-        if (world.plantFruit[ni] > 0 && d < bestFruitDist) {
+        if (world.plantStage[ni] === S_FRUIT && d < bestFruitDist) {
           bestFruitDist = d;
           bestFruit = [nx, ny];
-        } else if (world.plantType[ni] > 0 && world.plantStage[ni] >= 3 && d < bestPlantDist) {
+        } else if (world.plantType[ni] > 0 && world.plantStage[ni] >= S_ADULT_SPROUT && d < bestPlantDist) {
           bestPlantDist = d;
           bestPlant = [nx, ny];
         }
@@ -297,12 +303,14 @@ function _seekPrey(animal, world, spatialHash) {
   // No prey — carnivores eat fruit as fallback when desperate
   if (animal.hunger > 60) {
     const idx = world.idx(animal.x, animal.y);
-    if (world.plantFruit[idx] > 0) {
-      world.plantFruit[idx] = 0;
+    if (world.plantStage[idx] === S_FRUIT) {
+      world.plantType[idx] = P_NONE;
+      world.plantStage[idx] = S_NONE;
+      world.plantAge[idx] = 0;
       animal.state = AnimalState.EATING;
       animal.applyEnergyCost('EAT');
       animal.hunger = Math.max(0, animal.hunger - 20);
-      world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
+      world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
       return;
     }
   }

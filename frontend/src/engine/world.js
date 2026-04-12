@@ -59,10 +59,9 @@ export class World {
     this.waterProximity = new Uint8Array(size).fill(255);
 
     // Plant grid: parallel typed arrays for performance
-    this.plantType = new Uint8Array(size);   // 0=none, 1=grass, 2=bush, 3=tree
-    this.plantStage = new Uint8Array(size);  // 0=none, 1=seed, 2=sprout, 3=mature, 4=fruiting, 5=dead
+    this.plantType = new Uint8Array(size);   // 0=none, 1=grass, 2=strawberry, 3=blueberry, 4=apple_tree, 5=mango_tree, 6=carrot
+    this.plantStage = new Uint8Array(size);  // 0=none, 1=seed, 2=youngSprout, 3=adultSprout, 4=adult, 5=fruit, 6=dead
     this.plantAge = new Uint16Array(size);
-    this.plantFruit = new Uint8Array(size);  // 0 or 1
 
     // Animals
     this.animals = [];
@@ -130,11 +129,14 @@ export class World {
     for (let i = 0; i < size; i++) {
       const t = this.plantType[i];
       const s = this.plantStage[i];
-      if (t > 0 && s > 0 && s < 5) {
-        plantCounts[t] = (plantCounts[t] || 0) + 1;
-        plantsTotal++;
+      if (t > 0 && s > 0 && s < 6) {
+        if (s === 5) {
+          fruits++;  // S_FRUIT stage
+        } else {
+          plantCounts[t] = (plantCounts[t] || 0) + 1;
+          plantsTotal++;
+        }
       }
-      if (this.plantFruit[i]) fruits++;
     }
 
     return {

@@ -77,7 +77,7 @@ export class PlantLayer {
       this._types[idx] = ptype;
       this._stages[idx] = stage;
 
-      if (ptype === 0 || stage === 0 || stage === 5) {
+      if (ptype === 0 || stage === 0 || stage === 6) {
         this._pixels[i] = 0;
         this._pixels[i + 1] = 0;
         this._pixels[i + 2] = 0;
@@ -113,7 +113,7 @@ export class PlantLayer {
     for (let i = 0; i < types.length; i++) {
       const t = types[i];
       const s = stages[i];
-      if (t === 0 || s === 0 || s === 5) continue;
+      if (t === 0 || s === 0 || s === 6) continue;
       const key = `${t}_${s}`;
       const color = PLANT_COLORS[key] || [100, 200, 100, 150];
       const pi = i * 4;
@@ -168,7 +168,7 @@ export class PlantLayer {
         const idx = y * this.width + x;
         const ptype = this._types[idx];
         const stage = this._stages[idx];
-        if (ptype === 0 || stage === 0 || stage === 5) continue;
+        if (ptype === 0 || stage === 0 || stage === 6) continue;
 
         const key = `${ptype}_${stage}`;
         const tex = this._plantTextures[key];
@@ -178,7 +178,8 @@ export class PlantLayer {
         sprite.x = x + 0.5;
         sprite.y = y + 0.5;
         sprite.scale.set(EMOJI_SCALE);
-        sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.75 : 1.0);
+        // Alpha: seed=0.5, youngSprout=0.6, adultSprout=0.8, adult=1.0, fruit=0.9
+        sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.6 : (stage === 3 ? 0.8 : (stage === 5 ? 0.9 : 1.0)));
         this._activeEmojis.push(sprite);
         count++;
       }

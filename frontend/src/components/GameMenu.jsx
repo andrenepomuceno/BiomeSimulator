@@ -5,7 +5,7 @@ import React, { useState, useRef } from 'react';
 import useSimStore from '../store/simulationStore';
 import ANIMAL_SPECIES, { buildInitialAnimalCounts } from '../engine/animalSpecies';
 
-const SLIDER_MAX = { HERBIVORE: 100, CARNIVORE: 40 };
+const SLIDER_MAX = { HERBIVORE: 500, CARNIVORE: 500 };
 
 const defaultParams = {
   map_width: 500,

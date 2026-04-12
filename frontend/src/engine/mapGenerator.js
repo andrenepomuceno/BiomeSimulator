@@ -42,6 +42,13 @@ export function generateTerrain(config) {
     }
   }
 
+  // Edge falloff — force organic water border around the map (applied after
+  // normalization so it actually pushes edge values below sea level)
+  const edgeFalloff = generateEdgeFalloff(w, h, seed);
+  for (let i = 0; i < h * w; i++) {
+    combined[i] *= edgeFalloff[i];
+  }
+
   // Classify terrain
   const terrain = new Uint8Array(h * w);
   for (let i = 0; i < terrain.length; i++) {
@@ -212,6 +219,49 @@ function generateIslandMask(w, h, islandCount, sizeFactor, seed) {
   }
 
   return mask;
+}
+
+// ---------------------------------------------------------------------------
+// Edge falloff — organic water border around the entire map
+// ---------------------------------------------------------------------------
+
+function generateEdgeFalloff(w, h, seed) {
+  const falloff = new Float64Array(h * w);
+
+  // Multi-octave noise for irregular coastline
+  const edgeNoise = fbmNoise(w, h, seed + 55555, 5, 0.006);
+
+  const cx = w / 2;
+  const cy = h / 2;
+
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const i = py * w + px;
+
+      // Normalized coords: -1..1 from center
+      const nx = (px - cx) / cx;
+      const ny = (py - cy) / cy;
+
+      // Smooth elliptical distance (pow 2.5 rounds corners more than a circle)
+      const dist = Math.pow(nx * nx, 1.25) + Math.pow(ny * ny, 1.25);
+
+      // Map distance to falloff: land at center (dist~0), water at edges (dist~1)
+      // The threshold controls how much of the map is land vs water border
+      const landRadius = 0.95;
+      let edge = 1.0 - (dist / landRadius);
+
+      // Add noise wobble for organic coastline (±40% variation)
+      edge += edgeNoise[i] * 0.4;
+
+      // Smooth hermite curve: clamp then smoothstep
+      edge = Math.max(0, Math.min(1, edge));
+      edge = edge * edge * (3 - 2 * edge);
+
+      falloff[i] = edge;
+    }
+  }
+
+  return falloff;
 }
 
 // ---------------------------------------------------------------------------

@@ -62,14 +62,16 @@ export function decideAndAct(animal, world, spatialHash) {
       world.activePlantTiles.delete(idx);
       animal.state = AnimalState.EATING;
       animal.applyEnergyCost('EAT');
-      animal.hunger = Math.max(0, animal.hunger - 40);
+      animal.hunger = Math.max(0, animal.hunger - 55);
+      animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
       world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
       return;
     }
     if (animal.hunger > 35 && world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
       world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
       animal.state = AnimalState.EATING;
-      animal.hunger = Math.max(0, animal.hunger - 25);
+      animal.hunger = Math.max(0, animal.hunger - 35);
+      animal.energy = Math.min(animal.maxEnergy, animal.energy + 4);
       world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
       return;
     }
@@ -150,13 +152,14 @@ function _doSleep(animal) {
 }
 
 function _doEat(animal /*, world */) {
-  animal.hunger = Math.max(0, animal.hunger - 35);
+  animal.hunger = Math.max(0, animal.hunger - 45);
+  animal.energy = Math.min(animal.maxEnergy, animal.energy + 5);
   animal.applyEnergyCost('EAT');
   animal.state = AnimalState.IDLE;
 }
 
 function _doDrink(animal /*, world */) {
-  animal.thirst = Math.max(0, animal.thirst - 45);
+  animal.thirst = Math.max(0, animal.thirst - 55);
   animal.applyEnergyCost('DRINK');
   animal.state = AnimalState.IDLE;
 }
@@ -232,7 +235,8 @@ function _seekPlantFood(animal, world) {
     world.activePlantTiles.delete(idx);
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
-    animal.hunger = Math.max(0, animal.hunger - 40);
+    animal.hunger = Math.max(0, animal.hunger - 55);
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
     world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
     return;
   }
@@ -241,7 +245,8 @@ function _seekPlantFood(animal, world) {
   if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
     world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
     animal.state = AnimalState.EATING;
-    animal.hunger = Math.max(0, animal.hunger - 25);
+    animal.hunger = Math.max(0, animal.hunger - 35);
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + 4);
     world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
     return;
   }
@@ -318,7 +323,7 @@ function _seekPrey(animal, world, spatialHash) {
   }
 
   // No prey — carnivores eat fruit as fallback when desperate
-  if (animal.hunger > 60) {
+  if (animal.hunger > 50) {
     const idx = world.idx(animal.x, animal.y);
     if (world.plantStage[idx] === S_FRUIT) {
       world.plantType[idx] = P_NONE;
@@ -327,10 +332,14 @@ function _seekPrey(animal, world, spatialHash) {
       world.activePlantTiles.delete(idx);
       animal.state = AnimalState.EATING;
       animal.applyEnergyCost('EAT');
-      animal.hunger = Math.max(0, animal.hunger - 20);
+      animal.hunger = Math.max(0, animal.hunger - 35);
+      animal.energy = Math.min(animal.maxEnergy, animal.energy + 5);
       world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
       return;
     }
+    // Seek nearby fruit when desperate
+    _seekPlantFood(animal, world);
+    return;
   }
 
   _randomWalk(animal, world);
@@ -349,14 +358,16 @@ function _seekOmnivoreFood(animal, world, spatialHash) {
     world.activePlantTiles.delete(idx);
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
-    animal.hunger = Math.max(0, animal.hunger - 40);
+    animal.hunger = Math.max(0, animal.hunger - 55);
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
     world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
     return;
   }
   if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
     world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
     animal.state = AnimalState.EATING;
-    animal.hunger = Math.max(0, animal.hunger - 25);
+    animal.hunger = Math.max(0, animal.hunger - 35);
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + 4);
     world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
     return;
   }
@@ -407,8 +418,8 @@ function _attack(attacker, defender, world) {
     defender.alive = false;
     defender.state = AnimalState.DEAD;
     defender._deathTick = world.clock.tick;
-    attacker.hunger = Math.max(0, attacker.hunger - 70);
-    attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + 15);
+    attacker.hunger = Math.max(0, attacker.hunger - 80);
+    attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + 25);
     attacker.state = AnimalState.EATING;
   }
 }
@@ -479,8 +490,8 @@ function _doMate(animal, mate, world) {
   mate.state = AnimalState.MATING;
   animal.applyEnergyCost('MATE');
   mate.applyEnergyCost('MATE');
-  animal.mateCooldown = 100;
-  mate.mateCooldown = 100;
+  animal.mateCooldown = animal._config.mate_cooldown || 60;
+  mate.mateCooldown = mate._config.mate_cooldown || 60;
 
   // Enforce population cap
   const maxPop = animal._config.max_population;

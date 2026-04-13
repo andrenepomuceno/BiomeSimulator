@@ -134,51 +134,188 @@ export class SimulationEngine {
   }
 
   /**
-   * Process one simulation tick.
+   * Process one simulation tick (sequential, backward-compatible).
    */
   tick() {
+    this.tickFlora();
+    this.tickFaunaSequential();
+    this.tickCleanup();
+  }
+
+  /**
+   * Phase 1: Advance clock and process flora.
+   */
+  tickFlora() {
     const w = this.world;
     w.plantChanges = [];
-    const profiling = this.profilingEnabled;
-    const tickStart = profiling ? performance.now() : 0;
-    const phases = profiling
-      ? { plantsMs: 0, behaviorMs: 0, cleanupMs: 0, statsMs: 0 }
-      : null;
+    this._tickStart = performance.now();
+    this._phases = { plantsMs: 0, behaviorMs: 0, spatialMs: 0, cleanupMs: 0, statsMs: 0 };
 
-    // Advance clock
     w.clock.advance();
 
-    // Process flora
-    const plantsStart = profiling ? performance.now() : 0;
+    const plantsStart = performance.now();
     processPlants(w);
-    if (profiling) phases.plantsMs = performance.now() - plantsStart;
+    this._phases.plantsMs = performance.now() - plantsStart;
+  }
 
-    // Process fauna
-    const behaviorStart = profiling ? performance.now() : 0;
-    const deadThisTick = [];
-    let processedAnimals = 0;
+  /**
+   * Phase 2 (sequential): Process fauna one-by-one in the current thread.
+   */
+  tickFaunaSequential() {
+    const w = this.world;
+
+    const behaviorStart = performance.now();
+    this._deadThisTick = [];
+    this._processedAnimals = 0;
     for (const animal of w.animals) {
       if (animal.alive) {
-        processedAnimals++;
+        this._processedAnimals++;
         decideAndAct(animal, w, this.spatialHash);
-        // Incremental spatial hash update — only re-hash if cell changed
-        this.spatialHash.update(animal);
         if (!animal.alive) {
-          // Animal died this tick — remove from hash
-          deadThisTick.push(animal);
+          this._deadThisTick.push(animal);
         }
       }
     }
-    if (profiling) phases.behaviorMs = performance.now() - behaviorStart;
+    this._phases.behaviorMs = performance.now() - behaviorStart;
 
-    // Remove dead animals from spatial hash and occupancy grid
-    const cleanupStart = profiling ? performance.now() : 0;
+    // Spatial hash update for moved/dead animals
+    const spatialStart = performance.now();
+    for (const animal of w.animals) {
+      if (animal.alive) this.spatialHash.update(animal);
+    }
+    this._phases.spatialMs = performance.now() - spatialStart;
+  }
+
+  /**
+   * Phase 2 (parallel): Apply merged results from fauna sub-workers.
+   * @param {Array} results — array of { deltas, births, plantChanges, deadIds } from each sub-worker.
+   */
+  applyFaunaResults(results) {
+    const w = this.world;
+    const animalsById = new Map();
+    for (const a of w.animals) animalsById.set(a.id, a);
+
+    // Collect and sort all deltas by id for deterministic merge order
+    const allDeltas = [];
+    for (const r of results) {
+      if (!r.deltas) continue;
+      for (const d of r.deltas) allDeltas.push(d);
+    }
+    allDeltas.sort((a, b) => a.id - b.id);
+
+    // Reset occupancy grid — we'll rebuild it
+    w.animalGrid.fill(0);
+
+    // Place unchanged animals first (those not in any delta)
+    const deltaIds = new Set(allDeltas.map(d => d.id));
+    for (const a of w.animals) {
+      if (a.alive && !deltaIds.has(a.id)) {
+        w.placeAnimal(a.x, a.y);
+      }
+    }
+
+    // Apply deltas with movement conflict resolution
+    this._deadThisTick = [];
+    this._processedAnimals = allDeltas.length;
+    for (const delta of allDeltas) {
+      const animal = animalsById.get(delta.id);
+      if (!animal) continue;
+
+      const moved = delta.x !== animal.x || delta.y !== animal.y;
+      let finalX = delta.x, finalY = delta.y;
+
+      // Movement conflict: if new tile is occupied, keep old position
+      if (moved && delta.alive && w.isTileOccupied(finalX, finalY)) {
+        finalX = animal.x;
+        finalY = animal.y;
+      }
+
+      // Apply state from sub-worker
+      animal.x = finalX;
+      animal.y = finalY;
+      animal.state = delta.state;
+      animal.energy = delta.energy;
+      animal.hp = delta.hp;
+      animal.hunger = delta.hunger;
+      animal.thirst = delta.thirst;
+      animal.age = delta.age;
+      animal.alive = delta.alive;
+      animal.mateCooldown = delta.mateCooldown;
+      animal.attackCooldown = delta.attackCooldown;
+      animal.path = delta.path || [];
+      animal.pathIndex = delta.pathIndex || 0;
+      animal._pathTick = delta._pathTick || 0;
+      animal._deathTick = delta._deathTick;
+      animal.consumed = delta.consumed || false;
+      animal.targetX = delta.targetX;
+      animal.targetY = delta.targetY;
+      if (delta.actionHistory) animal.actionHistory = delta.actionHistory;
+      animal._dirty = true;
+
+      if (animal.alive) {
+        w.placeAnimal(animal.x, animal.y);
+      } else {
+        this._deadThisTick.push(animal);
+      }
+    }
+
+    // Apply plant changes from sub-workers (first come wins)
+    const eatenPlants = new Set();
+    for (const r of results) {
+      if (!r.plantChanges) continue;
+      for (const [x, y, ptype, pstage] of r.plantChanges) {
+        const idx = y * w.width + x;
+        if (eatenPlants.has(idx)) continue;
+        eatenPlants.add(idx);
+        w.plantType[idx] = ptype;
+        w.plantStage[idx] = pstage;
+        w.plantAge[idx] = 0;
+        if (ptype === 0) w.activePlantTiles.delete(idx);
+        w.plantChanges.push([x, y, ptype, pstage]);
+      }
+    }
+
+    // Add births — reassign proper IDs from the main world counter
+    for (const r of results) {
+      if (!r.births) continue;
+      for (const bd of r.births) {
+        const sc = w.config.animal_species[bd.species];
+        if (!sc) continue;
+        if (w.isTileOccupied(bd.x, bd.y)) continue;
+        const baby = new Animal(w.nextId(), bd.x, bd.y, bd.species, sc);
+        baby.energy = bd.energy;
+        baby.sex = bd.sex;
+        baby.age = 0;
+        baby._dirty = true;
+        baby._birthTick = w.clock.tick;
+        baby.actionHistory = bd.actionHistory || [];
+        w.animals.push(baby);
+        w.placeAnimal(bd.x, bd.y);
+      }
+    }
+
+    // Rebuild spatial hash from scratch (cheaper than incremental after full merge)
+    this.spatialHash.rebuild(w.animals.filter(a => a.alive));
+
+    // Dead animals are already excluded from animalGrid and spatialHash above,
+    // so clear _deadThisTick to prevent tickCleanup from double-removing them.
+    this._deadThisTick = [];
+  }
+
+  /**
+   * Phase 3: Cleanup dead animals and record stats.
+   */
+  tickCleanup() {
+    const w = this.world;
+    const profiling = this.profilingEnabled;
+
+    const cleanupStart = performance.now();
+    const deadThisTick = this._deadThisTick || [];
     for (const dead of deadThisTick) {
       this.spatialHash.remove(dead);
       w.vacateAnimal(dead.x, dead.y);
     }
 
-    // Clean up dead animals — adaptive interval based on population
     const tick = w.clock.tick;
     const totalAnimals = w.animals.length;
     const cleanupInterval = totalAnimals > 1500 ? 10 : totalAnimals > 800 ? 25 : 50;
@@ -187,13 +324,13 @@ export class SimulationEngine {
         a.alive || (!a.consumed && a._deathTick != null && tick - a._deathTick < 300)
       );
     }
-    if (profiling) phases.cleanupMs = performance.now() - cleanupStart;
+    this._phases.cleanupMs = performance.now() - cleanupStart;
 
     // Record stats every 10 ticks
-    const statsStart = profiling ? performance.now() : 0;
-    if (w.clock.tick % 10 === 0) {
+    const statsStart = performance.now();
+    if (tick % 10 === 0) {
       const stats = w.getStats();
-      stats.tick = w.clock.tick;
+      stats.tick = tick;
       stats.plant_events = w.plantEvents;
       w.resetPlantEvents();
       w.statsHistory.push(stats);
@@ -201,17 +338,22 @@ export class SimulationEngine {
         w.statsHistory = w.statsHistory.slice(-1000);
       }
     }
+    this._phases.statsMs = performance.now() - statsStart;
+    const tickMs = performance.now() - this._tickStart;
+
+    this._latestPhases = this._phases;
+    this._latestTickMs = tickMs;
+
     if (profiling) {
-      benchmarkAdd(this._benchmarkCollector, 'animalsProcessed', processedAnimals);
-      phases.statsMs = performance.now() - statsStart;
+      benchmarkAdd(this._benchmarkCollector, 'animalsProcessed', this._processedAnimals || 0);
       let animalsAlive = 0;
       for (const a of w.animals) {
         if (a.alive) animalsAlive++;
       }
       this._latestProfile = {
-        tick: w.clock.tick,
-        tickMs: performance.now() - tickStart,
-        phases,
+        tick: tick,
+        tickMs,
+        phases: this._phases,
         counts: {
           animalsTotal: w.animals.length,
           animalsAlive,

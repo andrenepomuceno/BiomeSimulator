@@ -77,6 +77,10 @@ export class Animal {
 
     // Recent action history (capped at 100)
     this.actionHistory = [];
+
+    // Dirty tracking for incremental serialization
+    this._dirty = true;
+    this._birthTick = 0;
   }
 
   /** Log an important action. */
@@ -108,6 +112,7 @@ export class Animal {
   applyEnergyCost(actionName) {
     const cost = this.energyCost(actionName);
     this.energy = Math.max(0, Math.min(this._config.max_energy, this.energy - cost));
+    this._dirty = true;
   }
 
   tickNeeds(hungerMult, thirstMult) {
@@ -135,6 +140,7 @@ export class Animal {
     this.age++;
     if (this.mateCooldown > 0) this.mateCooldown--;
     if (this.attackCooldown > 0) this.attackCooldown--;
+    this._dirty = true;
   }
 
   toDict() {
@@ -160,5 +166,64 @@ export class Animal {
       _deathTick: this._deathTick,
       actionHistory: this.actionHistory,
     };
+  }
+
+  /** Lightweight delta for incremental updates (only changed fields). */
+  toDelta() {
+    return {
+      id: this.id,
+      x: this.x,
+      y: this.y,
+      state: this.state,
+      energy: Math.round(this.energy * 10) / 10,
+      hp: Math.round(this.hp * 10) / 10,
+      hunger: Math.round(this.hunger * 10) / 10,
+      thirst: Math.round(this.thirst * 10) / 10,
+      age: this.age,
+      alive: this.alive,
+      lifeStage: this.lifeStage,
+      targetX: this.targetX,
+      targetY: this.targetY,
+      _deathTick: this._deathTick,
+    };
+  }
+
+  /** Full internal state for sub-worker transfer. */
+  toWorkerState() {
+    return {
+      id: this.id,
+      x: this.x,
+      y: this.y,
+      species: this.species,
+      diet: this.diet,
+      sex: this.sex,
+      state: this.state,
+      energy: this.energy,
+      hp: this.hp,
+      hunger: this.hunger,
+      thirst: this.thirst,
+      age: this.age,
+      alive: this.alive,
+      mateCooldown: this.mateCooldown,
+      attackCooldown: this.attackCooldown,
+      path: this.path,
+      pathIndex: this.pathIndex,
+      _pathTick: this._pathTick,
+      _cachedThreatTick: this._cachedThreatTick,
+      _nextThreatCheckTick: this._nextThreatCheckTick,
+      _deathTick: this._deathTick,
+      consumed: this.consumed,
+      homeX: this.homeX,
+      homeY: this.homeY,
+      targetX: this.targetX,
+      targetY: this.targetY,
+      _birthTick: this._birthTick,
+      actionHistory: this.actionHistory,
+    };
+  }
+
+  /** Clear dirty flag after serialization. */
+  clearDirty() {
+    this._dirty = false;
   }
 }

@@ -30,44 +30,193 @@ let engine = null;
 let running = false;
 let paused = true;
 let tps = 10;
-let intervalId = null;
+let tickTimeoutId = null;
 let profilingEnabled = false;
-let pendingPause = false; // Flag to pause after current tick completes
+let pendingPause = false;
+const FULL_SYNC_INTERVAL = 30;
+
+// --- Fauna worker pool ---
+const MIN_ANIMALS_FOR_PARALLEL = 500;
+const MAX_FAUNA_WORKERS = 4;
+let faunaWorkers = [];
+let faunaWorkersReady = false;
+let _ticking = false;
 
 function startLoop() {
   stopLoop();
   running = true;
   paused = false;
-  intervalId = setInterval(doTick, 1000 / tps);
+  scheduleNextTick();
 }
 
 function stopLoop() {
-  if (intervalId !== null) {
-    clearInterval(intervalId);
-    intervalId = null;
+  if (tickTimeoutId !== null) {
+    clearTimeout(tickTimeoutId);
+    tickTimeoutId = null;
   }
 }
 
-function doTick() {
-  if (!engine || !engine.world) return;
-  const t0 = performance.now();
-  engine.tick();
-  const tickMs = performance.now() - t0;
-  postTickState(tickMs);
-  
-  // After tick completes, check if pause was requested while tick was running
+function scheduleNextTick() {
+  if (!running || paused) return;
+  tickTimeoutId = setTimeout(doTick, 1000 / tps);
+}
+
+async function doTick() {
+  if (!engine || !engine.world || _ticking) return;
+  _ticking = true;
+  try {
+    const t0 = performance.now();
+    const w = engine.world;
+    let aliveCount = 0;
+    for (const a of w.animals) if (a.alive) aliveCount++;
+    const useParallel = faunaWorkersReady && faunaWorkers.length > 0 && aliveCount >= MIN_ANIMALS_FOR_PARALLEL;
+
+    if (useParallel) {
+      engine.tickFlora();
+      const behaviorStart = performance.now();
+      await doParallelFauna();
+      engine._phases.behaviorMs = performance.now() - behaviorStart;
+      engine._phases.spatialMs = 0;
+      engine.tickCleanup();
+    } else {
+      engine.tick();
+    }
+
+    const tickMs = performance.now() - t0;
+    postTickState(tickMs);
+  } finally {
+    _ticking = false;
+  }
+
   if (pendingPause) {
     pendingPause = false;
     paused = true;
     stopLoop();
+  } else {
+    scheduleNextTick();
   }
+}
+
+async function doParallelFauna() {
+  const w = engine.world;
+  const alive = [];
+  for (const a of w.animals) if (a.alive) alive.push(a);
+
+  const nWorkers = faunaWorkers.length;
+  const chunks = Array.from({ length: nWorkers }, () => []);
+  for (let i = 0; i < alive.length; i++) {
+    chunks[i % nWorkers].push(alive[i].id);
+  }
+
+  const allAnimalStates = alive.map(a => a.toWorkerState());
+  const activePlantIndices = Array.from(w.activePlantTiles);
+
+  const resultPromises = chunks.map((chunkIds, i) => {
+    return new Promise(resolve => {
+      const worker = faunaWorkers[i];
+      const handler = (e) => {
+        if (e.data.cmd === 'tickResult') {
+          worker.removeEventListener('message', handler);
+          resolve(e.data);
+        }
+      };
+      worker.addEventListener('message', handler);
+
+      const ptCopy = new Uint8Array(w.plantType);
+      const psCopy = new Uint8Array(w.plantStage);
+      const paCopy = new Uint16Array(w.plantAge);
+      const agCopy = new Uint8Array(w.animalGrid);
+
+      worker.postMessage({
+        cmd: 'tick',
+        plantType: ptCopy.buffer,
+        plantStage: psCopy.buffer,
+        plantAge: paCopy.buffer,
+        animalGrid: agCopy.buffer,
+        clockTick: w.clock.tick,
+        ticksPerDay: w.clock.ticksPerDay,
+        dayFraction: w.clock.dayFraction,
+        hungerMultiplier: w.hungerMultiplier,
+        thirstMultiplier: w.thirstMultiplier,
+        activePlantIndices,
+        allAnimals: allAnimalStates,
+        chunkIds,
+        nextIdBase: 900000 + i * 100000,
+      }, [ptCopy.buffer, psCopy.buffer, paCopy.buffer, agCopy.buffer]);
+    });
+  });
+
+  const results = await Promise.all(resultPromises);
+  engine.applyFaunaResults(results);
+}
+
+function initFaunaWorkers(config, terrain, waterProximity, heightmap) {
+  disposeFaunaWorkers();
+  const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 2) : 2;
+  const count = Math.min(Math.max(1, cores - 2), MAX_FAUNA_WORKERS);
+  if (count < 2) return;
+
+  const readyPromises = [];
+  for (let i = 0; i < count; i++) {
+    const worker = new Worker(
+      new URL('./faunaWorker.js', import.meta.url),
+      { type: 'module' }
+    );
+    const readyPromise = new Promise(resolve => {
+      const handler = (e) => {
+        if (e.data.cmd === 'ready') {
+          worker.removeEventListener('message', handler);
+          resolve();
+        }
+      };
+      worker.addEventListener('message', handler);
+    });
+    worker.postMessage({
+      cmd: 'init',
+      config,
+      terrain: new Uint8Array(terrain).buffer,
+      waterProximity: new Uint8Array(waterProximity).buffer,
+      heightmap: heightmap ? new Float32Array(heightmap).buffer : null,
+    });
+    faunaWorkers.push(worker);
+    readyPromises.push(readyPromise);
+  }
+  Promise.all(readyPromises).then(() => { faunaWorkersReady = true; });
+}
+
+function disposeFaunaWorkers() {
+  for (const fw of faunaWorkers) fw.terminate();
+  faunaWorkers = [];
+  faunaWorkersReady = false;
 }
 
 function postTickState(tickMs = 0) {
   const w = engine.world;
-  const animals = [];
-  for (const a of w.animals) {
-    if (a.alive || a.state === 9) animals.push(a.toDict());
+  const tick = w.clock.tick;
+  const isFullSync = tick % FULL_SYNC_INTERVAL === 0;
+
+  let animals;
+  let animalsDead;
+  if (isFullSync) {
+    // Full sync: send all animals with complete data
+    animals = [];
+    for (const a of w.animals) {
+      if (a.alive || a.state === 9) animals.push(a.toDict());
+      a.clearDirty();
+    }
+  } else {
+    // Incremental: only dirty animals send delta, plus newly dead
+    animals = [];
+    animalsDead = [];
+    for (const a of w.animals) {
+      if (!a._dirty) continue;
+      if (a.alive) {
+        animals.push(a.toDelta());
+      } else if (a.state === 9) {
+        animalsDead.push(a.id);
+      }
+      a.clearDirty();
+    }
   }
 
   const msg = {
@@ -75,7 +224,17 @@ function postTickState(tickMs = 0) {
     clock: w.clock.toDict(),
     animals,
     plantChanges: w.plantChanges.slice(0, 5000),
+    incremental: !isFullSync,
   };
+
+  if (!isFullSync && animalsDead && animalsDead.length > 0) {
+    msg.animalsDead = animalsDead;
+  }
+
+  // Always include phase timing
+  if (engine._latestPhases) {
+    msg.phases = engine._latestPhases;
+  }
 
   if (profilingEnabled) {
     const profile = engine.getLatestProfile ? engine.getLatestProfile() : null;
@@ -90,9 +249,9 @@ function postTickState(tickMs = 0) {
   }
 
   // Include full stats every 10 ticks
-  if (w.clock.tick % 10 === 0) {
+  if (tick % 10 === 0) {
     msg.stats = w.getStats();
-    msg.stats.tick = w.clock.tick;
+    msg.stats.tick = tick;
     msg.stats.tickMs = tickMs;
     msg.stats.animalCount = w.animals.length;
     msg.stats.activePlants = w.activePlantTiles.size;
@@ -113,6 +272,9 @@ self.onmessage = function (e) {
       const seed = engine.generateWorld();
       const w = engine.world;
       tps = config.ticks_per_second || 10;
+
+      // Initialize fauna sub-workers for parallel processing
+      initFaunaWorkers(config, w.terrain, w.waterProximity, w.heightmap);
 
       // Send copies of typed arrays (don't transfer — engine still needs them)
       self.postMessage({
@@ -144,6 +306,9 @@ self.onmessage = function (e) {
       paused = true;
       engine.resetSimulation();
       const rw = engine.world;
+
+      // Re-init fauna workers with same terrain
+      initFaunaWorkers(rw.config, rw.terrain, rw.waterProximity, rw.heightmap);
 
       self.postMessage({
         type: 'worldReady',
@@ -188,12 +353,9 @@ self.onmessage = function (e) {
 
     case 'setSpeed':
       tps = Math.max(1, Math.min(120, e.data.tps));
-      // Apply speed change regardless of paused state
-      // If running, restart interval with new speed immediately
-      // If paused, speed will take effect on next resume/start
       if (running && !paused) {
         stopLoop();
-        intervalId = setInterval(doTick, 1000 / tps);
+        scheduleNextTick();
       }
       break;
 
@@ -317,6 +479,9 @@ self.onmessage = function (e) {
 
       engine.world = lw;
       engine.spatialHash.rebuild(lw.animals.filter(a => a.alive));
+
+      // Re-init fauna workers with loaded terrain
+      initFaunaWorkers(loadConfig, lw.terrain, lw.waterProximity, lw.heightmap);
 
       running = false;
       paused = true;

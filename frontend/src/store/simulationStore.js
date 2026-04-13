@@ -29,7 +29,40 @@ const useSimStore = create((set, get) => ({
 
   // Animals (in current viewport)
   animals: [],
-  setAnimals: (a) => set({ animals: a }),
+  _animalsById: new Map(),
+  setAnimals: (a) => {
+    const map = new Map();
+    for (const animal of a) map.set(animal.id, animal);
+    set({ animals: a, _animalsById: map });
+  },
+  mergeAnimalDeltas: (deltas, deadIds) => {
+    const state = get();
+    const map = new Map(state._animalsById);
+    // Apply deltas (update existing or add new)
+    for (const delta of deltas) {
+      const existing = map.get(delta.id);
+      if (existing) {
+        map.set(delta.id, { ...existing, ...delta });
+      } else {
+        // New animal (born this tick) — delta has full data from toDelta()
+        map.set(delta.id, delta);
+      }
+    }
+    // Mark dead animals
+    for (const id of deadIds) {
+      const existing = map.get(id);
+      if (existing) {
+        map.set(id, { ...existing, alive: false, state: 9 });
+      }
+    }
+    // Remove fully dead (not alive and state === 9 for display purposes is kept)
+    // Filter to only alive + recently dead for renderer
+    const animals = [];
+    for (const a of map.values()) {
+      if (a.alive || a.state === 9) animals.push(a);
+    }
+    set({ animals, _animalsById: map });
+  },
 
   // Plant changes queue
   plantChanges: [],
@@ -50,6 +83,7 @@ const useSimStore = create((set, get) => ({
       phases: {
         plantsMs: 0,
         behaviorMs: 0,
+        spatialMs: 0,
         cleanupMs: 0,
         statsMs: 0,
       },

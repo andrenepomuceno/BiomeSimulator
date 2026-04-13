@@ -45,11 +45,17 @@ export function useSimulation() {
         case 'tick':
           if (msg.clock) store.setClock(msg.clock);
           if (msg.animals) {
-            store.setAnimals(msg.animals);
+            if (msg.incremental) {
+              // Incremental update: merge deltas into existing animals map
+              store.mergeAnimalDeltas(msg.animals, msg.animalsDead || []);
+            } else {
+              store.setAnimals(msg.animals);
+            }
             // Update selected entity with fresh data if one is inspected
             const sel = store.selectedEntity;
             if (sel) {
-              const updated = msg.animals.find(a => a.id === sel.id);
+              const animals = store.animals;
+              const updated = animals.find(a => a.id === sel.id);
               if (updated) store.setSelectedEntity(updated);
               else store.clearSelection(); // entity died / removed
             }

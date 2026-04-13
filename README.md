@@ -237,12 +237,17 @@ All simulation parameters are defined in [`frontend/src/engine/config.js`](front
 | `island_count` | 5 | Number of island blobs |
 | `island_size_factor` | 0.30 | Relative island radius |
 | `ticks_per_second` | 20 | Default simulation speed |
-| `ticks_per_day` | 200 | Ticks per full day/night cycle |
+| `ticks_per_day` | 260 | Ticks per full day/night cycle |
 | `day_fraction` | 0.60 | Daylight percentage of each cycle |
 | `initial_plant_density` | 0.10 | Fraction of eligible tiles seeded with plants |
 | `water_proximity_threshold` | 10 | Tiles from water to receive growth bonus |
+| `animal_global_vision_multiplier` | 1.20 | Global multiplier applied to all species base vision |
+| `night_vision_reduction_factor` | 0.65 | Night vision penalty for non-nocturnal species |
+| `nocturnal_day_vision_factor` | 0.80 | Day vision penalty for nocturnal species |
 
 Animal populations are configured **per species** in `animalSpecies.js` (e.g., Rabbit: 100, Wolf: 20, Bear: 12). These are derived into `initial_animal_counts` in the config.
+
+Animal vision behavior is computed from base species `vision_range`, then scaled by `animal_global_vision_multiplier`, and finally adjusted by day/night factors.
 
 Most of these can be adjusted through the UI control panel before generating a world.
 

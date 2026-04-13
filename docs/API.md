@@ -34,6 +34,7 @@ worker.postMessage({
     seed: 42,
     initial_plant_density: 0.10,
     max_animal_population: 10000,
+    animal_global_vision_multiplier: 1.2,
     initial_animal_counts: {  // per-species populations
       RABBIT: 100, SQUIRREL: 60, BEETLE: 80, GOAT: 35, DEER: 35,
       FOX: 28, WOLF: 20, SNAKE: 20, HAWK: 15, CROCODILE: 10,
@@ -54,6 +55,7 @@ worker.postMessage({
 | `config.seed` | int\|null | null | Random seed (null = random) |
 | `config.initial_plant_density` | float | 0.10 | Fraction of eligible tiles seeded |
 | `config.max_animal_population` | int | 10000 | Global animal population budget (0 = use per-species defaults) |
+| `config.animal_global_vision_multiplier` | float | 1.2 | Scales all species base vision before day/night modifiers |
 | `config.initial_animal_counts` | object | (per-species) | Map of species ID → initial count |
 
 **Response:** Worker posts a `worldReady` message (see below).

@@ -31,6 +31,7 @@ export const DEFAULT_CONFIG = {
   pathfinding_cache_ttl: 15,
   threat_cache_ttl: 4,
   threat_scan_cooldown_ticks: 2,
+  animal_global_vision_multiplier: 1.2,
   night_vision_reduction_factor: 0.65,
   nocturnal_day_vision_factor: 0.8,
   scavenge_decay_ticks: 100,

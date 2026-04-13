@@ -98,7 +98,7 @@ world.js — no dependencies
 | Map | `island_size_factor` | 0.3 | Relative island radius |
 | Map | `seed` | null | Random seed (null = random) |
 | Clock | `ticks_per_second` | 20 | Simulation speed |
-| Clock | `ticks_per_day` | 200 | Ticks in one full day cycle |
+| Clock | `ticks_per_day` | 260 | Ticks in one full day cycle |
 | Clock | `day_fraction` | 0.6 | Fraction of day that is daylight |
 | Flora | `initial_plant_density` | 0.10 | Fraction of eligible tiles seeded |
 | Flora | `water_proximity_threshold` | 10 | Tiles from water for growth bonus |
@@ -111,6 +111,7 @@ world.js — no dependencies
 | Fauna | `pathfinding_cache_ttl` | 15 | Path reuse TTL in ticks |
 | Fauna | `threat_cache_ttl` | 4 | Threat cache TTL in ticks |
 | Fauna | `threat_scan_cooldown_ticks` | 2 | Delay between expensive threat rescans |
+| Fauna | `animal_global_vision_multiplier` | 1.2 | Global multiplier applied to every species base vision range |
 | Fauna | `night_vision_reduction_factor` | 0.65 | Night vision reduction for non-nocturnal species |
 | Fauna | `nocturnal_day_vision_factor` | 0.8 | Day vision reduction for nocturnal species |
 | Fauna | `scavenge_decay_ticks` | 100 | Fresh-corpse window for scavenging |
@@ -183,6 +184,16 @@ This file is the **single source of truth** for all animal data. `config.js` der
   initial_count: 100,     // default spawn count
 }
 ```
+
+Effective runtime vision is calculated in the behavior layer as:
+
+`vision_now = max(1, floor(vision_range * animal_global_vision_multiplier * dayNightModifier))`
+
+Where `dayNightModifier` is:
+
+- non-nocturnal at night: `night_vision_reduction_factor`
+- nocturnal during day: `nocturnal_day_vision_factor`
+- otherwise: `1.0`
 
 ### Exports
 

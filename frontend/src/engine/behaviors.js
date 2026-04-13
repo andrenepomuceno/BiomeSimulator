@@ -142,14 +142,17 @@ export function decideAndAct(animal, world, spatialHash) {
   if (animal.state === AnimalState.EATING)   { _doEat(animal, world); return; }
   if (animal.state === AnimalState.DRINKING) { _doDrink(animal, world); return; }
 
-  // Compute effective vision based on day/night and nocturnal trait
+  // Compute effective vision from species base range, global multiplier, and day/night modifiers
   const isNight = world.clock.isNight;
   const nocturnal = animal._config.nocturnal;
+  const globalVisionMultiplier = world.config.animal_global_vision_multiplier ?? 1;
   const nightVisionReduction = world.config.night_vision_reduction_factor ?? 0.65;
   const nocturnalDayVisionFactor = world.config.nocturnal_day_vision_factor ?? 0.8;
-  const vision = nocturnal
-    ? (isNight ? animal.visionRange : Math.floor(animal.visionRange * nocturnalDayVisionFactor))
-    : (isNight ? Math.floor(animal.visionRange * nightVisionReduction) : animal.visionRange);
+  const baseVision = Math.max(1, animal.visionRange || 1);
+  const scaledBaseVision = Math.max(1, Math.floor(baseVision * globalVisionMultiplier));
+  const vision = Math.max(1, nocturnal
+    ? (isNight ? scaledBaseVision : Math.floor(scaledBaseVision * nocturnalDayVisionFactor))
+    : (isNight ? Math.floor(scaledBaseVision * nightVisionReduction) : scaledBaseVision));
 
   // Stagger: between decision ticks, just continue current action
   const interval = DECISION_INTERVALS[animal.species] || 2;

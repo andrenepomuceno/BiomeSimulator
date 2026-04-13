@@ -84,15 +84,26 @@ function PlantAttributes({ typeId }) {
   );
 }
 
-function SpeciesAttributes({ species }) {
+function SpeciesAttributes({ species, clock, gameConfig }) {
   const sp = ANIMAL_SPECIES[species];
   if (!sp) return null;
+
+  const baseVision = Math.max(1, sp.vision_range || 1);
+  const globalVisionMultiplier = gameConfig?.animal_global_vision_multiplier ?? 1;
+  const nightVisionReduction = gameConfig?.night_vision_reduction_factor ?? 0.65;
+  const nocturnalDayVisionFactor = gameConfig?.nocturnal_day_vision_factor ?? 0.8;
+  const isNight = !!clock?.is_night;
+  const scaledBaseVision = Math.max(1, Math.floor(baseVision * globalVisionMultiplier));
+  const effectiveVision = Math.max(1, sp.nocturnal
+    ? (isNight ? scaledBaseVision : Math.floor(scaledBaseVision * nocturnalDayVisionFactor))
+    : (isNight ? Math.floor(scaledBaseVision * nightVisionReduction) : scaledBaseVision));
 
   return (
     <CollapsibleSection title="Species Attributes" icon="📋" defaultOpen={true}>
       <div className="inspector-grid">
         <div className="stat-row"><span className="stat-label">🏃 Speed</span><span className="stat-value">{sp.speed}</span></div>
-        <div className="stat-row"><span className="stat-label">👁️ Vision</span><span className="stat-value">{sp.vision_range}</span></div>
+        <div className="stat-row"><span className="stat-label">👁️ Vision (Base)</span><span className="stat-value">{baseVision}</span></div>
+        <div className="stat-row"><span className="stat-label">👁️ Vision (Now)</span><span className="stat-value">{effectiveVision}</span></div>
         <div className="stat-row"><span className="stat-label">⚡ Max Energy</span><span className="stat-value">{sp.max_energy}</span></div>
         <div className="stat-row"><span className="stat-label">❤️ Max HP</span><span className="stat-value">{sp.max_hp}</span></div>
         <div className="stat-row"><span className="stat-label">⏳ Max Age</span><span className="stat-value">{sp.max_age}</span></div>
@@ -240,7 +251,7 @@ function PlantLogEntry({ event, ticksPerDay }) {
 }
 
 export default function EntityInspector() {
-  const { selectedEntity, selectedTile, clearSelection, clock } = useSimStore();
+  const { selectedEntity, selectedTile, clearSelection, clock, gameConfig } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
 
   if (selectedEntity) {
@@ -332,7 +343,7 @@ export default function EntityInspector() {
         )}
 
         {/* Species attributes */}
-        <SpeciesAttributes species={e.species} />
+        <SpeciesAttributes species={e.species} clock={clock} gameConfig={gameConfig} />
 
         {/* Action History */}
         {e.actionHistory && e.actionHistory.length > 0 && (

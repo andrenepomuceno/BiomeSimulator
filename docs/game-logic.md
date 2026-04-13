@@ -35,7 +35,9 @@ If the animal is currently SLEEPING, EATING, or DRINKING, the action continues u
 
 Notes:
 - These thresholds are now driven by species config (`decision_thresholds`) with defaults injected by `animalSpecies.js`.
-- Day/night changes effective vision (`night_vision_reduction_factor`, `nocturnal_day_vision_factor`).
+- Effective vision is derived from species base `vision_range` and then scaled by `animal_global_vision_multiplier`.
+- Day/night then modifies that scaled result (`night_vision_reduction_factor`, `nocturnal_day_vision_factor`).
+- Vision is clamped with a minimum of 1 tile to avoid zero-range behavior.
 
 ---
 

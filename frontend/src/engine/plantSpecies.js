@@ -16,10 +16,9 @@ const PLANT_SPECIES = {
     fruitEmoji: '🌾',
     sex: 'ASEXUAL',
     reproduction: 'SEED',
-    productionChance: 0.05,
+    productionChance: 0.035,
     stageAges: [5, 18, 35, 180],
-    fruitSpoilAge: 80,
-    colors: {
+    fruitSpoilAge: 80,    edibleStages: [1, 4],    colors: {
       seed:        [130, 170, 80,  40],
       youngSprout: [90,  165, 60,  100],
       adultSprout: [55,  145, 35,  170],
@@ -42,6 +41,7 @@ const PLANT_SPECIES = {
     productionChance: 0.018,
     stageAges: [10, 40, 100, 400],
     fruitSpoilAge: 100,
+    edibleStages: [1, 5],
     colors: {
       seed:        [110, 160, 80,  45],
       youngSprout: [70,  150, 55,  110],
@@ -65,6 +65,7 @@ const PLANT_SPECIES = {
     productionChance: 0.016,
     stageAges: [15, 55, 140, 550],
     fruitSpoilAge: 110,
+    edibleStages: [1, 5],
     colors: {
       seed:        [100, 140, 110, 45],
       youngSprout: [65,  130, 90,  110],
@@ -88,6 +89,7 @@ const PLANT_SPECIES = {
     productionChance: 0.012,
     stageAges: [35, 140, 350, 1600],
     fruitSpoilAge: 120,
+    edibleStages: [1, 5],
     colors: {
       seed:        [80,  110, 55,  35],
       youngSprout: [45,  100, 35,  100],
@@ -111,6 +113,7 @@ const PLANT_SPECIES = {
     productionChance: 0.012,
     stageAges: [40, 180, 420, 1800],
     fruitSpoilAge: 120,
+    edibleStages: [1, 5],
     colors: {
       seed:        [85,  120, 50,  35],
       youngSprout: [50,  108, 30,  100],
@@ -134,6 +137,7 @@ const PLANT_SPECIES = {
     productionChance: 0.02,
     stageAges: [8, 35, 80, 350],
     fruitSpoilAge: 140,
+    edibleStages: [1, 4],
     colors: {
       seed:        [140, 150, 90,  40],
       youngSprout: [110, 145, 55,  105],
@@ -157,6 +161,7 @@ const PLANT_SPECIES = {
     productionChance: 0.015,
     stageAges: [8, 38, 100, 500],
     fruitSpoilAge: 100,
+    edibleStages: [1, 4],
     colors: {
       seed:        [150, 160, 70,  40],
       youngSprout: [100, 155, 55,  100],
@@ -180,6 +185,7 @@ const PLANT_SPECIES = {
     productionChance: 0.014,
     stageAges: [10, 45, 120, 450],
     fruitSpoilAge: 90,
+    edibleStages: [1, 5],
     colors: {
       seed:        [120, 155, 80,  45],
       youngSprout: [75,  145, 50,  110],
@@ -203,6 +209,7 @@ const PLANT_SPECIES = {
     productionChance: 0.022,
     stageAges: [6, 22, 50, 220],
     fruitSpoilAge: 70,
+    edibleStages: [1, 4],
     colors: {
       seed:        [160, 130, 100, 35],
       youngSprout: [140, 110, 85,  90],
@@ -226,6 +233,7 @@ const PLANT_SPECIES = {
     productionChance: 0.008,
     stageAges: [50, 220, 500, 2500],
     fruitSpoilAge: 150,
+    edibleStages: [1],
     colors: {
       seed:        [75,  105, 50,  35],
       youngSprout: [40,  95,  30,  100],
@@ -249,6 +257,7 @@ const PLANT_SPECIES = {
     productionChance: 0.004,
     stageAges: [30, 120, 300, 1600],
     fruitSpoilAge: 200,
+    edibleStages: [1],
     colors: {
       seed:        [130, 160, 80,  35],
       youngSprout: [80,  140, 55,  100],
@@ -272,6 +281,7 @@ const PLANT_SPECIES = {
     productionChance: 0.005,
     stageAges: [60, 260, 580, 2400],
     fruitSpoilAge: 160,
+    edibleStages: [1, 5],
     colors: {
       seed:        [90,  120, 55,  35],
       youngSprout: [55,  110, 35,  100],
@@ -428,6 +438,18 @@ export function buildWaterAffinityMap() {
   const map = {};
   for (const sp of Object.values(PLANT_SPECIES)) {
     map[sp.typeId] = AFFINITY_LEVELS[sp.waterAffinity] ?? 1;
+  }
+  return map;
+}
+
+/**
+ * Build the EDIBLE_STAGES map indexed by typeId.
+ * Returns { 1: Set([1, 4]), 2: Set([1, 5]), ... }
+ */
+export function buildEdibleStagesMap() {
+  const map = {};
+  for (const sp of Object.values(PLANT_SPECIES)) {
+    map[sp.typeId] = new Set(sp.edibleStages || []);
   }
   return map;
 }

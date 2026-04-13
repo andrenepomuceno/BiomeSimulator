@@ -51,11 +51,72 @@ Every action costs energy. Energy is clamped between 0 and `maxEnergy` (species-
 | MATE | 0.8–2.5 | Reproduction |
 | FLEE | 0.2–0.6 | Escape predators |
 
+### Passive Regeneration
+
+Animals slowly recover energy and HP during light activities:
+
+| State | Energy Regen/tick | HP Regen/tick |
+|-------|-------------------|---------------|
+| Idle | +0.15 | +0.1 |
+| Sleeping | via SLEEP cost (e.g. +2.0 to +5.0) | +0.8 |
+
+### Energy Depletion
+
+When energy reaches 0, the animal is **forced to sleep** and cannot perform any other action. While sleeping, hunger and thirst continue to rise (via `tickNeeds`), which may cause HP damage. This creates an indirect survival pressure — the animal must recover energy before it can eat or drink.
+
+---
+
+## HP (Health Points) System
+
+Every animal has an HP stat (`hp`) that represents physical health. HP is the **sole survival metric** — when HP reaches 0, the animal dies.
+
+### Max HP by Species
+
+| Tier | Species | Max HP |
+|------|---------|--------|
+| Insects | 🦟 Mosquito | 10 |
+| Insects | 🐛 Caterpillar, 🦗 Cricket | 15 |
+| Insects | 🪲 Beetle | 20 |
+| Small | 🐦‍⬛ Crow | 30 |
+| Small | 🐿️ Squirrel, 🐍 Snake | 40 |
+| Mid | 🦎 Lizard, 🦅 Hawk | 45 |
+| Mid | 🐰 Rabbit, 🦝 Raccoon | 50 |
+| Mid | 🦊 Fox | 60 |
+| Large | 🦌 Deer | 70 |
+| Large | 🐐 Goat | 80 |
+| Large | 🐗 Boar | 100 |
+| Apex | 🐺 Wolf | 120 |
+| Apex | 🐊 Crocodile | 180 |
+| Apex | 🐻 Bear | 200 |
+
+### HP Damage Sources
+
+| Source | Damage | Notes |
+|--------|--------|-------|
+| Combat (attacked) | `attackPower - defense × 0.5` (min 1) | Per attack hit |
+| High hunger (> 80% of max) | 0–0.5 per tick (scales linearly) | Stacks with thirst penalty |
+| High thirst (> 80% of max) | 0–0.5 per tick (scales linearly) | Stacks with hunger penalty |
+
+HP penalty formula: `penalty = 0.5 × (stat - threshold) / (max_stat - threshold)` where threshold = 80% of max.
+
+### HP Recovery Sources
+
+| Source | Recovery | Notes |
+|--------|----------|-------|
+| Sleeping | +0.8 per tick | Most reliable recovery method |
+| Idle | +0.1 per tick | Slow passive regen |
+| Eating plant (Fruit stage) | +10 | Best plant nutrition |
+| Eating plant (Adult stage) | +5 | Moderate |
+| Eating plant (Seed stage) | +3 | Minimal |
+| Ongoing eating state | +2 per tick | While in EATING state |
+| Scavenging corpse | +8 | Corpse consumption |
+| Killing prey | +15 | Attacker bonus on kill |
+
 **Death conditions:**
-- Energy reaches 0 → death
+- HP reaches 0 → death
 - Age exceeds `max_age` → death
-- Hunger reaches `max_hunger` → death
-- Thirst reaches `max_thirst` → death
+
+Hunger, thirst, and energy **no longer kill directly**. Instead, high hunger/thirst drain HP over time, and zero energy forces the animal to sleep.
 
 ---
 
@@ -104,9 +165,9 @@ damage = attacker.attackPower - (defender.defense × 0.5)
 minimum damage = 1
 ```
 
-- Defender's energy is reduced by `damage`
-- If defender energy ≤ 0 → defender dies
-- On kill: attacker recovers hunger (−80) and energy (+25)
+- Defender's **HP** is reduced by `damage`
+- If defender HP ≤ 0 → defender dies
+- On kill: attacker recovers hunger (−80), energy (+25), and HP (+15)
 - Cooldown: `attackCooldown` ticks between attacks
 
 ### Threat Detection (Herbivores & Omnivores)

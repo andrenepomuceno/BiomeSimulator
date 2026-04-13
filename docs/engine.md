@@ -92,24 +92,26 @@ This file is the **single source of truth** for all animal data. `config.js` der
 
 ### Species Table
 
-| Species | Diet | Speed | Vision | Max Energy | Max Age | Attack | Defense | Max Pop | Initial Count |
-|---------|------|-------|--------|-----------|---------|--------|---------|---------|---------------|
-| 🐰 Rabbit | Herbivore | 1 | 10 | 100 | 1400 | 1 | 2 | 500 | 100 |
-| 🐿️ Squirrel | Herbivore | 1 | 11 | 90 | 1300 | 1 | 1 | 500 | 60 |
-| 🪲 Beetle | Herbivore | 1 | 7 | 70 | 1000 | 1 | 4 | 800 | 80 |
-| 🐐 Goat | Herbivore | 1 | 12 | 150 | 2200 | 3 | 5 | 300 | 35 |
-| 🦌 Deer | Herbivore | 2 | 14 | 140 | 2000 | 2 | 3 | 300 | 35 |
-| 🦟 Mosquito | Herbivore | 2 | 8 | 40 | 600 | 1 | 0 | 800 | 60 |
-| 🐛 Caterpillar | Herbivore | 1 | 5 | 50 | 800 | 0 | 1 | 800 | 70 |
-| 🦊 Fox | Carnivore | 2 | 14 | 130 | 1600 | 6 | 4 | 150 | 28 |
-| 🐺 Wolf | Carnivore | 2 | 16 | 160 | 1800 | 9 | 6 | 80 | 20 |
-| 🐍 Snake | Carnivore | 1 | 12 | 120 | 1600 | 5 | 3 | 150 | 20 |
-| 🦅 Hawk | Carnivore | 3 | 20 | 110 | 1800 | 7 | 3 | 150 | 15 |
-| 🐊 Crocodile | Carnivore | 1 | 12 | 180 | 2400 | 9 | 8 | 80 | 10 |
-| 🐗 Boar | Omnivore | 1 | 12 | 150 | 1800 | 5 | 5 | 300 | 30 |
-| 🐻 Bear | Omnivore | 1 | 14 | 200 | 2500 | 10 | 8 | 80 | 12 |
-| 🦝 Raccoon | Omnivore | 1 | 11 | 100 | 1400 | 3 | 3 | 300 | 25 |
-| 🐦‍⬛ Crow | Omnivore | 2 | 16 | 80 | 1200 | 2 | 1 | 300 | 35 |
+| Species | Diet | Speed | Vision | Max Energy | Max HP | Max Age | Attack | Defense | Max Pop | Initial Count |
+|---------|------|-------|--------|-----------|--------|---------|--------|---------|---------|---------------|
+| 🐰 Rabbit | Herbivore | 1 | 10 | 100 | 50 | 1400 | 1 | 2 | 500 | 100 |
+| 🐿️ Squirrel | Herbivore | 1 | 11 | 90 | 40 | 1300 | 1 | 1 | 500 | 60 |
+| 🪲 Beetle | Herbivore | 1 | 7 | 70 | 20 | 1000 | 1 | 4 | 800 | 80 |
+| 🐐 Goat | Herbivore | 1 | 12 | 150 | 80 | 2200 | 3 | 5 | 300 | 35 |
+| 🦌 Deer | Herbivore | 2 | 14 | 140 | 70 | 2000 | 2 | 3 | 300 | 35 |
+| 🦟 Mosquito | Herbivore | 2 | 8 | 40 | 10 | 600 | 1 | 0 | 800 | 60 |
+| 🐛 Caterpillar | Herbivore | 1 | 5 | 50 | 15 | 800 | 0 | 1 | 800 | 70 |
+| 🦗 Cricket | Herbivore | 2 | 6 | 45 | 15 | 700 | 0 | 0 | 800 | 90 |
+| 🦊 Fox | Carnivore | 2 | 14 | 130 | 60 | 1600 | 6 | 4 | 150 | 28 |
+| 🐺 Wolf | Carnivore | 2 | 16 | 160 | 120 | 1800 | 9 | 6 | 80 | 20 |
+| 🐍 Snake | Carnivore | 1 | 12 | 120 | 40 | 1600 | 5 | 3 | 150 | 20 |
+| 🦅 Hawk | Carnivore | 3 | 20 | 110 | 45 | 1800 | 7 | 3 | 150 | 15 |
+| 🐊 Crocodile | Carnivore | 1 | 12 | 180 | 180 | 2400 | 9 | 8 | 80 | 10 |
+| 🐗 Boar | Omnivore | 1 | 12 | 150 | 100 | 1800 | 5 | 5 | 300 | 30 |
+| 🐻 Bear | Omnivore | 1 | 14 | 200 | 200 | 2500 | 10 | 8 | 80 | 12 |
+| 🦝 Raccoon | Omnivore | 1 | 11 | 100 | 50 | 1400 | 3 | 3 | 300 | 25 |
+| 🐦‍⬛ Crow | Omnivore | 2 | 16 | 80 | 30 | 1200 | 2 | 1 | 300 | 35 |
+| 🦎 Lizard | Omnivore | 1 | 11 | 85 | 45 | 1300 | 3 | 2 | 300 | 35 |
 
 ### Species Data Fields
 
@@ -124,6 +126,7 @@ This file is the **single source of truth** for all animal data. `config.js` der
   speed: 1,               // tiles per tick
   vision_range: 10,       // perception radius
   max_energy: 100,        // energy cap
+  max_hp: 50,              // health points cap
   max_hunger: 100,        // hunger cap
   max_thirst: 100,        // thirst cap
   max_age: 1400,          // ticks until death from old age
@@ -284,7 +287,7 @@ Stage is determined by comparing `animal.age` against `life_stage_ages` threshol
 const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 ```
 
-**Core Properties:** `id`, `x`, `y`, `species`, `diet`, `sex`, `state`, `energy`, `hunger`, `thirst`, `age`, `alive`, `_deathTick`, `actionHistory`
+**Core Properties:** `id`, `x`, `y`, `species`, `diet`, `sex`, `state`, `energy`, `hp`, `hunger`, `thirst`, `age`, `alive`, `_deathTick`, `actionHistory`
 
 **Computed:** `lifeStage` (getter, derived from age + `life_stage_ages`)
 
@@ -298,9 +301,9 @@ const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 |--------|-------------|
 | `energyCost(action)` | Lookup cost from species config |
 | `applyEnergyCost(action)` | Subtract cost, clamp to [0, maxEnergy] |
-| `tickNeeds()` | Increment hunger/thirst by species rate, tick cooldowns |
+| `tickNeeds()` | Increment hunger/thirst by species rate, apply HP penalties when needs > 80%, tick cooldowns |
 | `logAction(tick, action, detail)` | Append action to `actionHistory` (max 100 entries, FIFO) |
-| `toDict()` | Serializable snapshot for renderer/UI (includes `lifeStage`, `_deathTick`, `actionHistory`) |
+| `toDict()` | Serializable snapshot for renderer/UI (includes `hp`, `lifeStage`, `_deathTick`, `actionHistory`) |
 
 **Sex Assignment:** `SEXUAL` → 50% male / 50% female. `HERMAPHRODITE` / `ASEXUAL` → assigned directly.
 

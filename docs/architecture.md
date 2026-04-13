@@ -153,7 +153,7 @@ Single Zustand store (`simulationStore.js`):
   clock,                           // {tick, day, tick_in_day, is_night}
 
   // Entities
-  animals,                         // [{id, x, y, species, state, energy, ...}]
+  animals,                         // [{id, x, y, species, state, energy, hp, ...}]
 
   // Plants
   plantChanges,                    // [[x, y, type, stage], ...]

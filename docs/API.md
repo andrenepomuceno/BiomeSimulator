@@ -271,6 +271,7 @@ Sent after each simulation tick. Contains the current state.
       y: 102,
       state: 1,
       energy: 85.2,
+      hp: 48.5,
       hunger: 30.1,
       thirst: 22.0,
       age: 143,

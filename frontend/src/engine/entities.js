@@ -199,6 +199,7 @@ export class Animal {
       state: this.state,
       energy: Math.round(this.energy * 10) / 10,
       hp: Math.round(this.hp * 10) / 10,
+      maxHp: this.maxHp,
       hunger: Math.round(this.hunger * 10) / 10,
       thirst: Math.round(this.thirst * 10) / 10,
       age: this.age,

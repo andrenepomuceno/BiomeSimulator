@@ -5,7 +5,6 @@
 import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures';
 import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation';
-import { getEnergyStatusColorInt } from '../constants/statusColors';
 import { MAX_ANIMAL_ENERGY } from '../engine/animalSpecies';
 
 export class EntityLayer {
@@ -192,23 +191,21 @@ export class EntityLayer {
         sprite.alpha = 1;
       }
 
-      // Energy bar (zoom >= 4, not dead)
+      // HP bar (zoom >= threshold, not dead)
       if (showBars && a.state !== 9 && a.alive !== false) {
-        const ratio = Math.max(0, Math.min(1, energy / MAX_ANIMAL_ENERGY));
         const barW = 0.6;
         const barH = 0.06;
         const barX = a.x + 0.5 - barW / 2;
         const barY = a.y - 0.02;
 
-        // Background (dark)
+        const hpMax = a.maxHp || 1;
+        const hpRatio = Math.max(0, Math.min(1, (a.hp ?? hpMax) / hpMax));
         barGfx.beginFill(0x222222, 0.6);
         barGfx.drawRect(barX, barY, barW, barH);
         barGfx.endFill();
-
-        // Fill (color by ratio)
-        const fillColor = getEnergyStatusColorInt(ratio);
-        barGfx.beginFill(fillColor, 0.85);
-        barGfx.drawRect(barX, barY, barW * ratio, barH);
+        const hpColor = hpRatio < 0.25 ? 0xdd4444 : hpRatio < 0.6 ? 0xddaa33 : 0xcc3333;
+        barGfx.beginFill(hpColor, 0.85);
+        barGfx.drawRect(barX, barY, barW * hpRatio, barH);
         barGfx.endFill();
       }
     }

@@ -155,6 +155,42 @@ function AnimalStatusBadge({ state, alive }) {
   );
 }
 
+const ACTION_ICONS = {
+  ATTACK: '⚔️', DEFENDED: '🛡️', KILLED: '💀', KILLED_BY: '☠️',
+  MATED: '💕', OFFSPRING: '🍼', BORN: '🐣',
+  EAT_PLANT: '🌿', SCAVENGED: '🦴', FLED: '🏃', DIED: '💀',
+};
+const ACTION_COLORS = {
+  ATTACK: '#ff4444', DEFENDED: '#ffaa33', KILLED: '#ff2222', KILLED_BY: '#cc0000',
+  MATED: '#ff66aa', OFFSPRING: '#ff99cc', BORN: '#88dd66',
+  EAT_PLANT: '#66cc66', SCAVENGED: '#cc8844', FLED: '#ff8833', DIED: '#888',
+};
+
+function ActionLogEntry({ event }) {
+  const { tick, action, detail } = event;
+  const icon = ACTION_ICONS[action] || '❓';
+  const color = ACTION_COLORS[action] || '#aaa';
+  let text = action;
+  if (action === 'ATTACK')     text = `Attacked ${detail.target} #${detail.targetId} (${detail.damage} dmg)`;
+  else if (action === 'DEFENDED')  text = `Hit by ${detail.attacker} #${detail.attackerId} (${detail.damage} dmg)`;
+  else if (action === 'KILLED')    text = `Killed ${detail.target} #${detail.targetId}`;
+  else if (action === 'KILLED_BY') text = `Killed by ${detail.attacker} #${detail.attackerId}`;
+  else if (action === 'MATED')     text = `Mated with #${detail.partnerId}`;
+  else if (action === 'OFFSPRING') text = `Baby #${detail.babyId} born at (${detail.x},${detail.y})`;
+  else if (action === 'BORN')      text = `Born (parents #${detail.parentA}, #${detail.parentB})`;
+  else if (action === 'EAT_PLANT') text = `Ate ${detail.stage} (type ${detail.plantType})`;
+  else if (action === 'SCAVENGED') text = `Scavenged ${detail.corpse} #${detail.corpseId}`;
+  else if (action === 'FLED')      text = `Fled from ${detail.from} #${detail.threatId}`;
+  else if (action === 'DIED')      text = `Died (${detail.cause})`;
+  return (
+    <div className="d-flex align-items-start gap-1" style={{ padding: '1px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <span style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>{icon}</span>
+      <span style={{ color, flex: 1 }}>{text}</span>
+      <span className="text-muted" style={{ flexShrink: 0, fontSize: '0.58rem' }}>t{tick}</span>
+    </div>
+  );
+}
+
 export default function EntityInspector() {
   const { selectedEntity, selectedTile, clearSelection } = useSimStore();
 
@@ -246,6 +282,17 @@ export default function EntityInspector() {
 
         {/* Species attributes */}
         <SpeciesAttributes species={e.species} />
+
+        {/* Action History */}
+        {e.actionHistory && e.actionHistory.length > 0 && (
+          <CollapsibleSection title="Action History" icon="📜" defaultOpen={false}>
+            <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: '0.63rem' }}>
+              {[...e.actionHistory].reverse().map((ev, i) => (
+                <ActionLogEntry key={i} event={ev} />
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
       </div>
     );
   }

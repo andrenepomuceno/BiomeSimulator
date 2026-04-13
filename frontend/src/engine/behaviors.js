@@ -5,7 +5,7 @@ import { Animal, AnimalState, LifeStage } from './entities.js';
 import { WATER, DEEP_WATER } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
-import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_SEED, S_NONE, P_NONE } from './flora.js';
+import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_SEED, S_NONE, P_NONE, SEASONS, getSeason } from './flora.js';
 import { buildDecisionIntervals } from './animalSpecies.js';
 import { buildEdibleStagesMap } from './plantSpecies.js';
 
@@ -42,6 +42,9 @@ const STAGE_NUTRITION = {
   [S_FRUIT]: { hunger: 55, energy: 8 },
 };
 
+// Plant stage names for logs
+const STAGE_LOG_NAMES = { 1: 'seed', 2: 'sprout', 3: 'bush', 4: 'adult', 5: 'fruit' };
+
 /** Check if a plant type + stage combination is edible. */
 function _isEdibleStage(plantType, stage) {
   const stages = EDIBLE_STAGES[plantType];
@@ -50,6 +53,7 @@ function _isEdibleStage(plantType, stage) {
 
 /** Consume a plant tile entirely — removes the plant and applies nutrition. */
 function _eatPlantTile(animal, world, idx) {
+  const ptype = world.plantType[idx];
   const stage = world.plantStage[idx];
   const nutr = STAGE_NUTRITION[stage] || { hunger: 20, energy: 3 };
   animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, nutr.hunger));
@@ -57,6 +61,7 @@ function _eatPlantTile(animal, world, idx) {
   animal.state = AnimalState.EATING;
   animal.applyEnergyCost('EAT');
   const x = idx % world.width, y = Math.floor(idx / world.width);
+  animal.logAction(world.clock.tick, 'EAT_PLANT', { plantType: ptype, stage: STAGE_LOG_NAMES[stage] || stage, x, y });
   world.plantType[idx] = P_NONE;
   world.plantStage[idx] = S_NONE;
   world.plantAge[idx] = 0;
@@ -78,6 +83,9 @@ export function decideAndAct(animal, world, spatialHash) {
     animal.alive = false;
     animal.state = AnimalState.DEAD;
     animal._deathTick = world.clock.tick;
+    animal.logAction(world.clock.tick, 'DIED', {
+      cause: animal.age > animal.maxAge ? 'old_age' : animal.energy <= 0 ? 'no_energy' : animal.hunger >= animal._config.max_hunger ? 'starvation' : 'dehydration'
+    });
     return;
   }
 
@@ -454,6 +462,7 @@ function _tryScavenge(animal, world, spatialHash, vision) {
     animal.energy = Math.min(animal.maxEnergy, animal.energy + 15);
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
+    animal.logAction(world.clock.tick, 'SCAVENGED', { corpse: target.species, corpseId: target.id });
     target.consumed = true;
     return true;
   }
@@ -478,10 +487,15 @@ function _attack(attacker, defender, world) {
   if (damage < 1) damage = 1;
   defender.energy -= damage;
 
+  attacker.logAction(world.clock.tick, 'ATTACK', { target: defender.species, targetId: defender.id, damage: Math.round(damage * 10) / 10 });
+  defender.logAction(world.clock.tick, 'DEFENDED', { attacker: attacker.species, attackerId: attacker.id, damage: Math.round(damage * 10) / 10 });
+
   if (defender.energy <= 0) {
     defender.alive = false;
     defender.state = AnimalState.DEAD;
     defender._deathTick = world.clock.tick;
+    defender.logAction(world.clock.tick, 'KILLED_BY', { attacker: attacker.species, attackerId: attacker.id });
+    attacker.logAction(world.clock.tick, 'KILLED', { target: defender.species, targetId: defender.id });
     attacker.hunger = Math.max(0, attacker.hunger - 80);
     attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + 25);
     attacker.state = AnimalState.EATING;
@@ -535,6 +549,7 @@ function _fleeFrom(animal, threat, world) {
   }
   animal.state = AnimalState.FLEEING;
   animal.applyEnergyCost('FLEE');
+  animal.logAction(world.clock.tick, 'FLED', { from: threat.species, threatId: threat.id });
 }
 
 // ---- Mating ----
@@ -569,6 +584,9 @@ function _doMate(animal, mate, world) {
   animal.mateCooldown = animal._config.mate_cooldown || 60;
   mate.mateCooldown = mate._config.mate_cooldown || 60;
 
+  animal.logAction(world.clock.tick, 'MATED', { partner: mate.species, partnerId: mate.id });
+  mate.logAction(world.clock.tick, 'MATED', { partner: animal.species, partnerId: animal.id });
+
   // Soft population cap: reproduction chance decreases as population grows
   const maxPop = animal._config.max_population;
   if (maxPop) {
@@ -600,6 +618,9 @@ function _doMate(animal, mate, world) {
   const baby = new Animal(world.nextId(), bx, by, animal.species, speciesConfig);
   baby.energy = speciesConfig.max_energy * 0.4;
   baby.age = 0;
+  baby.logAction(world.clock.tick, 'BORN', { parentA: animal.id, parentB: mate.id });
+  animal.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
+  mate.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
   world.animals.push(baby);
   world.placeAnimal(bx, by);
 }

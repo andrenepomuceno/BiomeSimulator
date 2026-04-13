@@ -66,6 +66,15 @@ export class Animal {
     this._walkableSet = new Set(config.walkable_terrain || [1, 2, 3, 5, 8]);
     this._ediblePlants = new Set(config.edible_plants || []);
     this._preySpecies = new Set(config.prey_species || []);
+
+    // Recent action history (capped at 100)
+    this.actionHistory = [];
+  }
+
+  /** Log an important action. */
+  logAction(tick, action, detail) {
+    this.actionHistory.push({ tick, action, detail });
+    if (this.actionHistory.length > 100) this.actionHistory.shift();
   }
 
   get speed() { return this._config.speed; }
@@ -124,6 +133,7 @@ export class Animal {
       targetX: this.targetX,
       targetY: this.targetY,
       _deathTick: this._deathTick,
+      actionHistory: this.actionHistory,
     };
   }
 }

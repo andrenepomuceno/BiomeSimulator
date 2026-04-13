@@ -18,6 +18,17 @@ const SPECIES_CHART_COLORS = {
   DEER:     '#cc9955',
   FOX:      '#dd8833',
   WOLF:     '#dd4444',
+  BOAR:     '#885533',
+  BEAR:     '#8b4513',
+  RACCOON:  '#778899',
+  CROW:     '#333344',
+  MOSQUITO: '#556655',
+  CATERPILLAR: '#88bb33',
+  CRICKET:  '#6f9933',
+  LIZARD:   '#5a8f4b',
+  SNAKE:    '#448844',
+  HAWK:     '#aa6622',
+  CROCODILE: '#556b2f',
 };
 
 export default function StatsPanel() {

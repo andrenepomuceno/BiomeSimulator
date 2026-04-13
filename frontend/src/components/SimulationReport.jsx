@@ -30,15 +30,17 @@ const SPECIES_COLORS = {
   CROW:        '#555566',
   MOSQUITO:    '#556655',
   CATERPILLAR: '#88bb33',
+  CRICKET:     '#6f9933',
+  LIZARD:      '#5a8f4b',
   SNAKE:       '#448844',
   HAWK:        '#aa6622',
   CROCODILE:   '#556b2f',
 };
 
 const DIET_GROUPS = {
-  Herbivore: ['RABBIT', 'SQUIRREL', 'BEETLE', 'GOAT', 'DEER', 'MOSQUITO', 'CATERPILLAR'],
+  Herbivore: ['RABBIT', 'SQUIRREL', 'BEETLE', 'GOAT', 'DEER', 'MOSQUITO', 'CATERPILLAR', 'CRICKET'],
   Carnivore: ['FOX', 'WOLF', 'SNAKE', 'HAWK', 'CROCODILE'],
-  Omnivore:  ['BOAR', 'BEAR', 'RACCOON', 'CROW'],
+  Omnivore:  ['BOAR', 'BEAR', 'RACCOON', 'CROW', 'LIZARD'],
 };
 
 const DIET_COLORS = {
@@ -60,11 +62,15 @@ const PLANT_COLORS_MAP = {
   10: '#8B6914', // Oak Tree
   11: '#88cc88', // Cactus
   12: '#44bb88', // Coconut Palm
+  13: '#b08b57', // Potato
+  14: '#dd4b39', // Chili Pepper
+  15: '#7da34e', // Olive Tree
 };
 
 const PLANT_EMOJIS = {
-  1: '🌱', 2: '🍓', 3: '🪶', 4: '🍎', 5: '🥭', 6: '🥕',
+  1: '🌱', 2: '🍓', 3: '🫐', 4: '🍎', 5: '🥭', 6: '🥕',
   7: '🌻', 8: '🍅', 9: '🍄', 10: '🌳', 11: '🌵', 12: '🌴',
+  13: '🥔', 14: '🌶️', 15: '🫒',
 };
 
 const TABS = [

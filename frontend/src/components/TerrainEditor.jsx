@@ -48,6 +48,9 @@ export default function TerrainEditor() {
       { key: 'APPLE_TREE', emoji: '🍎', label: 'Apple Tree' },
       { key: 'MANGO_TREE', emoji: '🥭', label: 'Mango Tree' },
       { key: 'CARROT', emoji: '🥕', label: 'Carrot' },
+      { key: 'POTATO', emoji: '🥔', label: 'Potato' },
+      { key: 'CHILI_PEPPER', emoji: '🌶️', label: 'Chili Pepper' },
+      { key: 'OLIVE_TREE', emoji: '🫒', label: 'Olive Tree' },
     ];
     return (
       <div className="sidebar-section">

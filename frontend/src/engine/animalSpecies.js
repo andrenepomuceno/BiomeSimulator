@@ -12,13 +12,13 @@ import { PLANT_IDS } from './plantSpecies.js';
 
 // Population caps by trophic level (food pyramid: prey > mid-predator > apex)
 // Tuned for default global cap of 5000 — sum of all species maxes ≈ 5600
-const POP_INSECT = 800;       // Numerous small invertebrates (Beetle, Mosquito, Caterpillar)
+const POP_INSECT = 800;       // Numerous small invertebrates (Beetle, Mosquito, Caterpillar, Cricket)
 const POP_SMALL_HERB = 500;   // Fast-breeding small herbivores (Rabbit, Squirrel)
 const POP_LARGE_HERB = 300;   // Slower large herbivores (Deer, Goat)
 const POP_MID_PRED = 150;     // Mid-level predators (Fox, Snake, Hawk)
 const POP_APEX = 80;          // Apex predators (Wolf, Crocodile)
 const POP_OMNI_LARGE = 80;    // Large omnivores (Bear)
-const POP_OMNI_MED = 300;     // Medium omnivores (Boar, Raccoon, Crow)
+const POP_OMNI_MED = 300;     // Medium omnivores (Boar, Raccoon, Crow, Lizard)
 
 const ANIMAL_SPECIES = {
   RABBIT: {
@@ -49,7 +49,7 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 28,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'BLUEBERRY'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'BLUEBERRY', 'POTATO'],
     prey_species: [],
     can_scavenge: false,
   },
@@ -151,7 +151,7 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 70,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
-    edible_plants: ['GRASS', 'CARROT', 'SUNFLOWER', 'CACTUS'],
+    edible_plants: ['GRASS', 'CARROT', 'SUNFLOWER', 'CACTUS', 'POTATO', 'CHILI_PEPPER'],
     prey_species: [],
     can_scavenge: false,
   },
@@ -185,7 +185,7 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 55,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'CARROT'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'CARROT', 'POTATO', 'OLIVE_TREE'],
     prey_species: [],
     can_scavenge: false,
   },
@@ -221,7 +221,7 @@ const ANIMAL_SPECIES = {
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['STRAWBERRY', 'BLUEBERRY'],
-    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'CROW', 'MOSQUITO', 'CATERPILLAR'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'CROW', 'MOSQUITO', 'CATERPILLAR', 'CRICKET', 'LIZARD'],
     can_scavenge: true,
   },
 
@@ -255,7 +255,7 @@ const ANIMAL_SPECIES = {
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['BLUEBERRY'],
-    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'RACCOON', 'BOAR', 'FOX', 'SNAKE', 'HAWK'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'RACCOON', 'BOAR', 'FOX', 'SNAKE', 'HAWK', 'LIZARD'],
     can_scavenge: true,
   },
 
@@ -288,8 +288,8 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 75,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'MUSHROOM', 'OAK_TREE', 'CACTUS', 'COCONUT_PALM'],
-    prey_species: ['BEETLE', 'CATERPILLAR', 'SNAKE'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'MUSHROOM', 'OAK_TREE', 'CACTUS', 'COCONUT_PALM', 'POTATO', 'CHILI_PEPPER', 'OLIVE_TREE'],
+    prey_species: ['BEETLE', 'CATERPILLAR', 'SNAKE', 'CRICKET', 'LIZARD'],
     can_scavenge: true,
   },
 
@@ -323,8 +323,8 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 130,
     decision_interval: 3,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
-    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'COCONUT_PALM'],
-    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'FOX', 'WOLF', 'SNAKE', 'HAWK', 'CROCODILE'],
+    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'COCONUT_PALM', 'OLIVE_TREE'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'FOX', 'WOLF', 'SNAKE', 'HAWK', 'CROCODILE', 'LIZARD'],
     can_scavenge: true,
   },
 
@@ -358,8 +358,8 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 45,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'CARROT', 'TOMATO', 'COCONUT_PALM'],
-    prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO'],
+    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'CARROT', 'TOMATO', 'COCONUT_PALM', 'POTATO', 'CHILI_PEPPER'],
+    prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO', 'CRICKET'],
     can_scavenge: true,
   },
 
@@ -393,8 +393,8 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 38,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
-    edible_plants: ['SUNFLOWER', 'TOMATO', 'CARROT', 'COCONUT_PALM'],
-    prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO'],
+    edible_plants: ['SUNFLOWER', 'TOMATO', 'CARROT', 'COCONUT_PALM', 'CHILI_PEPPER', 'OLIVE_TREE'],
+    prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO', 'CRICKET'],
     can_scavenge: true,
   },
 
@@ -427,7 +427,7 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 12,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'SUNFLOWER', 'STRAWBERRY', 'BLUEBERRY', 'CARROT'],
+    edible_plants: ['GRASS', 'SUNFLOWER', 'STRAWBERRY', 'BLUEBERRY', 'CARROT', 'POTATO', 'CHILI_PEPPER'],
     prey_species: [],
     can_scavenge: false,
   },
@@ -461,9 +461,77 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 15,
     decision_interval: 3,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'TOMATO', 'SUNFLOWER', 'OAK_TREE', 'APPLE_TREE'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'TOMATO', 'SUNFLOWER', 'OAK_TREE', 'APPLE_TREE', 'POTATO', 'CHILI_PEPPER', 'OLIVE_TREE'],
     prey_species: [],
     can_scavenge: false,
+  },
+
+  CRICKET: {
+    id: 'CRICKET',
+    name: 'Cricket',
+    emoji: '🦗',
+    diet: 'HERBIVORE',
+    reproduction: 'SEXUAL',
+    color: 0x6f9933,
+    speed: 2,
+    vision_range: 6,
+    max_energy: 45,
+    max_hunger: 70,
+    max_thirst: 70,
+    max_age: 700,
+    mature_age: 35,
+    life_stage_ages: [10, 22, 35],
+    attack_power: 0,
+    defense: 0,
+    energy_costs: {
+      IDLE: 0.005, WALK: 0.022, RUN: 0.075,
+      EAT: 0.01, DRINK: 0.01, SLEEP: -2.2,
+      ATTACK: 0.08, MATE: 0.32, FLEE: 0.08,
+    },
+    hunger_rate: 0.075,
+    thirst_rate: 0.07,
+    initial_count: 90,
+    max_population: POP_INSECT,
+    mate_cooldown: 14,
+    decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['GRASS', 'SUNFLOWER', 'POTATO', 'CHILI_PEPPER'],
+    prey_species: [],
+    can_scavenge: false,
+  },
+
+  LIZARD: {
+    id: 'LIZARD',
+    name: 'Lizard',
+    emoji: '🦎',
+    diet: 'OMNIVORE',
+    reproduction: 'SEXUAL',
+    color: 0x5a8f4b,
+    speed: 1,
+    vision_range: 11,
+    max_energy: 85,
+    max_hunger: 90,
+    max_thirst: 80,
+    max_age: 1300,
+    mature_age: 75,
+    life_stage_ages: [22, 45, 75],
+    attack_power: 3,
+    defense: 2,
+    energy_costs: {
+      IDLE: 0.01, WALK: 0.045, RUN: 0.16,
+      EAT: 0.02, DRINK: 0.02, SLEEP: -3.2,
+      ATTACK: 0.5, MATE: 0.9, FLEE: 0.16,
+    },
+    hunger_rate: 0.06,
+    thirst_rate: 0.055,
+    initial_count: 35,
+    max_population: POP_OMNI_MED,
+    mate_cooldown: 40,
+    decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['GRASS', 'BLUEBERRY', 'POTATO', 'CHILI_PEPPER', 'OLIVE_TREE'],
+    prey_species: ['BEETLE', 'MOSQUITO', 'CATERPILLAR', 'CRICKET'],
+    can_scavenge: true,
   },
 
   SNAKE: {
@@ -496,7 +564,7 @@ const ANIMAL_SPECIES = {
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],
     edible_plants: [],
-    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'MOSQUITO', 'CATERPILLAR', 'CROW'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'MOSQUITO', 'CATERPILLAR', 'CROW', 'CRICKET', 'LIZARD'],
     can_scavenge: false,
   },
 
@@ -530,7 +598,7 @@ const ANIMAL_SPECIES = {
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
     edible_plants: [],
-    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'MOSQUITO', 'CATERPILLAR', 'SNAKE', 'CROW'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'MOSQUITO', 'CATERPILLAR', 'SNAKE', 'CROW', 'CRICKET', 'LIZARD'],
     can_scavenge: false,
   },
 
@@ -564,7 +632,7 @@ const ANIMAL_SPECIES = {
     decision_interval: 3,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: [],
-    prey_species: ['RABBIT', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'SNAKE'],
+    prey_species: ['RABBIT', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'SNAKE', 'LIZARD'],
     can_scavenge: true,
   },
 };

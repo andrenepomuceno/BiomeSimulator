@@ -67,6 +67,9 @@ export const PLANT_TYPE_NAMES = {
   10: 'Oak Tree',
   11: 'Cactus',
   12: 'Coconut Palm',
+  13: 'Potato',
+  14: 'Chili Pepper',
+  15: 'Olive Tree',
 };
 
 // Plant sex/reproduction display names
@@ -89,6 +92,9 @@ export const PLANT_TYPE_SEX = {
   10: 'HERMAPHRODITE', // Oak Tree
   11: 'HERMAPHRODITE', // Cactus
   12: 'HERMAPHRODITE', // Coconut Palm
+  13: 'ASEXUAL',       // Potato
+  14: 'HERMAPHRODITE', // Chili Pepper
+  15: 'HERMAPHRODITE', // Olive Tree
 };
 
 // Plant stage names
@@ -117,6 +123,8 @@ export const ANIMAL_COLORS = {
   CROW:     0x333344,  // dark blue-gray
   MOSQUITO:    0x556655,  // muted green
   CATERPILLAR: 0x88bb33,  // lime green
+  CRICKET:     0x6f9933,  // olive green
+  LIZARD:      0x5a8f4b,  // leaf green
   SNAKE:       0x448844,  // forest green
   HAWK:        0xaa6622,  // bronze
   CROCODILE:   0x556b2f,  // dark olive green
@@ -137,6 +145,8 @@ export const SPECIES_INFO = {
   CROW:     { emoji: '🐦‍⬛', name: 'Crow',     diet: 'Omnivore' },
   MOSQUITO:    { emoji: '🦟', name: 'Mosquito',    diet: 'Herbivore' },
   CATERPILLAR: { emoji: '🐛', name: 'Caterpillar', diet: 'Herbivore' },
+  CRICKET:     { emoji: '🦗', name: 'Cricket',     diet: 'Herbivore' },
+  LIZARD:      { emoji: '🦎', name: 'Lizard',      diet: 'Omnivore' },
   SNAKE:       { emoji: '🐍', name: 'Snake',       diet: 'Carnivore' },
   HAWK:        { emoji: '🦅', name: 'Hawk',        diet: 'Carnivore' },
   CROCODILE:   { emoji: '🐊', name: 'Crocodile',   diet: 'Carnivore' },

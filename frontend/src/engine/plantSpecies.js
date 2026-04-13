@@ -4,10 +4,8 @@
  * Each entry defines the plant's simulation parameters, display info,
  * growth thresholds, and rendering data. flora.js reads from here.
  *
- * Terrain types: GRASS=3, DIRT=2, FERTILE_SOIL=5, ROCK=4, MOUNTAIN=7, MUD=8
  */
-
-const TERRAIN_IDS = { WATER: 0, SAND: 1, DIRT: 2, GRASS: 3, ROCK: 4, FERTILE_SOIL: 5, DEEP_WATER: 6, MOUNTAIN: 7, MUD: 8 };
+import { TERRAIN_IDS } from './world.js';
 
 const PLANT_SPECIES = {
   GRASS: {
@@ -243,6 +241,11 @@ const PLANT_SPECIES = {
 
 /** Ordered list of all plant species keys */
 export const ALL_PLANT_IDS = Object.keys(PLANT_SPECIES);
+
+/** String→number lookup for plant types (used by animalSpecies config builder). */
+export const PLANT_IDS = Object.fromEntries(
+  Object.values(PLANT_SPECIES).map(sp => [sp.id, sp.typeId])
+);
 
 /** Lookup by typeId → species object */
 export function getPlantByTypeId(typeId) {

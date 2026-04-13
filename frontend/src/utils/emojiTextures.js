@@ -6,8 +6,8 @@ import * as PIXI from 'pixi.js';
 import { SPECIES_INFO } from './terrainColors';
 import { buildPlantEmojiMap } from '../engine/plantSpecies';
 
-const TEX_SIZE = 64;
-const FONT_SIZE = 48;
+const TEX_SIZE = 96;
+const FONT_SIZE = 72;
 
 /**
  * Render a single emoji onto an offscreen canvas and return it.

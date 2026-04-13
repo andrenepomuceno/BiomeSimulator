@@ -22,9 +22,10 @@ export class SimulationEngine {
    */
   generateWorld() {
     this.world = new World(this.config);
-    const { terrain, waterProximity, seed } = generateTerrain(this.config);
+    const { terrain, waterProximity, heightmap, seed } = generateTerrain(this.config);
     this.world.terrain = terrain;
     this.world.waterProximity = waterProximity;
+    this.world.heightmap = heightmap;
 
     seedInitialPlants(this.world);
     this._spawnAnimals();

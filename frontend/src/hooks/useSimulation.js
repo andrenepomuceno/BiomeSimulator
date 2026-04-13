@@ -24,6 +24,8 @@ export function useSimulation() {
           const terrain = new Uint8Array(msg.terrain);
           const plantType = new Uint8Array(msg.plantType);
           const plantStage = new Uint8Array(msg.plantStage);
+          const waterProximity = new Uint8Array(msg.waterProximity);
+          const heightmap = msg.heightmap ? new Float32Array(msg.heightmap) : null;
           store.setTerrain(terrain, msg.width, msg.height);
           store.setAnimals(msg.animals || []);
           store.setClock(msg.clock);
@@ -33,7 +35,7 @@ export function useSimulation() {
           // Store plant arrays for renderer (App.jsx reads these)
           useSimStore.setState({
             worldReady: {
-              terrain, plantType, plantStage,
+              terrain, plantType, plantStage, waterProximity, heightmap,
               width: msg.width, height: msg.height, seed: msg.seed,
             },
           });

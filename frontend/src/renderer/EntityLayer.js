@@ -1,8 +1,11 @@
 /**
- * EntityLayer — renders animals as emoji sprites using a PixiJS sprite pool.
+ * EntityLayer — renders animals as emoji sprites using a PixiJS sprite pool,
+ * with energy bars, direction flipping, and zoom-gated detail levels.
  */
 import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures';
+
+const ENERGY_REF = 200; // Reference max energy for bar display
 
 export class EntityLayer {
   constructor(animationLayer) {
@@ -17,6 +20,10 @@ export class EntityLayer {
 
     // Sprite pool for recycling
     this._pool = [];
+
+    // Energy bar overlay (single Graphics for all bars — batched draw)
+    this._barGfx = new PIXI.Graphics();
+    this.container.addChild(this._barGfx);
 
     // Selection marker
     this._selectedId = null;
@@ -68,11 +75,18 @@ export class EntityLayer {
    * Update all visible animals.
    * @param {Array} animals - [{id, x, y, species, state, energy}, ...]
    * @param {PIXI.Renderer} renderer - (unused, kept for API compat)
+   * @param {number} currentTick
+   * @param {number} zoom - current camera zoom level
    */
-  update(animals, renderer, currentTick = 0) {
+  update(animals, renderer, currentTick = 0, zoom = 1) {
     this._ensureTextures();
 
     const seen = new Set();
+    const showBars = zoom >= 4;
+
+    // Clear energy bars (redrawn each frame)
+    const barGfx = this._barGfx;
+    barGfx.clear();
 
     for (const a of animals) {
       seen.add(a.id);
@@ -85,6 +99,8 @@ export class EntityLayer {
       if (!sprite) {
         sprite = this._acquireSprite(tex);
         sprite._texKey = texKey;
+        sprite._lastX = a.x;
+        sprite._facingLeft = false;
         this._sprites.set(a.id, sprite);
         // New animal appeared — birth animation (skip for dead)
         if (a.state !== 9 && this._animationLayer) {
@@ -116,10 +132,16 @@ export class EntityLayer {
       sprite.x = a.x + 0.5;
       sprite.y = a.y + 0.5;
 
-      // Scale: 64px texture → ~1 tile.  Base scale 0.018, range varies by life stage
-      const baseScale = 0.018;
+      // Direction flip: track horizontal movement
+      if (a.x !== sprite._lastX) {
+        sprite._facingLeft = a.x < sprite._lastX;
+        sprite._lastX = a.x;
+      }
+
+      // Scale: 96px texture → ~1 tile.  Base scale 0.012, range varies by life stage
+      const baseScale = 0.012;
       const energy = Number.isFinite(a.energy) ? a.energy : 0;
-      const energyFactor = 0.8 + (energy / 200) * 0.4;
+      const energyFactor = 0.8 + (energy / ENERGY_REF) * 0.4;
       const stageFactor = a.state === 9 ? 1.0
         : a.lifeStage === 0 ? 0.5
         : a.lifeStage === 1 ? 0.7
@@ -149,7 +171,10 @@ export class EntityLayer {
 
       // Guard: clamp to valid range to prevent giant sprites from NaN/invalid data
       if (!Number.isFinite(finalScale) || finalScale <= 0) finalScale = baseScale;
-      sprite.scale.set(finalScale);
+
+      // Apply direction flip via negative scale.x
+      const sx = sprite._facingLeft ? -finalScale : finalScale;
+      sprite.scale.set(sx, finalScale);
 
       // Alpha based on state
       if (a.state === 9) {
@@ -165,6 +190,28 @@ export class EntityLayer {
       } else {
         sprite.alpha = 1;
       }
+
+      // Energy bar (zoom >= 4, not dead)
+      if (showBars && a.state !== 9 && a.alive !== false) {
+        const ratio = Math.max(0, Math.min(1, energy / ENERGY_REF));
+        const barW = 0.6;
+        const barH = 0.06;
+        const barX = a.x + 0.5 - barW / 2;
+        const barY = a.y - 0.02;
+
+        // Background (dark)
+        barGfx.beginFill(0x222222, 0.6);
+        barGfx.drawRect(barX, barY, barW, barH);
+        barGfx.endFill();
+
+        // Fill (color by ratio)
+        const fillColor = ratio < 0.25 ? 0xdd3333
+          : ratio < 0.60 ? 0xddaa33
+          : 0x33bb33;
+        barGfx.beginFill(fillColor, 0.85);
+        barGfx.drawRect(barX, barY, barW * ratio, barH);
+        barGfx.endFill();
+      }
     }
 
     // Return sprites for animals no longer visible to the pool
@@ -176,6 +223,8 @@ export class EntityLayer {
       }
     }
 
+    // Keep bar overlay and selection marker on top
+    this.container.setChildIndex(barGfx, this.container.children.length - 1);
   }
 
   setSelectedId(id) {

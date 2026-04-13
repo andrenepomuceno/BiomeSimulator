@@ -54,9 +54,9 @@ export default function App() {
   // When world is ready from worker, set up renderer
   useEffect(() => {
     if (!worldReady || !rendererRef.current) return;
-    const { terrain, plantType, plantStage, width, height } = worldReady;
+    const { terrain, plantType, plantStage, width, height, heightmap, waterProximity } = worldReady;
 
-    rendererRef.current.setTerrain(terrain, width, height);
+    rendererRef.current.setTerrain(terrain, width, height, heightmap, waterProximity);
     rendererRef.current.plantLayer.setFromArrays(plantType, plantStage, width, height);
   }, [worldReady]);
 
@@ -64,7 +64,8 @@ export default function App() {
   useEffect(() => {
     if (rendererRef.current && animals.length >= 0) {
       const app = rendererRef.current.app;
-      rendererRef.current.entityLayer.update(animals, app.renderer, clock.tick);
+      const zoom = rendererRef.current.camera.zoom;
+      rendererRef.current.entityLayer.update(animals, app.renderer, clock.tick, zoom);
     }
   }, [animals]);
 
@@ -75,10 +76,10 @@ export default function App() {
     }
   }, [plantChanges]);
 
-  // Update night overlay
+  // Update day/night overlay
   useEffect(() => {
     if (rendererRef.current) {
-      rendererRef.current.setNight(clock.is_night);
+      rendererRef.current.updateDayNight(clock);
     }
   }, [clock.is_night, clock.tick]);
 

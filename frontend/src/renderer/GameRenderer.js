@@ -64,10 +64,19 @@ export class GameRenderer {
 
     // Continuous selection marker update (works even when simulation is paused)
     this._selectedTile = null;
+    this._waterTick = 0;
     this.app.ticker.add(() => {
       this.entityLayer._updateSelectionMarker();
       this._updateTileSelectionMarker();
       this.animationLayer.tick();
+      // Animate water every 6 frames (~100ms at 60fps)
+      if (++this._waterTick % 6 === 0) {
+        this.terrainLayer.animateWater(this._waterTick);
+      }
+      // Refresh plant sway every 4 frames
+      if (this._waterTick % 4 === 0 && this.camera.zoom >= 6) {
+        this._updatePlantEmojis();
+      }
     });
 
     // Resize handling
@@ -79,10 +88,10 @@ export class GameRenderer {
     this._resizeObserver.observe(container);
   }
 
-  setTerrain(terrainData, width, height) {
+  setTerrain(terrainData, width, height, heightmap, waterProximity) {
     this.mapWidth = width;
     this.mapHeight = height;
-    this.terrainLayer.setTerrain(terrainData, width, height);
+    this.terrainLayer.setTerrain(terrainData, width, height, heightmap, waterProximity);
     this.plantLayer.init(width, height);
     this.camera.setWorldBounds(width, height);
     this._onViewportChanged();
@@ -155,17 +164,62 @@ export class GameRenderer {
     gfx.visible = true;
   }
 
-  setNight(isNight) {
-    const targetAlpha = isNight ? 0.35 : 0;
-    // Simple lerp
-    this.nightOverlay.alpha += (targetAlpha - this.nightOverlay.alpha) * 0.1;
+  /**
+   * Update the day/night overlay with 4-phase cycle:
+   * dawn (warm tint) → day (clear) → dusk (warm tint) → night (dark blue)
+   */
+  updateDayNight(clock) {
+    if (!clock || !clock.ticks_per_day) return;
+
+    const tpd = clock.ticks_per_day;
+    const tid = clock.tick_in_day;
+    const dayFrac = 0.6; // fraction of day that is daylight
+
+    // Phase boundaries (in ticks):
+    // dawn:  0.00–0.08 of day
+    // day:   0.08–0.52 of day
+    // dusk:  0.52–0.60 of day
+    // night: 0.60–1.00 of day
+    const dawnStart = 0;
+    const dawnEnd = tpd * 0.08;
+    const dayEnd = tpd * (dayFrac - 0.08);
+    const duskEnd = tpd * dayFrac;
+    const nightEnd = tpd;
+
+    let targetColor, targetAlpha;
+
+    if (tid < dawnEnd) {
+      // Dawn: warm purple → clear
+      const t = tid / dawnEnd;
+      targetColor = 0x443355;
+      targetAlpha = 0.20 * (1 - t);
+    } else if (tid < dayEnd) {
+      // Bright day: no overlay
+      targetColor = 0x000000;
+      targetAlpha = 0;
+    } else if (tid < duskEnd) {
+      // Dusk: clear → warm orange
+      const t = (tid - dayEnd) / (duskEnd - dayEnd);
+      targetColor = 0x553322;
+      targetAlpha = 0.22 * t;
+    } else {
+      // Night: dark blue
+      const t = Math.min(1, (tid - duskEnd) / (tpd * 0.1)); // ramp over 10% of day
+      targetColor = 0x0a0a3e;
+      targetAlpha = 0.22 + 0.16 * t; // 0.22 → 0.38
+    }
+
+    // Smooth lerp
+    this.nightOverlay.alpha += (targetAlpha - this.nightOverlay.alpha) * 0.12;
+    this._nightColor = targetColor;
     this._updateNightOverlay();
   }
 
   _updateNightOverlay() {
     const { width, height } = this.app.screen;
+    const color = this._nightColor || 0x0a0a3e;
     this.nightOverlay.clear();
-    this.nightOverlay.beginFill(0x0a0a3e);
+    this.nightOverlay.beginFill(color);
     this.nightOverlay.drawRect(0, 0, width, height);
     this.nightOverlay.endFill();
   }
@@ -180,7 +234,7 @@ export class GameRenderer {
 
   _updatePlantEmojis() {
     const vp = this.camera.getViewportTiles();
-    this.plantLayer.updateEmojis(vp.x, vp.y, vp.w, vp.h, this.camera.zoom);
+    this.plantLayer.updateEmojis(vp.x, vp.y, vp.w, vp.h, this.camera.zoom, this._waterTick);
   }
 
   _setupDrag() {

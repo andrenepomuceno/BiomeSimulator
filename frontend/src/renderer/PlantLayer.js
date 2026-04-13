@@ -10,7 +10,7 @@ import { generatePlantEmojiTextures } from '../utils/emojiTextures';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const MAX_EMOJI_SPRITES = 8000;
-const EMOJI_SCALE = 0.016; // 64px texture → ~1 tile
+const EMOJI_SCALE = 0.011; // 96px texture → ~1 tile
 
 export class PlantLayer {
   constructor() {
@@ -25,12 +25,25 @@ export class PlantLayer {
     this._types = null;  // Uint8Array
     this._stages = null; // Uint8Array
 
+    // Shadow container (rendered below emojis)
+    this._shadowContainer = new PIXI.Container();
+    this.container.addChild(this._shadowContainer);
+    this._shadowPool = [];
+    this._activeShadows = [];
+    this._shadowTex = null;
+
     // Emoji sprite overlay
     this._emojiContainer = new PIXI.Container();
     this.container.addChild(this._emojiContainer);
     this._emojiPool = [];     // recycled sprites
     this._activeEmojis = [];  // currently visible sprites
     this._plantTextures = null;
+
+    // Wind sway tick (set externally from GameRenderer)
+    this._tick = 0;
+
+    // Growth pulse tracking: idx → { startTick, targetScale }
+    this._growthPulses = new Map();
   }
 
   init(width, height) {
@@ -72,6 +85,12 @@ export class PlantLayer {
       const [x, y, ptype, stage] = change;
       const idx = y * this.width + x;
       const i = idx * 4;
+
+      // Detect stage transitions for growth pulse
+      const prevStage = this._stages[idx];
+      if (prevStage > 0 && stage > prevStage && stage <= 5) {
+        this._growthPulses.set(idx, this._tick);
+      }
 
       // Update raw data
       this._types[idx] = ptype;
@@ -134,26 +153,47 @@ export class PlantLayer {
 
   /**
    * Update emoji sprites for visible plants in the viewport.
-   * Called by GameRenderer on viewport/zoom change.
+   * Called by GameRenderer on viewport/zoom change and each tick.
    */
-  updateEmojis(vx, vy, vw, vh, zoom) {
+  updateEmojis(vx, vy, vw, vh, zoom, tick) {
+    if (tick != null) this._tick = tick;
+
     if (zoom < EMOJI_ZOOM_THRESHOLD) {
       // Hide emojis at low zoom
       if (this._activeEmojis.length > 0) {
         this._returnAllEmojis();
+        this._returnAllShadows();
       }
       this._emojiContainer.visible = false;
+      this._shadowContainer.visible = false;
       return;
     }
 
     this._emojiContainer.visible = true;
+    this._shadowContainer.visible = true;
 
     if (!this._plantTextures) {
       this._plantTextures = generatePlantEmojiTextures();
     }
 
-    // Return all current emojis to pool
+    // Build shadow texture lazily (small dark ellipse)
+    if (!this._shadowTex) {
+      const g = new PIXI.Graphics();
+      g.beginFill(0x000000, 0.2);
+      g.drawEllipse(0, 0, 12, 5);
+      g.endFill();
+      this._shadowTex = this._emojiContainer.parent
+        ? PIXI.RenderTexture.create({ width: 24, height: 10 })
+        : null;
+      // Fallback: use runtime graphics-based shadow if RenderTexture unavailable
+      if (!this._shadowTex) {
+        this._shadowTex = g;
+      }
+    }
+
+    // Return all current emojis/shadows to pool
     this._returnAllEmojis();
+    this._returnAllShadows();
 
     // Clamp viewport to map bounds
     const x0 = Math.max(0, vx);
@@ -161,6 +201,7 @@ export class PlantLayer {
     const x1 = Math.min(this.width, vx + vw + 1);
     const y1 = Math.min(this.height, vy + vh + 1);
 
+    const t = this._tick;
     let count = 0;
 
     for (let y = y0; y < y1 && count < MAX_EMOJI_SPRITES; y++) {
@@ -174,14 +215,49 @@ export class PlantLayer {
         const tex = this._plantTextures[key];
         if (!tex) continue;
 
+        // Wind sway offset
+        const sway = 0.03 * Math.sin(t * 0.08 + x * 0.5 + y * 0.3);
+
+        // Growth pulse
+        let scaleMultiplier = 1.0;
+        const pulseStart = this._growthPulses.get(idx);
+        if (pulseStart != null) {
+          const age = t - pulseStart;
+          if (age < 8) {
+            // 1.0 → 1.3 → 1.0 ease-out
+            const p = age / 8;
+            scaleMultiplier = 1.0 + 0.3 * Math.sin(p * Math.PI);
+          } else {
+            this._growthPulses.delete(idx);
+          }
+        }
+
         const sprite = this._getPooledSprite(tex);
-        sprite.x = x + 0.5;
+        sprite.x = x + 0.5 + sway;
         sprite.y = y + 0.5;
-        sprite.scale.set(EMOJI_SCALE);
+        sprite.scale.set(EMOJI_SCALE * scaleMultiplier);
         // Alpha: seed=0.5, youngSprout=0.6, adultSprout=0.8, adult=1.0, fruit=0.9
         sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.6 : (stage === 3 ? 0.8 : (stage === 5 ? 0.9 : 1.0)));
         this._activeEmojis.push(sprite);
+
+        // Ground shadow (only for stage >= 3, visible enough)
+        if (stage >= 3) {
+          const shadow = this._getPooledShadow();
+          shadow.x = x + 0.5 + sway * 0.3;
+          shadow.y = y + 0.85;
+          shadow.scale.set(0.02 * scaleMultiplier, 0.01);
+          shadow.alpha = 0.2;
+          this._activeShadows.push(shadow);
+        }
+
         count++;
+      }
+    }
+
+    // Expire old growth pulses
+    if (this._growthPulses.size > 500) {
+      for (const [idx, start] of this._growthPulses) {
+        if (t - start > 10) this._growthPulses.delete(idx);
       }
     }
   }
@@ -200,11 +276,36 @@ export class PlantLayer {
     return sprite;
   }
 
+  _getPooledShadow() {
+    let sprite;
+    if (this._shadowPool.length > 0) {
+      sprite = this._shadowPool.pop();
+      sprite.visible = true;
+    } else {
+      // Create a simple dark ellipse graphic as shadow sprite
+      const g = new PIXI.Graphics();
+      g.beginFill(0x000000, 1);
+      g.drawEllipse(0, 0, 12, 5);
+      g.endFill();
+      this._shadowContainer.addChild(g);
+      sprite = g;
+    }
+    return sprite;
+  }
+
   _returnAllEmojis() {
     for (const sprite of this._activeEmojis) {
       sprite.visible = false;
       this._emojiPool.push(sprite);
     }
     this._activeEmojis.length = 0;
+  }
+
+  _returnAllShadows() {
+    for (const sprite of this._activeShadows) {
+      sprite.visible = false;
+      this._shadowPool.push(sprite);
+    }
+    this._activeShadows.length = 0;
   }
 }

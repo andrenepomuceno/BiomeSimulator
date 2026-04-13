@@ -2,6 +2,17 @@
  * Terrain enum → RGBA color mapping.
  */
 
+/**
+ * Deterministic hash for per-tile color variation.
+ * Returns a value in [0, 1).
+ */
+export function tileHash(x, y) {
+  let h = (x * 374761393 + y * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h = h ^ (h >>> 16);
+  return (h >>> 0) / 4294967296;
+}
+
 // Terrain types (must match backend)
 export const WATER = 0;
 export const SAND = 1;

@@ -95,7 +95,10 @@ export function generateTerrain(config) {
     }
   }
 
-  return { terrain, waterProximity, seed };
+  // Export heightmap for renderer (height-based shading & shadow)
+  const rendererHeightmap = new Float32Array(combined);
+
+  return { terrain, waterProximity, heightmap: rendererHeightmap, seed };
 }
 
 // ---------------------------------------------------------------------------

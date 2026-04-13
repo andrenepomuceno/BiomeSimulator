@@ -54,6 +54,8 @@ export const PLANT_TYPE_NAMES = {
   8: 'Tomato',
   9: 'Mushroom',
   10: 'Oak Tree',
+  11: 'Cactus',
+  12: 'Coconut Palm',
 };
 
 // Plant sex/reproduction display names
@@ -74,6 +76,8 @@ export const PLANT_TYPE_SEX = {
   8: 'HERMAPHRODITE',  // Tomato
   9: 'ASEXUAL',        // Mushroom
   10: 'HERMAPHRODITE', // Oak Tree
+  11: 'HERMAPHRODITE', // Cactus
+  12: 'HERMAPHRODITE', // Coconut Palm
 };
 
 // Plant stage names
@@ -100,6 +104,9 @@ export const ANIMAL_COLORS = {
   BEAR:     0x8B4513,  // saddle brown
   RACCOON:  0x778899,  // slate gray
   CROW:     0x333344,  // dark blue-gray
+  MOSQUITO:    0x556655,  // muted green
+  CATERPILLAR: 0x88bb33,  // lime green
+  SNAKE:       0x448844,  // forest green
 };
 
 // Species display info
@@ -115,6 +122,9 @@ export const SPECIES_INFO = {
   BEAR:     { emoji: '🐻', name: 'Bear',     diet: 'Omnivore' },
   RACCOON:  { emoji: '🦝', name: 'Raccoon',  diet: 'Omnivore' },
   CROW:     { emoji: '🐦‍⬛', name: 'Crow',     diet: 'Omnivore' },
+  MOSQUITO:    { emoji: '🦟', name: 'Mosquito',    diet: 'Herbivore' },
+  CATERPILLAR: { emoji: '🐛', name: 'Caterpillar', diet: 'Herbivore' },
+  SNAKE:       { emoji: '🐍', name: 'Snake',       diet: 'Carnivore' },
 };
 
 // Sex display names

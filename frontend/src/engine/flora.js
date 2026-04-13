@@ -21,9 +21,11 @@ export const P_SUNFLOWER = 7;   // Sunflower — hermaphrodite
 export const P_TOMATO = 8;      // Tomato — hermaphrodite
 export const P_MUSHROOM = 9;    // Mushroom — asexual
 export const P_OAK_TREE = 10;   // Oak tree — hermaphrodite
+export const P_CACTUS = 11;     // Cactus — hermaphrodite
+export const P_COCONUT_PALM = 12; // Coconut palm — hermaphrodite
 
 // All placeable plant types
-export const ALL_PLANT_TYPES = [P_GRASS, P_STRAWBERRY, P_BLUEBERRY, P_APPLE_TREE, P_MANGO_TREE, P_CARROT, P_SUNFLOWER, P_TOMATO, P_MUSHROOM, P_OAK_TREE];
+export const ALL_PLANT_TYPES = [P_GRASS, P_STRAWBERRY, P_BLUEBERRY, P_APPLE_TREE, P_MANGO_TREE, P_CARROT, P_SUNFLOWER, P_TOMATO, P_MUSHROOM, P_OAK_TREE, P_CACTUS, P_COCONUT_PALM];
 
 // Plant sex/reproduction mode (display + seed spreading behavior)
 export const PLANT_SEX = {
@@ -37,6 +39,8 @@ export const PLANT_SEX = {
   [P_TOMATO]: 'HERMAPHRODITE',
   [P_MUSHROOM]: 'ASEXUAL',
   [P_OAK_TREE]: 'HERMAPHRODITE',
+  [P_CACTUS]: 'HERMAPHRODITE',
+  [P_COCONUT_PALM]: 'HERMAPHRODITE',
 };
 
 // Plant stages
@@ -73,10 +77,13 @@ const DIRT_DEATH_CHANCE = {
 };
 
 // Tree types (cannot grow on rock or mountain)
-const TREE_TYPES = new Set([P_APPLE_TREE, P_MANGO_TREE, P_OAK_TREE]);
+const TREE_TYPES = new Set([P_APPLE_TREE, P_MANGO_TREE, P_OAK_TREE, P_COCONUT_PALM]);
 
 // Low plants (can grow on mountain)
 const LOW_PLANT_TYPES = new Set([P_GRASS, P_MUSHROOM, P_CARROT]);
+
+// Desert plants (can grow on sand)
+const DESERT_PLANT_TYPES = new Set([P_CACTUS, P_COCONUT_PALM]);
 
 function _isTree(ptype) { return TREE_TYPES.has(ptype); }
 function _isLowPlant(ptype) { return LOW_PLANT_TYPES.has(ptype); }
@@ -85,9 +92,10 @@ function _isLowPlant(ptype) { return LOW_PLANT_TYPES.has(ptype); }
  * Check whether a terrain tile can support a given plant type.
  */
 function _canPlantGrow(terrain, ptype) {
-  if (terrain === WATER || terrain === SAND) return false;
-  // Deep water — no plants
   if (terrain === DEEP_WATER) return false;
+  // Desert plants can grow on sand; everything else cannot
+  if (terrain === SAND && !DESERT_PLANT_TYPES.has(ptype)) return false;
+  if (terrain === WATER) return false;
   // Trees cannot grow on rock or mountain
   if (_isTree(ptype) && (terrain === ROCK || terrain === MOUNTAIN)) return false;
   // Mountain only supports low plants
@@ -106,7 +114,7 @@ export function seedInitialPlants(world) {
   const eligible = [];
   for (let i = 0; i < w * h; i++) {
     const t = world.terrain[i];
-    if (t === SOIL || t === DIRT || t === FERTILE_SOIL || t === ROCK || t === MOUNTAIN || t === MUD) eligible.push(i);
+    if (t === SOIL || t === DIRT || t === FERTILE_SOIL || t === ROCK || t === MOUNTAIN || t === MUD || t === SAND) eligible.push(i);
   }
 
   // Shuffle (Fisher-Yates) and take first n
@@ -124,41 +132,47 @@ export function seedInitialPlants(world) {
     let ptype;
     const r = Math.random();
     if (wp < 5) {
-      // Near water: more berries, trees, and tomatoes
-      if (r < 0.10) ptype = P_GRASS;
-      else if (r < 0.18) ptype = P_STRAWBERRY;
-      else if (r < 0.26) ptype = P_BLUEBERRY;
-      else if (r < 0.38) ptype = P_APPLE_TREE;
-      else if (r < 0.50) ptype = P_MANGO_TREE;
-      else if (r < 0.56) ptype = P_CARROT;
-      else if (r < 0.64) ptype = P_SUNFLOWER;
-      else if (r < 0.76) ptype = P_TOMATO;
-      else if (r < 0.82) ptype = P_MUSHROOM;
-      else ptype = P_OAK_TREE;
+      // Near water: more berries, trees, tomatoes, coconut palms
+      if (r < 0.08) ptype = P_GRASS;
+      else if (r < 0.15) ptype = P_STRAWBERRY;
+      else if (r < 0.22) ptype = P_BLUEBERRY;
+      else if (r < 0.32) ptype = P_APPLE_TREE;
+      else if (r < 0.42) ptype = P_MANGO_TREE;
+      else if (r < 0.47) ptype = P_CARROT;
+      else if (r < 0.54) ptype = P_SUNFLOWER;
+      else if (r < 0.64) ptype = P_TOMATO;
+      else if (r < 0.69) ptype = P_MUSHROOM;
+      else if (r < 0.79) ptype = P_OAK_TREE;
+      else if (r < 0.82) ptype = P_CACTUS;
+      else ptype = P_COCONUT_PALM;
     } else if (wp < 15) {
       // Medium distance: balanced
-      if (r < 0.18) ptype = P_GRASS;
-      else if (r < 0.26) ptype = P_STRAWBERRY;
-      else if (r < 0.34) ptype = P_BLUEBERRY;
-      else if (r < 0.44) ptype = P_APPLE_TREE;
-      else if (r < 0.52) ptype = P_MANGO_TREE;
-      else if (r < 0.60) ptype = P_CARROT;
-      else if (r < 0.70) ptype = P_SUNFLOWER;
-      else if (r < 0.78) ptype = P_TOMATO;
-      else if (r < 0.88) ptype = P_MUSHROOM;
-      else ptype = P_OAK_TREE;
-    } else {
-      // Far from water: more grass, carrots, sunflowers, mushrooms
-      if (r < 0.22) ptype = P_GRASS;
-      else if (r < 0.28) ptype = P_STRAWBERRY;
-      else if (r < 0.34) ptype = P_BLUEBERRY;
-      else if (r < 0.40) ptype = P_APPLE_TREE;
+      if (r < 0.16) ptype = P_GRASS;
+      else if (r < 0.23) ptype = P_STRAWBERRY;
+      else if (r < 0.30) ptype = P_BLUEBERRY;
+      else if (r < 0.39) ptype = P_APPLE_TREE;
       else if (r < 0.46) ptype = P_MANGO_TREE;
-      else if (r < 0.56) ptype = P_CARROT;
-      else if (r < 0.68) ptype = P_SUNFLOWER;
-      else if (r < 0.74) ptype = P_TOMATO;
-      else if (r < 0.88) ptype = P_MUSHROOM;
-      else ptype = P_OAK_TREE;
+      else if (r < 0.53) ptype = P_CARROT;
+      else if (r < 0.62) ptype = P_SUNFLOWER;
+      else if (r < 0.69) ptype = P_TOMATO;
+      else if (r < 0.78) ptype = P_MUSHROOM;
+      else if (r < 0.86) ptype = P_OAK_TREE;
+      else if (r < 0.93) ptype = P_CACTUS;
+      else ptype = P_COCONUT_PALM;
+    } else {
+      // Far from water: more grass, carrots, sunflowers, mushrooms, cactus
+      if (r < 0.18) ptype = P_GRASS;
+      else if (r < 0.23) ptype = P_STRAWBERRY;
+      else if (r < 0.28) ptype = P_BLUEBERRY;
+      else if (r < 0.33) ptype = P_APPLE_TREE;
+      else if (r < 0.38) ptype = P_MANGO_TREE;
+      else if (r < 0.47) ptype = P_CARROT;
+      else if (r < 0.57) ptype = P_SUNFLOWER;
+      else if (r < 0.63) ptype = P_TOMATO;
+      else if (r < 0.75) ptype = P_MUSHROOM;
+      else if (r < 0.82) ptype = P_OAK_TREE;
+      else if (r < 0.93) ptype = P_CACTUS;
+      else ptype = P_COCONUT_PALM;
     }
 
     // Terrain restrictions: no trees on rock/mountain; only low plants on mountain

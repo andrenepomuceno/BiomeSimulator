@@ -237,6 +237,52 @@ const PLANT_SPECIES = {
     waterAffinity: 'high',
     terrainGrowth: { SOIL: 1.2, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.6 },
   },
+
+  CACTUS: {
+    id: 'CACTUS',
+    typeId: 11,
+    name: 'Cactus',
+    emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '🌵', adult: '🌵', fruit: '🌵' },
+    fruitEmoji: '🌵',
+    sex: 'HERMAPHRODITE',
+    reproduction: 'SEED',
+    productionChance: 0.010,
+    stageAges: [20, 80, 200, 1200],
+    fruitSpoilAge: 160,
+    colors: {
+      seed:        [130, 160, 80,  35],
+      youngSprout: [80,  140, 55,  100],
+      adultSprout: [50,  120, 40,  190],
+      adult:       [40,  110, 35,  220],
+      fruit:       [60,  130, 45,  230],
+    },
+    fruitColor: [60, 130, 45, 230],
+    waterAffinity: 'none',
+    terrainGrowth: { SOIL: 0.4, DIRT: 0.8, SAND: 1.5, FERTILE_SOIL: 0.3, ROCK: 1.2, MOUNTAIN: 0.8, MUD: 0.0 },
+  },
+
+  COCONUT_PALM: {
+    id: 'COCONUT_PALM',
+    typeId: 12,
+    name: 'Coconut Palm',
+    emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '🌴', adult: '🌴', fruit: '🥥' },
+    fruitEmoji: '🥥',
+    sex: 'HERMAPHRODITE',
+    reproduction: 'FRUIT',
+    productionChance: 0.010,
+    stageAges: [45, 200, 450, 2000],
+    fruitSpoilAge: 130,
+    colors: {
+      seed:        [90,  120, 55,  35],
+      youngSprout: [55,  110, 35,  100],
+      adultSprout: [35,  95,  20,  210],
+      adult:       [30,  100, 18,  230],
+      fruit:       [160, 120, 60,  230],
+    },
+    fruitColor: [160, 120, 60, 230],
+    waterAffinity: 'high',
+    terrainGrowth: { SOIL: 0.6, DIRT: 0.3, SAND: 1.4, FERTILE_SOIL: 1.0, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.4 },
+  },
 };
 
 /** Ordered list of all plant species keys */

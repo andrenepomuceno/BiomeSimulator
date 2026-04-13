@@ -16,7 +16,7 @@ const PLANT_SPECIES = {
     fruitEmoji: '🌾',
     sex: 'ASEXUAL',
     reproduction: 'SEED',
-    productionChance: 0.025,
+    productionChance: 0.05,
     stageAges: [5, 18, 35, 180],
     fruitSpoilAge: 80,
     colors: {
@@ -143,7 +143,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [245, 140, 30, 230],
     waterAffinity: 'low',
-    terrainGrowth: { SOIL: 0.9, DIRT: 1.3, FERTILE_SOIL: 1.5, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 1.1 },
+    terrainGrowth: { SOIL: 0.9, DIRT: 1.3, FERTILE_SOIL: 1.5, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.8 },
   },
 
   SUNFLOWER: {

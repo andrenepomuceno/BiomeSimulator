@@ -41,7 +41,7 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 40,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'BLUEBERRY'],
     prey_species: [],
   },
 

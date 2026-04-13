@@ -28,6 +28,7 @@ const PLANT_SPECIES = {
     fruitColor: [200, 210, 80, 200],
     waterAffinity: 'low',
     terrainGrowth: { SOIL: 1.0, DIRT: 0.8, FERTILE_SOIL: 1.4, ROCK: 0.7, MOUNTAIN: 0.6, MUD: 0.1 },
+    swayStages: [2, 3, 4],  // youngSprout, adultSprout, adult sway; seed & fruit static
   },
 
   STRAWBERRY: {
@@ -52,6 +53,7 @@ const PLANT_SPECIES = {
     fruitColor: [240, 50, 60, 230],
     waterAffinity: 'medium',
     terrainGrowth: { SOIL: 1.0, DIRT: 0.0, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
+    swayStages: [2, 3, 4],
   },
 
   BLUEBERRY: {
@@ -76,6 +78,7 @@ const PLANT_SPECIES = {
     fruitColor: [100, 50, 210, 230],
     waterAffinity: 'medium',
     terrainGrowth: { SOIL: 1.0, DIRT: 0.0, FERTILE_SOIL: 1.5, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
+    swayStages: [2, 3, 4],
   },
 
   APPLE_TREE: {
@@ -100,6 +103,7 @@ const PLANT_SPECIES = {
     fruitColor: [210, 55, 45, 230],
     waterAffinity: 'high',
     terrainGrowth: { SOIL: 1.0, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
+    swayStages: [2, 3, 4],
   },
 
   MANGO_TREE: {
@@ -124,6 +128,7 @@ const PLANT_SPECIES = {
     fruitColor: [250, 190, 40, 230],
     waterAffinity: 'high',
     terrainGrowth: { SOIL: 1.1, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
+    swayStages: [2, 3, 4],
   },
 
   CARROT: {
@@ -148,6 +153,7 @@ const PLANT_SPECIES = {
     fruitColor: [245, 140, 30, 230],
     waterAffinity: 'low',
     terrainGrowth: { SOIL: 0.9, DIRT: 1.3, FERTILE_SOIL: 1.5, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.8 },
+    swayStages: [2, 3, 4],
   },
 
   SUNFLOWER: {
@@ -172,6 +178,7 @@ const PLANT_SPECIES = {
     fruitColor: [230, 200, 30, 230],
     waterAffinity: 'medium',
     terrainGrowth: { SOIL: 1.3, DIRT: 0.7, FERTILE_SOIL: 1.4, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
+    swayStages: [2, 3, 4, 5],  // sunflowers sway even at fruit
   },
 
   TOMATO: {
@@ -196,6 +203,7 @@ const PLANT_SPECIES = {
     fruitColor: [230, 45, 35, 240],
     waterAffinity: 'high',
     terrainGrowth: { SOIL: 1.1, DIRT: 0.5, FERTILE_SOIL: 1.7, ROCK: 0.3, MOUNTAIN: 0.2, MUD: 0.5 },
+    swayStages: [2, 3, 4],
   },
 
   MUSHROOM: {
@@ -220,6 +228,7 @@ const PLANT_SPECIES = {
     fruitColor: [200, 80, 50, 230],
     waterAffinity: 'low',
     terrainGrowth: { SOIL: 0.8, DIRT: 1.2, FERTILE_SOIL: 1.0, ROCK: 1.0, MOUNTAIN: 0.7, MUD: 1.4 },
+    swayStages: [],  // mushrooms are rigid — no sway
   },
 
   OAK_TREE: {
@@ -244,6 +253,7 @@ const PLANT_SPECIES = {
     fruitColor: [140, 100, 40, 230],
     waterAffinity: 'high',
     terrainGrowth: { SOIL: 1.2, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 1.0, MUD: 0.0 },
+    swayStages: [2, 3, 4],
   },
 
   CACTUS: {
@@ -268,6 +278,7 @@ const PLANT_SPECIES = {
     fruitColor: [60, 130, 45, 230],
     waterAffinity: 'none',
     terrainGrowth: { SOIL: 0.2, DIRT: 0.8, SAND: 1.5, FERTILE_SOIL: 0.3, ROCK: 0.5, MOUNTAIN: 0.0, MUD: 0.0 },
+    swayStages: [],  // cacti are rigid — no sway
   },
 
   COCONUT_PALM: {
@@ -292,6 +303,7 @@ const PLANT_SPECIES = {
     fruitColor: [160, 120, 60, 230],
     waterAffinity: 'high',
     terrainGrowth: { SOIL: 0.6, DIRT: 0.3, SAND: 1.4, FERTILE_SOIL: 1.0, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.4 },
+    swayStages: [2, 3, 4],  // palm fronds sway; coconut fruit static
   },
 };
 
@@ -372,6 +384,19 @@ export function buildPlantEmojiMap() {
     stageNames.forEach((name, i) => {
       map[`${sp.typeId}_${i + 1}`] = sp.emoji[name];
     });
+  }
+  return map;
+}
+
+/**
+ * Build the SWAY_STAGES map indexed by typeId.
+ * Returns { 1: Set{2,3,4}, 9: Set{}, 11: Set{}, ... }
+ * Stages in the set get wind sway animation; others are static.
+ */
+export function buildSwayStages() {
+  const map = {};
+  for (const sp of Object.values(PLANT_SPECIES)) {
+    map[sp.typeId] = new Set(sp.swayStages || []);
   }
   return map;
 }

@@ -7,6 +7,7 @@
 import * as PIXI from 'pixi.js';
 import { PLANT_COLORS } from '../utils/terrainColors';
 import { generatePlantEmojiTextures } from '../utils/emojiTextures';
+import { buildSwayStages } from '../engine/plantSpecies';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const MAX_EMOJI_SPRITES = 8000;
@@ -191,6 +192,11 @@ export class PlantLayer {
       }
     }
 
+    // Build sway stages map lazily
+    if (!this._swayStages) {
+      this._swayStages = buildSwayStages();
+    }
+
     // Return all current emojis/shadows to pool
     this._returnAllEmojis();
     this._returnAllShadows();
@@ -202,6 +208,7 @@ export class PlantLayer {
     const y1 = Math.min(this.height, vy + vh + 1);
 
     const t = this._tick;
+    const swayMap = this._swayStages;
     let count = 0;
 
     for (let y = y0; y < y1 && count < MAX_EMOJI_SPRITES; y++) {
@@ -215,8 +222,9 @@ export class PlantLayer {
         const tex = this._plantTextures[key];
         if (!tex) continue;
 
-        // Wind sway offset
-        const sway = 0.03 * Math.sin(t * 0.08 + x * 0.5 + y * 0.3);
+        // Wind sway offset — only for stages that sway per species config
+        const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
+        const sway = canSway ? 0.03 * Math.sin(t * 0.08 + x * 0.5 + y * 0.3) : 0;
 
         // Growth pulse
         let scaleMultiplier = 1.0;

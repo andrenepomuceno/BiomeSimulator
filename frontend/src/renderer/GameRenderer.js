@@ -7,6 +7,7 @@ import { TerrainLayer } from './TerrainLayer';
 import { PlantLayer } from './PlantLayer';
 import { EntityLayer } from './EntityLayer';
 import { AnimationLayer } from './AnimationLayer';
+import useSimStore from '../store/simulationStore';
 
 export class GameRenderer {
   constructor(container, onViewportChange, onTileClick) {
@@ -68,6 +69,11 @@ export class GameRenderer {
     this.app.ticker.add(() => {
       this.entityLayer._updateSelectionMarker();
       this._updateTileSelectionMarker();
+
+      // Skip environment animations when simulation is paused
+      const { paused, running } = useSimStore.getState();
+      if (paused || !running) return;
+
       this.animationLayer.tick();
       // Animate water every 6 frames (~100ms at 60fps)
       if (++this._waterTick % 6 === 0) {

@@ -242,25 +242,38 @@ export class TerrainLayer {
     const base = this._waterBaseColors;
     const pixels = this._pixels;
     const w = this.width;
-    const t1 = tick * 0.15;
-    const t2 = tick * 0.05;
 
+    // Sparkle: small bright points that appear and disappear
+    // Use a deterministic hash per tile combined with tick to create
+    // pseudo-random sparkle timing without storing per-tile state.
     for (let j = 0; j < indices.length; j++) {
       const idx = indices[j];
       const x = idx % w;
       const y = (idx / w) | 0;
 
-      // Primary shimmer: fast, localized ripple
-      const wave1 = Math.sin(t1 + x * 0.3 + y * 0.2) * 12;
-      // Secondary rolling wave: slow, large-scale motion
-      const wave2 = Math.sin(t2 + x * 0.1 + y * 0.08) * 8;
-      const shift = wave1 + wave2;
-
       const bj = j * 3;
       const pi = idx * 4;
-      pixels[pi]     = clamp255(base[bj]     + shift * 0.4);
-      pixels[pi + 1] = clamp255(base[bj + 1] + shift * 0.6);
-      pixels[pi + 2] = clamp255(base[bj + 2] + shift);
+
+      // Base color (restored each frame)
+      let r = base[bj], g = base[bj + 1], b = base[bj + 2];
+
+      // Sparkle: hash-based pseudo-random timing per tile
+      // Very slow subtle cycle (~100 sec), <1% density
+      const h = ((x * 374761393 + y * 668265263) ^ 0x5deece66d) >>> 0;
+      const sparklePhase = (h + tick) % 6000;
+
+      if (sparklePhase < 50) {
+        // Sparkle active for 50 ticks: very gentle fade in/out
+        const t = sparklePhase / 49;
+        const intensity = Math.sin(t * Math.PI) * 30;
+        r += intensity;
+        g += intensity;
+        b += intensity * 0.7;
+      }
+
+      pixels[pi]     = clamp255(r);
+      pixels[pi + 1] = clamp255(g);
+      pixels[pi + 2] = clamp255(b);
     }
 
     this.sprite.texture.baseTexture.resource.data = pixels;

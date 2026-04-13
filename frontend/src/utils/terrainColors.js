@@ -172,6 +172,7 @@ export const STATE_NAMES = {
   7: 'Fleeing',
   8: 'Mating',
   9: 'Dead',
+  10: 'Flying',
 };
 
 // Animal life stage names

@@ -23,6 +23,11 @@ function _canHunt(animal, target) {
   return animal._preySpecies.size === 0 || animal._preySpecies.has(target.species);
 }
 
+/** Check if this animal can fly (higher speed burst, different energy cost). */
+function _canFly(animal) {
+  return !!animal._config.can_fly;
+}
+
 /** Diet-based efficiency for plant nutrition (herbivores best, omnivores moderate, carnivores worst). */
 function _plantHungerReduction(animal, base) {
   if (animal.diet === 'CARNIVORE') return Math.round(base * 0.45);
@@ -117,14 +122,22 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // Zero energy — force sleep (cannot do anything else)
+  // Animals cannot sleep on water — keep them idle so they attempt to move to land
   if (animal.energy <= 0) {
-    animal.state = AnimalState.SLEEPING;
-    _doSleep(animal);
-    return;
+    const t = world.terrain[world.idx(animal.x, animal.y)];
+    if (t !== WATER && t !== DEEP_WATER) {
+      animal.state = AnimalState.SLEEPING;
+      _doSleep(animal);
+      return;
+    }
   }
 
   // Ongoing states always process
-  if (animal.state === AnimalState.SLEEPING) { _doSleep(animal); return; }
+  if (animal.state === AnimalState.SLEEPING) {
+    const t = world.terrain[world.idx(animal.x, animal.y)];
+    if (t === WATER || t === DEEP_WATER) { animal.state = AnimalState.IDLE; }
+    else { _doSleep(animal); return; }
+  }
   if (animal.state === AnimalState.EATING)   { _doEat(animal, world); return; }
   if (animal.state === AnimalState.DRINKING) { _doDrink(animal, world); return; }
 
@@ -208,10 +221,13 @@ export function decideAndAct(animal, world, spatialHash) {
     return;
   }
 
-  // 4. Low energy → sleep
+  // 4. Low energy → sleep (not on water)
   if (animal.energy < (_decisionThresholds(animal).sleep_energy_min ?? 20)) {
-    animal.state = AnimalState.SLEEPING;
-    return;
+    const t = world.terrain[world.idx(animal.x, animal.y)];
+    if (t !== WATER && t !== DEEP_WATER) {
+      animal.state = AnimalState.SLEEPING;
+      return;
+    }
   }
 
   // 5. Mating opportunity (promoted — breed before moderate hunger/thirst)
@@ -501,11 +517,13 @@ function _seekPrey(animal, world, spatialHash, vision) {
       _attack(animal, target, world);
     } else {
       _computePath(animal, world, target.x, target.y, 30, 'prey');
-      animal.state = AnimalState.RUNNING;
-      for (let s = 0; s < animal.speed; s++) {
+      const fly = _canFly(animal);
+      animal.state = fly ? AnimalState.FLYING : AnimalState.RUNNING;
+      const steps = fly ? animal.speed + 1 : animal.speed;
+      for (let s = 0; s < steps; s++) {
         _followPath(animal, world);
       }
-      animal.applyEnergyCost('RUN');
+      animal.applyEnergyCost(fly ? 'FLY' : 'RUN');
     }
     return;
   }
@@ -570,11 +588,13 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
         _attack(animal, target, world);
       } else {
         _computePath(animal, world, target.x, target.y, 30, 'omnivore-prey');
-        animal.state = AnimalState.RUNNING;
-        for (let s = 0; s < animal.speed; s++) {
+        const fly = _canFly(animal);
+        animal.state = fly ? AnimalState.FLYING : AnimalState.RUNNING;
+        const steps = fly ? animal.speed + 1 : animal.speed;
+        for (let s = 0; s < steps; s++) {
           _followPath(animal, world);
         }
-        animal.applyEnergyCost('RUN');
+        animal.applyEnergyCost(fly ? 'FLY' : 'RUN');
       }
       return;
     }
@@ -716,8 +736,10 @@ function _fleeFrom(animal, threat, world) {
   const dx = animal.x - threat.x;
   const dy = animal.y - threat.y;
   const dist = Math.max(1, Math.abs(dx) + Math.abs(dy));
-  // Use speed for flee burst (fast animals flee faster)
-  for (let burst = 0; burst < animal.speed; burst++) {
+  // Flying animals get an extra burst step when fleeing
+  const fly = _canFly(animal);
+  const bursts = fly ? animal.speed + 1 : animal.speed;
+  for (let burst = 0; burst < bursts; burst++) {
     const cx = animal.x - threat.x;
     const cy = animal.y - threat.y;
     const cd = Math.max(1, Math.abs(cx) + Math.abs(cy));
@@ -735,8 +757,8 @@ function _fleeFrom(animal, threat, world) {
     }
     if (!moved) break;
   }
-  animal.state = AnimalState.FLEEING;
-  animal.applyEnergyCost('FLEE');
+  animal.state = fly ? AnimalState.FLYING : AnimalState.FLEEING;
+  animal.applyEnergyCost(fly ? 'FLY' : 'FLEE');
   animal.logAction(world.clock.tick, 'FLED', { from: threat.species, threatId: threat.id });
 }
 

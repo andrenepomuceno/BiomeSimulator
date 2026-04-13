@@ -14,6 +14,7 @@ export const AnimalState = {
   FLEEING: 7,
   MATING: 8,
   DEAD: 9,
+  FLYING: 10,
 };
 
 export const LifeStage = {

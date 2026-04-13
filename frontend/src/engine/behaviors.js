@@ -19,8 +19,9 @@ export function decideAndAct(animal, world, spatialHash) {
 
   animal.tickNeeds();
 
-  // Die of old age or zero energy
-  if (animal.age > animal.maxAge || animal.energy <= 0) {
+  // Die of old age, zero energy, or max hunger/thirst
+  if (animal.age > animal.maxAge || animal.energy <= 0 ||
+      animal.hunger >= animal._config.max_hunger || animal.thirst >= animal._config.max_thirst) {
     animal.alive = false;
     animal.state = AnimalState.DEAD;
     animal._deathTick = world.clock.tick;

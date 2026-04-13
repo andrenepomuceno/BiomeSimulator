@@ -537,7 +537,7 @@ export default function SimulationReport({ open, onClose }) {
     lines.push(`Generated: ${new Date().toLocaleString()}`);
     lines.push('');
 
-    // ========== SUMMARY TAB ==========
+    // ========== SUMMARY ==========
     lines.push('╔══════════════════════════════════╗');
     lines.push('║         📊 SUMMARY               ║');
     lines.push('╚══════════════════════════════════╝');
@@ -552,65 +552,81 @@ export default function SimulationReport({ open, onClose }) {
     lines.push(`Extinction Events: ${data.extinctions.length}`);
     lines.push('');
 
-    // Species details table
-    lines.push('Species Details:');
-    lines.push('  ' + 'Species'.padEnd(14) + 'Current'.padStart(9) + 'Peak'.padStart(9) + 'Min'.padStart(9) + '  Status');
-    lines.push('  ' + '-'.repeat(54));
+    // ========== POPULATION ==========
+    lines.push('╔══════════════════════════════════╗');
+    lines.push('║     🐾 POPULATION                ║');
+    lines.push('╚══════════════════════════════════╝');
+    lines.push('');
+
+    // Animal species details table (with diet)
+    lines.push('Animal Species Details:');
+    lines.push('  ' + 'Species'.padEnd(14) + 'Current'.padStart(9) + 'Peak'.padStart(9) + 'Min'.padStart(9) + '  Diet'.padEnd(14) + 'Status');
+    lines.push('  ' + '-'.repeat(68));
     data.speciesKeys.forEach(k => {
       const current = data.speciesData[k][data.speciesData[k].length - 1] || 0;
       const extinct = data.peaks[k] > 0 && current === 0;
       const status = data.peaks[k] === 0 ? 'Never spawned' : extinct ? 'Extinct' : 'Alive';
+      const diet = Object.entries(DIET_GROUPS).find(([, list]) => list.includes(k));
+      const dietName = diet ? diet[0] : '-';
       lines.push(
         '  ' + (SPECIES_INFO[k]?.name || k).padEnd(14) +
         String(current).padStart(9) +
         String(data.peaks[k]).padStart(9) +
         String(data.mins[k]).padStart(9) +
-        '  ' + status
+        '  ' + dietName.padEnd(12) + status
       );
     });
     lines.push('');
 
-    // ========== POPULATION TAB ==========
-    lines.push('╔══════════════════════════════════╗');
-    lines.push('║     🐾 POPULATION OVER TIME      ║');
-    lines.push('╚══════════════════════════════════╝');
+    // Total animals + diet group timeline
+    const visibleSpecies = data.speciesKeys.filter(k => data.peaks[k] > 0);
+    const step = Math.max(1, Math.floor(data.ticks.length / 150));
+    const lastIdx = data.ticks.length - 1;
+    const dietNames = Object.keys(DIET_GROUPS);
+
+    lines.push('Total Animal Population Over Time:');
+    let totalHeader = '  ' + 'Day'.padStart(5) + 'Tick'.padStart(8) + 'Total'.padStart(8);
+    dietNames.forEach(d => { totalHeader += d.slice(0, 9).padStart(11); });
+    lines.push(totalHeader);
+    lines.push('  ' + '-'.repeat(totalHeader.length - 2));
+
+    for (let i = 0; i < data.ticks.length; i += step) {
+      const day = Math.floor(data.ticks[i] / tpd);
+      let row = '  ' + String(day).padStart(5) + String(data.ticks[i]).padStart(8) + String(data.totalAnimals[i]).padStart(8);
+      dietNames.forEach(d => { row += String(data.dietData[d][i]).padStart(11); });
+      lines.push(row);
+    }
+    if (lastIdx % step !== 0) {
+      const day = Math.floor(data.ticks[lastIdx] / tpd);
+      let row = '  ' + String(day).padStart(5) + String(data.ticks[lastIdx]).padStart(8) + String(data.totalAnimals[lastIdx]).padStart(8);
+      dietNames.forEach(d => { row += String(data.dietData[d][lastIdx]).padStart(11); });
+      lines.push(row);
+    }
     lines.push('');
 
     // Per-species population timeline
-    const visibleSpecies = data.speciesKeys.filter(k => data.peaks[k] > 0);
-    const step = Math.max(1, Math.floor(data.ticks.length / 150));
-
-    // Header row
+    lines.push('Per-Species Population Over Time:');
     const spNames = visibleSpecies.map(k => (SPECIES_INFO[k]?.name || k).slice(0, 8));
     let popHeader = '  ' + 'Day'.padStart(5) + 'Tick'.padStart(8);
     spNames.forEach(n => { popHeader += n.padStart(9); });
-    popHeader += 'Total'.padStart(8);
     lines.push(popHeader);
     lines.push('  ' + '-'.repeat(popHeader.length - 2));
 
     for (let i = 0; i < data.ticks.length; i += step) {
       const day = Math.floor(data.ticks[i] / tpd);
       let row = '  ' + String(day).padStart(5) + String(data.ticks[i]).padStart(8);
-      visibleSpecies.forEach(k => {
-        row += String(data.speciesData[k][i]).padStart(9);
-      });
-      row += String(data.totalAnimals[i]).padStart(8);
+      visibleSpecies.forEach(k => { row += String(data.speciesData[k][i]).padStart(9); });
       lines.push(row);
     }
-    // Always include last entry
-    const lastIdx = data.ticks.length - 1;
     if (lastIdx % step !== 0) {
       const day = Math.floor(data.ticks[lastIdx] / tpd);
       let row = '  ' + String(day).padStart(5) + String(data.ticks[lastIdx]).padStart(8);
-      visibleSpecies.forEach(k => {
-        row += String(data.speciesData[k][lastIdx]).padStart(9);
-      });
-      row += String(data.totalAnimals[lastIdx]).padStart(8);
+      visibleSpecies.forEach(k => { row += String(data.speciesData[k][lastIdx]).padStart(9); });
       lines.push(row);
     }
     lines.push('');
 
-    // ========== ECOSYSTEM TAB ==========
+    // ========== ECOSYSTEM ==========
     lines.push('╔══════════════════════════════════╗');
     lines.push('║      ⚖ ECOSYSTEM BALANCE         ║');
     lines.push('╚══════════════════════════════════╝');
@@ -642,23 +658,11 @@ export default function SimulationReport({ open, onClose }) {
       lines.push('');
     }
 
-    // ========== FLORA TAB ==========
+    // ========== FLORA ==========
     lines.push('╔══════════════════════════════════╗');
     lines.push('║          🌿 FLORA                ║');
     lines.push('╚══════════════════════════════════╝');
     lines.push('');
-
-    // Plant distribution
-    const ptEntries = Object.entries(data.plantTypes).filter(([, v]) => v > 0);
-    if (ptEntries.length > 0) {
-      lines.push('Current Plant Distribution:');
-      const plantTotal = ptEntries.reduce((s, [, v]) => s + v, 0);
-      ptEntries.forEach(([k, v]) => {
-        const pct = plantTotal > 0 ? ((v / plantTotal) * 100).toFixed(1) : '0.0';
-        lines.push(`  ${(PLANT_TYPE_NAMES[k] || 'Type ' + k).padEnd(16)} ${String(v.toLocaleString()).padStart(8)}  (${pct}%)`);
-      });
-      lines.push('');
-    }
 
     // Plant species details table
     lines.push('Plant Species Details:');
@@ -680,19 +684,7 @@ export default function SimulationReport({ open, onClose }) {
     });
     lines.push('');
 
-    // Plant death causes
-    const totalDeaths = data.deathCauseTotals.terrain + data.deathCauseTotals.water + data.deathCauseTotals.age + data.deathCauseTotals.eaten;
-    if (totalDeaths > 0) {
-      lines.push('Plant Death Causes (All Time):');
-      lines.push(`  Harsh Terrain:  ${data.deathCauseTotals.terrain.toLocaleString()}`);
-      lines.push(`  Water Stress:   ${data.deathCauseTotals.water.toLocaleString()}`);
-      lines.push(`  Old Age:        ${data.deathCauseTotals.age.toLocaleString()}`);
-      lines.push(`  Eaten:          ${data.deathCauseTotals.eaten.toLocaleString()}`);
-      lines.push(`  Total:          ${totalDeaths.toLocaleString()}`);
-      lines.push('');
-    }
-
-    // Plant timeline
+    // Plant total population timeline
     lines.push('Plant Population Over Time:');
     let floraHeader = '  ' + 'Day'.padStart(5) + 'Tick'.padStart(8) + 'Plants'.padStart(9) + 'Fruiting'.padStart(10);
     lines.push(floraHeader);
@@ -717,6 +709,32 @@ export default function SimulationReport({ open, onClose }) {
       );
     }
     lines.push('');
+
+    // Per-species plant timeline
+    const visiblePlants = data.plantTypeKeys.filter(k => data.plantPeaks[k] > 0);
+    if (visiblePlants.length > 0) {
+      lines.push('Plant Species Over Time:');
+      const pNames = visiblePlants.map(k => (PLANT_TYPE_NAMES[k] || `T${k}`).slice(0, 10));
+      let pHeader = '  ' + 'Day'.padStart(5) + 'Tick'.padStart(8);
+      pNames.forEach(n => { pHeader += n.padStart(11); });
+      lines.push(pHeader);
+      lines.push('  ' + '-'.repeat(pHeader.length - 2));
+
+      for (let i = 0; i < data.ticks.length; i += step) {
+        const day = Math.floor(data.ticks[i] / tpd);
+        let row = '  ' + String(day).padStart(5) + String(data.ticks[i]).padStart(8);
+        visiblePlants.forEach(k => { row += String(data.plantSpeciesData[k][i]).padStart(11); });
+        lines.push(row);
+      }
+      if (lastIdx % step !== 0) {
+        const day = Math.floor(data.ticks[lastIdx] / tpd);
+        let row = '  ' + String(day).padStart(5) + String(data.ticks[lastIdx]).padStart(8);
+        visiblePlants.forEach(k => { row += String(data.plantSpeciesData[k][lastIdx]).padStart(11); });
+        lines.push(row);
+      }
+      lines.push('');
+    }
+
     lines.push('=== END OF REPORT ===');
 
     const text = lines.join('\n');

@@ -6,8 +6,8 @@ import { benchmarkAdd, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.
 export class SpatialHash {
   constructor(cellSize = 16) {
     this.cellSize = cellSize;
-    this._cells = new Map(); // "cx,cy" → Map<id, entity>
-    this._entityCell = new Map(); // id → "cx,cy"
+    this._cells = new Map(); // intKey → Map<id, entity>
+    this._entityCell = new Map(); // id → intKey
     this._benchmarkCollector = null;
   }
 
@@ -16,7 +16,9 @@ export class SpatialHash {
   }
 
   _key(x, y) {
-    return `${Math.floor(x / this.cellSize)},${Math.floor(y / this.cellSize)}`;
+    // Encode cell coords as single integer: cx + cy * 0x10000
+    // Supports cell coords up to ±32767 (maps up to ~524k tiles wide at cellSize=16)
+    return (Math.floor(x / this.cellSize) & 0xFFFF) | ((Math.floor(y / this.cellSize) & 0xFFFF) << 16);
   }
 
   clear() {
@@ -62,16 +64,18 @@ export class SpatialHash {
     const cx = Math.floor(x / this.cellSize);
     const cy = Math.floor(y / this.cellSize);
     const rSq = radius * radius;
+    const cells = this._cells;
 
     for (let dx = -cellsRange; dx <= cellsRange; dx++) {
+      const kcx = (cx + dx) & 0xFFFF;
       for (let dy = -cellsRange; dy <= cellsRange; dy++) {
-        const cell = this._cells.get(`${cx + dx},${cy + dy}`);
+        const key = kcx | (((cy + dy) & 0xFFFF) << 16);
+        const cell = cells.get(key);
         if (!cell) continue;
         for (const entity of cell.values()) {
           const deltaX = entity.x - x;
           const deltaY = entity.y - y;
-          const distSq = deltaX * deltaX + deltaY * deltaY;
-          if (distSq <= rSq) {
+          if (deltaX * deltaX + deltaY * deltaY <= rSq) {
             results.push(entity);
           }
         }

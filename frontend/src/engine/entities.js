@@ -24,6 +24,12 @@ export const LifeStage = {
   ADULT: 3,
 };
 
+// Pre-computed reverse lookup: stage number → stage key string
+const LIFE_STAGE_KEYS = Object.keys(LifeStage).reduce((acc, key) => {
+  acc[LifeStage[key]] = key;
+  return acc;
+}, []);
+
 export class Animal {
   constructor(id, x, y, species, config) {
     this.id = id;
@@ -75,18 +81,57 @@ export class Animal {
     this._ediblePlants = new Set(config.edible_plants || []);
     this._preySpecies = new Set(config.prey_species || []);
 
-    // Recent action history (capped at 100)
-    this.actionHistory = [];
+    // Recent action history — ring buffer (capped at action_history_max_size)
+    this._actionBuf = [];
+    this._actionBufIdx = 0;
+    this._actionBufFull = false;
+    this._actionMaxSize = config.action_history_max_size || 100;
 
     // Dirty tracking for incremental serialization
     this._dirty = true;
     this._birthTick = 0;
   }
 
-  /** Log an important action. */
+  /** Ordered action history (oldest first). */
+  get actionHistory() {
+    if (!this._actionBufFull) return this._actionBuf;
+    // Ring is full — return in chronological order
+    return this._actionBuf.slice(this._actionBufIdx).concat(this._actionBuf.slice(0, this._actionBufIdx));
+  }
+
+  set actionHistory(arr) {
+    if (!arr || arr.length === 0) {
+      this._actionBuf = [];
+      this._actionBufIdx = 0;
+      this._actionBufFull = false;
+      return;
+    }
+    const max = this._actionMaxSize;
+    if (arr.length <= max) {
+      this._actionBuf = arr.slice();
+      this._actionBufIdx = 0;
+      this._actionBufFull = false;
+    } else {
+      this._actionBuf = arr.slice(-max);
+      this._actionBufIdx = 0;
+      this._actionBufFull = false;
+    }
+  }
+
+  /** Log an important action (O(1) ring buffer). */
   logAction(tick, action, detail) {
-    this.actionHistory.push({ tick, action, detail });
-    if (this.actionHistory.length > this._config.action_history_max_size) this.actionHistory.shift();
+    const entry = { tick, action, detail };
+    const max = this._actionMaxSize;
+    if (!this._actionBufFull) {
+      this._actionBuf.push(entry);
+      if (this._actionBuf.length >= max) {
+        this._actionBufFull = true;
+        this._actionBufIdx = 0;
+      }
+    } else {
+      this._actionBuf[this._actionBufIdx] = entry;
+      this._actionBufIdx = (this._actionBufIdx + 1) % max;
+    }
   }
 
   get speed() { return this._config.speed; }
@@ -117,7 +162,7 @@ export class Animal {
 
   tickNeeds(hungerMult, thirstMult) {
     const stage = this.lifeStage;
-    const stageKey = Object.keys(LifeStage).find(key => LifeStage[key] === stage) || 'ADULT';
+    const stageKey = LIFE_STAGE_KEYS[stage] || 'ADULT';
     const hMult = this._config.metabolic_multipliers?.hunger?.[stageKey] ?? 1;
     const tMult = this._config.metabolic_multipliers?.thirst?.[stageKey] ?? 1;
     this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate * hungerMult * hMult);

@@ -809,10 +809,7 @@ function _doMate(animal, mate, world) {
     const effectiveMax = globalMax > 0
       ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
       : baseMax;
-    let count = 0;
-    for (const a of world.animals) {
-      if (a.alive && a.species === animal.species) count++;
-    }
+    const count = world.getAliveSpeciesCount(animal.species);
     if (count >= effectiveMax) return;
     // Gradual slowdown: from 60% capacity onward, reproduction chance drops linearly
     const ratio = count / effectiveMax;

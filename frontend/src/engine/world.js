@@ -107,6 +107,10 @@ export class World {
     this.hungerMultiplier = 1.0;
     this.thirstMultiplier = 1.0;
 
+    // Per-species alive population cache (lazy, rebuilt once per tick on demand)
+    this._speciesPopCache = null;
+    this._speciesPopTick = -1;
+
     // Optional benchmark collector used by headless profiling.
     this._benchmarkCollector = null;
   }
@@ -146,6 +150,20 @@ export class World {
   vacateAnimal(x, y) {
     const i = this.idx(x, y);
     if (this.animalGrid[i] > 0) this.animalGrid[i]--;
+  }
+
+  getAliveSpeciesCount(species) {
+    const tick = this.clock.tick;
+    if (this._speciesPopTick !== tick || !this._speciesPopCache) {
+      this._speciesPopCache = {};
+      for (const a of this.animals) {
+        if (a.alive) {
+          this._speciesPopCache[a.species] = (this._speciesPopCache[a.species] || 0) + 1;
+        }
+      }
+      this._speciesPopTick = tick;
+    }
+    return this._speciesPopCache[species] || 0;
   }
 
   resetPlantEvents() {

@@ -208,6 +208,7 @@ function parseArgs(argv) {
     days: null,
     ticksPerDay: null,
     animalScale: null,
+    initialAnimals: null,
     plantDensity: null,
     maxAnimalPopulation: null,
     runName: '',
@@ -245,6 +246,10 @@ function parseArgs(argv) {
     }
     if (arg === '--animal-scale' && argv[i + 1]) {
       opts.animalScale = Math.max(0, Number(argv[++i]) || 0);
+      continue;
+    }
+    if (arg === '--initial-animals' && argv[i + 1]) {
+      opts.initialAnimals = Math.max(0, Number(argv[++i]) || 0);
       continue;
     }
     if (arg === '--plant-density' && argv[i + 1]) {
@@ -298,7 +303,9 @@ function buildCustomScenario(opts) {
   const days = opts.days || 30;
   const ticks = opts.measureTicks || (days * tpd);
   const warmupTicks = opts.warmupTicks ?? Math.min(400, Math.max(100, Math.floor(ticks * 0.05)));
-  const animalScale = opts.animalScale ?? 1.0;
+  const initialAnimalCounts = opts.initialAnimals
+    ? scaleAnimalCountsToTarget(DEFAULT_CONFIG.initial_animal_counts, opts.initialAnimals)
+    : scaleAnimalCounts(DEFAULT_CONFIG.initial_animal_counts, opts.animalScale ?? 1.0);
 
   const thresholds = {
     avgTickMs: opts.thresholdAvgMs,
@@ -318,7 +325,7 @@ function buildCustomScenario(opts) {
       ticks_per_day: tpd,
       initial_plant_density: opts.plantDensity ?? DEFAULT_CONFIG.initial_plant_density,
       max_animal_population: opts.maxAnimalPopulation ?? DEFAULT_CONFIG.max_animal_population,
-      initial_animal_counts: scaleAnimalCounts(DEFAULT_CONFIG.initial_animal_counts, animalScale),
+      initial_animal_counts: initialAnimalCounts,
     },
   };
 }

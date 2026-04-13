@@ -452,13 +452,18 @@ function _seekPrey(animal, world, spatialHash, vision) {
   benchmarkAddKeyed(collector, 'speciesSeekPrey', animal.species, 1);
   // Carnivores can also eat fruit opportunistically when very hungry and no prey
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
-  const prey = nearby.filter(e => e.alive && e.id !== animal.id && _canHunt(animal, e));
+  let target = null;
+  let bestDist = Infinity;
+  for (const entity of nearby) {
+    if (!entity.alive || entity.id === animal.id || !_canHunt(animal, entity)) continue;
+    const dist = Math.abs(entity.x - animal.x) + Math.abs(entity.y - animal.y);
+    if (dist < bestDist) {
+      bestDist = dist;
+      target = entity;
+    }
+  }
 
-  if (prey.length) {
-    const target = prey.reduce((a, b) =>
-      (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
-      (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
-    );
+  if (target) {
     const dist = Math.abs(target.x - animal.x) + Math.abs(target.y - animal.y);
 
     if (dist <= 1) {
@@ -518,14 +523,17 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
   // When very hungry, try hunting prey from prey_species list
   if (animal.hunger > 75) {
     const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
-    const prey = nearby.filter(e =>
-      e.alive && e.id !== animal.id && _canHunt(animal, e)
-    );
-    if (prey.length) {
-      const target = prey.reduce((a, b) =>
-        (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
-        (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
-      );
+    let target = null;
+    let bestDist = Infinity;
+    for (const entity of nearby) {
+      if (!entity.alive || entity.id === animal.id || !_canHunt(animal, entity)) continue;
+      const distCandidate = Math.abs(entity.x - animal.x) + Math.abs(entity.y - animal.y);
+      if (distCandidate < bestDist) {
+        bestDist = distCandidate;
+        target = entity;
+      }
+    }
+    if (target) {
       const dist = Math.abs(target.x - animal.x) + Math.abs(target.y - animal.y);
       if (dist <= 1) {
         _attack(animal, target, world);
@@ -558,15 +566,18 @@ function _tryScavenge(animal, world, spatialHash, vision) {
   benchmarkAddKeyed(collector, 'speciesTryScavenge', animal.species, 1);
   const tick = world.clock.tick;
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
-  const corpses = nearby.filter(e =>
-    !e.alive && !e.consumed && e._deathTick != null && (tick - e._deathTick) < 100
-  );
-  if (!corpses.length) return false;
+  let target = null;
+  let bestDist = Infinity;
+  for (const entity of nearby) {
+    if (entity.alive || entity.consumed || entity._deathTick == null || (tick - entity._deathTick) >= 100) continue;
+    const distCandidate = Math.abs(entity.x - animal.x) + Math.abs(entity.y - animal.y);
+    if (distCandidate < bestDist) {
+      bestDist = distCandidate;
+      target = entity;
+    }
+  }
+  if (!target) return false;
 
-  const target = corpses.reduce((a, b) =>
-    (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
-    (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
-  );
   const dist = Math.abs(target.x - animal.x) + Math.abs(target.y - animal.y);
 
   if (dist <= 1) {
@@ -640,27 +651,26 @@ function _findNearestThreat(animal, world, spatialHash, vision) {
   benchmarkAdd(collector, 'threatCacheMisses', 1);
   benchmarkAddKeyed(collector, 'speciesThreatCacheMisses', animal.species, 1);
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
-  const threats = nearby.filter(e => {
-    if (!e.alive || e.id === animal.id) return false;
-    // Only fear animals that list us as prey
-    if (e._preySpecies.size > 0 && !e._preySpecies.has(animal.species)) return false;
-    if (e.diet === 'CARNIVORE') return true;
-    // Omnivores only fear stronger omnivores/carnivores
-    if (animal.diet === 'OMNIVORE' && e.diet === 'OMNIVORE') {
-      return e._config.attack_power > animal._config.attack_power + 2;
+  let threat = null;
+  let bestDist = Infinity;
+  for (const entity of nearby) {
+    if (!entity.alive || entity.id === animal.id) continue;
+    if (entity._preySpecies.size > 0 && !entity._preySpecies.has(animal.species)) continue;
+    const isThreat = entity.diet === 'CARNIVORE' ||
+      (animal.diet === 'OMNIVORE' && entity.diet === 'OMNIVORE' && entity._config.attack_power > animal._config.attack_power + 2);
+    if (!isThreat) continue;
+    const distCandidate = Math.abs(entity.x - animal.x) + Math.abs(entity.y - animal.y);
+    if (distCandidate < bestDist) {
+      bestDist = distCandidate;
+      threat = entity;
     }
-    return false;
-  });
-  if (!threats.length) {
+  }
+  if (!threat) {
     animal._cachedThreat = null;
     animal._cachedThreatTick = tick;
     animal._nextThreatCheckTick = tick + THREAT_SCAN_COOLDOWN;
     return null;
   }
-  const threat = threats.reduce((a, b) =>
-    (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
-    (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
-  );
   animal._cachedThreat = threat;
   animal._cachedThreatTick = tick;
   animal._nextThreatCheckTick = tick + 1;
@@ -706,23 +716,22 @@ function _findMate(animal, spatialHash, searchRadius) {
   try {
   const nearby = spatialHash.queryRadius(animal.x, animal.y, searchRadius || 10);
   const repro = animal._config.reproduction || REPRO_SEXUAL;
-  const candidates = nearby.filter(e => {
-    if (e.species !== animal.species || !e.alive || e.id === animal.id) return false;
-    if (e.lifeStage !== LifeStage.ADULT || e.mateCooldown > 0 || e.energy <= 50) return false;
-    // Sex compatibility check
+  let target = null;
+  let bestDist = Infinity;
+  for (const entity of nearby) {
+    if (entity.species !== animal.species || !entity.alive || entity.id === animal.id) continue;
+    if (entity.lifeStage !== LifeStage.ADULT || entity.mateCooldown > 0 || entity.energy <= 50) continue;
     if (repro === REPRO_SEXUAL) {
-      // Need opposite sex
-      if (animal.sex === SEX_MALE && e.sex !== SEX_FEMALE) return false;
-      if (animal.sex === SEX_FEMALE && e.sex !== SEX_MALE) return false;
+      if (animal.sex === SEX_MALE && entity.sex !== SEX_FEMALE) continue;
+      if (animal.sex === SEX_FEMALE && entity.sex !== SEX_MALE) continue;
     }
-    // HERMAPHRODITE and ASEXUAL can mate with any same-species
-    return true;
-  });
-  if (!candidates.length) return null;
-  return candidates.reduce((a, b) =>
-    (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
-    (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
-  );
+    const distCandidate = Math.abs(entity.x - animal.x) + Math.abs(entity.y - animal.y);
+    if (distCandidate < bestDist) {
+      bestDist = distCandidate;
+      target = entity;
+    }
+  }
+  return target;
   } finally {
     benchmarkEnd(collector, 'findMate', startedAt);
   }

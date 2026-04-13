@@ -19,6 +19,7 @@ export function aStar(sx, sy, gx, gy, world, maxDist = 50, walkableSet = null) {
   let pathLength = 0;
   let succeeded = false;
   const visited = new Set();
+  const width = world.width;
 
   try {
     if (sx === gx && sy === gy) return [];
@@ -47,22 +48,23 @@ export function aStar(sx, sy, gx, gy, world, maxDist = 50, walkableSet = null) {
     const gScore = new Map();
     const cameFrom = new Map();
 
-    const startKey = `${sx},${sy}`;
+    const startKey = sy * width + sx;
     gScore.set(startKey, 0);
     _heapPush(open, [Math.abs(gx - sx) + Math.abs(gy - sy), sx, sy]);
 
     while (open.length > 0) {
       const [, cx, cy] = _heapPop(open);
-      const ck = `${cx},${cy}`;
+      const ck = cy * width + cx;
 
       if (visited.has(ck)) continue;
       visited.add(ck);
 
       if (cx === gx && cy === gy) {
         const path = [];
-        let cur = `${gx},${gy}`;
+        let cur = gy * width + gx;
         while (cameFrom.has(cur)) {
-          const [px, py] = cur.split(',').map(Number);
+          const px = cur % width;
+          const py = Math.floor(cur / width);
           path.push([px, py]);
           cur = cameFrom.get(cur);
         }
@@ -78,7 +80,7 @@ export function aStar(sx, sy, gx, gy, world, maxDist = 50, walkableSet = null) {
       const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
       for (const [dx, dy] of dirs) {
         const nx = cx + dx, ny = cy + dy;
-        const nk = `${nx},${ny}`;
+        const nk = ny * width + nx;
         if (visited.has(nk)) continue;
         if (!_walkable(nx, ny)) continue;
 

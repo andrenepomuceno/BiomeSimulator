@@ -66,12 +66,13 @@ export class SpatialHash {
     for (let dx = -cellsRange; dx <= cellsRange; dx++) {
       for (let dy = -cellsRange; dy <= cellsRange; dy++) {
         const cell = this._cells.get(`${cx + dx},${cy + dy}`);
-        if (cell) {
-          for (const entity of cell.values()) {
-            const distSq = (entity.x - x) ** 2 + (entity.y - y) ** 2;
-            if (distSq <= rSq) {
-              results.push(entity);
-            }
+        if (!cell) continue;
+        for (const entity of cell.values()) {
+          const deltaX = entity.x - x;
+          const deltaY = entity.y - y;
+          const distSq = deltaX * deltaX + deltaY * deltaY;
+          if (distSq <= rSq) {
+            results.push(entity);
           }
         }
       }

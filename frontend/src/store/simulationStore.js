@@ -57,6 +57,12 @@ const useSimStore = create((set, get) => ({
   placeEntityType: 'RABBIT',
   setPlaceEntityType: (t) => set({ placeEntityType: t }),
 
+  // Global rate multipliers
+  hungerMultiplier: 1.0,
+  thirstMultiplier: 1.0,
+  setHungerMultiplier: (v) => set({ hungerMultiplier: v }),
+  setThirstMultiplier: (v) => set({ thirstMultiplier: v }),
+
   // Viewport
   viewport: { x: 0, y: 0, w: 100, h: 100 },
   setViewport: (v) => set({ viewport: v }),

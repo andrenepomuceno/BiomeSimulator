@@ -17,7 +17,7 @@ const DECISION_INTERVALS = buildDecisionIntervals();
 export function decideAndAct(animal, world, spatialHash) {
   if (!animal.alive) return;
 
-  animal.tickNeeds();
+  animal.tickNeeds(world.hungerMultiplier, world.thirstMultiplier);
 
   // Die of old age, zero energy, or max hunger/thirst
   if (animal.age > animal.maxAge || animal.energy <= 0 ||

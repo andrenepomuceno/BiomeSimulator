@@ -86,6 +86,10 @@ export class World {
 
     // Plant changes per tick (delta for renderer)
     this.plantChanges = [];
+
+    // Global rate multipliers (adjustable at runtime)
+    this.hungerMultiplier = 1.0;
+    this.thirstMultiplier = 1.0;
   }
 
   nextId() {

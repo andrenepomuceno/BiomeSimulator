@@ -165,6 +165,12 @@ self.onmessage = function (e) {
       engine.editTerrain(e.data.changes);
       break;
 
+    case 'setMultipliers':
+      if (!engine || !engine.world) break;
+      if (e.data.hungerMultiplier != null) engine.world.hungerMultiplier = e.data.hungerMultiplier;
+      if (e.data.thirstMultiplier != null) engine.world.thirstMultiplier = e.data.thirstMultiplier;
+      break;
+
     case 'placeEntity': {
       if (!engine) break;
       const result = engine.placeEntity(e.data.entityType, e.data.x, e.data.y);

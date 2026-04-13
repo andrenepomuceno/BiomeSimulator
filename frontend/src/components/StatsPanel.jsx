@@ -20,7 +20,7 @@ const SPECIES_CHART_COLORS = {
 };
 
 export default function StatsPanel() {
-  const { stats, clock } = useSimStore();
+  const { stats, clock, hungerMultiplier, thirstMultiplier, worker } = useSimStore();
   const speciesKeys = Object.keys(SPECIES_INFO);
   const [history, setHistory] = useState(() => {
     const h = { ticks: [] };
@@ -104,6 +104,44 @@ export default function StatsPanel() {
 
       <div style={{ height: 140, marginTop: 8 }}>
         <Line data={chartData} options={chartOptions} />
+      </div>
+
+      <h6 style={{ marginTop: 12 }}>Rate Multipliers</h6>
+      <div className="stat-row" style={{ flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span className="stat-label" style={{ minWidth: 50 }}>🍖 Hunger</span>
+          <input
+            type="range"
+            min="0.1"
+            max="3"
+            step="0.1"
+            value={hungerMultiplier}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              useSimStore.getState().setHungerMultiplier(v);
+              if (worker) worker.postMessage({ cmd: 'setMultipliers', hungerMultiplier: v });
+            }}
+            style={{ flex: 1 }}
+          />
+          <span className="stat-value" style={{ minWidth: 32, textAlign: 'right' }}>{hungerMultiplier.toFixed(1)}x</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span className="stat-label" style={{ minWidth: 50 }}>💧 Thirst</span>
+          <input
+            type="range"
+            min="0.1"
+            max="3"
+            step="0.1"
+            value={thirstMultiplier}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              useSimStore.getState().setThirstMultiplier(v);
+              if (worker) worker.postMessage({ cmd: 'setMultipliers', thirstMultiplier: v });
+            }}
+            style={{ flex: 1 }}
+          />
+          <span className="stat-value" style={{ minWidth: 32, textAlign: 'right' }}>{thirstMultiplier.toFixed(1)}x</span>
+        </div>
       </div>
     </div>
   );

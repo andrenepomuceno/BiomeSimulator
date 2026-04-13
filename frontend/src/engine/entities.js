@@ -84,9 +84,9 @@ export class Animal {
     this.energy = Math.max(0, Math.min(this._config.max_energy, this.energy - cost));
   }
 
-  tickNeeds() {
-    this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate);
-    this.thirst = Math.min(this._config.max_thirst, this.thirst + this._config.thirst_rate);
+  tickNeeds(hungerMult, thirstMult) {
+    this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate * hungerMult);
+    this.thirst = Math.min(this._config.max_thirst, this.thirst + this._config.thirst_rate * thirstMult);
     this.age++;
     if (this.mateCooldown > 0) this.mateCooldown--;
     if (this.attackCooldown > 0) this.attackCooldown--;

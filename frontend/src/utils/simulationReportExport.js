@@ -1,23 +1,6 @@
-import ANIMAL_SPECIES from '../engine/animalSpecies.js';
-import PLANT_SPECIES from '../engine/plantSpecies.js';
-
-const SPECIES_INFO = Object.fromEntries(
-  Object.entries(ANIMAL_SPECIES).map(([id, sp]) => [
-    id,
-    {
-      emoji: sp.emoji || '',
-      name: sp.name || id,
-      diet: sp.diet || '',
-    },
-  ])
-);
-
-const PLANT_TYPE_NAMES = {
-  0: 'None',
-  ...Object.fromEntries(
-    Object.values(PLANT_SPECIES).map(sp => [String(sp.typeId), sp.name || sp.id])
-  ),
-};
+import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
+import { buildDayLabel, resolveTicksPerDay, ticksToDay } from './time.js';
+import { PLANT_TYPE_NAMES, SPECIES_INFO } from './terrainColors.js';
 
 export const DIET_GROUPS = {
   Herbivore: ['RABBIT', 'SQUIRREL', 'BEETLE', 'GOAT', 'DEER', 'MOSQUITO', 'CATERPILLAR', 'CRICKET'],
@@ -92,11 +75,8 @@ export function deriveSimulationReportData(statsHistory, ticksPerDay) {
     plantMins[k] = Math.min(...arr);
   });
 
-  const tpd = ticksPerDay || 200;
-  const tickLabels = ticks.map(t => {
-    const day = Math.floor(t / tpd);
-    return `D${day}`;
-  });
+  const tpd = resolveTicksPerDay(ticksPerDay);
+  const tickLabels = ticks.map(t => buildDayLabel(t, tpd));
 
   return {
     ticks,
@@ -121,9 +101,9 @@ export function deriveSimulationReportData(statsHistory, ticksPerDay) {
 export function buildSimulationReportText(data, ticksPerDay, generatedAt = new Date()) {
   if (!data) return '';
 
-  const tpd = ticksPerDay || 200;
+  const tpd = resolveTicksPerDay(ticksPerDay || DEFAULT_TICKS_PER_DAY);
   const lastTick = data.ticks[data.ticks.length - 1] || 0;
-  const days = Math.floor(lastTick / tpd);
+  const days = ticksToDay(lastTick, tpd);
   const currentTotal = data.totalAnimals[data.totalAnimals.length - 1] || 0;
   const peakTotal = Math.max(...data.totalAnimals);
   const currentDiversity = data.diversity[data.diversity.length - 1] || 0;
@@ -187,13 +167,13 @@ export function buildSimulationReportText(data, ticksPerDay, generatedAt = new D
   lines.push('  ' + '-'.repeat(totalHeader.length - 2));
 
   for (let i = 0; i < data.ticks.length; i += step) {
-    const day = Math.floor(data.ticks[i] / tpd);
+    const day = ticksToDay(data.ticks[i], tpd);
     let row = '  ' + String(day).padStart(5) + String(data.ticks[i]).padStart(8) + String(data.totalAnimals[i]).padStart(8);
     dietNames.forEach(d => { row += String(data.dietData[d][i]).padStart(11); });
     lines.push(row);
   }
   if (lastIdx % step !== 0) {
-    const day = Math.floor(data.ticks[lastIdx] / tpd);
+    const day = ticksToDay(data.ticks[lastIdx], tpd);
     let row = '  ' + String(day).padStart(5) + String(data.ticks[lastIdx]).padStart(8) + String(data.totalAnimals[lastIdx]).padStart(8);
     dietNames.forEach(d => { row += String(data.dietData[d][lastIdx]).padStart(11); });
     lines.push(row);
@@ -208,13 +188,13 @@ export function buildSimulationReportText(data, ticksPerDay, generatedAt = new D
   lines.push('  ' + '-'.repeat(popHeader.length - 2));
 
   for (let i = 0; i < data.ticks.length; i += step) {
-    const day = Math.floor(data.ticks[i] / tpd);
+    const day = ticksToDay(data.ticks[i], tpd);
     let row = '  ' + String(day).padStart(5) + String(data.ticks[i]).padStart(8);
     visibleSpecies.forEach(k => { row += String(data.speciesData[k][i]).padStart(9); });
     lines.push(row);
   }
   if (lastIdx % step !== 0) {
-    const day = Math.floor(data.ticks[lastIdx] / tpd);
+    const day = ticksToDay(data.ticks[lastIdx], tpd);
     let row = '  ' + String(day).padStart(5) + String(data.ticks[lastIdx]).padStart(8);
     visibleSpecies.forEach(k => { row += String(data.speciesData[k][lastIdx]).padStart(9); });
     lines.push(row);

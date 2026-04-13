@@ -130,6 +130,13 @@ export const ANIMAL_COLORS = {
   CROCODILE:   0x556b2f,  // dark olive green
 };
 
+export const ANIMAL_HEX_COLORS = Object.fromEntries(
+  Object.entries(ANIMAL_COLORS).map(([species, color]) => [
+    species,
+    `#${color.toString(16).padStart(6, '0')}`,
+  ])
+);
+
 // Species display info
 export const SPECIES_INFO = {
   RABBIT:   { emoji: '🐰', name: 'Rabbit',   diet: 'Herbivore' },

@@ -1,0 +1,6 @@
+export const DEFAULT_TICKS_PER_DAY = 200;
+export const DEFAULT_DAY_FRACTION = 0.6;
+export const DEFAULT_SEASON_LENGTH_DAYS = 30;
+
+export const STATS_PANEL_HISTORY_LIMIT = 200;
+export const ENTITY_BARS_MIN_ZOOM = 4;

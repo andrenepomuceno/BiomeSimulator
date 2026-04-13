@@ -1,35 +1,16 @@
 /**
  * StatsPanel — live population counters and chart.
  */
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import useSimStore from '../store/simulationStore';
-import { SPECIES_INFO } from '../utils/terrainColors';
+import { ANIMAL_HEX_COLORS, SPECIES_INFO } from '../utils/terrainColors';
 import ANIMAL_SPECIES, { BASE_POP_TOTAL } from '../engine/animalSpecies';
 import { Chart as ChartJS, LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { STATS_PANEL_HISTORY_LIMIT } from '../constants/simulation';
+import { getPopulationStatusColor } from '../constants/statusColors';
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
-
-const SPECIES_CHART_COLORS = {
-  RABBIT:   '#66cc66',
-  SQUIRREL: '#cc8844',
-  BEETLE:   '#556633',
-  GOAT:     '#bbbbbb',
-  DEER:     '#cc9955',
-  FOX:      '#dd8833',
-  WOLF:     '#dd4444',
-  BOAR:     '#885533',
-  BEAR:     '#8b4513',
-  RACCOON:  '#778899',
-  CROW:     '#333344',
-  MOSQUITO: '#556655',
-  CATERPILLAR: '#88bb33',
-  CRICKET:  '#6f9933',
-  LIZARD:   '#5a8f4b',
-  SNAKE:    '#448844',
-  HAWK:     '#aa6622',
-  CROCODILE: '#556b2f',
-};
 
 export default function StatsPanel() {
   const {
@@ -51,11 +32,11 @@ export default function StatsPanel() {
 
   useEffect(() => {
     setHistory(prev => {
-      const newH = { ticks: [...prev.ticks, clock.tick].slice(-200) };
+      const newH = { ticks: [...prev.ticks, clock.tick].slice(-STATS_PANEL_HISTORY_LIMIT) };
       speciesKeys.forEach(k => {
-        newH[k] = [...(prev[k] || []), (stats.species && stats.species[k]) || 0].slice(-200);
+        newH[k] = [...(prev[k] || []), (stats.species && stats.species[k]) || 0].slice(-STATS_PANEL_HISTORY_LIMIT);
       });
-      newH.plants = [...prev.plants, stats.plants_total].slice(-200);
+      newH.plants = [...prev.plants, stats.plants_total].slice(-STATS_PANEL_HISTORY_LIMIT);
       return newH;
     });
   }, [clock.tick]);
@@ -66,7 +47,7 @@ export default function StatsPanel() {
       ...speciesKeys.map(k => ({
         label: SPECIES_INFO[k].name,
         data: history[k] || [],
-        borderColor: SPECIES_CHART_COLORS[k],
+        borderColor: ANIMAL_HEX_COLORS[k],
         borderWidth: 1.5,
         pointRadius: 0,
         tension: 0.3,
@@ -122,12 +103,13 @@ export default function StatsPanel() {
         const count = (stats.species && stats.species[k]) || 0;
         const cap = speciesCaps[k] || 0;
         const pct = cap > 0 ? count / cap : 0;
-        const barColor = pct > 0.8 ? '#dd4444' : pct > 0.6 ? '#ddaa33' : SPECIES_CHART_COLORS[k] || '#66cc66';
+        const speciesColor = ANIMAL_HEX_COLORS[k] || '#66cc66';
+        const barColor = getPopulationStatusColor(pct, speciesColor);
         return (
           <div key={k} style={{ marginBottom: 2 }}>
             <div className="stat-row">
               <span className="stat-label">{SPECIES_INFO[k].emoji} {SPECIES_INFO[k].name}</span>
-              <span className="stat-value" style={{ color: SPECIES_CHART_COLORS[k] }}>
+              <span className="stat-value" style={{ color: speciesColor }}>
                 {count}<span style={{ color: '#666', fontSize: '0.7rem' }}>/{cap}</span>
               </span>
             </div>

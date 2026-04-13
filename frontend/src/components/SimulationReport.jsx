@@ -3,52 +3,21 @@
  */
 import React, { useMemo, useState } from 'react';
 import useSimStore from '../store/simulationStore';
-import { SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
-import { buildSimulationReportText } from '../utils/simulationReportExport';
+import { ANIMAL_HEX_COLORS, SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
+import { buildSimulationReportText, deriveSimulationReportData, DIET_GROUPS } from '../utils/simulationReportExport';
 import {
   Chart as ChartJS,
   LineElement, PointElement, LinearScale, CategoryScale,
   Legend, Tooltip, Filler, Title, ArcElement, BarElement,
 } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import { DIET_COLORS } from '../constants/statusColors';
+import { resolveTicksPerDay, ticksToDay } from '../utils/time';
 
 ChartJS.register(
   LineElement, PointElement, LinearScale, CategoryScale,
   Legend, Tooltip, Filler, Title, ArcElement, BarElement,
 );
-
-const SPECIES_COLORS = {
-  RABBIT:      '#66cc66',
-  SQUIRREL:    '#cc8844',
-  BEETLE:      '#556633',
-  GOAT:        '#bbbbbb',
-  DEER:        '#cc9955',
-  FOX:         '#dd8833',
-  WOLF:        '#dd4444',
-  BOAR:        '#885533',
-  BEAR:        '#8B4513',
-  RACCOON:     '#778899',
-  CROW:        '#555566',
-  MOSQUITO:    '#556655',
-  CATERPILLAR: '#88bb33',
-  CRICKET:     '#6f9933',
-  LIZARD:      '#5a8f4b',
-  SNAKE:       '#448844',
-  HAWK:        '#aa6622',
-  CROCODILE:   '#556b2f',
-};
-
-const DIET_GROUPS = {
-  Herbivore: ['RABBIT', 'SQUIRREL', 'BEETLE', 'GOAT', 'DEER', 'MOSQUITO', 'CATERPILLAR', 'CRICKET'],
-  Carnivore: ['FOX', 'WOLF', 'SNAKE', 'HAWK', 'CROCODILE'],
-  Omnivore:  ['BOAR', 'BEAR', 'RACCOON', 'CROW', 'LIZARD'],
-};
-
-const DIET_COLORS = {
-  Herbivore: '#66cc66',
-  Carnivore: '#dd4444',
-  Omnivore:  '#cc8844',
-};
 
 const PLANT_COLORS_MAP = {
   1: '#7fbb5c',  // Grass
@@ -106,124 +75,13 @@ const CHART_BASE = {
 export default function SimulationReport({ open, onClose }) {
   const [tab, setTab] = useState('population');
   const { statsHistory, stats, clock } = useSimStore();
+  const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
 
   // Derive all chart data from statsHistory
-  const data = useMemo(() => {
-    if (!statsHistory || statsHistory.length === 0) return null;
-
-    const ticks = statsHistory.map(s => s.tick);
-    const tickLabels = ticks.map(t => {
-      const day = Math.floor(t / (clock.ticks_per_day || 200));
-      return `D${day}`;
-    });
-
-    // Species population over time
-    const speciesKeys = Object.keys(SPECIES_INFO);
-    const speciesData = {};
-    speciesKeys.forEach(k => {
-      speciesData[k] = statsHistory.map(s => (s.species && s.species[k]) || 0);
-    });
-
-    // Diet groups over time
-    const dietData = {};
-    Object.entries(DIET_GROUPS).forEach(([diet, speciesList]) => {
-      dietData[diet] = statsHistory.map(s =>
-        speciesList.reduce((sum, sp) => sum + ((s.species && s.species[sp]) || 0), 0)
-      );
-    });
-
-    // Flora over time
-    const plantsTotal = statsHistory.map(s => s.plants_total || 0);
-    const fruits = statsHistory.map(s => s.fruits || 0);
-
-    // Plant types at latest snapshot
-    const latest = statsHistory[statsHistory.length - 1];
-    const plantTypes = latest.plant_types || {};
-
-    // Peak & min populations
-    const peaks = {};
-    const mins = {};
-    speciesKeys.forEach(k => {
-      const arr = speciesData[k];
-      peaks[k] = Math.max(...arr);
-      mins[k] = Math.min(...arr);
-    });
-
-    // Total animal count over time
-    const totalAnimals = statsHistory.map(s =>
-      speciesKeys.reduce((sum, k) => sum + ((s.species && s.species[k]) || 0), 0)
-    );
-
-    // Biodiversity index (Shannon) at each snapshot
-    const diversity = statsHistory.map(s => {
-      const counts = speciesKeys.map(k => (s.species && s.species[k]) || 0);
-      const total = counts.reduce((a, b) => a + b, 0);
-      if (total === 0) return 0;
-      return -counts.reduce((sum, c) => {
-        if (c === 0) return sum;
-        const p = c / total;
-        return sum + p * Math.log(p);
-      }, 0);
-    });
-
-    // Extinction events (species dropping to 0 after being > 0)
-    const extinctions = [];
-    speciesKeys.forEach(k => {
-      const arr = speciesData[k];
-      for (let i = 1; i < arr.length; i++) {
-        if (arr[i] === 0 && arr[i - 1] > 0) {
-          extinctions.push({ species: k, tick: ticks[i] });
-        }
-      }
-    });
-
-    // --- Plant per-species data ---
-    const plantTypeKeys = Object.keys(PLANT_TYPE_NAMES).filter(k => k !== '0');
-    const plantSpeciesData = {};
-    plantTypeKeys.forEach(k => {
-      plantSpeciesData[k] = statsHistory.map(s => (s.plant_types && s.plant_types[k]) || 0);
-    });
-    const plantPeaks = {};
-    const plantMins = {};
-    plantTypeKeys.forEach(k => {
-      const arr = plantSpeciesData[k];
-      plantPeaks[k] = Math.max(...arr);
-      plantMins[k] = Math.min(...arr);
-    });
-
-    // --- Plant events aggregation ---
-    const plantBirthsTotal = statsHistory.map(s => {
-      const ev = s.plant_events;
-      if (!ev || !ev.births) return 0;
-      return Object.values(ev.births).reduce((a, b) => a + b, 0);
-    });
-    const plantDeathsTotal = statsHistory.map(s => {
-      const ev = s.plant_events;
-      if (!ev) return 0;
-      let sum = 0;
-      for (const cat of ['deaths_terrain', 'deaths_water', 'deaths_age', 'deaths_eaten']) {
-        if (ev[cat]) sum += Object.values(ev[cat]).reduce((a, b) => a + b, 0);
-      }
-      return sum;
-    });
-    const deathCauseTotals = { terrain: 0, water: 0, age: 0, eaten: 0 };
-    statsHistory.forEach(s => {
-      const ev = s.plant_events;
-      if (!ev) return;
-      if (ev.deaths_terrain) deathCauseTotals.terrain += Object.values(ev.deaths_terrain).reduce((a, b) => a + b, 0);
-      if (ev.deaths_water) deathCauseTotals.water += Object.values(ev.deaths_water).reduce((a, b) => a + b, 0);
-      if (ev.deaths_age) deathCauseTotals.age += Object.values(ev.deaths_age).reduce((a, b) => a + b, 0);
-      if (ev.deaths_eaten) deathCauseTotals.eaten += Object.values(ev.deaths_eaten).reduce((a, b) => a + b, 0);
-    });
-
-    return {
-      ticks, tickLabels, speciesKeys, speciesData,
-      dietData, plantsTotal, fruits, plantTypes, latest,
-      peaks, mins, totalAnimals, diversity, extinctions,
-      plantTypeKeys, plantSpeciesData, plantPeaks, plantMins,
-      plantBirthsTotal, plantDeathsTotal, deathCauseTotals,
-    };
-  }, [statsHistory, clock.ticks_per_day]);
+  const data = useMemo(
+    () => deriveSimulationReportData(statsHistory, ticksPerDay),
+    [statsHistory, ticksPerDay]
+  );
 
   if (!open) return null;
 
@@ -265,8 +123,8 @@ export default function SimulationReport({ open, onClose }) {
         .map(k => ({
           label: SPECIES_INFO[k].name,
           data: data.speciesData[k],
-          borderColor: SPECIES_COLORS[k],
-          backgroundColor: SPECIES_COLORS[k] + '22',
+          borderColor: ANIMAL_HEX_COLORS[k],
+          backgroundColor: ANIMAL_HEX_COLORS[k] + '22',
           borderWidth: 2,
           pointRadius: 0,
           tension: 0.3,
@@ -309,7 +167,7 @@ export default function SimulationReport({ open, onClose }) {
               return (
                 <div key={k} className={`report-species-row ${extinct ? 'extinct' : ''}`}>
                   <span>
-                    <span style={{ color: SPECIES_COLORS[k] }}>{SPECIES_INFO[k].emoji}</span>{' '}
+                    <span style={{ color: ANIMAL_HEX_COLORS[k] }}>{SPECIES_INFO[k].emoji}</span>{' '}
                     {SPECIES_INFO[k].name}
                   </span>
                   <span>{current}</span>
@@ -472,7 +330,7 @@ export default function SimulationReport({ open, onClose }) {
   function renderSummaryTab() {
     if (noData) return <p className="report-empty">No history data yet.</p>;
 
-    const daysElapsed = Math.floor((data.ticks[data.ticks.length - 1] || 0) / (clock.ticks_per_day || 200));
+    const daysElapsed = ticksToDay(data.ticks[data.ticks.length - 1] || 0, ticksPerDay);
     const totalTicks = data.ticks[data.ticks.length - 1] || 0;
     const currentTotal = data.totalAnimals[data.totalAnimals.length - 1] || 0;
     const peakTotal = Math.max(...data.totalAnimals);
@@ -532,9 +390,8 @@ export default function SimulationReport({ open, onClose }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const tpd = clock.ticks_per_day || 200;
     const lastTick = data.ticks[data.ticks.length - 1] || 0;
-    const days = Math.floor(lastTick / tpd);
+    const days = ticksToDay(lastTick, ticksPerDay);
     a.download = `ecogame-report-day${days}.txt`;
     a.click();
     URL.revokeObjectURL(url);

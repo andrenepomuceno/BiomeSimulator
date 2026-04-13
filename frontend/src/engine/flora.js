@@ -21,6 +21,7 @@ import {
   PLANT_IDS,
 } from './plantSpecies.js';
 import { benchmarkAdd, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
+import { DEFAULT_SEASON_LENGTH_DAYS, DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 
 // Plant types
 export const P_NONE = 0;
@@ -171,8 +172,8 @@ function _pickInitialStageAndAge(ages, world) {
 
 /** Get current season index (0=Spring, 1=Summer, 2=Autumn, 3=Winter). */
 export function getSeason(world) {
-  const ticksPerDay = world.config.ticks_per_day || 200;
-  const seasonLengthDays = world.config.season_length_days || 30;
+  const ticksPerDay = world.config.ticks_per_day || DEFAULT_TICKS_PER_DAY;
+  const seasonLengthDays = world.config.season_length_days || DEFAULT_SEASON_LENGTH_DAYS;
   const totalDays = Math.floor(world.clock.tick / ticksPerDay);
   return Math.floor(totalDays / seasonLengthDays) % 4;
 }

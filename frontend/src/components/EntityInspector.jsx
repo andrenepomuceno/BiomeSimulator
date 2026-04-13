@@ -6,6 +6,8 @@ import useSimStore from '../store/simulationStore';
 import { STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
 import ANIMAL_SPECIES from '../engine/animalSpecies';
 import PLANT_SPECIES, { getPlantByTypeId } from '../engine/plantSpecies';
+import { DIET_COLORS } from '../constants/statusColors';
+import { formatTickTimestamp, resolveTicksPerDay } from '../utils/time';
 
 function Bar({ label, value, max, color, icon }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
@@ -180,15 +182,6 @@ const ACTION_COLORS = {
   EAT_PLANT: '#66cc66', SCAVENGED: '#cc8844', FLED: '#ff8833', DIED: '#888',
 };
 
-function formatLogTimestamp(tick, ticksPerDay) {
-  const day = Math.floor(tick / ticksPerDay);
-  const tickInDay = tick % ticksPerDay;
-  const dayFrac = tickInDay / ticksPerDay;
-  const hours = Math.floor(dayFrac * 24);
-  const minutes = Math.floor((dayFrac * 24 - hours) * 60);
-  return `D${day} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
-
 function ActionLogEntry({ event, ticksPerDay }) {
   const { tick, action, detail } = event;
   const icon = ACTION_ICONS[action] || '❓';
@@ -205,7 +198,7 @@ function ActionLogEntry({ event, ticksPerDay }) {
   else if (action === 'SCAVENGED') text = `Scavenged ${detail.corpse} #${detail.corpseId}`;
   else if (action === 'FLED')      text = `Fled from ${detail.from} #${detail.threatId}`;
   else if (action === 'DIED')      text = `Died (${detail.cause})`;
-  const ts = formatLogTimestamp(tick, ticksPerDay);
+  const ts = formatTickTimestamp(tick, ticksPerDay);
   return (
     <div className="d-flex align-items-start gap-1" style={{ padding: '1px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
       <span style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>{icon}</span>
@@ -236,7 +229,7 @@ function PlantLogEntry({ event, ticksPerDay }) {
   else if (ev === 'SPOILED') text = 'Fruit spoiled → seed';
   else if (ev === 'DIED')    text = `Died (${(detail.cause || 'unknown').replace('_', ' ')})`;
   else if (ev === 'EATEN')   text = `Eaten by ${detail.by}`;
-  const ts = formatLogTimestamp(tick, ticksPerDay);
+  const ts = formatTickTimestamp(tick, ticksPerDay);
   return (
     <div className="d-flex align-items-start gap-1" style={{ padding: '1px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
       <span style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>{icon}</span>
@@ -248,6 +241,7 @@ function PlantLogEntry({ event, ticksPerDay }) {
 
 export default function EntityInspector() {
   const { selectedEntity, selectedTile, clearSelection, clock } = useSimStore();
+  const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
 
   if (selectedEntity) {
     const e = selectedEntity;
@@ -278,7 +272,7 @@ export default function EntityInspector() {
         <CollapsibleSection title="Identity" icon="🪪" defaultOpen={true}>
           <div className="stat-row">
             <span className="stat-label">Diet</span>
-            <span className="stat-value" style={{ color: info.diet === 'Carnivore' ? '#dd4444' : info.diet === 'Omnivore' ? '#cc8844' : '#66cc66' }}>
+            <span className="stat-value" style={{ color: DIET_COLORS[info.diet] || DIET_COLORS.Herbivore }}>
               {info.diet}
             </span>
           </div>
@@ -345,7 +339,7 @@ export default function EntityInspector() {
           <CollapsibleSection title="Action History" icon="📜" defaultOpen={false}>
             <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: '0.63rem' }}>
               {[...e.actionHistory].reverse().map((ev, i) => (
-                <ActionLogEntry key={i} event={ev} ticksPerDay={clock.ticks_per_day || 200} />
+                <ActionLogEntry key={i} event={ev} ticksPerDay={ticksPerDay} />
               ))}
             </div>
           </CollapsibleSection>
@@ -431,7 +425,7 @@ export default function EntityInspector() {
               <CollapsibleSection title="Event Log" icon="📜" defaultOpen={false}>
                 <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: '0.63rem' }}>
                   {[...t.plant.log].reverse().map((ev, i) => (
-                    <PlantLogEntry key={i} event={ev} ticksPerDay={clock.ticks_per_day || 200} />
+                    <PlantLogEntry key={i} event={ev} ticksPerDay={ticksPerDay} />
                   ))}
                 </div>
               </CollapsibleSection>

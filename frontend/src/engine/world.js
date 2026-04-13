@@ -1,6 +1,7 @@
 /**
  * World model — terrain, plant grids (parallel TypedArrays), animals, clock.
  */
+import { DEFAULT_DAY_FRACTION, DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 
 // Terrain types
 export const WATER = 0;
@@ -22,7 +23,7 @@ export const TERRAIN_NAMES = {
 };
 
 export class Clock {
-  constructor(ticksPerDay = 200, dayFraction = 0.6) {
+  constructor(ticksPerDay = DEFAULT_TICKS_PER_DAY, dayFraction = DEFAULT_DAY_FRACTION) {
     this.tick = 0;
     this.ticksPerDay = ticksPerDay;
     this.dayFraction = dayFraction;
@@ -87,8 +88,8 @@ export class World {
 
     // Clock
     this.clock = new Clock(
-      config.ticks_per_day || 200,
-      config.day_fraction || 0.6,
+      config.ticks_per_day || DEFAULT_TICKS_PER_DAY,
+      config.day_fraction || DEFAULT_DAY_FRACTION,
     );
 
     // Stats history

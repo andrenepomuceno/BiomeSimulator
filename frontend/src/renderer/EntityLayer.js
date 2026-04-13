@@ -4,8 +4,9 @@
  */
 import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures';
-
-const ENERGY_REF = 200; // Reference max energy for bar display
+import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation';
+import { getEnergyStatusColorInt } from '../constants/statusColors';
+import { MAX_ANIMAL_ENERGY } from '../engine/animalSpecies';
 
 export class EntityLayer {
   constructor(animationLayer) {
@@ -82,7 +83,7 @@ export class EntityLayer {
     this._ensureTextures();
 
     const seen = new Set();
-    const showBars = zoom >= 4;
+    const showBars = zoom >= ENTITY_BARS_MIN_ZOOM;
 
     // Clear energy bars (redrawn each frame)
     const barGfx = this._barGfx;
@@ -141,7 +142,7 @@ export class EntityLayer {
       // Scale: 96px texture → ~1 tile.  Base scale 0.012, range varies by life stage
       const baseScale = 0.012;
       const energy = Number.isFinite(a.energy) ? a.energy : 0;
-      const energyFactor = 0.8 + (energy / ENERGY_REF) * 0.4;
+      const energyFactor = 0.8 + (energy / MAX_ANIMAL_ENERGY) * 0.4;
       const stageFactor = a.state === 9 ? 1.0
         : a.lifeStage === 0 ? 0.5
         : a.lifeStage === 1 ? 0.7
@@ -193,7 +194,7 @@ export class EntityLayer {
 
       // Energy bar (zoom >= 4, not dead)
       if (showBars && a.state !== 9 && a.alive !== false) {
-        const ratio = Math.max(0, Math.min(1, energy / ENERGY_REF));
+        const ratio = Math.max(0, Math.min(1, energy / MAX_ANIMAL_ENERGY));
         const barW = 0.6;
         const barH = 0.06;
         const barX = a.x + 0.5 - barW / 2;
@@ -205,9 +206,7 @@ export class EntityLayer {
         barGfx.endFill();
 
         // Fill (color by ratio)
-        const fillColor = ratio < 0.25 ? 0xdd3333
-          : ratio < 0.60 ? 0xddaa33
-          : 0x33bb33;
+        const fillColor = getEnergyStatusColorInt(ratio);
         barGfx.beginFill(fillColor, 0.85);
         barGfx.drawRect(barX, barY, barW * ratio, barH);
         barGfx.endFill();

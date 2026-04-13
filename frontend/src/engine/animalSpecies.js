@@ -757,6 +757,9 @@ const ANIMAL_SPECIES = {
 export const BASE_POP_TOTAL = Object.values(ANIMAL_SPECIES)
   .reduce((sum, sp) => sum + (sp.max_population || 0), 0);
 
+export const MAX_ANIMAL_ENERGY = Object.values(ANIMAL_SPECIES)
+  .reduce((maxEnergy, sp) => Math.max(maxEnergy, sp.max_energy || 0), 0);
+
 /** Ordered list of all species keys */
 export const ALL_ANIMAL_IDS = Object.keys(ANIMAL_SPECIES);
 

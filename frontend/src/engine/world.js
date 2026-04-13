@@ -100,6 +100,9 @@ export class World {
     // Plant event counters (accumulated between stats snapshots)
     this.plantEvents = { births: {}, deaths_terrain: {}, deaths_water: {}, deaths_age: {}, deaths_eaten: {}, matured: {} };
 
+    // Per-plant event log (sparse Map: tileIndex → Array of { tick, event, detail })
+    this.plantLog = new Map();
+
     // Global rate multipliers (adjustable at runtime)
     this.hungerMultiplier = 1.0;
     this.thirstMultiplier = 1.0;
@@ -144,6 +147,20 @@ export class World {
 
   resetPlantEvents() {
     this.plantEvents = { births: {}, deaths_terrain: {}, deaths_water: {}, deaths_age: {}, deaths_eaten: {}, matured: {} };
+  }
+
+  logPlantEvent(idx, event, detail) {
+    let log = this.plantLog.get(idx);
+    if (!log) {
+      log = [];
+      this.plantLog.set(idx, log);
+    }
+    log.push({ tick: this.clock.tick, event, detail });
+    if (log.length > 20) log.shift();
+  }
+
+  clearPlantLog(idx) {
+    this.plantLog.delete(idx);
   }
 
   isWaterAdjacent(x, y) {

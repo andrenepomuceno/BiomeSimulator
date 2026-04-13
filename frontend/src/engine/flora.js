@@ -234,6 +234,8 @@ export function seedInitialPlants(world) {
     world.plantStage[idx] = stage;
     world.plantAge[idx] = age;
     world.activePlantTiles.add(idx);
+    world.clearPlantLog(idx);
+    world.logPlantEvent(idx, 'PLANTED', { stage });
   }
 }
 
@@ -281,6 +283,7 @@ export function processPlants(world) {
       if (deathChance > 0 && Math.random() < deathChance * PLANT_TICK_PHASES * harshMult * seasonDeath) {
         world.plantStage[i] = S_DEAD;
         world.plantEvents.deaths_terrain[ptype] = (world.plantEvents.deaths_terrain[ptype] || 0) + 1;
+        world.logPlantEvent(i, 'DIED', { cause: 'harsh_terrain' });
         const x = i % w, y = Math.floor(i / w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
         continue;
@@ -297,6 +300,7 @@ export function processPlants(world) {
       if (world.plantAge[i] >= spoilAge) {
         world.plantStage[i] = S_SEED;
         world.plantAge[i] = 0;
+        world.logPlantEvent(i, 'SPOILED', {});
         const x = i % w, y = Math.floor(i / w);
         world.plantChanges.push([x, y, ptype, S_SEED]);
       }
@@ -311,6 +315,7 @@ export function processPlants(world) {
       if (Math.random() < stressRate * PLANT_TICK_PHASES * severeMult * affinityMult * seasonDeath) {
         world.plantStage[i] = S_DEAD;
         world.plantEvents.deaths_water[ptype] = (world.plantEvents.deaths_water[ptype] || 0) + 1;
+        world.logPlantEvent(i, 'DIED', { cause: 'water_stress' });
         const x = i % w, y = Math.floor(i / w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
         continue;
@@ -352,8 +357,12 @@ export function processPlants(world) {
       world.plantStage[i] = newStage;
       if (newStage === S_DEAD) {
         world.plantEvents.deaths_age[ptype] = (world.plantEvents.deaths_age[ptype] || 0) + 1;
+        world.logPlantEvent(i, 'DIED', { cause: 'old_age' });
       } else if (newStage === S_ADULT) {
         world.plantEvents.matured[ptype] = (world.plantEvents.matured[ptype] || 0) + 1;
+        world.logPlantEvent(i, 'MATURED', {});
+      } else {
+        world.logPlantEvent(i, 'GREW', { from: stage, to: newStage });
       }
       const x = i % w, y = Math.floor(i / w);
       world.plantChanges.push([x, y, ptype, newStage]);
@@ -369,6 +378,7 @@ export function processPlants(world) {
       world.plantStage[i] = S_NONE;
       world.plantAge[i] = 0;
       world.plantChanges.push([x, y, P_NONE, S_NONE]);
+      world.clearPlantLog(i);
       toRemove.push(i);
     }
   }
@@ -452,5 +462,7 @@ function produceOffspring(world) {
     world.activePlantTiles.add(ni);
     world.plantChanges.push([nx, ny, ptype, offspringStage]);
     world.plantEvents.births[ptype] = (world.plantEvents.births[ptype] || 0) + 1;
+    world.clearPlantLog(ni);
+    world.logPlantEvent(ni, 'BORN', { parentX: x, parentY: y, stage: offspringStage });
   }
 }

@@ -62,6 +62,7 @@ function _eatPlantTile(animal, world, idx) {
   animal.applyEnergyCost('EAT');
   const x = idx % world.width, y = Math.floor(idx / world.width);
   animal.logAction(world.clock.tick, 'EAT_PLANT', { plantType: ptype, stage: STAGE_LOG_NAMES[stage] || stage, x, y });
+  world.logPlantEvent(idx, 'EATEN', { by: animal.species });
   world.plantType[idx] = P_NONE;
   world.plantStage[idx] = S_NONE;
   world.plantAge[idx] = 0;

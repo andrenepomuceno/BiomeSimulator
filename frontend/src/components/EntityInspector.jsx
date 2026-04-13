@@ -214,6 +214,37 @@ function ActionLogEntry({ event, ticksPerDay }) {
   );
 }
 
+const PLANT_EVENT_ICONS = {
+  PLANTED: '🌱', BORN: '🌱', GREW: '📈', MATURED: '🌳',
+  SPOILED: '🍂', DIED: '💀', EATEN: '🍽️',
+};
+const PLANT_EVENT_COLORS = {
+  PLANTED: '#88cc44', BORN: '#66cc66', GREW: '#aacc44', MATURED: '#44bb88',
+  SPOILED: '#cc8844', DIED: '#888', EATEN: '#dd4444',
+};
+
+function PlantLogEntry({ event, ticksPerDay }) {
+  const { tick, event: ev, detail } = event;
+  const icon = PLANT_EVENT_ICONS[ev] || '❓';
+  const color = PLANT_EVENT_COLORS[ev] || '#aaa';
+  let text = ev;
+  if (ev === 'PLANTED')    text = `Planted (stage ${PLANT_STAGE_NAMES[detail.stage] || detail.stage})`;
+  else if (ev === 'BORN')  text = `Born from parent at (${detail.parentX},${detail.parentY})`;
+  else if (ev === 'GREW')  text = `Grew: ${PLANT_STAGE_NAMES[detail.from] || detail.from} → ${PLANT_STAGE_NAMES[detail.to] || detail.to}`;
+  else if (ev === 'MATURED') text = 'Reached adult stage';
+  else if (ev === 'SPOILED') text = 'Fruit spoiled → seed';
+  else if (ev === 'DIED')    text = `Died (${(detail.cause || 'unknown').replace('_', ' ')})`;
+  else if (ev === 'EATEN')   text = `Eaten by ${detail.by}`;
+  const ts = formatLogTimestamp(tick, ticksPerDay);
+  return (
+    <div className="d-flex align-items-start gap-1" style={{ padding: '1px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <span style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>{icon}</span>
+      <span style={{ color, flex: 1 }}>{text}</span>
+      <span style={{ flexShrink: 0, fontSize: '0.58rem', whiteSpace: 'nowrap', color: '#88aacc' }}>{ts}</span>
+    </div>
+  );
+}
+
 export default function EntityInspector() {
   const { selectedEntity, selectedTile, clearSelection, clock } = useSimStore();
 
@@ -393,6 +424,15 @@ export default function EntityInspector() {
               )}
             </CollapsibleSection>
             <PlantAttributes typeId={t.plant.type} />
+            {t.plant.log && t.plant.log.length > 0 && (
+              <CollapsibleSection title="Event Log" icon="📜" defaultOpen={false}>
+                <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: '0.63rem' }}>
+                  {[...t.plant.log].reverse().map((ev, i) => (
+                    <PlantLogEntry key={i} event={ev} ticksPerDay={clock.ticks_per_day || 200} />
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
           </>
         )}
       </div>

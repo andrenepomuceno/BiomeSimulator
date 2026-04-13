@@ -203,6 +203,7 @@ self.onmessage = function (e) {
           type: w.plantType[idx],
           stage: w.plantStage[idx],
           age: w.plantAge[idx],
+          log: w.plantLog.get(idx) || [],
         },
       };
       // Find animals on this tile

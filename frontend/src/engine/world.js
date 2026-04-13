@@ -167,6 +167,9 @@ export class World {
   }
 
   isWaterAdjacent(x, y) {
+    // Standing on water counts (flying animals over water)
+    const selfTerrain = this.terrain[this.idx(x, y)];
+    if (selfTerrain === WATER || selfTerrain === DEEP_WATER) return true;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         if (dx === 0 && dy === 0) continue;

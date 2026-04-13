@@ -43,10 +43,13 @@ export class Animal {
       this.sex = SEX_ASEXUAL;
     }
 
-    this.energy = config.max_energy * 0.8;
+    const initialState = config.initial_state || {};
+    const hungerRange = initialState.hunger_range || [10, 30];
+    const thirstRange = initialState.thirst_range || [10, 30];
+    this.energy = config.max_energy * (initialState.energy_fraction ?? 0.8);
     this.hp = config.max_hp;
-    this.hunger = 10 + Math.random() * 20;
-    this.thirst = 10 + Math.random() * 20;
+    this.hunger = hungerRange[0] + Math.random() * Math.max(0, hungerRange[1] - hungerRange[0]);
+    this.thirst = thirstRange[0] + Math.random() * Math.max(0, thirstRange[1] - thirstRange[0]);
     this.age = 0;
     this.alive = true;
 
@@ -78,7 +81,7 @@ export class Animal {
   /** Log an important action. */
   logAction(tick, action, detail) {
     this.actionHistory.push({ tick, action, detail });
-    if (this.actionHistory.length > 100) this.actionHistory.shift();
+    if (this.actionHistory.length > this._config.action_history_max_size) this.actionHistory.shift();
   }
 
   get speed() { return this._config.speed; }
@@ -107,22 +110,24 @@ export class Animal {
   }
 
   tickNeeds(hungerMult, thirstMult) {
-    // Babies and young animals have lower metabolic rates
     const stage = this.lifeStage;
-    const hMult = stage === LifeStage.BABY ? 0.5 : stage === LifeStage.YOUNG ? 0.75 : 1;
-    const tMult = stage === LifeStage.BABY ? 0.6 : stage === LifeStage.YOUNG ? 0.8 : 1;
+    const stageKey = Object.keys(LifeStage).find(key => LifeStage[key] === stage) || 'ADULT';
+    const hMult = this._config.metabolic_multipliers?.hunger?.[stageKey] ?? 1;
+    const tMult = this._config.metabolic_multipliers?.thirst?.[stageKey] ?? 1;
     this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate * hungerMult * hMult);
     this.thirst = Math.min(this._config.max_thirst, this.thirst + this._config.thirst_rate * thirstMult * tMult);
 
-    // HP penalty when hunger or thirst exceed 80% of max
-    const hungerThreshold = this._config.max_hunger * 0.8;
-    const thirstThreshold = this._config.max_thirst * 0.8;
+    const healthPenalty = this._config.health_penalty || {};
+    const thresholdFraction = healthPenalty.threshold_fraction ?? 0.8;
+    const maxPenalty = healthPenalty.max_penalty ?? 0.5;
+    const hungerThreshold = this._config.max_hunger * thresholdFraction;
+    const thirstThreshold = this._config.max_thirst * thresholdFraction;
     if (this.hunger > hungerThreshold) {
-      const penalty = 0.5 * (this.hunger - hungerThreshold) / (this._config.max_hunger - hungerThreshold);
+      const penalty = maxPenalty * (this.hunger - hungerThreshold) / (this._config.max_hunger - hungerThreshold);
       this.hp -= penalty;
     }
     if (this.thirst > thirstThreshold) {
-      const penalty = 0.5 * (this.thirst - thirstThreshold) / (this._config.max_thirst - thirstThreshold);
+      const penalty = maxPenalty * (this.thirst - thirstThreshold) / (this._config.max_thirst - thirstThreshold);
       this.hp -= penalty;
     }
 

@@ -27,6 +27,12 @@ export const DEFAULT_CONFIG = {
   ticks_per_second: 20,
   ticks_per_day: 200,
   day_fraction: 0.6,
+  pathfinding_cache_ttl: 15,
+  threat_cache_ttl: 4,
+  threat_scan_cooldown_ticks: 2,
+  night_vision_reduction_factor: 0.65,
+  nocturnal_day_vision_factor: 0.8,
+  scavenge_decay_ticks: 100,
 
   // Flora
   initial_plant_density: 0.10,

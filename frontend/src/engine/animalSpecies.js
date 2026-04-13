@@ -20,6 +20,101 @@ const POP_APEX = 80;          // Apex predators (Wolf, Crocodile)
 const POP_OMNI_LARGE = 80;    // Large omnivores (Bear)
 const POP_OMNI_MED = 300;     // Medium omnivores (Boar, Raccoon, Crow, Lizard)
 
+const DEFAULT_DECISION_THRESHOLDS = {
+  drink_opportunistic: 25,
+  eat_opportunistic: 20,
+  eat_seed_min_hunger: 50,
+  eat_adult_plant_min_hunger: 35,
+  critical_thirst: 55,
+  critical_hunger: 45,
+  moderate_hunger: 30,
+  moderate_thirst: 35,
+  sleep_energy_min: 20,
+  mate_energy_min: 50,
+  mate_search_radius_min: 10,
+  desperate_hunger_hunt_min: 75,
+  desperate_hunger_fallback_food_min: 50,
+  desperate_seed_hunger_min: 60,
+  expanded_plant_search_hunger: 65,
+};
+
+const DEFAULT_INITIAL_STATE = {
+  energy_fraction: 0.8,
+  hunger_range: [10, 30],
+  thirst_range: [10, 30],
+};
+
+const DEFAULT_METABOLIC_MULTIPLIERS = {
+  hunger: { BABY: 0.5, YOUNG: 0.75, YOUNG_ADULT: 1, ADULT: 1 },
+  thirst: { BABY: 0.6, YOUNG: 0.8, YOUNG_ADULT: 1, ADULT: 1 },
+};
+
+const DEFAULT_HEALTH_PENALTY = {
+  threshold_fraction: 0.8,
+  max_penalty: 0.5,
+};
+
+const DEFAULT_RECOVERY = {
+  idle_energy: 0.01,
+  idle_hp: 0.01,
+  sleep_hp: 0.8,
+  sleep_exit_energy: 70,
+  eat_hunger: 45,
+  eat_energy: 5,
+  eat_hp: 2,
+  drink_thirst: 55,
+};
+
+const DEFAULT_COMBAT = {
+  attack_cooldown: 3,
+  defense_factor: 0.5,
+  min_damage: 1,
+  threat_attack_margin: 2,
+};
+
+const DEFAULT_HISTORY = {
+  action_history_max_size: 100,
+};
+
+function _mergeAnimalDefaults(simParams) {
+  return {
+    ...simParams,
+    random_walk_chance: simParams.random_walk_chance ?? 0.3,
+    decision_thresholds: {
+      ...DEFAULT_DECISION_THRESHOLDS,
+      ...(simParams.decision_thresholds || {}),
+    },
+    initial_state: {
+      ...DEFAULT_INITIAL_STATE,
+      ...(simParams.initial_state || {}),
+    },
+    metabolic_multipliers: {
+      hunger: {
+        ...DEFAULT_METABOLIC_MULTIPLIERS.hunger,
+        ...(simParams.metabolic_multipliers?.hunger || {}),
+      },
+      thirst: {
+        ...DEFAULT_METABOLIC_MULTIPLIERS.thirst,
+        ...(simParams.metabolic_multipliers?.thirst || {}),
+      },
+    },
+    health_penalty: {
+      ...DEFAULT_HEALTH_PENALTY,
+      ...(simParams.health_penalty || {}),
+    },
+    recovery: {
+      ...DEFAULT_RECOVERY,
+      ...(simParams.recovery || {}),
+    },
+    combat: {
+      ...DEFAULT_COMBAT,
+      ...(simParams.combat || {}),
+    },
+    ...DEFAULT_HISTORY,
+    ...(simParams.action_history_max_size != null ? { action_history_max_size: simParams.action_history_max_size } : {}),
+  };
+}
+
 const ANIMAL_SPECIES = {
   RABBIT: {
     id: 'RABBIT',
@@ -677,7 +772,8 @@ export const OMNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet ==
 export function buildAnimalSpeciesConfig() {
   const cfg = {};
   for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
-    const { id, name, color, initial_count, ...simParams } = sp;
+    const { id, name, color, initial_count, ...rawSimParams } = sp;
+    const simParams = _mergeAnimalDefaults(rawSimParams);
     if (simParams.walkable_terrain)
       simParams.walkable_terrain = simParams.walkable_terrain.map(t => TERRAIN_IDS[t]);
     if (simParams.edible_plants)

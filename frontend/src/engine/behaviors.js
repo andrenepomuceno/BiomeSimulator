@@ -46,6 +46,24 @@ const STAGE_NUTRITION = {
 // Plant stage names for logs
 const STAGE_LOG_NAMES = { 1: 'seed', 2: 'sprout', 3: 'bush', 4: 'adult', 5: 'fruit' };
 
+function _decisionThresholds(animal) {
+  return animal._config.decision_thresholds || {};
+}
+
+function _recoveryConfig(animal) {
+  return animal._config.recovery || {};
+}
+
+function _combatConfig(animal) {
+  return animal._config.combat || {};
+}
+
+function _idleRecover(animal) {
+  const recovery = _recoveryConfig(animal);
+  animal.energy = Math.min(animal.maxEnergy, animal.energy + (recovery.idle_energy ?? 0.01));
+  animal.hp = Math.min(animal.maxHp, animal.hp + (recovery.idle_hp ?? 0.01));
+}
+
 /** Check if a plant type + stage combination is edible. */
 function _isEdibleStage(plantType, stage) {
   const stages = EDIBLE_STAGES[plantType];
@@ -113,9 +131,11 @@ export function decideAndAct(animal, world, spatialHash) {
   // Compute effective vision based on day/night and nocturnal trait
   const isNight = world.clock.isNight;
   const nocturnal = animal._config.nocturnal;
+  const nightVisionReduction = world.config.night_vision_reduction_factor ?? 0.65;
+  const nocturnalDayVisionFactor = world.config.nocturnal_day_vision_factor ?? 0.8;
   const vision = nocturnal
-    ? (isNight ? animal.visionRange : Math.floor(animal.visionRange * 0.8))
-    : (isNight ? Math.floor(animal.visionRange * 0.65) : animal.visionRange);
+    ? (isNight ? animal.visionRange : Math.floor(animal.visionRange * nocturnalDayVisionFactor))
+    : (isNight ? Math.floor(animal.visionRange * nightVisionReduction) : animal.visionRange);
 
   // Stagger: between decision ticks, just continue current action
   const interval = DECISION_INTERVALS[animal.species] || 2;
@@ -126,33 +146,35 @@ export function decideAndAct(animal, world, spatialHash) {
     if (animal.path.length && animal.pathIndex < animal.path.length) {
       if (!_reusePathIfValid(animal, world, 'stagger')) {
         animal.applyEnergyCost('IDLE');
-        animal.energy = Math.min(animal.maxEnergy, animal.energy + 0.01);
-        animal.hp = Math.min(animal.maxHp, animal.hp + 0.01);
+        _idleRecover(animal);
       }
     } else {
       animal.applyEnergyCost('IDLE');
-      // Passive regen while idle (stagger tick)
-      animal.energy = Math.min(animal.maxEnergy, animal.energy + 0.01);
-      animal.hp = Math.min(animal.maxHp, animal.hp + 0.01);
+      _idleRecover(animal);
     }
     return;
   }
 
   // --- Opportunistic: drink if adjacent to water and even slightly thirsty ---
-  if (animal.thirst > 25 && world.isWaterAdjacent(animal.x, animal.y)) {
+  if (animal.thirst > (_decisionThresholds(animal).drink_opportunistic ?? 25) && world.isWaterAdjacent(animal.x, animal.y)) {
     animal.state = AnimalState.DRINKING;
     animal.applyEnergyCost('DRINK');
     return;
   }
 
   // --- Opportunistic: eat if standing on edible plant ---
-  if (animal.hunger > 20 && (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE')) {
+  if (animal.hunger > (_decisionThresholds(animal).eat_opportunistic ?? 20) && (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE')) {
     const idx = world.idx(animal.x, animal.y);
     const ptype = world.plantType[idx];
     const stage = world.plantStage[idx];
     if (ptype > 0 && _isEdibleStage(ptype, stage) && _canEatPlant(animal, ptype)) {
       // Seeds only eaten when quite hungry; adult plants when moderately hungry
-      const minHunger = stage === S_SEED ? 50 : stage === S_ADULT ? 35 : 20;
+      const thresholds = _decisionThresholds(animal);
+      const minHunger = stage === S_SEED
+        ? (thresholds.eat_seed_min_hunger ?? 50)
+        : stage === S_ADULT
+          ? (thresholds.eat_adult_plant_min_hunger ?? 35)
+          : (thresholds.eat_opportunistic ?? 20);
       if (animal.hunger > minHunger) {
         _eatPlantTile(animal, world, idx);
         return;
@@ -163,7 +185,7 @@ export function decideAndAct(animal, world, spatialHash) {
   // --- Priority-based decision ---
 
   // 1. Critical thirst → seek water
-  if (animal.thirst > 55) {
+  if (animal.thirst > (_decisionThresholds(animal).critical_thirst ?? 55)) {
     _seekWater(animal, world, vision);
     return;
   }
@@ -175,7 +197,7 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 3. Critical hunger → seek food
-  if (animal.hunger > 45) {
+  if (animal.hunger > (_decisionThresholds(animal).critical_hunger ?? 45)) {
     if (animal.diet === 'HERBIVORE') {
       _seekPlantFood(animal, world, vision);
     } else if (animal.diet === 'OMNIVORE') {
@@ -187,14 +209,14 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 4. Low energy → sleep
-  if (animal.energy < 20) {
+  if (animal.energy < (_decisionThresholds(animal).sleep_energy_min ?? 20)) {
     animal.state = AnimalState.SLEEPING;
     return;
   }
 
   // 5. Mating opportunity (promoted — breed before moderate hunger/thirst)
-  if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && animal.energy > 50) {
-    const mate = _findMate(animal, spatialHash, Math.max(vision, 10));
+  if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && animal.energy > (_decisionThresholds(animal).mate_energy_min ?? 50)) {
+    const mate = _findMate(animal, spatialHash, Math.max(vision, _decisionThresholds(animal).mate_search_radius_min ?? 10));
     if (mate) {
       const dist = Math.abs(mate.x - animal.x) + Math.abs(mate.y - animal.y);
       if (dist <= 2) {
@@ -210,7 +232,7 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 6. Moderate hunger — proactively seek food
-  if (animal.hunger > 30) {
+  if (animal.hunger > (_decisionThresholds(animal).moderate_hunger ?? 30)) {
     if (animal.diet === 'HERBIVORE') {
       _seekPlantFood(animal, world, vision);
     } else if (animal.diet === 'OMNIVORE') {
@@ -222,7 +244,7 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 7. Moderate thirst — proactively seek water
-  if (animal.thirst > 35) {
+  if (animal.thirst > (_decisionThresholds(animal).moderate_thirst ?? 35)) {
     _seekWater(animal, world, vision);
     return;
   }
@@ -230,14 +252,12 @@ export function decideAndAct(animal, world, spatialHash) {
   // 8. Idle or wander
   if (animal.path.length && animal.pathIndex < animal.path.length) {
     _followPath(animal, world);
-  } else if (Math.random() < 0.3) {
+  } else if (Math.random() < (animal._config.random_walk_chance ?? 0.3)) {
     _randomWalk(animal, world);
   } else {
     animal.state = AnimalState.IDLE;
     animal.applyEnergyCost('IDLE');
-    // Passive regen while idle
-    animal.energy = Math.min(animal.maxEnergy, animal.energy + 0.01);
-    animal.hp = Math.min(animal.maxHp, animal.hp + 0.01);
+    _idleRecover(animal);
   }
   } finally {
     benchmarkEnd(collector, 'decideAndAct', startedAt);
@@ -247,21 +267,24 @@ export function decideAndAct(animal, world, spatialHash) {
 // ---- Ongoing action handlers ----
 
 function _doSleep(animal) {
+  const recovery = _recoveryConfig(animal);
   animal.applyEnergyCost('SLEEP'); // negative cost = recovery
-  animal.hp = Math.min(animal.maxHp, animal.hp + 0.8);
-  if (animal.energy >= 70) animal.state = AnimalState.IDLE;
+  animal.hp = Math.min(animal.maxHp, animal.hp + (recovery.sleep_hp ?? 0.8));
+  if (animal.energy >= (recovery.sleep_exit_energy ?? 70)) animal.state = AnimalState.IDLE;
 }
 
 function _doEat(animal /*, world */) {
-  animal.hunger = Math.max(0, animal.hunger - 45);
-  animal.energy = Math.min(animal.maxEnergy, animal.energy + 5);
-  animal.hp = Math.min(animal.maxHp, animal.hp + 2);
+  const recovery = _recoveryConfig(animal);
+  animal.hunger = Math.max(0, animal.hunger - (recovery.eat_hunger ?? 45));
+  animal.energy = Math.min(animal.maxEnergy, animal.energy + (recovery.eat_energy ?? 5));
+  animal.hp = Math.min(animal.maxHp, animal.hp + (recovery.eat_hp ?? 2));
   animal.applyEnergyCost('EAT');
   animal.state = AnimalState.IDLE;
 }
 
 function _doDrink(animal /*, world */) {
-  animal.thirst = Math.max(0, animal.thirst - 55);
+  const recovery = _recoveryConfig(animal);
+  animal.thirst = Math.max(0, animal.thirst - (recovery.drink_thirst ?? 55));
   animal.applyEnergyCost('DRINK');
   animal.state = AnimalState.IDLE;
 }
@@ -269,19 +292,27 @@ function _doDrink(animal /*, world */) {
 // ---- Seek behaviors ----
 
 // Max ticks before a cached path is considered stale
-const PATH_CACHE_TTL = 15;
-const THREAT_CACHE_TTL = 4;
-const THREAT_SCAN_COOLDOWN = 2;
+function _pathCacheTtl(world) {
+  return world.config.pathfinding_cache_ttl ?? 15;
+}
 
-function _hasValidPath(animal, tick) {
+function _threatCacheTtl(world) {
+  return world.config.threat_cache_ttl ?? 4;
+}
+
+function _threatScanCooldown(world) {
+  return world.config.threat_scan_cooldown_ticks ?? 2;
+}
+
+function _hasValidPath(animal, tick, ttl) {
   return animal.path.length > 0 &&
     animal.pathIndex < animal.path.length &&
-    (tick - animal._pathTick) < PATH_CACHE_TTL;
+    (tick - animal._pathTick) < ttl;
 }
 
 function _reusePathIfValid(animal, world, reason) {
   const collector = world._benchmarkCollector;
-  const valid = _hasValidPath(animal, world.clock.tick);
+  const valid = _hasValidPath(animal, world.clock.tick, _pathCacheTtl(world));
   benchmarkAdd(collector, valid ? 'pathCacheHits' : 'pathCacheMisses', 1);
   benchmarkAddKeyed(collector, valid ? 'speciesPathCacheHits' : 'speciesPathCacheMisses', animal.species, 1);
   if (!valid) return false;
@@ -313,7 +344,7 @@ function _isThreatValidFor(animal, threat, vision) {
   if (threat._preySpecies.size > 0 && !threat._preySpecies.has(animal.species)) return false;
   if (threat.diet === 'CARNIVORE') return true;
   if (animal.diet === 'OMNIVORE' && threat.diet === 'OMNIVORE') {
-    return threat._config.attack_power > animal._config.attack_power + 2;
+    return threat._config.attack_power > animal._config.attack_power + (_combatConfig(animal).threat_attack_margin ?? 2);
   }
   return false;
 }
@@ -342,7 +373,7 @@ function _seekWater(animal, world, vision) {
   }
 
   // Search for nearest water — expand range when desperate
-  const desperate = animal.thirst > 75;
+  const desperate = animal.thirst > ((_decisionThresholds(animal).critical_thirst ?? 55) + 20);
   const searchR = desperate ? Math.min(vision * 3, 30) : vision * 2;
   let best = null, bestDist = Infinity;
 
@@ -398,7 +429,7 @@ function _seekPlantFood(animal, world, vision) {
 
   // Spiral search: check nearest tiles first, early-exit on fruit found
   const r = vision;
-  const maxR = animal.hunger > 65 ? Math.min(vision * 3, 25) : r;
+  const maxR = animal.hunger > (_decisionThresholds(animal).expanded_plant_search_hunger ?? 65) ? Math.min(vision * 3, 25) : r;
   let bestFruit = null, bestPlant = null, bestSeed = null;
 
   for (let ring = 1; ring <= maxR; ring++) {
@@ -432,7 +463,7 @@ function _seekPlantFood(animal, world, vision) {
     if ((bestPlant || bestSeed) && ring >= r) break;
   }
 
-  const target = bestFruit || bestPlant || (animal.hunger > 60 ? bestSeed : null);
+  const target = bestFruit || bestPlant || (animal.hunger > (_decisionThresholds(animal).desperate_seed_hunger_min ?? 60) ? bestSeed : null);
   if (target) {
     const pathLimit = target === bestFruit ? 40 : 60;
     _computePath(animal, world, target[0], target[1], pathLimit, target === bestFruit ? 'fruit' : 'plant');
@@ -484,7 +515,7 @@ function _seekPrey(animal, world, spatialHash, vision) {
 
   // No prey — carnivores eat fruit as fallback when desperate
   // Only if they have explicit edible_plants (empty list = strictly carnivorous)
-  if (animal.hunger > 50 && animal._ediblePlants.size > 0) {
+  if (animal.hunger > (_decisionThresholds(animal).desperate_hunger_fallback_food_min ?? 50) && animal._ediblePlants.size > 0) {
     const idx = world.idx(animal.x, animal.y);
     const ptype = world.plantType[idx];
     const stage = world.plantStage[idx];
@@ -521,7 +552,7 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
   }
 
   // When very hungry, try hunting prey from prey_species list
-  if (animal.hunger > 75) {
+  if (animal.hunger > (_decisionThresholds(animal).desperate_hunger_hunt_min ?? 75)) {
     const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
     let target = null;
     let bestDist = Infinity;
@@ -569,7 +600,7 @@ function _tryScavenge(animal, world, spatialHash, vision) {
   let target = null;
   let bestDist = Infinity;
   for (const entity of nearby) {
-    if (entity.alive || entity.consumed || entity._deathTick == null || (tick - entity._deathTick) >= 100) continue;
+    if (entity.alive || entity.consumed || entity._deathTick == null || (tick - entity._deathTick) >= (world.config.scavenge_decay_ticks ?? 100)) continue;
     const distCandidate = Math.abs(entity.x - animal.x) + Math.abs(entity.y - animal.y);
     if (distCandidate < bestDist) {
       bestDist = distCandidate;
@@ -604,12 +635,13 @@ function _tryScavenge(animal, world, spatialHash, vision) {
 // ---- Combat ----
 
 function _attack(attacker, defender, world) {
+  const combat = _combatConfig(attacker);
   attacker.state = AnimalState.ATTACKING;
   attacker.applyEnergyCost('ATTACK');
-  attacker.attackCooldown = 3;
+  attacker.attackCooldown = combat.attack_cooldown ?? 3;
 
-  let damage = attacker._config.attack_power - defender._config.defense * 0.5;
-  if (damage < 1) damage = 1;
+  let damage = attacker._config.attack_power - defender._config.defense * (combat.defense_factor ?? 0.5);
+  if (damage < (combat.min_damage ?? 1)) damage = combat.min_damage ?? 1;
   defender.hp -= damage;
 
   attacker.logAction(world.clock.tick, 'ATTACK', { target: defender.species, targetId: defender.id, damage: Math.round(damage * 10) / 10 });
@@ -636,7 +668,7 @@ function _findNearestThreat(animal, world, spatialHash, vision) {
   try {
   benchmarkAddKeyed(collector, 'speciesThreatChecks', animal.species, 1);
   const tick = world.clock.tick;
-  if (animal._cachedThreat && (tick - animal._cachedThreatTick) <= THREAT_CACHE_TTL && _isThreatValidFor(animal, animal._cachedThreat, vision)) {
+  if (animal._cachedThreat && (tick - animal._cachedThreatTick) <= _threatCacheTtl(world) && _isThreatValidFor(animal, animal._cachedThreat, vision)) {
     benchmarkAdd(collector, 'threatCacheHits', 1);
     benchmarkAddKeyed(collector, 'speciesThreatCacheHits', animal.species, 1);
     return animal._cachedThreat;
@@ -668,7 +700,7 @@ function _findNearestThreat(animal, world, spatialHash, vision) {
   if (!threat) {
     animal._cachedThreat = null;
     animal._cachedThreatTick = tick;
-    animal._nextThreatCheckTick = tick + THREAT_SCAN_COOLDOWN;
+    animal._nextThreatCheckTick = tick + _threatScanCooldown(world);
     return null;
   }
   animal._cachedThreat = threat;
@@ -720,7 +752,7 @@ function _findMate(animal, spatialHash, searchRadius) {
   let bestDist = Infinity;
   for (const entity of nearby) {
     if (entity.species !== animal.species || !entity.alive || entity.id === animal.id) continue;
-    if (entity.lifeStage !== LifeStage.ADULT || entity.mateCooldown > 0 || entity.energy <= 50) continue;
+    if (entity.lifeStage !== LifeStage.ADULT || entity.mateCooldown > 0 || entity.energy <= (_decisionThresholds(entity).mate_energy_min ?? 50)) continue;
     if (repro === REPRO_SEXUAL) {
       if (animal.sex === SEX_MALE && entity.sex !== SEX_FEMALE) continue;
       if (animal.sex === SEX_FEMALE && entity.sex !== SEX_MALE) continue;
@@ -856,6 +888,7 @@ function _randomWalk(animal, world) {
 
     animal.state = AnimalState.IDLE;
     animal.applyEnergyCost('IDLE');
+    _idleRecover(animal);
   } finally {
     benchmarkEnd(collector, 'randomWalk', startedAt);
   }

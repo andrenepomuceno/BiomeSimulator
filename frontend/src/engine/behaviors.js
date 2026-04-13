@@ -406,7 +406,7 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
   }
 
   // When very hungry, try hunting prey from prey_species list
-  if (animal.hunger > 55) {
+  if (animal.hunger > 75) {
     const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
     const prey = nearby.filter(e =>
       e.alive && e.id !== animal.id && _canHunt(animal, e)
@@ -575,7 +575,7 @@ function _doMate(animal, mate, world) {
   animal.mateCooldown = animal._config.mate_cooldown || 60;
   mate.mateCooldown = mate._config.mate_cooldown || 60;
 
-  // Enforce population cap
+  // Soft population cap: reproduction chance decreases as population grows
   const maxPop = animal._config.max_population;
   if (maxPop) {
     let count = 0;
@@ -583,6 +583,12 @@ function _doMate(animal, mate, world) {
       if (a.alive && a.species === animal.species) count++;
     }
     if (count >= maxPop) return;
+    // Gradual slowdown: from 60% capacity onward, reproduction chance drops linearly
+    const ratio = count / maxPop;
+    if (ratio > 0.6) {
+      const chance = 1 - ((ratio - 0.6) / 0.4); // 100% at 60% → 0% at 100%
+      if (Math.random() > chance) return;
+    }
   }
 
   // Spawn baby nearby

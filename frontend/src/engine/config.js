@@ -32,6 +32,19 @@ export const DEFAULT_CONFIG = {
   initial_plant_density: 0.10,
   water_proximity_threshold: 10,
 
+  // Flora — local density competition
+  plant_crowding_growth_penalty: 0.7,
+  plant_density_suppress_threshold: 0.7,
+  plant_density_reduce_threshold: 0.5,
+
+  // Flora — water stress
+  water_stress_threshold: 20,
+  water_stress_severe_threshold: 30,
+  water_stress_death_rate: 0.001,
+
+  // Flora — seasons
+  season_length_days: 30,
+
   // Fauna — derived from animalSpecies.js
   initial_animal_counts: buildInitialAnimalCounts(),
   animal_species: buildAnimalSpeciesConfig(),

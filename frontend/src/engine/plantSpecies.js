@@ -419,4 +419,17 @@ export function buildReproductionModes() {
   return map;
 }
 
+/**
+ * Build the WATER_AFFINITY map indexed by typeId.
+ * Returns { 1: 1, 2: 2, ... } where 0=none, 1=low, 2=medium, 3=high
+ */
+const AFFINITY_LEVELS = { none: 0, low: 1, medium: 2, high: 3 };
+export function buildWaterAffinityMap() {
+  const map = {};
+  for (const sp of Object.values(PLANT_SPECIES)) {
+    map[sp.typeId] = AFFINITY_LEVELS[sp.waterAffinity] ?? 1;
+  }
+  return map;
+}
+
 export default PLANT_SPECIES;

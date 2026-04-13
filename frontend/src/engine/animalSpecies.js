@@ -279,7 +279,7 @@ const ANIMAL_SPECIES = {
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'MUSHROOM', 'OAK_TREE', 'CACTUS', 'COCONUT_PALM'],
-    prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO', 'SNAKE'],
+    prey_species: ['BEETLE', 'CATERPILLAR', 'SNAKE'],
   },
 
   BEAR: {
@@ -305,7 +305,7 @@ const ANIMAL_SPECIES = {
       EAT: 0.05, DRINK: 0.05, SLEEP: -5.0,
       ATTACK: 1.5, MATE: 2.0, FLEE: 0.45,
     },
-    hunger_rate: 0.10,
+    hunger_rate: 0.085,
     thirst_rate: 0.05,
     initial_count: 12,
     max_population: POP_OMNI_LARGE,

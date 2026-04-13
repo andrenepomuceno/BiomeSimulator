@@ -221,6 +221,7 @@ Reproduction is throttled by species population:
 - At 60% of effective cap: 100% mating success
 - At 100% of effective cap: 0% mating success
 - Linear decline between 60–100% capacity
+- Species population count uses `world.getAliveSpeciesCount(species)` which is lazily cached once per tick, avoiding O(N) linear scans
 ---
 
 ## Plant Lifecycle
@@ -441,7 +442,7 @@ Each species defines `life_stage_ages: [baby→young, young→young_adult, young
 
 ## Action History
 
-Each animal maintains a rolling `actionHistory` log (default max 100 entries, FIFO). The cap is now configurable per species via `action_history_max_size`.
+Each animal maintains a rolling `actionHistory` log stored as an **O(1) ring buffer** (default max 100 entries). The cap is configurable per species via `action_history_max_size`. Internally, `logAction()` overwrites the oldest entry in a circular `_actionBuf` array, avoiding `Array.shift()` overhead. The `actionHistory` getter reconstructs chronological order on demand.
 
 **Logged actions:** Eat (plant/prey), Drink, Sleep, Flee, Attack, Kill, Mate, Born, Death, Scavenge, Wander
 

@@ -19,6 +19,14 @@ The engine layer (`frontend/src/engine/`) contains all simulation logic. It is c
 | `pathfinding.js` | Bounded A* algorithm (4-directional) |
 | `spatialHash.js` | O(1) spatial indexing for neighbor queries |
 | `mapGenerator.js` | Procedural terrain via Perlin noise + island masks |
+| `benchmarkProfiler.js` | In-engine tick timing and perf metrics collection |
+
+### Worker Files (`frontend/src/worker/`)
+
+| File | Purpose |
+|------|--------|
+| `simWorker.js` | Main simulation Web Worker: async tick loop, fauna worker pool, incremental serialization |
+| `faunaWorker.js` | Sub-worker for parallel fauna processing: receives animal chunks, runs `decideAndAct`, returns deltas |
 
 ---
 
@@ -42,6 +50,17 @@ behaviors.js
 ├── world.js (terrain checks)
 ├── pathfinding.js (aStar)
 └── config.js (sex/reproduction constants)
+
+simWorker.js
+├── simulation.js (SimulationEngine)
+├── faunaWorker.js (sub-worker pool, optional)
+└── entities.js (for delta merge)
+
+faunaWorker.js
+├── behaviors.js (decideAndAct)
+├── entities.js (Animal, for reconstruction)
+├── spatialHash.js (local spatial index)
+└── world.js (read-only terrain/plant data)
 
 flora.js
 ├── world.js (terrain constants)
@@ -277,6 +296,7 @@ Holds the entire world state using flat TypedArrays for memory efficiency.
 | `isInBounds(x, y)` | `→ boolean` | Boundary check |
 | `isWalkable(x, y)` | `→ boolean` | Not WATER or ROCK |
 | `isWaterAdjacent(x, y)` | `→ boolean` | 8-neighbor water check |
+| `getAliveSpeciesCount(species)` | `→ number` | Alive count for a species (lazy cached per tick) |
 | `getStats()` | `→ object` | Population counts, plant stats |
 
 ---
@@ -308,7 +328,9 @@ const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 
 **Core Properties:** `id`, `x`, `y`, `species`, `diet`, `sex`, `state`, `energy`, `hp`, `hunger`, `thirst`, `age`, `alive`, `_deathTick`, `actionHistory`
 
-**Computed:** `lifeStage` (getter, derived from age + `life_stage_ages`)
+**Dirty Tracking:** `_dirty` flag set on any mutation (position, energy, state, HP). Used by incremental serialization to send only changed animals per tick.
+
+**Computed:** `lifeStage` (getter, derived from age + `life_stage_ages`). Reverse lookup uses pre-computed `LIFE_STAGE_KEYS` array (avoids `Object.keys().find()` per tick).
 
 **Pathfinding:** `targetX/Y`, `path` (waypoint array), `pathIndex`
 
@@ -320,9 +342,12 @@ const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 |--------|-------------|
 | `energyCost(action)` | Lookup cost from species config |
 | `applyEnergyCost(action)` | Subtract cost, clamp to [0, maxEnergy] |
-| `tickNeeds()` | Increment hunger/thirst by species rate, apply HP penalties when needs > 80%, tick cooldowns |
-| `logAction(tick, action, detail)` | Append action to `actionHistory` (max 100 entries, FIFO) |
+| `tickNeeds()` | Increment hunger/thirst by species rate (with life-stage metabolic multipliers), apply HP penalties when needs > 80%, tick cooldowns |
+| `logAction(tick, action, detail)` | Append action to ring buffer (O(1), max `action_history_max_size` entries) |
 | `toDict()` | Serializable snapshot for renderer/UI (includes `hp`, `lifeStage`, `_deathTick`, `actionHistory`) |
+| `toDelta()` | Lightweight delta for incremental updates (omits `actionHistory`, `species`, `diet`) |
+| `toWorkerState()` | Full internal state for sub-worker transfer (includes path, caches, config references) |
+| `clearDirty()` | Reset `_dirty` flag after serialization |
 
 **Sex Assignment:** `SEXUAL` → 50% male / 50% female. `HERMAPHRODITE` / `ASEXUAL` → assigned directly.
 
@@ -342,16 +367,36 @@ engine.tick();           // advance one step
 
 ### Tick Pipeline
 
+The tick is split into composable phases for parallelism support:
+
 ```
-1. Advance clock
-2. processPlants(world)          — aging, stage transitions, seed spreading
-3. For each alive animal:
-     decideAndAct(animal, world, spatialHash)
-4. Rebuild spatialHash           — re-index all alive animals
-5. Remove dead animals from spatial hash/occupancy grid
-6. Adaptive cleanup: every 10 ticks (pop>1500) / 25 ticks (pop>800) / 50 ticks (otherwise): cull dead animals that have lingered ≥ 300 ticks
-7. Every 10 ticks: record stats snapshot (max 1000)
+1. tickFlora():
+   a. Reset plantChanges
+   b. Advance clock
+   c. processPlants(world)
+
+2. tickFaunaSequential():
+   a. For each alive animal:
+        decideAndAct(animal, world, spatialHash)
+   b. Update spatialHash positions
+
+3. tickCleanup():
+   a. Remove newly dead from spatial hash + occupancy grid
+   b. Adaptive cleanup interval: every 10/25/50 ticks (by population)
+   c. Every 10 ticks: record stats snapshot (max 1000)
 ```
+
+The legacy `tick()` method calls all three in sequence for backward compatibility. The split enables the worker to run fauna in parallel sub-workers via `applyFaunaResults()`.
+
+#### Parallel Fauna Path (`applyFaunaResults`)
+
+When fauna sub-workers are active, the main worker calls `applyFaunaResults(results)` instead of `tickFaunaSequential()`. This method:
+- Sorts all deltas by `animal.id` for deterministic merge order
+- Rebuilds the occupancy grid from scratch
+- Resolves movement conflicts (first delta wins)
+- Deduplicates plant eating (Set-based tracking)
+- Reassigns proper IDs to births from the main world counter
+- Rebuilds spatial hash after merge
 
 **Dead animal lifecycle:** When an animal dies, `_deathTick` is recorded. Dead animals remain in the array (and are visible as 💀 skulls) for 300 ticks, then are permanently removed.
 
@@ -361,7 +406,11 @@ engine.tick();           // advance one step
 |--------|-----------|-------------|
 | `generateWorld()` | `→ number (seed)` | Create world, gen terrain, seed plants/animals |
 | `resetSimulation()` | `→ void` | Clear everything, re-seed |
-| `tick()` | `→ void` | One simulation step |
+| `tick()` | `→ void` | One simulation step (tickFlora + tickFaunaSequential + tickCleanup) |
+| `tickFlora()` | `→ void` | Advance clock, process plants |
+| `tickFaunaSequential()` | `→ void` | Run all animal AI sequentially, rebuild spatial hash |
+| `tickCleanup()` | `→ void` | Remove dead, adaptive cleanup, record stats |
+| `applyFaunaResults(results)` | `→ void` | Merge parallel fauna deltas (replaces tickFaunaSequential) |
 | `getStateForViewport(vx, vy, vw, vh)` | `→ object` | Viewport-culled state for renderer |
 | `getFullState()` | `→ object` | Complete state snapshot |
 | `editTerrain(changes)` | `→ void` | Apply terrain edits, recompute water proximity |
@@ -413,8 +462,9 @@ hash.queryRadius(x, y, radius); // → [entity, ...]
 
 **How it works:**
 - Divides world into cells of `cellSize × cellSize` tiles
-- Entities stored in `Map<"cx,cy", Map<id, entity>>`
-- `queryRadius` checks all cells overlapping the query circle, then filters by Euclidean distance
+- Cell key is a packed integer: `(cx & 0xFFFF) | ((cy & 0xFFFF) << 16)` — avoids string allocation in the hot loop
+- Entities stored in `Map<intKey, Map<id, entity>>`
+- `queryRadius` checks all cells overlapping the query circle, then filters by Euclidean distance²
 - `rebuild` called each tick after movement
 
 ---

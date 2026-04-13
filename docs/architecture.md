@@ -18,8 +18,10 @@ High-level overview of how EcoGame is structured and how data flows between laye
 │             │                   │  PlantLayer   │
 │             │                   │  EntityLayer  │
 ├─────────────┴───────────┬───────┴───────────────┤
-│                    Web Worker                     │
-│                   simWorker.js                    │
+│               Main Web Worker                     │
+│                simWorker.js                       │
+│          ┌──────────┼──────────┐                  │
+│     faunaWorker  faunaWorker  ...  (sub-workers) │
 ├──────────────────────────────────────────────────┤
 │                  Engine (pure JS)                 │
 │  SimulationEngine · World · Animal · Flora       │
@@ -44,18 +46,38 @@ High-level overview of how EcoGame is structured and how data flows between laye
 
 ### Simulation Tick
 
+The tick pipeline is split into composable phases:
+
 ```
-Worker: engine.tick()
+Worker: engine.tickFlora()
   → processPlants(world)
+
+Worker: engine.tickFaunaSequential()    ← sequential path
   → decideAndAct(animal, world, spatialHash)  ×N
   → rebuild spatialHash
+
+    — OR (when fauna sub-workers enabled) —
+
+Worker: doParallelFauna()               ← parallel path
+  → split animals into chunks
+  → send to faunaWorker sub-workers
+  → collect deltas
+  → engine.applyFaunaResults(allDeltas)
+  → rebuild spatialHash
+
+Worker: engine.tickCleanup()
+  → remove dead, adaptive cleanup, stats
   → getStateForViewport(vx, vy, vw, vh)
   ↓
 Worker: postMessage({ type: 'tick', clock, animals, plantChanges, stats })
   ↓
+  animals may be a full array or an incremental delta list
+  (dirty-flag based; full sync every 30 ticks)
+  ↓
 Main Thread: useSimulation.onmessage
+  → full tick:  store.setAnimals(animals)
+  → delta tick: store.mergeAnimalDeltas(deltas)
   → store.setClock(clock)
-  → store.setAnimals(animals)
   → store.setPltChanges(plantChanges)
   → store.setStats(stats)
   ↓
@@ -122,11 +144,22 @@ Communication between main thread and worker uses structured messages.
 | Type | Payload | When |
 |------|---------|------|
 | `worldReady` | terrain, plants, animals, clock, dimensions | After generate/load |
-| `tick` | clock, animals, plantChanges, stats (every 10 ticks) | Each engine tick |
+| `tick` | clock, animals, plantChanges, stats, profiling?, incremental? | Each engine tick (may be full or delta) |
 | `tileInfo` | terrain, plant, animals at tile | On getTileInfo |
 | `entityPlaced` | entity dict | On placeEntity |
 | `entityRemoved` | entityId, ok | On removeEntity |
 | `savedState` | full serialized world data | On saveState |
+
+### Fauna Sub-Worker Protocol (`faunaWorker.js`)
+
+| Direction | Type | Payload |
+|-----------|------|---------|
+| main→sub | `init` | config, terrain, waterProximity, plantType/Stage/Fruit, occupancy, width, height |
+| main→sub | `tick` | animalStates[], tick, isNight (transferable ArrayBuffers for plant grids) |
+| sub→main | `result` | deltas[], births[], plantChanges[], deadIds[] |
+| main→sub | `dispose` | — (terminate) |
+
+Sub-workers receive immutable config and terrain once on `init`, then per-tick mutable animal chunks. They run `decideAndAct` locally and return deltas rather than full state.
 
 ### Binary Data
 
@@ -154,6 +187,7 @@ Single Zustand store (`simulationStore.js`):
 
   // Entities
   animals,                         // [{id, x, y, species, state, energy, hp, ...}]
+  _animalsById,                    // Map<id, animal> (internal index for delta merge)
 
   // Plants
   plantChanges,                    // [[x, y, type, stage], ...]
@@ -209,3 +243,8 @@ App
 | **Sprite pooling** | Limits GPU memory; max 8000 plant emojis + dynamic animal sprites |
 | **Bounded A*** | `maxDist` parameter prevents pathfinding from exploring the entire map |
 | **Optimistic terrain edits** | Renderer updates instantly while worker processes change asynchronously |
+| **Fauna sub-worker parallelism** | Split animal AI across multiple workers; deterministic merge via ID-sorted deltas |
+| **Incremental tick serialization** | Dirty-flag on `Animal`; only changed entities sent per tick, full sync every 30 ticks |
+| **Integer spatial hash keys** | Packed `(cx & 0xFFFF) | ((cy & 0xFFFF) << 16)` avoids string allocation in hot loop |
+| **Ring buffer action history** | O(1) `logAction` replaces O(n) `Array.shift()` — constant time regardless of history size |
+| **Lazy species population cache** | `World.getAliveSpeciesCount()` caches per tick; eliminates O(N) scan in mating checks |

@@ -70,6 +70,37 @@ function _idleRecover(animal) {
   animal.hp = Math.min(animal.maxHp, animal.hp + (recovery.idle_hp ?? 0.01));
 }
 
+/**
+ * Calculate effective sleep threshold based on time of day.
+ * Diurnal animals get drowsy earlier at night; nocturnal animals get drowsy earlier during day.
+ */
+function _calculateEffectiveSleepThreshold(animal, isNight, config) {
+  const baseThreshold = _decisionThresholds(animal).sleep_energy_min ?? 20;
+  const nocturnal = animal._config.nocturnal || false;
+  const offset = config.sleep_threshold_offset_wrong_period ?? 10;
+  
+  // If time doesn't match species preference, lower sleep threshold (make them drowsy)
+  const isWrongPeriod = (nocturnal && !isNight) || (!nocturnal && isNight);
+  return isWrongPeriod ? baseThreshold + offset : baseThreshold;
+}
+
+/**
+ * Apply energy cost, adjusting for time-of-day penalty if applicable.
+ * During wrong time of day, energy costs are multiplied by the penalty factor.
+ */
+function _applyEnergyCostWithModifier(animal, actionName, isNight, config) {
+  const baseCost = animal.energyCost(actionName);
+  const nocturnal = animal._config.nocturnal || false;
+  const penaltyMultiplier = config.activity_energy_penalty_wrong_period ?? 1.3;
+  
+  // If time doesn't match species preference, apply energy penalty
+  const isWrongPeriod = (nocturnal && !isNight) || (!nocturnal && isNight);
+  const finalCost = isWrongPeriod ? baseCost * penaltyMultiplier : baseCost;
+  
+  animal.energy = Math.max(0, Math.min(animal.maxEnergy, animal.energy - finalCost));
+  animal._dirty = true;
+}
+
 /** Check if a plant type + stage combination is edible. */
 function _isEdibleStage(plantType, stage) {
   const stages = EDIBLE_STAGES[plantType];
@@ -226,7 +257,7 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 4. Low energy → sleep (not on water)
-  if (animal.energy < (_decisionThresholds(animal).sleep_energy_min ?? 20)) {
+  if (animal.energy < _calculateEffectiveSleepThreshold(animal, isNight, world.config)) {
     const t = world.terrain[world.idx(animal.x, animal.y)];
     if (t !== WATER && t !== DEEP_WATER) {
       animal.state = AnimalState.SLEEPING;
@@ -527,7 +558,7 @@ function _seekPrey(animal, world, spatialHash, vision) {
       for (let s = 0; s < steps; s++) {
         _followPath(animal, world);
       }
-      animal.applyEnergyCost(fly ? 'FLY' : 'RUN');
+      _applyEnergyCostWithModifier(animal, fly ? 'FLY' : 'RUN', world.clock.isNight, world.config);
     }
     return;
   }
@@ -598,7 +629,7 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
         for (let s = 0; s < steps; s++) {
           _followPath(animal, world);
         }
-        animal.applyEnergyCost(fly ? 'FLY' : 'RUN');
+        _applyEnergyCostWithModifier(animal, fly ? 'FLY' : 'RUN', world.clock.isNight, world.config);
       }
       return;
     }
@@ -785,7 +816,7 @@ function _fleeFrom(animal, threat, world) {
     if (!moved) break;
   }
   animal.state = fly ? AnimalState.FLYING : AnimalState.FLEEING;
-  animal.applyEnergyCost(fly ? 'FLY' : 'FLEE');
+  _applyEnergyCostWithModifier(animal, fly ? 'FLY' : 'FLEE', world.clock.isNight, world.config);
   animal.logAction(world.clock.tick, 'FLED', { from: threat.species, threatId: threat.id });
 }
 
@@ -924,7 +955,7 @@ function _randomWalk(animal, world) {
       if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
         _moveAnimal(animal, nx, ny, world);
         animal.state = AnimalState.WALKING;
-        animal.applyEnergyCost('WALK');
+        _applyEnergyCostWithModifier(animal, 'WALK', world.clock.isNight, world.config);
         return;
       }
     }

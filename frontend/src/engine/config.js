@@ -34,6 +34,8 @@ export const DEFAULT_CONFIG = {
   animal_global_vision_multiplier: 1.2,
   night_vision_reduction_factor: 0.65,
   nocturnal_day_vision_factor: 0.8,
+  sleep_threshold_offset_wrong_period: 10,  // Additional energy threshold during wrong time of day (diurnal at night, nocturnal at day)
+  activity_energy_penalty_wrong_period: 1.3, // Multiplier for energy costs during wrong time of day
   scavenge_decay_ticks: 100,
 
   // Flora

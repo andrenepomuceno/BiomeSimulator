@@ -27,6 +27,9 @@ export function useSimulation() {
           store.setTerrain(terrain, msg.width, msg.height);
           store.setAnimals(msg.animals || []);
           store.setClock(msg.clock);
+          if (msg.max_animal_population != null) {
+            store.setGameConfig({ max_animal_population: msg.max_animal_population });
+          }
           // Store plant arrays for renderer (App.jsx reads these)
           useSimStore.setState({
             worldReady: {

@@ -2,7 +2,7 @@
  * Animal AI — state machine and decision logic.
  */
 import { Animal, AnimalState, LifeStage } from './entities.js';
-import { WATER } from './world.js';
+import { WATER, DEEP_WATER } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
 import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_NONE, P_NONE } from './flora.js';
@@ -32,6 +32,13 @@ export function decideAndAct(animal, world, spatialHash) {
   if (animal.state === AnimalState.SLEEPING) { _doSleep(animal); return; }
   if (animal.state === AnimalState.EATING)   { _doEat(animal, world); return; }
   if (animal.state === AnimalState.DRINKING) { _doDrink(animal, world); return; }
+
+  // Compute effective vision based on day/night and nocturnal trait
+  const isNight = world.clock.isNight;
+  const nocturnal = animal._config.nocturnal;
+  const vision = nocturnal
+    ? (isNight ? animal.visionRange : Math.floor(animal.visionRange * 0.8))
+    : (isNight ? Math.floor(animal.visionRange * 0.65) : animal.visionRange);
 
   // Stagger: between decision ticks, just continue current action
   const interval = DECISION_INTERVALS[animal.species] || 2;
@@ -82,49 +89,49 @@ export function decideAndAct(animal, world, spatialHash) {
 
   // 1. Critical thirst → seek water
   if (animal.thirst > 55) {
-    _seekWater(animal, world);
+    _seekWater(animal, world, vision);
     return;
   }
 
-  // 2. Critical hunger → seek food
+  // 2. Flee from predators (herbivores and omnivores from stronger predators)
+  if (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE') {
+    const threat = _findNearestThreat(animal, spatialHash, vision);
+    if (threat) { _fleeFrom(animal, threat, world); return; }
+  }
+
+  // 3. Critical hunger → seek food
   if (animal.hunger > 45) {
     if (animal.diet === 'HERBIVORE') {
-      _seekPlantFood(animal, world);
+      _seekPlantFood(animal, world, vision);
     } else if (animal.diet === 'OMNIVORE') {
-      _seekOmnivoreFood(animal, world, spatialHash);
+      _seekOmnivoreFood(animal, world, spatialHash, vision);
     } else {
-      _seekPrey(animal, world, spatialHash);
+      _seekPrey(animal, world, spatialHash, vision);
     }
     return;
   }
 
-  // 3. Low energy → sleep
+  // 4. Low energy → sleep
   if (animal.energy < 20) {
     animal.state = AnimalState.SLEEPING;
     return;
   }
 
-  // 4. Flee from predators (herbivores and omnivores from stronger predators)
-  if (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE') {
-    const threat = _findNearestThreat(animal, spatialHash);
-    if (threat) { _fleeFrom(animal, threat, world); return; }
-  }
-
   // 5. Moderate hunger — proactively seek food
   if (animal.hunger > 30) {
     if (animal.diet === 'HERBIVORE') {
-      _seekPlantFood(animal, world);
+      _seekPlantFood(animal, world, vision);
     } else if (animal.diet === 'OMNIVORE') {
-      _seekOmnivoreFood(animal, world, spatialHash);
+      _seekOmnivoreFood(animal, world, spatialHash, vision);
     } else {
-      _seekPrey(animal, world, spatialHash);
+      _seekPrey(animal, world, spatialHash, vision);
     }
     return;
   }
 
   // 6. Moderate thirst — proactively seek water
   if (animal.thirst > 35) {
-    _seekWater(animal, world);
+    _seekWater(animal, world, vision);
     return;
   }
 
@@ -182,7 +189,7 @@ function _setPath(animal, path, tick) {
   animal._pathTick = tick;
 }
 
-function _seekWater(animal, world) {
+function _seekWater(animal, world, vision) {
   // Already adjacent? Drink immediately
   if (world.isWaterAdjacent(animal.x, animal.y)) {
     animal.state = AnimalState.DRINKING;
@@ -198,15 +205,18 @@ function _seekWater(animal, world) {
 
   // Search for nearest water — expand range when desperate
   const desperate = animal.thirst > 75;
-  const searchR = desperate ? Math.min(animal.visionRange * 3, 30) : animal.visionRange * 2;
+  const searchR = desperate ? Math.min(vision * 3, 30) : vision * 2;
   let best = null, bestDist = Infinity;
 
   for (let dy = -searchR; dy <= searchR; dy++) {
     for (let dx = -searchR; dx <= searchR; dx++) {
       const nx = animal.x + dx, ny = animal.y + dy;
-      if (world.isInBounds(nx, ny) && world.terrain[world.idx(nx, ny)] === WATER) {
-        const d = Math.abs(dx) + Math.abs(dy);
-        if (d < bestDist) { bestDist = d; best = [nx, ny]; }
+      if (world.isInBounds(nx, ny)) {
+        const t = world.terrain[world.idx(nx, ny)];
+        if (t === WATER || t === DEEP_WATER) {
+          const d = Math.abs(dx) + Math.abs(dy);
+          if (d < bestDist) { bestDist = d; best = [nx, ny]; }
+        }
       }
     }
   }
@@ -225,7 +235,7 @@ function _seekWater(animal, world) {
   }
 }
 
-function _seekPlantFood(animal, world) {
+function _seekPlantFood(animal, world, vision) {
   const idx = world.idx(animal.x, animal.y);
 
   // Eat fruit on current tile (best food — consumes tile entirely)
@@ -259,8 +269,8 @@ function _seekPlantFood(animal, world) {
   }
 
   // Spiral search: check nearest tiles first, early-exit on fruit found
-  const r = animal.visionRange;
-  const maxR = animal.hunger > 65 ? Math.min(animal.visionRange * 3, 25) : r;
+  const r = vision;
+  const maxR = animal.hunger > 65 ? Math.min(vision * 3, 25) : r;
   let bestFruit = null, bestPlant = null;
 
   for (let ring = 1; ring <= maxR; ring++) {
@@ -298,9 +308,9 @@ function _seekPlantFood(animal, world) {
   _randomWalk(animal, world);
 }
 
-function _seekPrey(animal, world, spatialHash) {
+function _seekPrey(animal, world, spatialHash, vision) {
   // Carnivores can also eat fruit opportunistically when very hungry and no prey
-  const nearby = spatialHash.queryRadius(animal.x, animal.y, animal.visionRange);
+  const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
   const prey = nearby.filter(e => (e.diet === 'HERBIVORE' || e.diet === 'OMNIVORE') && e.alive && e.id !== animal.id);
 
   if (prey.length) {
@@ -323,6 +333,9 @@ function _seekPrey(animal, world, spatialHash) {
     return;
   }
 
+  // No live prey — try scavenging recent corpses
+  if (_tryScavenge(animal, world, spatialHash, vision)) return;
+
   // No prey — carnivores eat fruit as fallback when desperate
   if (animal.hunger > 50) {
     const idx = world.idx(animal.x, animal.y);
@@ -339,7 +352,7 @@ function _seekPrey(animal, world, spatialHash) {
       return;
     }
     // Seek nearby fruit when desperate
-    _seekPlantFood(animal, world);
+    _seekPlantFood(animal, world, vision);
     return;
   }
 
@@ -349,7 +362,7 @@ function _seekPrey(animal, world, spatialHash) {
 /**
  * Omnivore food-seeking: prefer plants first, hunt small prey when hungrier.
  */
-function _seekOmnivoreFood(animal, world, spatialHash) {
+function _seekOmnivoreFood(animal, world, spatialHash, vision) {
   // Try eating plant on current tile first
   const idx = world.idx(animal.x, animal.y);
   if (world.plantStage[idx] === S_FRUIT) {
@@ -375,7 +388,7 @@ function _seekOmnivoreFood(animal, world, spatialHash) {
 
   // When very hungry, try hunting small prey (weaker than self)
   if (animal.hunger > 55) {
-    const nearby = spatialHash.queryRadius(animal.x, animal.y, animal.visionRange);
+    const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
     const prey = nearby.filter(e =>
       e.alive && e.id !== animal.id && e.diet === 'HERBIVORE' &&
       e._config.defense < animal._config.attack_power
@@ -398,10 +411,48 @@ function _seekOmnivoreFood(animal, world, spatialHash) {
       }
       return;
     }
+
+    // No live prey — try scavenging recent corpses
+    if (_tryScavenge(animal, world, spatialHash, vision)) return;
   }
 
   // Fallback: seek plants in vision range
-  _seekPlantFood(animal, world);
+  _seekPlantFood(animal, world, vision);
+}
+
+// ---- Scavenging ----
+
+function _tryScavenge(animal, world, spatialHash, vision) {
+  const tick = world.clock.tick;
+  const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
+  const corpses = nearby.filter(e =>
+    !e.alive && !e.consumed && e._deathTick != null && (tick - e._deathTick) < 100
+  );
+  if (!corpses.length) return false;
+
+  const target = corpses.reduce((a, b) =>
+    (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
+    (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
+  );
+  const dist = Math.abs(target.x - animal.x) + Math.abs(target.y - animal.y);
+
+  if (dist <= 1) {
+    // Consume corpse
+    animal.hunger = Math.max(0, animal.hunger - 60);
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + 15);
+    animal.state = AnimalState.EATING;
+    animal.applyEnergyCost('EAT');
+    target.consumed = true;
+    return true;
+  }
+
+  // Walk toward corpse
+  _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30), world.clock.tick);
+  if (animal.path.length) {
+    _followPath(animal, world);
+    return true;
+  }
+  return false;
 }
 
 // ---- Combat ----
@@ -427,8 +478,8 @@ function _attack(attacker, defender, world) {
 
 // ---- Threat detection & fleeing ----
 
-function _findNearestThreat(animal, spatialHash) {
-  const nearby = spatialHash.queryRadius(animal.x, animal.y, animal.visionRange);
+function _findNearestThreat(animal, spatialHash, vision) {
+  const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
   const threats = nearby.filter(e => {
     if (!e.alive || e.id === animal.id) return false;
     if (e.diet === 'CARNIVORE') return true;
@@ -449,16 +500,24 @@ function _fleeFrom(animal, threat, world) {
   const dx = animal.x - threat.x;
   const dy = animal.y - threat.y;
   const dist = Math.max(1, Math.abs(dx) + Math.abs(dy));
-  // Try flee distances 3, 2, 1
-  for (let step = 3; step >= 1; step--) {
-    let fx = animal.x + Math.round(dx / dist * step);
-    let fy = animal.y + Math.round(dy / dist * step);
-    fx = Math.max(0, Math.min(world.width - 1, fx));
-    fy = Math.max(0, Math.min(world.height - 1, fy));
-    if (world.isWalkable(fx, fy) && !world.isTileOccupied(fx, fy)) {
-      _moveAnimal(animal, fx, fy, world);
-      break;
+  // Use speed for flee burst (fast animals flee faster)
+  for (let burst = 0; burst < animal.speed; burst++) {
+    const cx = animal.x - threat.x;
+    const cy = animal.y - threat.y;
+    const cd = Math.max(1, Math.abs(cx) + Math.abs(cy));
+    let moved = false;
+    for (let step = 3; step >= 1; step--) {
+      let fx = animal.x + Math.round(cx / cd * step);
+      let fy = animal.y + Math.round(cy / cd * step);
+      fx = Math.max(0, Math.min(world.width - 1, fx));
+      fy = Math.max(0, Math.min(world.height - 1, fy));
+      if (world.isWalkable(fx, fy) && !world.isTileOccupied(fx, fy)) {
+        _moveAnimal(animal, fx, fy, world);
+        moved = true;
+        break;
+      }
     }
+    if (!moved) break;
   }
   animal.state = AnimalState.FLEEING;
   animal.applyEnergyCost('FLEE');
@@ -558,11 +617,26 @@ function _followPath(animal, world) {
 
 function _randomWalk(animal, world) {
   const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-  // Fisher-Yates shuffle
-  for (let i = dirs.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+
+  // Home bias: when far from home, prefer direction toward home (60% chance)
+  const homeDist = Math.abs(animal.x - animal.homeX) + Math.abs(animal.y - animal.homeY);
+  if (homeDist > 15 && Math.random() < 0.6) {
+    const hdx = Math.sign(animal.homeX - animal.x);
+    const hdy = Math.sign(animal.homeY - animal.y);
+    // Sort: preferred home direction first
+    dirs.sort((a, b) => {
+      const sa = (a[0] === hdx ? -1 : 0) + (a[1] === hdy ? -1 : 0);
+      const sb = (b[0] === hdx ? -1 : 0) + (b[1] === hdy ? -1 : 0);
+      return sa - sb;
+    });
+  } else {
+    // Fisher-Yates shuffle
+    for (let i = dirs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+    }
   }
+
   for (const [dx, dy] of dirs) {
     const nx = animal.x + dx, ny = animal.y + dy;
     if (world.isWalkable(nx, ny) && !world.isTileOccupied(nx, ny)) {

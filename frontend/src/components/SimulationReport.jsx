@@ -419,12 +419,131 @@ export default function SimulationReport({ open, onClose }) {
     );
   }
 
+  function exportToText() {
+    if (noData) return;
+
+    const tpd = clock.ticks_per_day || 200;
+    const lastTick = data.ticks[data.ticks.length - 1] || 0;
+    const days = Math.floor(lastTick / tpd);
+    const currentTotal = data.totalAnimals[data.totalAnimals.length - 1] || 0;
+    const peakTotal = Math.max(...data.totalAnimals);
+    const currentDiversity = data.diversity[data.diversity.length - 1] || 0;
+    const peakDiversity = Math.max(...data.diversity);
+    const currentPlants = data.plantsTotal[data.plantsTotal.length - 1] || 0;
+    const peakPlants = Math.max(...data.plantsTotal);
+    const currentFruits = data.fruits[data.fruits.length - 1] || 0;
+
+    const lines = [];
+    lines.push('=== ECOGAME SIMULATION REPORT ===');
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+    lines.push('');
+
+    // Summary
+    lines.push('--- SUMMARY ---');
+    lines.push(`Simulation Time: ${days} days (${lastTick.toLocaleString()} ticks)`);
+    lines.push(`Total Animals: ${currentTotal} (Peak: ${peakTotal})`);
+    lines.push(`Living Plants: ${currentPlants.toLocaleString()} (Peak: ${peakPlants.toLocaleString()})`);
+    lines.push(`Fruiting Plants: ${currentFruits.toLocaleString()}`);
+    lines.push(`Biodiversity (Shannon): ${currentDiversity.toFixed(3)} (Peak: ${peakDiversity.toFixed(3)})`);
+    lines.push(`Active Species: ${data.speciesKeys.filter(k => (data.speciesData[k][data.speciesData[k].length - 1] || 0) > 0).length} / ${data.speciesKeys.length}`);
+    lines.push(`Extinction Events: ${data.extinctions.length}`);
+    lines.push('');
+
+    // Species table
+    lines.push('--- SPECIES DETAILS ---');
+    lines.push('Species'.padEnd(14) + 'Current'.padStart(9) + 'Peak'.padStart(9) + 'Min'.padStart(9) + '  Status');
+    lines.push('-'.repeat(52));
+    data.speciesKeys.forEach(k => {
+      const current = data.speciesData[k][data.speciesData[k].length - 1] || 0;
+      const extinct = data.peaks[k] > 0 && current === 0;
+      const status = data.peaks[k] === 0 ? 'Never spawned' : extinct ? 'Extinct' : 'Alive';
+      lines.push(
+        (SPECIES_INFO[k]?.name || k).padEnd(14) +
+        String(current).padStart(9) +
+        String(data.peaks[k]).padStart(9) +
+        String(data.mins[k]).padStart(9) +
+        '  ' + status
+      );
+    });
+    lines.push('');
+
+    // Diet groups
+    lines.push('--- DIET GROUPS (current) ---');
+    Object.entries(DIET_GROUPS).forEach(([diet, speciesList]) => {
+      const total = speciesList.reduce((sum, sp) => {
+        const arr = data.speciesData[sp];
+        return sum + (arr[arr.length - 1] || 0);
+      }, 0);
+      lines.push(`${diet}: ${total}`);
+    });
+    lines.push('');
+
+    // Extinction events
+    if (data.extinctions.length > 0) {
+      lines.push('--- EXTINCTION LOG ---');
+      data.extinctions.forEach(ev => {
+        const day = Math.floor(ev.tick / tpd);
+        lines.push(`Day ${day} (tick ${ev.tick}): ${SPECIES_INFO[ev.species]?.name || ev.species} went extinct`);
+      });
+      lines.push('');
+    }
+
+    // Plant distribution
+    const ptEntries = Object.entries(data.plantTypes).filter(([, v]) => v > 0);
+    if (ptEntries.length > 0) {
+      lines.push('--- PLANT DISTRIBUTION ---');
+      ptEntries.forEach(([k, v]) => {
+        lines.push(`${PLANT_TYPE_NAMES[k] || 'Type ' + k}: ${v.toLocaleString()}`);
+      });
+      lines.push('');
+    }
+
+    // Population timeline (sampled every 10 entries to keep file reasonable)
+    lines.push('--- POPULATION TIMELINE ---');
+    const step = Math.max(1, Math.floor(data.ticks.length / 100));
+    const timelineHeader = 'Day'.padStart(6) + 'Tick'.padStart(8) + 'Total'.padStart(8) + 'Plants'.padStart(8) + 'Fruits'.padStart(8) + 'Diversity'.padStart(11);
+    lines.push(timelineHeader);
+    lines.push('-'.repeat(timelineHeader.length));
+    for (let i = 0; i < data.ticks.length; i += step) {
+      const day = Math.floor(data.ticks[i] / tpd);
+      lines.push(
+        String(day).padStart(6) +
+        String(data.ticks[i]).padStart(8) +
+        String(data.totalAnimals[i]).padStart(8) +
+        String(data.plantsTotal[i]).padStart(8) +
+        String(data.fruits[i]).padStart(8) +
+        data.diversity[i].toFixed(3).padStart(11)
+      );
+    }
+    lines.push('');
+    lines.push('=== END OF REPORT ===');
+
+    const text = lines.join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ecogame-report-day${days}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="report-overlay" onClick={onClose}>
       <div className="report-modal" onClick={e => e.stopPropagation()}>
         <div className="report-header">
           <h5>📈 Simulation Report</h5>
-          <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>✕</button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="btn btn-sm btn-outline-info"
+              onClick={exportToText}
+              disabled={noData}
+              title="Export report as text file"
+            >
+              📄 Export
+            </button>
+            <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>✕</button>
+          </div>
         </div>
         <div className="report-tabs">
           {TABS.map(t => (

@@ -2,7 +2,7 @@
  * Terrain map generator — Perlin-like noise, island masks, BFS water proximity.
  * Pure JS port of the NumPy-based Python generator.
  */
-import { WATER, SAND, DIRT, GRASS, ROCK } from './world.js';
+import { WATER, SAND, DIRT, GRASS, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
 
 /**
  * Generate terrain grid with natural-looking islands.
@@ -53,11 +53,13 @@ export function generateTerrain(config) {
   const terrain = new Uint8Array(h * w);
   for (let i = 0; i < terrain.length; i++) {
     const v = combined[i];
-    if (v > seaLevel + 0.45) terrain[i] = ROCK;
+    if (v > seaLevel + 0.50) terrain[i] = MOUNTAIN;
+    else if (v > seaLevel + 0.42) terrain[i] = ROCK;
     else if (v > seaLevel + 0.12) terrain[i] = GRASS;
     else if (v > seaLevel + 0.05) terrain[i] = DIRT;
     else if (v > seaLevel) terrain[i] = SAND;
-    else terrain[i] = WATER;
+    else if (v > seaLevel - 0.15) terrain[i] = WATER;
+    else terrain[i] = DEEP_WATER;
   }
 
   // Detail noise for terrain variation
@@ -69,8 +71,25 @@ export function generateTerrain(config) {
     }
   }
 
+  // Secondary detail pass: fertile soil near water, mud at water edges
+  const detail2 = fbmNoise(w, h, seed + 77777, 2, 0.02);
+
   // Compute water proximity via BFS
   const waterProximity = computeWaterProximity(terrain, w, h, 255);
+
+  // Apply fertile soil and mud based on water proximity + detail noise
+  for (let i = 0; i < terrain.length; i++) {
+    const wp = waterProximity[i];
+    const t = terrain[i];
+    // Mud: sand tiles very close to water with some noise variation
+    if (t === SAND && wp <= 2 && detail2[i] > -0.2) {
+      terrain[i] = MUD;
+    }
+    // Fertile soil: grass/dirt tiles near water with favorable noise
+    else if ((t === GRASS || t === DIRT) && wp >= 2 && wp <= 6 && detail2[i] > 0.1) {
+      terrain[i] = FERTILE_SOIL;
+    }
+  }
 
   return { terrain, waterProximity, seed };
 }
@@ -276,7 +295,7 @@ export function computeWaterProximity(terrain, w, h, maxDist = 255) {
   let qHead = 0, qTail = 0;
 
   for (let i = 0; i < terrain.length; i++) {
-    if (terrain[i] === WATER) {
+    if (terrain[i] === WATER || terrain[i] === DEEP_WATER) {
       dist[i] = 0;
       queue[qTail++] = i; // store flat index
     }

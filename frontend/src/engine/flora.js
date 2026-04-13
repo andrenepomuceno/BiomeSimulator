@@ -6,7 +6,7 @@
  *   - Fruit producers place S_FRUIT (edible, decays to S_SEED)
  *   - Seed producers place S_SEED directly
  */
-import { WATER, GRASS, DIRT } from './world.js';
+import { WATER, SAND, GRASS, DIRT, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
 import { buildStageAges, buildFruitSpoilAges, buildProductionChances, buildReproductionModes } from './plantSpecies.js';
 
 // Plant types
@@ -62,8 +62,12 @@ const REPRODUCTION_MODES = buildReproductionModes();
 
 // Terrain growth multipliers: higher = faster effective aging
 const TERRAIN_GROWTH_MULT = {
-  [GRASS]: 1.2,   // grass terrain boosts growth by 20%
-  [DIRT]:  0.7,   // dirt terrain slows growth by 30%
+  [GRASS]: 1.2,          // grass terrain boosts growth by 20%
+  [DIRT]:  0.7,          // dirt terrain slows growth by 30%
+  [FERTILE_SOIL]: 1.5,   // fertile soil boosts growth by 50%
+  [ROCK]: 0.6,           // rock terrain slows growth by 40%
+  [MOUNTAIN]: 0.5,       // mountain terrain slows growth by 50%
+  [MUD]: 0.8,            // mud terrain slows growth by 20%
 };
 
 // Per-tick chance a plant on dirt dies prematurely (seeds/sprouts are more fragile)
@@ -74,6 +78,29 @@ const DIRT_DEATH_CHANCE = {
   [S_ADULT]:         0.0005, // 0.05% per tick
   [S_FRUIT]:         0.002,  // 0.2% per tick (fruit on dirt rots faster)
 };
+
+// Tree types (cannot grow on rock or mountain)
+const TREE_TYPES = new Set([P_APPLE_TREE, P_MANGO_TREE, P_OAK_TREE]);
+
+// Low plants (can grow on mountain)
+const LOW_PLANT_TYPES = new Set([P_GRASS, P_MUSHROOM, P_CARROT]);
+
+function _isTree(ptype) { return TREE_TYPES.has(ptype); }
+function _isLowPlant(ptype) { return LOW_PLANT_TYPES.has(ptype); }
+
+/**
+ * Check whether a terrain tile can support a given plant type.
+ */
+function _canPlantGrow(terrain, ptype) {
+  if (terrain === WATER || terrain === SAND) return false;
+  // Deep water — no plants
+  if (terrain === DEEP_WATER) return false;
+  // Trees cannot grow on rock or mountain
+  if (_isTree(ptype) && (terrain === ROCK || terrain === MOUNTAIN)) return false;
+  // Mountain only supports low plants
+  if (terrain === MOUNTAIN && !_isLowPlant(ptype)) return false;
+  return true;
+}
 
 /**
  * Scatter initial plants on eligible terrain tiles.
@@ -86,7 +113,7 @@ export function seedInitialPlants(world) {
   const eligible = [];
   for (let i = 0; i < w * h; i++) {
     const t = world.terrain[i];
-    if (t === GRASS || t === DIRT) eligible.push(i);
+    if (t === GRASS || t === DIRT || t === FERTILE_SOIL || t === ROCK || t === MOUNTAIN || t === MUD) eligible.push(i);
   }
 
   // Shuffle (Fisher-Yates) and take first n
@@ -140,6 +167,11 @@ export function seedInitialPlants(world) {
       else if (r < 0.88) ptype = P_MUSHROOM;
       else ptype = P_OAK_TREE;
     }
+
+    // Terrain restrictions: no trees on rock/mountain; only low plants on mountain
+    const terrain = world.terrain[idx];
+    if (_isTree(ptype) && (terrain === ROCK || terrain === MOUNTAIN)) continue;
+    if (terrain === MOUNTAIN && !_isLowPlant(ptype)) continue;
 
     // Random initial stage
     const sr = Math.random();
@@ -196,10 +228,11 @@ export function processPlants(world) {
     const terrain = world.terrain[i];
     const terrainMult = TERRAIN_GROWTH_MULT[terrain] || 1.0;
 
-    // Dirt terrain: random chance to kill the plant each tick
-    if (terrain === DIRT) {
+    // Harsh terrain: random chance to kill the plant each tick
+    if (terrain === DIRT || terrain === ROCK || terrain === MOUNTAIN || terrain === MUD) {
       const deathChance = DIRT_DEATH_CHANCE[stage] || 0;
-      if (deathChance > 0 && Math.random() < deathChance * PLANT_TICK_PHASES) {
+      const harshMult = terrain === MOUNTAIN ? 2.0 : terrain === ROCK ? 1.5 : 1.0;
+      if (deathChance > 0 && Math.random() < deathChance * PLANT_TICK_PHASES * harshMult) {
         world.plantStage[i] = S_DEAD;
         const x = i % w, y = Math.floor(i / w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
@@ -308,10 +341,11 @@ function produceOffspring(world) {
     const ni = ny * w + nx;
     if (world.plantType[ni] !== P_NONE) continue;
     const terrain = world.terrain[ni];
-    if (terrain !== GRASS && terrain !== DIRT) continue;
+    if (!_canPlantGrow(terrain, ptype)) continue;
 
-    // Seeds are less likely to take root on dirt
-    if (terrain === DIRT && Math.random() > 0.4) continue;
+    // Seeds are less likely to take root on poor terrain
+    if ((terrain === DIRT || terrain === ROCK || terrain === MUD) && Math.random() > 0.4) continue;
+    if (terrain === MOUNTAIN && Math.random() > 0.25) continue;
 
     const offspringStage = mode === 'FRUIT' ? S_FRUIT : S_SEED;
     world.plantType[ni] = ptype;

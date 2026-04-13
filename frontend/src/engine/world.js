@@ -8,8 +8,15 @@ export const SAND = 1;
 export const DIRT = 2;
 export const GRASS = 3;
 export const ROCK = 4;
+export const FERTILE_SOIL = 5;
+export const DEEP_WATER = 6;
+export const MOUNTAIN = 7;
+export const MUD = 8;
 
-export const TERRAIN_NAMES = { 0: 'water', 1: 'sand', 2: 'dirt', 3: 'grass', 4: 'rock' };
+export const TERRAIN_NAMES = {
+  0: 'water', 1: 'sand', 2: 'dirt', 3: 'grass', 4: 'rock',
+  5: 'fertile soil', 6: 'deep water', 7: 'mountain', 8: 'mud',
+};
 
 export class Clock {
   constructor(ticksPerDay = 200, dayFraction = 0.6) {
@@ -107,7 +114,7 @@ export class World {
   isWalkable(x, y) {
     if (!this.isInBounds(x, y)) return false;
     const t = this.terrain[this.idx(x, y)];
-    return t !== WATER && t !== ROCK;
+    return t !== WATER && t !== DEEP_WATER && t !== MOUNTAIN;
   }
 
   isTileOccupied(x, y) {
@@ -129,8 +136,9 @@ export class World {
       for (let dy = -1; dy <= 1; dy++) {
         if (dx === 0 && dy === 0) continue;
         const nx = x + dx, ny = y + dy;
-        if (this.isInBounds(nx, ny) && this.terrain[this.idx(nx, ny)] === WATER) {
-          return true;
+        if (this.isInBounds(nx, ny)) {
+          const t = this.terrain[this.idx(nx, ny)];
+          if (t === WATER || t === DEEP_WATER) return true;
         }
       }
     }

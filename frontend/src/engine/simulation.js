@@ -2,7 +2,7 @@
  * SimulationEngine — tick pipeline, world generation, entity management.
  * No threading — designed to be called from a Web Worker.
  */
-import { World, WATER, ROCK } from './world.js';
+import { World } from './world.js';
 import { Animal } from './entities.js';
 import { SpatialHash } from './spatialHash.js';
 import { generateTerrain, computeWaterProximity } from './mapGenerator.js';
@@ -72,8 +72,7 @@ export class SimulationEngine {
       while (placed < count && attempts < count * 50) {
         const x = Math.floor(Math.random() * w.width);
         const y = Math.floor(Math.random() * w.height);
-        const t = w.terrain[w.idx(x, y)];
-        if (t !== WATER && t !== ROCK && !w.isTileOccupied(x, y)) {
+        if (w.isWalkable(x, y) && !w.isTileOccupied(x, y)) {
           const animal = new Animal(w.nextId(), x, y, species, speciesConfig);
           w.animals.push(animal);
           w.placeAnimal(x, y);
@@ -123,7 +122,7 @@ export class SimulationEngine {
     const cleanupInterval = totalAnimals > 1500 ? 10 : totalAnimals > 800 ? 25 : 50;
     if (tick % cleanupInterval === 0) {
       w.animals = w.animals.filter(a =>
-        a.alive || (a._deathTick != null && tick - a._deathTick < 300)
+        a.alive || (!a.consumed && a._deathTick != null && tick - a._deathTick < 300)
       );
     }
 

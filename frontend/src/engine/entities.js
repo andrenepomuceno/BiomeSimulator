@@ -58,6 +58,9 @@ export class Animal {
     this.mateCooldown = 0;
     this.attackCooldown = 0;
     this._deathTick = null;
+    this.consumed = false;
+    this.homeX = x;
+    this.homeY = y;
   }
 
   get speed() { return this._config.speed; }
@@ -85,8 +88,12 @@ export class Animal {
   }
 
   tickNeeds(hungerMult, thirstMult) {
-    this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate * hungerMult);
-    this.thirst = Math.min(this._config.max_thirst, this.thirst + this._config.thirst_rate * thirstMult);
+    // Babies and young animals have lower metabolic rates
+    const stage = this.lifeStage;
+    const hMult = stage === LifeStage.BABY ? 0.5 : stage === LifeStage.YOUNG ? 0.75 : 1;
+    const tMult = stage === LifeStage.BABY ? 0.6 : stage === LifeStage.YOUNG ? 0.8 : 1;
+    this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate * hungerMult * hMult);
+    this.thirst = Math.min(this._config.max_thirst, this.thirst + this._config.thirst_rate * thirstMult * tMult);
     this.age++;
     if (this.mateCooldown > 0) this.mateCooldown--;
     if (this.attackCooldown > 0) this.attackCooldown--;

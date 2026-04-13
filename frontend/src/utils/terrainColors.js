@@ -8,6 +8,10 @@ export const SAND = 1;
 export const DIRT = 2;
 export const GRASS = 3;
 export const ROCK = 4;
+export const FERTILE_SOIL = 5;
+export const DEEP_WATER = 6;
+export const MOUNTAIN = 7;
+export const MUD = 8;
 
 export const TERRAIN_COLORS = {
   [WATER]: [30, 100, 180, 255],
@@ -15,6 +19,10 @@ export const TERRAIN_COLORS = {
   [DIRT]: [140, 100, 60, 255],
   [GRASS]: [60, 150, 60, 255],
   [ROCK]: [120, 120, 130, 255],
+  [FERTILE_SOIL]: [85, 60, 30, 255],
+  [DEEP_WATER]: [15, 55, 130, 255],
+  [MOUNTAIN]: [170, 165, 160, 255],
+  [MUD]: [100, 80, 50, 255],
 };
 
 export const TERRAIN_NAMES = {
@@ -23,6 +31,10 @@ export const TERRAIN_NAMES = {
   [DIRT]: 'Dirt',
   [GRASS]: 'Grass',
   [ROCK]: 'Rock',
+  [FERTILE_SOIL]: 'Fertile Soil',
+  [DEEP_WATER]: 'Deep Water',
+  [MOUNTAIN]: 'Mountain',
+  [MUD]: 'Mud',
 };
 
 // Plant stage colors — built from plantSpecies.js canonical registry

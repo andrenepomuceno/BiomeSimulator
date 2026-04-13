@@ -166,7 +166,16 @@ const ACTION_COLORS = {
   EAT_PLANT: '#66cc66', SCAVENGED: '#cc8844', FLED: '#ff8833', DIED: '#888',
 };
 
-function ActionLogEntry({ event }) {
+function formatLogTimestamp(tick, ticksPerDay) {
+  const day = Math.floor(tick / ticksPerDay);
+  const tickInDay = tick % ticksPerDay;
+  const dayFrac = tickInDay / ticksPerDay;
+  const hours = Math.floor(dayFrac * 24);
+  const minutes = Math.floor((dayFrac * 24 - hours) * 60);
+  return `D${day} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function ActionLogEntry({ event, ticksPerDay }) {
   const { tick, action, detail } = event;
   const icon = ACTION_ICONS[action] || '❓';
   const color = ACTION_COLORS[action] || '#aaa';
@@ -182,17 +191,18 @@ function ActionLogEntry({ event }) {
   else if (action === 'SCAVENGED') text = `Scavenged ${detail.corpse} #${detail.corpseId}`;
   else if (action === 'FLED')      text = `Fled from ${detail.from} #${detail.threatId}`;
   else if (action === 'DIED')      text = `Died (${detail.cause})`;
+  const ts = formatLogTimestamp(tick, ticksPerDay);
   return (
     <div className="d-flex align-items-start gap-1" style={{ padding: '1px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
       <span style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>{icon}</span>
       <span style={{ color, flex: 1 }}>{text}</span>
-      <span className="text-muted" style={{ flexShrink: 0, fontSize: '0.58rem' }}>t{tick}</span>
+      <span style={{ flexShrink: 0, fontSize: '0.58rem', whiteSpace: 'nowrap', color: '#88aacc' }}>{ts}</span>
     </div>
   );
 }
 
 export default function EntityInspector() {
-  const { selectedEntity, selectedTile, clearSelection } = useSimStore();
+  const { selectedEntity, selectedTile, clearSelection, clock } = useSimStore();
 
   if (selectedEntity) {
     const e = selectedEntity;
@@ -288,7 +298,7 @@ export default function EntityInspector() {
           <CollapsibleSection title="Action History" icon="📜" defaultOpen={false}>
             <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: '0.63rem' }}>
               {[...e.actionHistory].reverse().map((ev, i) => (
-                <ActionLogEntry key={i} event={ev} />
+                <ActionLogEntry key={i} event={ev} ticksPerDay={clock.ticks_per_day || 200} />
               ))}
             </div>
           </CollapsibleSection>

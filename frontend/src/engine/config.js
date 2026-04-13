@@ -46,7 +46,7 @@ export const DEFAULT_CONFIG = {
   season_length_days: 30,
 
   // Fauna — global population budget distributed proportionally per species (0 = use base caps)
-  max_animal_population: 5000,
+  max_animal_population: 10000,
 
   // Fauna — derived from animalSpecies.js
   initial_animal_counts: buildInitialAnimalCounts(),

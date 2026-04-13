@@ -16,7 +16,7 @@ const defaultParams = {
   seed: '',
   initial_animal_counts: buildInitialAnimalCounts(),
   initial_plant_density: 0.1,
-  max_animal_population: 5000,
+  max_animal_population: 10000,
 };
 
 const TABS = ['new', 'save', 'load'];
@@ -159,7 +159,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                 <div>
                   <div className="gm-field">
                     <label>🌐 Max Animal Population: {params.max_animal_population === 0 ? 'Default (per-species)' : params.max_animal_population}</label>
-                    <input type="range" min={0} max={10000} step={100}
+                    <input type="range" min={0} max={50000} step={500}
                       value={params.max_animal_population}
                       onChange={e => set('max_animal_population', +e.target.value)} />
                     <div style={{ fontSize: '0.7rem', color: '#777', marginTop: 2 }}>

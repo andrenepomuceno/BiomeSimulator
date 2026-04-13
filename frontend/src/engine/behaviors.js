@@ -21,6 +21,14 @@ function _canHunt(animal, target) {
   return animal._preySpecies.size === 0 || animal._preySpecies.has(target.species);
 }
 
+/** Omnivores get reduced nutrition from plants (they're less efficient grazers). */
+function _plantHungerReduction(animal, base) {
+  return animal.diet === 'OMNIVORE' ? Math.round(base * 0.55) : base;
+}
+function _plantEnergyGain(animal, base) {
+  return animal.diet === 'OMNIVORE' ? Math.round(base * 0.5) : base;
+}
+
 /**
  * Process one tick for an animal: decide action, execute it.
  */
@@ -80,16 +88,16 @@ export function decideAndAct(animal, world, spatialHash) {
       world.activePlantTiles.delete(idx);
       animal.state = AnimalState.EATING;
       animal.applyEnergyCost('EAT');
-      animal.hunger = Math.max(0, animal.hunger - 55);
-      animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
+      animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, 55));
+      animal.energy = Math.min(animal.maxEnergy, animal.energy + _plantEnergyGain(animal, 8));
       world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
       return;
     }
     if (animal.hunger > 35 && world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT && _canEatPlant(animal, world.plantType[idx])) {
       world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
       animal.state = AnimalState.EATING;
-      animal.hunger = Math.max(0, animal.hunger - 35);
-      animal.energy = Math.min(animal.maxEnergy, animal.energy + 4);
+      animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, 35));
+      animal.energy = Math.min(animal.maxEnergy, animal.energy + _plantEnergyGain(animal, 4));
       world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
       return;
     }
@@ -256,8 +264,8 @@ function _seekPlantFood(animal, world, vision) {
     world.activePlantTiles.delete(idx);
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
-    animal.hunger = Math.max(0, animal.hunger - 55);
-    animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
+    animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, 55));
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + _plantEnergyGain(animal, 8));
     world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
     return;
   }
@@ -266,8 +274,8 @@ function _seekPlantFood(animal, world, vision) {
   if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT && _canEatPlant(animal, world.plantType[idx])) {
     world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
     animal.state = AnimalState.EATING;
-    animal.hunger = Math.max(0, animal.hunger - 35);
-    animal.energy = Math.min(animal.maxEnergy, animal.energy + 4);
+    animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, 35));
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + _plantEnergyGain(animal, 4));
     world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
     return;
   }
@@ -383,16 +391,16 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
     world.activePlantTiles.delete(idx);
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
-    animal.hunger = Math.max(0, animal.hunger - 55);
-    animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
+    animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, 55));
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + _plantEnergyGain(animal, 8));
     world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
     return;
   }
   if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT && _canEatPlant(animal, world.plantType[idx])) {
     world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
     animal.state = AnimalState.EATING;
-    animal.hunger = Math.max(0, animal.hunger - 35);
-    animal.energy = Math.min(animal.maxEnergy, animal.energy + 4);
+    animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, 35));
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + _plantEnergyGain(animal, 4));
     world.plantChanges.push([animal.x, animal.y, world.plantType[idx], world.plantStage[idx]]);
     return;
   }

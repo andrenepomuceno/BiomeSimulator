@@ -737,28 +737,51 @@ function _findNearestThreat(animal, world, spatialHash, vision) {
 }
 
 function _fleeFrom(animal, threat, world) {
-  const dx = animal.x - threat.x;
-  const dy = animal.y - threat.y;
-  const dist = Math.max(1, Math.abs(dx) + Math.abs(dy));
   // Flying animals get an extra burst step when fleeing
   const fly = _canFly(animal);
   const bursts = fly ? animal.speed + 1 : animal.speed;
+  const ws = animal._walkableSet;
+
   for (let burst = 0; burst < bursts; burst++) {
     const cx = animal.x - threat.x;
     const cy = animal.y - threat.y;
     const cd = Math.max(1, Math.abs(cx) + Math.abs(cy));
     let moved = false;
+
+    // 1. Try direct flee vector at step sizes 3→1
     for (let step = 3; step >= 1; step--) {
       let fx = animal.x + Math.round(cx / cd * step);
       let fy = animal.y + Math.round(cy / cd * step);
       fx = Math.max(0, Math.min(world.width - 1, fx));
       fy = Math.max(0, Math.min(world.height - 1, fy));
-      if (world.isWalkableFor(fx, fy, animal._walkableSet) && !world.isTileOccupied(fx, fy)) {
+      // Skip if clamping brought us back to the same tile (edge/corner)
+      if (fx === animal.x && fy === animal.y) continue;
+      if (world.isWalkableFor(fx, fy, ws) && !world.isTileOccupied(fx, fy)) {
         _moveAnimal(animal, fx, fy, world);
         moved = true;
         break;
       }
     }
+
+    // 2. Lateral fallback — evaluate all 8 neighbors to escape corners/edges
+    if (!moved) {
+      const curDist = Math.abs(animal.x - threat.x) + Math.abs(animal.y - threat.y);
+      let bestNx = -1, bestNy = -1, bestGain = -Infinity;
+      for (let ndx = -1; ndx <= 1; ndx++) {
+        for (let ndy = -1; ndy <= 1; ndy++) {
+          if (ndx === 0 && ndy === 0) continue;
+          const nx = animal.x + ndx, ny = animal.y + ndy;
+          if (!world.isWalkableFor(nx, ny, ws) || world.isTileOccupied(nx, ny)) continue;
+          const gain = (Math.abs(nx - threat.x) + Math.abs(ny - threat.y)) - curDist;
+          if (gain > bestGain) { bestGain = gain; bestNx = nx; bestNy = ny; }
+        }
+      }
+      if (bestNx >= 0) {
+        _moveAnimal(animal, bestNx, bestNy, world);
+        moved = true;
+      }
+    }
+
     if (!moved) break;
   }
   animal.state = fly ? AnimalState.FLYING : AnimalState.FLEEING;

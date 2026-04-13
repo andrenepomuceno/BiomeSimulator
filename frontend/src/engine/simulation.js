@@ -47,6 +47,7 @@ export class SimulationEngine {
     // Reset animals
     w.animals = [];
     w._nextId = 1;
+    w.animalGrid.fill(0);
 
     // Reset clock
     w.clock.tick = 0;
@@ -72,9 +73,10 @@ export class SimulationEngine {
         const x = Math.floor(Math.random() * w.width);
         const y = Math.floor(Math.random() * w.height);
         const t = w.terrain[w.idx(x, y)];
-        if (t !== WATER && t !== ROCK) {
+        if (t !== WATER && t !== ROCK && !w.isTileOccupied(x, y)) {
           const animal = new Animal(w.nextId(), x, y, species, speciesConfig);
           w.animals.push(animal);
+          w.placeAnimal(x, y);
           placed++;
         }
         attempts++;
@@ -109,9 +111,10 @@ export class SimulationEngine {
       }
     }
 
-    // Remove dead animals from spatial hash
+    // Remove dead animals from spatial hash and occupancy grid
     for (const dead of deadThisTick) {
       this.spatialHash.remove(dead);
+      w.vacateAnimal(dead.x, dead.y);
     }
 
     // Clean up dead animals — adaptive interval based on population
@@ -120,7 +123,7 @@ export class SimulationEngine {
     const cleanupInterval = totalAnimals > 1500 ? 10 : totalAnimals > 800 ? 25 : 50;
     if (tick % cleanupInterval === 0) {
       w.animals = w.animals.filter(a =>
-        a.alive || (a._deathTick != null && tick - a._deathTick < 200)
+        a.alive || (a._deathTick != null && tick - a._deathTick < 300)
       );
     }
 

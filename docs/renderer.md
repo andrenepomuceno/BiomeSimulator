@@ -168,7 +168,7 @@ Renders animals as emoji sprites with state-dependent appearance.
 | Texture | Species emoji (🐰 🐿️ 🪲 🐐 🦌 🦊 🐺 🐗 🐻 🦝 🐦‍⬛), or 💤 (sleeping), 💀 (dead) |
 | Scale | `0.018 × energyFactor × stageFactor` — varies by life stage and health |
 | Stage Scale | Baby 0.5×, Young 0.7×, Young Adult 0.85×, Adult 1.0× |
-| Alpha | 1.0 normal, 0.65 sleeping, fading 0.5→0.05 for dead (over 200 ticks) |
+| Alpha | 1.0 normal, 0.65 sleeping, fading `0.8 × (1 - elapsed/300)` for dead (over 300 ticks, min 0.05) |
 
 ### Sprite Pool
 

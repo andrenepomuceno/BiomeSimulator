@@ -6,6 +6,7 @@ import { Camera } from './Camera';
 import { TerrainLayer } from './TerrainLayer';
 import { PlantLayer } from './PlantLayer';
 import { EntityLayer } from './EntityLayer';
+import { AnimationLayer } from './AnimationLayer';
 
 export class GameRenderer {
   constructor(container, onViewportChange, onTileClick) {
@@ -34,11 +35,13 @@ export class GameRenderer {
     // Layers
     this.terrainLayer = new TerrainLayer();
     this.plantLayer = new PlantLayer();
-    this.entityLayer = new EntityLayer();
+    this.animationLayer = new AnimationLayer();
+    this.entityLayer = new EntityLayer(this.animationLayer);
 
     this.worldContainer.addChild(this.terrainLayer.container);
     this.worldContainer.addChild(this.plantLayer.container);
     this.worldContainer.addChild(this.entityLayer.container);
+    this.worldContainer.addChild(this.animationLayer.container);
 
     // Tile selection marker
     this._tileSelectionGfx = new PIXI.Graphics();
@@ -64,6 +67,7 @@ export class GameRenderer {
     this.app.ticker.add(() => {
       this.entityLayer._updateSelectionMarker();
       this._updateTileSelectionMarker();
+      this.animationLayer.tick();
     });
 
     // Resize handling
@@ -87,6 +91,18 @@ export class GameRenderer {
   updatePlants(plantChanges) {
     this.plantLayer.applyChanges(plantChanges);
     this._updatePlantEmojis();
+
+    // Fruit spawn sparkles only in viewport (stage 5 = fruit)
+    const vp = this.camera.getViewportTiles();
+    const x1 = vp.x - 1, y1 = vp.y - 1;
+    const x2 = vp.x + vp.w + 1, y2 = vp.y + vp.h + 1;
+    let fruitCount = 0;
+    for (const change of plantChanges) {
+      if (change[3] === 5 && change[0] >= x1 && change[0] <= x2 && change[1] >= y1 && change[1] <= y2) {
+        this.animationLayer.spawnFruit(change[0], change[1]);
+        if (++fruitCount >= 30) break; // Cap per tick
+      }
+    }
   }
 
   updateEntities(animals) {

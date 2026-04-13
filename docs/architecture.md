@@ -183,15 +183,16 @@ Single Zustand store (`simulationStore.js`):
 
 ```
 App
-├── GameMenu (modal)
+├── GameMenu (modal: New Game / Save / Load)
 ├── Toolbar (top bar: controls, tools, speed, day/night)
 ├── Sidebar Left
 │   ├── Minimap
 │   └── StatsPanel (population counters + chart)
 ├── Canvas Area (Pixi.js via GameRenderer)
-└── Sidebar Right
-    ├── EntityInspector (selected entity/tile details, life stage display)
-    └── TerrainEditor (brush settings, entity palette)
+├── Sidebar Right
+│   ├── EntityInspector (selected entity/tile details, life stage display)
+│   └── TerrainEditor (brush settings, entity palette)
+└── SimulationReport (full-screen analytics overlay)
 ```
 
 ---

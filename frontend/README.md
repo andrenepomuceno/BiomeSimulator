@@ -93,12 +93,16 @@ Plant lifecycle processing:
 #### `behaviors.js`
 
 Animal AI state machine with priority-based decisions:
-1. Thirst > 80 → seek water
-2. Hunger > 70 → seek food
-3. Energy < 20 → sleep
-4. Predator nearby → flee
-5. Mature + partner → mate
-6. Otherwise → wander
+1. Opportunistic drink (thirst > 25 and adjacent to water)
+2. Opportunistic eat (hunger > 20 and on food tile)
+3. Critical thirst > 55 → seek water
+4. Critical hunger > 45 → seek food
+5. Energy < 20 → sleep
+6. Predator nearby → flee
+7. Moderate hunger > 30 → seek food
+8. Moderate thirst > 35 → seek water
+9. Adult + cooldown=0 + energy > 50 → find mate
+10. Otherwise → wander
 
 #### `pathfinding.js`
 
@@ -115,6 +119,10 @@ Grid-based spatial hash (`Map<string, Map<id, entity>>`) for O(1) neighbor looku
 - `tick()` — clock → flora → fauna → spatial hash rebuild → stats
 - `editTerrain()`, `placeEntity()`, `removeEntity()`
 - `getFullState()`, `getStateForViewport()`
+
+#### `plantSpecies.js`
+
+Plant species registry (10 species). Single source of truth for plant data: stage ages, emojis, colors, reproduction modes, production chances. Provides builder functions used by `flora.js` and the renderer.
 
 ---
 
@@ -147,7 +155,7 @@ Semi-transparent overlay texture for plants. Supports delta updates from worker 
 
 #### `EntityLayer.js`
 
-Sprite pool for animal rendering. Pre-generates circle textures per species (green for herbivores, red for carnivores). Dynamically allocates/recycles sprites based on visible animals in the viewport.
+Sprite pool for animal rendering. Uses emoji textures (🐰 🐿️ 🪲 🐐 🦌 🦊 🐺 🐗 🐻 🦝 🐦‍⬛) generated from `emojiTextures.js`. Dynamically allocates/recycles sprites based on visible animals in the viewport. Supports life stage scaling (Baby 0.5×, Young 0.7×, Young Adult 0.85×, Adult 1.0×), sleeping (💤) and dead (💀) emoji overlays, and fade animation for dead animals over 300 ticks.
 
 #### `Camera.js`
 
@@ -219,7 +227,7 @@ Top toolbar with:
 
 Right sidebar panel with:
 - **Map Generation**: Size slider (100–2000), sea level, island count/size, seed input
-- **Population**: Herbivore/carnivore counts, plant density
+- **Population**: Per-species animal count sliders, plant density
 - **Regenerate World** button
 
 #### `StatsPanel.jsx`
@@ -245,13 +253,21 @@ Detail panel shown when an entity is selected:
 - Energy/hunger/thirst progress bars
 - Age
 
+#### `SimulationReport.jsx`
+
+Full-screen analytics overlay with Chart.js graphs showing population trends, species breakdowns, and ecosystem statistics over time.
+
 ---
 
 ### Utilities (`src/utils/`)
 
 #### `terrainColors.js`
 
-Mapping of terrain type IDs (0–4) to RGBA color values used by the terrain renderer.
+Mapping of terrain type IDs (0–4) to RGBA color values used by the terrain renderer. Also exports `PLANT_COLORS` and `SPECIES_INFO`.
+
+#### `emojiTextures.js`
+
+Generates PIXI.Texture objects from emoji characters via offscreen canvas. Provides `generateEmojiTextures()` (13 animal/state textures) and `generatePlantEmojiTextures()` (stage-specific plant textures). Textures are 64×64px and cached as singletons.
 
 ---
 

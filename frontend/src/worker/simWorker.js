@@ -58,7 +58,7 @@ function postTickState(tickMs = 0) {
   const w = engine.world;
   const animals = [];
   for (const a of w.animals) {
-    if (a.alive) animals.push(a.toDict());
+    if (a.alive || a.state === 9) animals.push(a.toDict());
   }
 
   const msg = {

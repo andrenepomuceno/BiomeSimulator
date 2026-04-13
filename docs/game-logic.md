@@ -126,44 +126,70 @@ minimum damage = 1
 
 ### Plant Types
 
-| Type | Constant | Sex | Notes |
-|------|----------|-----|-------|
-| 🌱 Grass | `P_GRASS = 1` | Asexual | Most common |
-| 🍓 Strawberry | `P_STRAWBERRY = 2` | Hermaphrodite | Near water |
-| 🫐 Blueberry | `P_BLUEBERRY = 3` | Hermaphrodite | Near water |
-| 🍎 Apple Tree | `P_APPLE_TREE = 4` | Hermaphrodite | Near water, slow growth |
-| 🥭 Mango Tree | `P_MANGO_TREE = 5` | Hermaphrodite | Near water, slow growth |
-| 🥕 Carrot | `P_CARROT = 6` | Asexual | Inland |
+| Type | Constant | Reproduction | Notes |
+|------|----------|-------------|-------|
+| 🌱 Grass | `P_GRASS = 1` | Seed | Most common, fast growth |
+| 🍓 Strawberry | `P_STRAWBERRY = 2` | Fruit | Medium water affinity |
+| 🫐 Blueberry | `P_BLUEBERRY = 3` | Fruit | Medium water affinity |
+| 🍎 Apple Tree | `P_APPLE_TREE = 4` | Fruit | Slow growth, long-lived |
+| 🥭 Mango Tree | `P_MANGO_TREE = 5` | Fruit | Slow growth, long-lived |
+| 🥕 Carrot | `P_CARROT = 6` | Seed | Inland |
+| 🌻 Sunflower | `P_SUNFLOWER = 7` | Seed | Fast growth |
+| 🍅 Tomato | `P_TOMATO = 8` | Fruit | Medium water affinity |
+| 🍄 Mushroom | `P_MUSHROOM = 9` | Seed | Fastest lifecycle |
+| 🌳 Oak Tree | `P_OAK_TREE = 10` | Seed | Longest-lived, slow growth |
 
 ### Growth Stages
 
 ```
-SEED → SPROUT → MATURE → FRUITING → DEAD
+SEED → YOUNG_SPROUT → ADULT_SPROUT → ADULT → FRUIT → DEAD
 ```
 
-Each stage transition is governed by age thresholds (in ticks):
+Each stage transition is governed by age thresholds (in ticks) defined in `plantSpecies.js`:
 
-| Plant | Seed→Sprout | Sprout→Mature | Mature→Fruiting | Fruiting→Dead |
-|-------|-------------|---------------|-----------------|---------------|
-| Grass | 10 | 40 | 80 | 300 |
-| Strawberry | 15 | 60 | 150 | 500 |
-| Blueberry | 20 | 80 | 200 | 700 |
-| Apple Tree | 50 | 200 | 500 | 2000 |
-| Mango Tree | 60 | 250 | 600 | 2200 |
-| Carrot | 12 | 50 | 120 | 400 |
+| Plant | Seed→Young Sprout | Young→Adult Sprout | Adult Sprout→Adult | Max Age (Dead) |
+|-------|-------------------|-------------------|-------------------|----------------|
+| Grass | 5 | 18 | 35 | 180 |
+| Strawberry | 10 | 40 | 100 | 400 |
+| Blueberry | 15 | 55 | 140 | 550 |
+| Apple Tree | 35 | 140 | 350 | 1600 |
+| Mango Tree | 40 | 180 | 420 | 1800 |
+| Carrot | 8 | 35 | 80 | 350 |
+| Sunflower | 8 | 38 | 100 | 500 |
+| Tomato | 10 | 45 | 120 | 450 |
+| Mushroom | 6 | 22 | 50 | 220 |
+| Oak Tree | 50 | 220 | 500 | 2500 |
 
 ### Water Proximity Bonus
 
 Plants within `water_proximity_threshold` (10) tiles of water grow **30% faster** (age multiplied by 1.3 per tick).
 
+### Terrain Growth Modifiers
+
+| Terrain | Multiplier | Effect |
+|---------|-----------|--------|
+| Grass | 1.2× | 20% faster growth |
+| Dirt | 0.7× | 30% slower growth |
+
+Plants on **dirt terrain** also have a per-tick chance of premature death:
+
+| Stage | Death Chance/Tick |
+|-------|-----------------|
+| Seed | 0.3% |
+| Young Sprout | 0.2% |
+| Adult Sprout | 0.1% |
+| Adult | 0.05% |
+| Fruit | 0.2% |
+
 ### Seed Spreading
 
 Each tick during the plant phase:
 1. Collect all fruiting plants, shuffle
-2. Cap processing at 800 plants per tick
-3. Each fruiting plant has a **6% chance** to spread
+2. Dynamic processing cap: 800 base, reduced to 400 if coverage > 40%, 200 if > 60%
+3. Each fruiting plant has a species-specific **production chance** to spread
 4. Seed lands 1–3 tiles away in a random direction (8-way)
 5. Target tile must be empty (no plant) and GRASS or DIRT terrain
+6. On DIRT terrain, seeding has only a 60% success rate
 
 ### Initial Seeding
 
@@ -197,7 +223,7 @@ On world generation:
 
 - Dead animals are marked `alive = false`, state = `DEAD`
 - A `_deathTick` timestamp is recorded for fade timing
-- Dead animals remain on the map as 💀 skulls for **200 ticks**
+- Dead animals remain on the map as 💀 skulls for **300 ticks**
 - Skull alpha fades from 0.5 → 0.05 over the 200-tick window
 - After 200 ticks, the entity is permanently removed from the animal array
 - Cleanup runs every 50 ticks

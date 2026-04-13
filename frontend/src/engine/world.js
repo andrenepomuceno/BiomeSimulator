@@ -66,6 +66,9 @@ export class World {
     // Active plant tile indices — avoids iterating empty tiles
     this.activePlantTiles = new Set();
 
+    // Animal occupancy grid — count of living animals per tile
+    this.animalGrid = new Uint8Array(size);
+
     // Animals
     this.animals = [];
 
@@ -101,6 +104,20 @@ export class World {
     if (!this.isInBounds(x, y)) return false;
     const t = this.terrain[this.idx(x, y)];
     return t !== WATER && t !== ROCK;
+  }
+
+  isTileOccupied(x, y) {
+    if (!this.isInBounds(x, y)) return true;
+    return this.animalGrid[this.idx(x, y)] > 0;
+  }
+
+  placeAnimal(x, y) {
+    this.animalGrid[this.idx(x, y)]++;
+  }
+
+  vacateAnimal(x, y) {
+    const i = this.idx(x, y);
+    if (this.animalGrid[i] > 0) this.animalGrid[i]--;
   }
 
   isWaterAdjacent(x, y) {

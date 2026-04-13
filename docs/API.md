@@ -32,9 +32,11 @@ worker.postMessage({
     island_count: 5,
     island_size_factor: 0.3,
     seed: 42,
-    initial_herbivore_count: 50,
-    initial_carnivore_count: 15,
-    initial_plant_density: 0.15,
+    initial_plant_density: 0.10,
+    initial_animal_counts: {  // per-species populations
+      RABBIT: 100, SQUIRREL: 60, BEETLE: 80, GOAT: 35, DEER: 35,
+      FOX: 28, WOLF: 20, BOAR: 30, BEAR: 12, RACCOON: 25, CROW: 35,
+    },
   }
 });
 ```
@@ -47,9 +49,8 @@ worker.postMessage({
 | `config.island_count` | int | 5 | Number of island blobs |
 | `config.island_size_factor` | float | 0.3 | Relative island radius (0.0–1.0) |
 | `config.seed` | int\|null | null | Random seed (null = random) |
-| `config.initial_herbivore_count` | int | 50 | Starting herbivore population |
-| `config.initial_carnivore_count` | int | 15 | Starting carnivore population |
-| `config.initial_plant_density` | float | 0.15 | Fraction of eligible tiles seeded |
+| `config.initial_plant_density` | float | 0.10 | Fraction of eligible tiles seeded |
+| `config.initial_animal_counts` | object | (per-species) | Map of species ID → initial count |
 
 **Response:** Worker posts a `worldReady` message (see below).
 
@@ -141,12 +142,12 @@ Water proximity is automatically recomputed after edits.
 Place a new entity at the specified coordinates.
 
 ```javascript
-worker.postMessage({ cmd: 'placeEntity', entityType: 'HERBIVORE', x: 100, y: 200 });
+worker.postMessage({ cmd: 'placeEntity', entityType: 'RABBIT', x: 100, y: 200 });
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `entityType` | string | `"HERBIVORE"`, `"CARNIVORE"`, `"TREE"`, `"BUSH"`, or `"GRASS_PLANT"` |
+| `entityType` | string | Any animal species ID (`"RABBIT"`, `"FOX"`, `"WOLF"`, etc.) or plant type (`"GRASS"`, `"STRAWBERRY"`, `"OAK_TREE"`, etc.) |
 | `x` | int | Tile X coordinate |
 | `y` | int | Tile Y coordinate |
 
@@ -179,6 +180,34 @@ worker.postMessage({ cmd: 'getTileInfo', x: 100, y: 200 });
 ```
 
 **Response:** Worker posts a `tileInfo` message.
+
+---
+
+### `saveState`
+
+Serialize the entire world state for saving.
+
+```javascript
+worker.postMessage({ cmd: 'saveState' });
+```
+
+**Response:** Worker posts a `savedState` message.
+
+---
+
+### `loadState`
+
+Restore a previously saved world state.
+
+```javascript
+worker.postMessage({ cmd: 'loadState', state: savedStateData });
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `state` | object | Full serialized world data from a `savedState` message |
+
+**Response:** Worker posts a `worldReady` message.
 
 ---
 
@@ -232,7 +261,7 @@ Sent after each simulation tick. Contains the current state.
   animals: [
     {
       id: 1,
-      species: 'HERBIVORE',
+      species: 'RABBIT',
       x: 234,
       y: 102,
       state: 1,
@@ -241,6 +270,7 @@ Sent after each simulation tick. Contains the current state.
       thirst: 22.0,
       age: 143,
       alive: true,
+      lifeStage: 2,
     }
   ],
   plantChanges: [
@@ -252,13 +282,13 @@ Sent after each simulation tick. Contains the current state.
     tick: 140,
     herbivores: 49,
     carnivores: 10,
-    plants_grass: 50000,
-    plants_bush: 30000,
-    plants_tree: 20000,
     plants_total: 100000,
     fruits: 15000,
   },
   statsHistory: [ ... ],  // Last 1000 stat snapshots
+  animalCount: 59,        // Total alive animals
+  activePlants: 80000,    // Non-dead plants
+  tickMs: 12.5,           // Tick processing time in ms
 }
 ```
 
@@ -277,13 +307,13 @@ Response to a `getTileInfo` command.
     terrain: 'grass',
     waterProximity: 5,
     plant: {
-      type: 2,      // 0=none, 1=grass, 2=bush, 3=tree
-      stage: 3,     // 0=none, 1=seed, 2=sprout, 3=mature, 4=fruiting, 5=dead
+      type: 2,      // 0=none, 1–10 (see Plant Types)
+      stage: 3,     // 0=none, 1=seed, 2=young_sprout, 3=adult_sprout, 4=adult, 5=fruit, 6=dead
       age: 245,
       fruit: 0,
     },
     animals: [
-      { id: 1, species: 'HERBIVORE', x: 100, y: 200, ... }
+      { id: 1, species: 'RABBIT', x: 100, y: 200, ... }
     ]
   }
 }
@@ -300,8 +330,8 @@ Confirmation after a `placeEntity` command.
 ```javascript
 {
   type: 'entityPlaced',
-  entity: { id: 66, species: 'HERBIVORE', x: 100, y: 200, ... }
-  // or entity: { type: 'TREE', x: 100, y: 200 } for plants
+  entity: { id: 66, species: 'RABBIT', x: 100, y: 200, ... }
+  // or entity: { type: 'STRAWBERRY', x: 100, y: 200 } for plants
   // or entity: null if placement failed
 }
 ```
@@ -336,12 +366,19 @@ Confirmation after a `removeEntity` command.
 
 ### Plant Types
 
-| ID | Name | Stage Ages (seed→sprout→mature→fruiting→dead) |
+| ID | Name | Stage Ages (seed→young→adult→max) |
 |---|---|---|
 | 0 | None | — |
-| 1 | Grass | 10, 40, 80, 300 |
-| 2 | Bush | 20, 80, 200, 800 |
-| 3 | Tree | 50, 200, 500, 2000 |
+| 1 | Grass | 5, 18, 35, 180 |
+| 2 | Strawberry | 10, 40, 100, 400 |
+| 3 | Blueberry | 15, 55, 140, 550 |
+| 4 | Apple Tree | 35, 140, 350, 1600 |
+| 5 | Mango Tree | 40, 180, 420, 1800 |
+| 6 | Carrot | 8, 35, 80, 350 |
+| 7 | Sunflower | 8, 38, 100, 500 |
+| 8 | Tomato | 10, 45, 120, 450 |
+| 9 | Mushroom | 6, 22, 50, 220 |
+| 10 | Oak Tree | 50, 220, 500, 2500 |
 
 ### Plant Stages
 
@@ -349,10 +386,11 @@ Confirmation after a `removeEntity` command.
 |---|---|---|
 | 0 | None | Empty tile |
 | 1 | Seed | Newly planted |
-| 2 | Sprout | Growing |
-| 3 | Mature | Fully grown |
-| 4 | Fruiting | Producing fruit (food source) |
-| 5 | Dead | Decayed; slot available for reseeding |
+| 2 | Young Sprout | Early growth |
+| 3 | Adult Sprout | Late growth |
+| 4 | Adult | Fully grown |
+| 5 | Fruit | Producing fruit (food source) |
+| 6 | Dead | Decayed; slot available for reseeding |
 
 ### Animal States
 
@@ -371,7 +409,16 @@ Confirmation after a `removeEntity` command.
 
 ### Animal Species
 
-| Species | Speed | Vision | Attack | Defense | Max Energy | Hunger Rate | Thirst Rate |
-|---|---|---|---|---|---|---|---|
-| Herbivore | 1 | 8 | 2 | 3 | 100 | 0.3/tick | 0.4/tick |
-| Carnivore | 2 | 12 | 8 | 5 | 120 | 0.5/tick | 0.35/tick |
+| Species | ID | Diet | Speed | Vision | Attack | Defense | Max Energy | Max Age |
+|---|---|---|---|---|---|---|---|---|
+| 🐰 Rabbit | RABBIT | Herbivore | 1 | 10 | 1 | 2 | 100 | 1400 |
+| 🐿️ Squirrel | SQUIRREL | Herbivore | 1 | 11 | 1 | 1 | 80 | 1300 |
+| 🪲 Beetle | BEETLE | Herbivore | 1 | 7 | 1 | 4 | 60 | 1000 |
+| 🐐 Goat | GOAT | Herbivore | 1 | 12 | 3 | 5 | 140 | 2200 |
+| 🦌 Deer | DEER | Herbivore | 2 | 14 | 2 | 3 | 130 | 2000 |
+| 🦊 Fox | FOX | Carnivore | 2 | 14 | 6 | 4 | 120 | 1600 |
+| 🐺 Wolf | WOLF | Carnivore | 2 | 16 | 9 | 6 | 150 | 1800 |
+| 🐗 Boar | BOAR | Omnivore | 1 | 12 | 5 | 5 | 140 | 1800 |
+| 🐻 Bear | BEAR | Omnivore | 1 | 14 | 10 | 8 | 180 | 2500 |
+| 🦝 Raccoon | RACCOON | Omnivore | 1 | 11 | 3 | 3 | 90 | 1400 |
+| 🐦‍⬛ Crow | CROW | Omnivore | 2 | 16 | 2 | 1 | 70 | 1200 |

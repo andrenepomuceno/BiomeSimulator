@@ -448,14 +448,16 @@ function _fleeFrom(animal, threat, world) {
   const dx = animal.x - threat.x;
   const dy = animal.y - threat.y;
   const dist = Math.max(1, Math.abs(dx) + Math.abs(dy));
-  let fx = animal.x + Math.round(dx / dist * 3);
-  let fy = animal.y + Math.round(dy / dist * 3);
-  fx = Math.max(0, Math.min(world.width - 1, fx));
-  fy = Math.max(0, Math.min(world.height - 1, fy));
-
-  if (world.isWalkable(fx, fy)) {
-    animal.x = fx;
-    animal.y = fy;
+  // Try flee distances 3, 2, 1
+  for (let step = 3; step >= 1; step--) {
+    let fx = animal.x + Math.round(dx / dist * step);
+    let fy = animal.y + Math.round(dy / dist * step);
+    fx = Math.max(0, Math.min(world.width - 1, fx));
+    fy = Math.max(0, Math.min(world.height - 1, fy));
+    if (world.isWalkable(fx, fy) && !world.isTileOccupied(fx, fy)) {
+      _moveAnimal(animal, fx, fy, world);
+      break;
+    }
   }
   animal.state = AnimalState.FLEEING;
   animal.applyEnergyCost('FLEE');
@@ -505,19 +507,32 @@ function _doMate(animal, mate, world) {
 
   // Spawn baby nearby
   let bx = animal.x, by = animal.y;
-  for (const [ddx, ddy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1]]) {
+  let babyPlaced = false;
+  for (const [ddx, ddy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
     const nx = animal.x + ddx, ny = animal.y + ddy;
-    if (world.isWalkable(nx, ny)) { bx = nx; by = ny; break; }
+    if (world.isWalkable(nx, ny) && !world.isTileOccupied(nx, ny)) {
+      bx = nx; by = ny; babyPlaced = true; break;
+    }
   }
+  if (!babyPlaced) return; // No free tile for baby
 
   const speciesConfig = world.config.animal_species[animal.species];
   const baby = new Animal(world.nextId(), bx, by, animal.species, speciesConfig);
   baby.energy = speciesConfig.max_energy * 0.4;
   baby.age = 0;
   world.animals.push(baby);
+  world.placeAnimal(bx, by);
 }
 
 // ---- Movement helpers ----
+
+/** Move animal and update occupancy grid. */
+function _moveAnimal(animal, nx, ny, world) {
+  world.vacateAnimal(animal.x, animal.y);
+  animal.x = nx;
+  animal.y = ny;
+  world.placeAnimal(nx, ny);
+}
 
 function _followPath(animal, world) {
   if (!animal.path.length || animal.pathIndex >= animal.path.length) {
@@ -527,9 +542,8 @@ function _followPath(animal, world) {
   }
 
   const [nx, ny] = animal.path[animal.pathIndex];
-  if (world.isWalkable(nx, ny)) {
-    animal.x = nx;
-    animal.y = ny;
+  if (world.isWalkable(nx, ny) && !world.isTileOccupied(nx, ny)) {
+    _moveAnimal(animal, nx, ny, world);
   }
   animal.pathIndex++;
   animal.state = AnimalState.WALKING;
@@ -550,9 +564,8 @@ function _randomWalk(animal, world) {
   }
   for (const [dx, dy] of dirs) {
     const nx = animal.x + dx, ny = animal.y + dy;
-    if (world.isWalkable(nx, ny)) {
-      animal.x = nx;
-      animal.y = ny;
+    if (world.isWalkable(nx, ny) && !world.isTileOccupied(nx, ny)) {
+      _moveAnimal(animal, nx, ny, world);
       animal.state = AnimalState.WALKING;
       animal.applyEnergyCost('WALK');
       return;

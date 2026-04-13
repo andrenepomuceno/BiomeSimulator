@@ -9,7 +9,8 @@ The engine layer (`frontend/src/engine/`) contains all simulation logic. It is c
 | File | Purpose |
 |------|---------|
 | `config.js` | Default simulation parameters, sex/reproduction constants |
-| `animalSpecies.js` | Canonical species registry (single source of truth) |
+| `animalSpecies.js` | Canonical animal species registry (single source of truth) |
+| `plantSpecies.js` | Canonical plant species registry (10 species, single source of truth) |
 | `simulation.js` | Tick orchestration, world generation, entity management |
 | `world.js` | World model: terrain grid, plant arrays, animal list, clock |
 | `entities.js` | Animal class with state machine, energy, needs |
@@ -25,6 +26,7 @@ The engine layer (`frontend/src/engine/`) contains all simulation logic. It is c
 
 ```
 config.js ← animalSpecies.js (builds species/counts)
+         ← plantSpecies.js (builds plant data)
 
 simulation.js
 ├── world.js
@@ -32,7 +34,8 @@ simulation.js
 ├── spatialHash.js (SpatialHash)
 ├── mapGenerator.js (generateTerrain, computeWaterProximity)
 ├── flora.js (seedInitialPlants, processPlants)
-└── behaviors.js (decideAndAct)
+├── behaviors.js (decideAndAct)
+└── plantSpecies.js (stage ages, production chances)
 
 behaviors.js
 ├── entities.js (AnimalState)
@@ -40,10 +43,14 @@ behaviors.js
 ├── pathfinding.js (aStar)
 └── config.js (sex/reproduction constants)
 
-flora.js ← world.js (terrain constants)
+flora.js
+├── world.js (terrain constants)
+└── plantSpecies.js (stage thresholds, reproduction modes)
+
 mapGenerator.js ← world.js (terrain constants)
 pathfinding.js ← world.js (walkability)
 entities.js ← config.js (sex constants)
+plantSpecies.js — no dependencies
 spatialHash.js — no dependencies
 world.js — no dependencies
 ```
@@ -63,16 +70,16 @@ world.js — no dependencies
 
 | Category | Parameter | Default | Description |
 |----------|-----------|---------|-------------|
-| Map | `map_width` | 1000 | Grid width in tiles |
-| Map | `map_height` | 1000 | Grid height in tiles |
+| Map | `map_width` | 500 | Grid width in tiles |
+| Map | `map_height` | 500 | Grid height in tiles |
 | Map | `sea_level` | 0.38 | Height threshold for water (0.0–1.0) |
 | Map | `island_count` | 5 | Number of island blobs |
 | Map | `island_size_factor` | 0.3 | Relative island radius |
 | Map | `seed` | null | Random seed (null = random) |
-| Clock | `ticks_per_second` | 10 | Simulation speed |
+| Clock | `ticks_per_second` | 20 | Simulation speed |
 | Clock | `ticks_per_day` | 200 | Ticks in one full day cycle |
 | Clock | `day_fraction` | 0.6 | Fraction of day that is daylight |
-| Flora | `initial_plant_density` | 0.15 | Fraction of eligible tiles seeded |
+| Flora | `initial_plant_density` | 0.10 | Fraction of eligible tiles seeded |
 | Flora | `water_proximity_threshold` | 10 | Tiles from water for growth bonus |
 | Fauna | `initial_animal_counts` | `{RABBIT: 25, ...}` | Derived from `animalSpecies.js` |
 | Fauna | `animal_species` | `{RABBIT: {...}, ...}` | Derived from `animalSpecies.js` |
@@ -87,17 +94,17 @@ This file is the **single source of truth** for all animal data. `config.js` der
 
 | Species | Diet | Speed | Vision | Max Energy | Max Age | Attack | Defense | Initial Count |
 |---------|------|-------|--------|-----------|---------|--------|---------|---------------|
-| 🐰 Rabbit | Herbivore | 1 | 8 | 90 | 1200 | 1 | 2 | 100 |
-| 🐿️ Squirrel | Herbivore | 1 | 9 | 80 | 1100 | 1 | 1 | 60 |
-| 🪲 Beetle | Herbivore | 1 | 5 | 60 | 800 | 1 | 4 | 80 |
-| 🐐 Goat | Herbivore | 1 | 10 | 140 | 2000 | 3 | 5 | 40 |
-| 🦌 Deer | Herbivore | 2 | 12 | 130 | 1800 | 2 | 3 | 40 |
-| 🦊 Fox | Carnivore | 2 | 12 | 120 | 1400 | 6 | 4 | 32 |
-| 🐺 Wolf | Carnivore | 2 | 14 | 150 | 1600 | 9 | 6 | 20 |
-| 🐗 Boar | Omnivore | 1 | 10 | 140 | 1600 | 5 | 5 | 30 |
-| 🐻 Bear | Omnivore | 1 | 12 | 180 | 2200 | 10 | 8 | 12 |
-| 🦝 Raccoon | Omnivore | 1 | 9 | 90 | 1200 | 3 | 3 | 25 |
-| 🐦‍⬛ Crow | Omnivore | 2 | 14 | 70 | 1000 | 2 | 1 | 35 |
+| 🐰 Rabbit | Herbivore | 1 | 10 | 100 | 1400 | 1 | 2 | 100 |
+| 🐿️ Squirrel | Herbivore | 1 | 11 | 80 | 1300 | 1 | 1 | 60 |
+| 🪲 Beetle | Herbivore | 1 | 7 | 60 | 1000 | 1 | 4 | 80 |
+| 🐐 Goat | Herbivore | 1 | 12 | 140 | 2200 | 3 | 5 | 35 |
+| 🦌 Deer | Herbivore | 2 | 14 | 130 | 2000 | 2 | 3 | 35 |
+| 🦊 Fox | Carnivore | 2 | 14 | 120 | 1600 | 6 | 4 | 28 |
+| 🐺 Wolf | Carnivore | 2 | 16 | 150 | 1800 | 9 | 6 | 20 |
+| 🐗 Boar | Omnivore | 1 | 12 | 140 | 1800 | 5 | 5 | 30 |
+| 🐻 Bear | Omnivore | 1 | 14 | 180 | 2500 | 10 | 8 | 12 |
+| 🦝 Raccoon | Omnivore | 1 | 11 | 90 | 1400 | 3 | 3 | 25 |
+| 🐦‍⬛ Crow | Omnivore | 2 | 16 | 70 | 1200 | 2 | 1 | 35 |
 
 ### Species Data Fields
 
@@ -106,27 +113,29 @@ This file is the **single source of truth** for all animal data. `config.js` der
   id: 'RABBIT',           // unique key
   name: 'Rabbit',         // display name
   emoji: '🐰',            // renderer display
-  diet: 'HERBIVORE',      // HERBIVORE | CARNIVORE
+  diet: 'HERBIVORE',      // HERBIVORE | CARNIVORE | OMNIVORE
   reproduction: 'SEXUAL', // SEXUAL | ASEXUAL | HERMAPHRODITE
   color: 0x66cc66,        // hex color for renderer
   speed: 1,               // tiles per tick
-  vision_range: 8,        // perception radius
-  max_energy: 90,         // energy cap
+  vision_range: 10,       // perception radius
+  max_energy: 100,        // energy cap
   max_hunger: 100,        // hunger cap
   max_thirst: 100,        // thirst cap
-  max_age: 1200,          // ticks until death from old age
-  mature_age: 100,        // ticks before eligible to mate
-  life_stage_ages: [30, 60, 100], // [baby→young, young→young_adult, young_adult→adult]
+  max_age: 1400,          // ticks until death from old age
+  max_pop: 2000,          // population cap per species
+  mature_age: 80,         // ticks before eligible to mate
+  life_stage_ages: [30, 60, 80], // [baby→young, young→young_adult, young_adult→adult] (optional)
+  decision_interval: 3,   // ticks between AI decisions
   attack_power: 1,        // damage dealt in combat
   defense: 2,             // reduces incoming damage
   energy_costs: {         // energy per tick by action
     IDLE: 0.02, WALK: 0.1, RUN: 0.35,
-    EAT: 0.05, DRINK: 0.05, SLEEP: -3.0,
+    EAT: 0.05, DRINK: 0.05, SLEEP: -4.0,
     ATTACK: 0.8, MATE: 1.5, FLEE: 0.35,
   },
   hunger_rate: 0.12,      // hunger increase per tick
   thirst_rate: 0.14,      // thirst increase per tick
-  initial_count: 25,      // default spawn count
+  initial_count: 100,     // default spawn count
 }
 ```
 
@@ -141,6 +150,42 @@ This file is the **single source of truth** for all animal data. `config.js` der
 | `OMNIVORE_IDS` | Array | 4 omnivore species keys |
 | `buildAnimalSpeciesConfig()` | Function | Returns sim-only params (strips display fields) |
 | `buildInitialAnimalCounts()` | Function | Returns `{RABBIT: 100, ...}` from registry |
+| `buildDecisionIntervals()` | Function | Returns `{RABBIT: 3, ...}` from registry |
+
+---
+
+## Plant Species Registry (`plantSpecies.js`)
+
+This file is the **single source of truth** for all plant data. `flora.js` derives its stage thresholds, production chances, and reproduction modes from here.
+
+### Plant Species Table
+
+| Species | TypeId | Reproduction | Water Affinity | Stage Ages (seed→young→adult→max) |
+|---------|--------|-------------|----------------|-----------------------------------|
+| 🌱 Grass | 1 | Seed | low | 5, 18, 35, 180 |
+| 🍓 Strawberry | 2 | Fruit | medium | 10, 40, 100, 400 |
+| 🫐 Blueberry | 3 | Fruit | medium | 15, 55, 140, 550 |
+| 🍎 Apple Tree | 4 | Fruit | medium | 35, 140, 350, 1600 |
+| 🥭 Mango Tree | 5 | Fruit | medium | 40, 180, 420, 1800 |
+| 🥕 Carrot | 6 | Seed | low | 8, 35, 80, 350 |
+| 🌻 Sunflower | 7 | Seed | low | 8, 38, 100, 500 |
+| 🍅 Tomato | 8 | Fruit | medium | 10, 45, 120, 450 |
+| 🍄 Mushroom | 9 | Seed | low | 6, 22, 50, 220 |
+| 🌳 Oak Tree | 10 | Seed | high | 50, 220, 500, 2500 |
+
+### Exports
+
+| Export | Type | Description |
+|--------|------|-------------|
+| `PLANT_SPECIES` | Object | Full registry keyed by species ID |
+| `ALL_PLANT_IDS` | Array | All 10 plant species keys |
+| `getPlantByTypeId(typeId)` | Function | Lookup plant data by numeric typeId |
+| `buildStageAges()` | Function | Returns `{1: [5,18,35,180], ...}` per typeId |
+| `buildFruitSpoilAges()` | Function | Returns fruit decay thresholds per typeId |
+| `buildPlantColors()` | Function | Returns stage→RGBA colors per typeId |
+| `buildPlantEmojiMap()` | Function | Returns stage→emoji per typeId |
+| `buildProductionChances()` | Function | Returns seed spreading chance per typeId |
+| `buildReproductionModes()` | Function | Returns `SEED` or `FRUIT` per typeId |
 
 ---
 
@@ -179,8 +224,8 @@ Holds the entire world state using flat TypedArrays for memory efficiency.
 |-------|------|-------------|
 | `terrain` | `Uint8Array` | Terrain type per tile (0–4) |
 | `waterProximity` | `Uint8Array` | BFS distance to nearest water (capped 255) |
-| `plantType` | `Uint8Array` | Plant type per tile (0 = none, 1–6) |
-| `plantStage` | `Uint8Array` | Growth stage (0–5) |
+| `plantType` | `Uint8Array` | Plant type per tile (0 = none, 1–10) |
+| `plantStage` | `Uint8Array` | Growth stage (0–6) |
 | `plantAge` | `Uint16Array` | Ticks since planted |
 | `plantFruit` | `Uint8Array` | Boolean (0 or 1) |
 
@@ -262,11 +307,12 @@ engine.tick();           // advance one step
 3. For each alive animal:
      decideAndAct(animal, world, spatialHash)
 4. Rebuild spatialHash           — re-index all alive animals
-5. Every 50 ticks: cull dead animals that have lingered ≥ 200 ticks
-6. Every 10 ticks: record stats snapshot (max 1000)
+5. Remove dead animals from spatial hash/occupancy grid
+6. Adaptive cleanup: every 10 ticks (pop>1500) / 25 ticks (pop>800) / 50 ticks (otherwise): cull dead animals that have lingered ≥ 300 ticks
+7. Every 10 ticks: record stats snapshot (max 1000)
 ```
 
-**Dead animal lifecycle:** When an animal dies, `_deathTick` is recorded. Dead animals remain in the array (and are visible as 💀 skulls) for 200 ticks, then are permanently removed.
+**Dead animal lifecycle:** When an animal dies, `_deathTick` is recorded. Dead animals remain in the array (and are visible as 💀 skulls) for 300 ticks, then are permanently removed.
 
 ### Public Methods
 

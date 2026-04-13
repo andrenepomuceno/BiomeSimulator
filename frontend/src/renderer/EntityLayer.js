@@ -5,11 +5,15 @@ import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures';
 
 export class EntityLayer {
-  constructor() {
+  constructor(animationLayer) {
     this.container = new PIXI.Container();
     this._sprites = new Map(); // id → PIXI.Sprite
     this._textures = null;
     this._texturesReady = false;
+    this._animationLayer = animationLayer || null;
+
+    // Track previous state per animal to detect transitions
+    this._prevStates = new Map(); // id → state
 
     // Sprite pool for recycling
     this._pool = [];
@@ -82,6 +86,24 @@ export class EntityLayer {
         sprite = this._acquireSprite(tex);
         sprite._texKey = texKey;
         this._sprites.set(a.id, sprite);
+        // New animal appeared — birth animation (skip for dead)
+        if (a.state !== 9 && this._animationLayer) {
+          this._animationLayer.spawnBirth(a.x, a.y);
+        }
+        // Pop-in: start small, tracked via _spawnTick
+        sprite._spawnTick = currentTick;
+      }
+
+      // Detect state transitions for animations
+      if (this._animationLayer) {
+        const prevState = this._prevStates.get(a.id);
+        if (prevState !== undefined && prevState !== a.state) {
+          if (a.state === 6) this._animationLayer.spawnAttack(a.x, a.y);       // ATTACKING
+          else if (a.state === 9) this._animationLayer.spawnDeath(a.x, a.y);   // DEAD
+          else if (a.state === 8) this._animationLayer.spawnMate(a.x, a.y);    // MATING
+          else if (a.state === 3) this._animationLayer.spawnEat(a.x, a.y);     // EATING
+        }
+        this._prevStates.set(a.id, a.state);
       }
 
       // Swap texture if state changed
@@ -102,16 +124,38 @@ export class EntityLayer {
         : a.lifeStage === 1 ? 0.7
         : a.lifeStage === 2 ? 0.85
         : 1.0;
-      sprite.scale.set(baseScale * energyFactor * stageFactor);
+      let finalScale = baseScale * energyFactor * stageFactor;
+
+      // Pop-in animation for newly spawned sprites
+      if (sprite._spawnTick != null && currentTick > 0) {
+        const age = currentTick - sprite._spawnTick;
+        if (age < 10) {
+          const t = age / 10;
+          // Elastic ease-out: overshoots then settles
+          const bounce = t < 0.6 ? (t / 0.6) * 1.3 : 1.0 + (1.0 - t) / 0.4 * 0.3;
+          finalScale *= Math.min(bounce, 1.3);
+        } else {
+          sprite._spawnTick = null; // Animation done
+        }
+      }
+
+      // Attack shake
+      if (a.state === 6 && currentTick > 0) {
+        const shake = 0.06 * Math.sin(currentTick * 1.5);
+        sprite.x += shake;
+        finalScale *= 1.1;
+      }
+
+      sprite.scale.set(finalScale);
 
       // Alpha based on state
       if (a.state === 9) {
-        // Fade skull over its 200-tick lifespan
+        // Fade skull over its 300-tick lifespan
         if (a._deathTick != null && currentTick > 0) {
           const elapsed = currentTick - a._deathTick;
-          sprite.alpha = Math.max(0.05, 0.5 * (1 - elapsed / 200));
+          sprite.alpha = Math.max(0.05, 0.8 * (1 - elapsed / 300));
         } else {
-          sprite.alpha = 0.45;
+          sprite.alpha = 0.75;
         }
       } else if (a.state === 5) {
         sprite.alpha = 0.65;
@@ -125,6 +169,7 @@ export class EntityLayer {
       if (!seen.has(id)) {
         this._releaseSprite(sprite);
         this._sprites.delete(id);
+        this._prevStates.delete(id);
       }
     }
 

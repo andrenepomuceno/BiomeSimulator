@@ -13,3 +13,5 @@ Detailed technical documentation for the EcoGame ecosystem simulation.
 | [Game Logic](game-logic.md) | Simulation rules: animal AI decision tree, energy system, combat, reproduction, plant lifecycle, day/night cycle |
 | [Renderer](renderer.md) | Pixi.js rendering: layer stack, camera, terrain/plant/entity rendering, emoji textures, viewport culling |
 | [API](API.md) | Web Worker message protocol: commands, responses, data types |
+
+Performance benchmarking and profiling commands are documented in `frontend/README.md`, including the headless runner, phase 2 dense scenarios, CPU profile analysis, and the expected outputs under `frontend/perf-reports/`.

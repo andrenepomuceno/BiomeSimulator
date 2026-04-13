@@ -15,6 +15,7 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
+- [Performance Profiling](#performance-profiling)
 - [Controls](#controls)
 - [Tech Stack](#tech-stack)
 - [Worker API Reference](#worker-api-reference)
@@ -65,6 +66,8 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 - Pause, resume, single-step, and reset controls
 - Real-time population statistics and history charts
 - Entire engine runs in a Web Worker — zero main-thread blocking
+- Automated headless benchmark runner with JSON and TXT report export under `frontend/perf-reports/`
+- CPU hotspot profiling via V8 `.cpuprofile` capture and post-processing
 
 ### Rendering
 - PixiJS WebGL 2D renderer with terrain-as-texture approach (1 pixel = 1 tile)
@@ -226,6 +229,28 @@ All simulation parameters are defined in [`frontend/src/engine/config.js`](front
 Animal populations are configured **per species** in `animalSpecies.js` (e.g., Rabbit: 100, Wolf: 20, Bear: 12). These are derived into `initial_animal_counts` in the config.
 
 Most of these can be adjusted through the UI control panel before generating a world.
+
+---
+
+## Performance Profiling
+
+The project includes an automated headless benchmark runner in `frontend/scripts/headlessProfile.mjs`. It executes the simulation without React or Pixi rendering, writes structured benchmark results to `frontend/perf-reports/`, and also exports the same text report available in the UI.
+
+Typical workflow:
+
+```bash
+cd frontend
+npm run profile:headless
+npm run profile:phase2
+node scripts/headlessProfile.mjs --map 1000x1000 --days 30 --plant-density 0.10 --initial-animals 20000 --max-animals 20000 --name initial20k-1000x1000 --out perf-reports/initial20k-1000x1000.json
+```
+
+Important details:
+
+- `perf-reports/` should be checked after every run; it contains the measured tick metrics, hotspots, cache hit rates, species load, and the generated TXT report path.
+- `--max-animals` only raises the cap. To actually start with a dense population, use `--initial-animals`.
+- `npm run profile:phase2` runs the heavier matrix used for large-scale regression tracking.
+- For function-level hotspot analysis, capture a V8 CPU profile and analyze it with `npm run profile:cpu:analyze`.
 
 ---
 

@@ -23,6 +23,8 @@ Vite dev server starts on **http://localhost:3000** with hot module replacement.
 | `npm run preview` | Preview production build locally |
 | `npm run profile:headless` | Run headless engine profiling scenarios and save JSON report |
 | `npm run profile:headless:ci` | Run headless profiling in CI mode (fails on threshold regression) |
+| `npm run profile:cpu:analyze -- --input perf-reports/<file>.cpuprofile --top 20` | Analyze a saved V8 CPU profile |
+| `npm run profile:phase2` | Run the dense phase 2 benchmark matrix (500/1000 maps with 10k/20k animals) |
 
 ### Headless Performance Profiling
 
@@ -35,6 +37,8 @@ npm run profile:headless
 This runs predefined `small`, `medium`, and `stress` scenarios, prints tick/phase metrics, and saves a JSON report under `perf-reports/`.
 At the end of each run, it also saves a text report using the same format as the UI export button.
 
+`perf-reports/` is the source of truth for validating performance work. Each run writes the measured metrics, hotspot summary, cache hit rates, species load breakdown, and the generated text report path.
+
 Advanced options:
 
 ```bash
@@ -42,9 +46,11 @@ node scripts/headlessProfile.mjs --scenario stress --ticks 500 --warmup 120
 node scripts/headlessProfile.mjs --scenario medium --out perf-reports/medium.json
 node scripts/headlessProfile.mjs --ci
 node scripts/headlessProfile.mjs --map 500x500 --days 30 --name map500_30d --out perf-reports/map500x500-30d.json
+node scripts/headlessProfile.mjs --scenario phase2 --out perf-reports/phase2.json
+node scripts/headlessProfile.mjs --map 500x500 --days 30 --plant-density 0.10 --initial-animals 20000 --max-animals 20000 --name initial20k-500x500 --out perf-reports/initial20k-500x500.json
 ```
 
-- `--scenario`: `small`, `medium`, `stress`, or `all`
+- `--scenario`: `small`, `medium`, `stress`, `phase2`, or `all`
 - `--ticks`: measured ticks per scenario
 - `--warmup`: warmup ticks before measurement
 - `--out`: custom output path for the JSON report
@@ -56,8 +62,17 @@ Custom long-run options:
 - `--days`: converts to measured ticks using `days * ticks_per_day`
 - `--ticks-per-day`: override day length
 - `--animal-scale`: scales all initial species counts
+- `--initial-animals`: scales initial species counts to a target total; use this for true dense-start runs
 - `--max-animals`: override global animal population cap
+- `--plant-density`: override initial plant density
 - `--name`: custom scenario name in output
+
+Notes:
+
+- `--max-animals` only changes the population cap. It does not increase the starting population by itself.
+- Use `--initial-animals` together with `--max-animals` when you want a run to actually start near 10k or 20k animals.
+- `npm run profile:phase2` is the default heavy-load matrix: `500x500` and `1000x1000`, both with `10%` plant density and `10k`/`20k` animal targets.
+- For long regressions, prefer custom runs that save directly into `perf-reports/` with a stable `--name`.
 
 ### CPU Hotspot Profiling (Function-Level)
 
@@ -72,6 +87,8 @@ Analyze the generated `.cpuprofile` and print top functions:
 ```bash
 npm run profile:cpu:analyze -- --input perf-reports/cpu-500x500-30d.cpuprofile --top 20
 ```
+
+This is useful for confirming which JavaScript functions dominate wall time after a headless benchmark identifies a regression. Recent dense runs showed the hottest paths concentrated in AI decision-making, threat lookup, spatial queries, and pathfinding.
 
 ### Dependencies
 

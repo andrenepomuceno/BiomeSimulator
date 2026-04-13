@@ -1,4 +1,4 @@
-export const DEFAULT_TICKS_PER_DAY = 200;
+export const DEFAULT_TICKS_PER_DAY = 260;
 export const DEFAULT_DAY_FRACTION = 0.6;
 export const DEFAULT_SEASON_LENGTH_DAYS = 30;
 

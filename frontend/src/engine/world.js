@@ -105,8 +105,8 @@ export class World {
     this.plantLog = new Map();
 
     // Global rate multipliers (adjustable at runtime)
-    this.hungerMultiplier = 1.0;
-    this.thirstMultiplier = 1.0;
+    this.hungerMultiplier = 1.2;
+    this.thirstMultiplier = 1.25;
 
     // Per-species alive population cache (lazy, rebuilt once per tick on demand)
     this._speciesPopCache = null;

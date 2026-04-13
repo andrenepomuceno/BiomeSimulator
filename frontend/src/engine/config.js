@@ -26,7 +26,7 @@ export const DEFAULT_CONFIG = {
 
   // Simulation
   ticks_per_second: 20,
-  ticks_per_day: 200,
+  ticks_per_day: 260,
   day_fraction: 0.6,
   pathfinding_cache_ttl: 15,
   threat_cache_ttl: 4,

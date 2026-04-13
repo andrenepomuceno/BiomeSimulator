@@ -9,6 +9,7 @@ import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_SEED, S_NONE, P_NONE, SEASONS, getS
 import { buildDecisionIntervals, BASE_POP_TOTAL } from './animalSpecies.js';
 import { buildEdibleStagesMap } from './plantSpecies.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
+import { idxToXY, shuffleInPlace } from './helpers.js';
 
 // Decision interval per species (ticks between full AI evaluations)
 const DECISION_INTERVALS = buildDecisionIntervals();
@@ -87,7 +88,7 @@ function _eatPlantTile(animal, world, idx) {
   animal.hp = Math.min(animal.maxHp, animal.hp + hpGain);
   animal.state = AnimalState.EATING;
   animal.applyEnergyCost('EAT');
-  const x = idx % world.width, y = Math.floor(idx / world.width);
+  const [x, y] = idxToXY(idx, world.width);
   animal.logAction(world.clock.tick, 'EAT_PLANT', { plantType: ptype, stage: STAGE_LOG_NAMES[stage] || stage, x, y });
   world.logPlantEvent(idx, 'EATEN', { by: animal.species });
   world.plantType[idx] = P_NONE;
@@ -889,10 +890,7 @@ function _randomWalk(animal, world) {
         return sa - sb;
       });
     } else {
-      for (let i = dirs.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
-      }
+      shuffleInPlace(dirs);
     }
 
     for (const [dx, dy] of dirs) {

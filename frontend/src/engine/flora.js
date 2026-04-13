@@ -22,6 +22,7 @@ import {
 } from './plantSpecies.js';
 import { benchmarkAdd, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
 import { DEFAULT_SEASON_LENGTH_DAYS, DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
+import { idxToXY, shuffleInPlace } from './helpers.js';
 
 // Plant types
 export const P_NONE = 0;
@@ -180,7 +181,7 @@ export function getSeason(world) {
 
 /** Count plants in the 8 immediately adjacent tiles. */
 function _countAdjacentPlants(world, idx, w, h) {
-  const x = idx % w, y = Math.floor(idx / w);
+  const [x, y] = idxToXY(idx, w);
   let count = 0;
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
@@ -223,10 +224,7 @@ export function seedInitialPlants(world) {
 
   // Shuffle (Fisher-Yates) and take first n
   const nPlants = Math.floor(eligible.length * density);
-  for (let i = eligible.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
-  }
+  shuffleInPlace(eligible);
 
   const seedPlantAt = (idx, ptype) => {
     const ages = STAGE_AGES[ptype];
@@ -277,10 +275,7 @@ export function seedInitialPlants(world) {
 
       for (const ptypeKey of Object.keys(terrainBuckets)) {
         const bucket = terrainBuckets[ptypeKey];
-        for (let i = bucket.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [bucket[i], bucket[j]] = [bucket[j], bucket[i]];
-        }
+        shuffleInPlace(bucket);
       }
 
       const used = new Set();
@@ -380,7 +375,7 @@ export function processPlants(world) {
         world.plantStage[i] = S_DEAD;
         world.plantEvents.deaths_terrain[ptype] = (world.plantEvents.deaths_terrain[ptype] || 0) + 1;
         world.logPlantEvent(i, 'DIED', { cause: 'harsh_terrain' });
-        const x = i % w, y = Math.floor(i / w);
+        const [x, y] = idxToXY(i, w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
         continue;
       }
@@ -414,7 +409,7 @@ export function processPlants(world) {
         world.plantStage[i] = S_DEAD;
         world.plantEvents.deaths_water[ptype] = (world.plantEvents.deaths_water[ptype] || 0) + 1;
         world.logPlantEvent(i, 'DIED', { cause: 'water_stress' });
-        const x = i % w, y = Math.floor(i / w);
+        const [x, y] = idxToXY(i, w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
         continue;
       }
@@ -465,7 +460,7 @@ export function processPlants(world) {
       } else {
         world.logPlantEvent(i, 'GREW', { from: stage, to: newStage });
       }
-      const x = i % w, y = Math.floor(i / w);
+      const [x, y] = idxToXY(i, w);
       world.plantChanges.push([x, y, ptype, newStage]);
     }
   }
@@ -474,7 +469,7 @@ export function processPlants(world) {
   const toRemove = [];
   for (const i of world.activePlantTiles) {
     if (world.plantStage[i] === S_DEAD) {
-      const x = i % w, y = Math.floor(i / w);
+      const [x, y] = idxToXY(i, w);
       world.plantType[i] = P_NONE;
       world.plantStage[i] = S_NONE;
       world.plantAge[i] = 0;
@@ -525,10 +520,7 @@ function produceOffspring(world) {
     : baseCap;
 
   // Shuffle to avoid positional bias
-  for (let i = adults.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [adults[i], adults[j]] = [adults[j], adults[i]];
-  }
+  shuffleInPlace(adults);
   const maxAttempts = Math.min(adults.length, dynamicCap);
   let births = 0;
 
@@ -552,7 +544,7 @@ function produceOffspring(world) {
     if (density >= suppressThreshold) continue;
     if (density >= reduceThreshold && Math.random() > (world.config.plant_density_reduce_success_chance ?? 0.5)) continue;
 
-    const x = idx % w, y = Math.floor(idx / w);
+    const [x, y] = idxToXY(idx, w);
     const mode = REPRODUCTION_MODES[ptype] || 'SEED';
 
     const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];

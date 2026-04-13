@@ -127,8 +127,8 @@ const useSimStore = create((set, get) => ({
   setPlaceEntityType: (t) => set({ placeEntityType: t }),
 
   // Global rate multipliers
-  hungerMultiplier: 1.0,
-  thirstMultiplier: 1.0,
+  hungerMultiplier: 1.2,
+  thirstMultiplier: 1.25,
   setHungerMultiplier: (v) => set({ hungerMultiplier: v }),
   setThirstMultiplier: (v) => set({ thirstMultiplier: v }),
 

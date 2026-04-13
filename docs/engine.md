@@ -92,22 +92,24 @@ This file is the **single source of truth** for all animal data. `config.js` der
 
 ### Species Table
 
-| Species | Diet | Speed | Vision | Max Energy | Max Age | Attack | Defense | Initial Count |
-|---------|------|-------|--------|-----------|---------|--------|---------|---------------|
-| 🐰 Rabbit | Herbivore | 1 | 10 | 100 | 1400 | 1 | 2 | 100 |
-| 🐿️ Squirrel | Herbivore | 1 | 11 | 90 | 1300 | 1 | 1 | 60 |
-| 🪲 Beetle | Herbivore | 1 | 7 | 70 | 1000 | 1 | 4 | 80 |
-| 🐐 Goat | Herbivore | 1 | 12 | 150 | 2200 | 3 | 5 | 35 |
-| 🦌 Deer | Herbivore | 2 | 14 | 140 | 2000 | 2 | 3 | 35 |
-| 🦟 Mosquito | Herbivore | 2 | 8 | 40 | 600 | 1 | 0 | 60 |
-| 🐛 Caterpillar | Herbivore | 1 | 5 | 50 | 800 | 0 | 1 | 70 |
-| 🦊 Fox | Carnivore | 2 | 14 | 130 | 1600 | 6 | 4 | 28 |
-| 🐺 Wolf | Carnivore | 2 | 16 | 160 | 1800 | 9 | 6 | 20 |
-| 🐍 Snake | Carnivore | 1 | 12 | 120 | 1600 | 5 | 3 | 20 |
-| 🐗 Boar | Omnivore | 1 | 12 | 150 | 1800 | 5 | 5 | 30 |
-| 🐻 Bear | Omnivore | 1 | 14 | 200 | 2500 | 10 | 8 | 12 |
-| 🦝 Raccoon | Omnivore | 1 | 11 | 100 | 1400 | 3 | 3 | 25 |
-| 🐦‍⬛ Crow | Omnivore | 2 | 16 | 80 | 1200 | 2 | 1 | 35 |
+| Species | Diet | Speed | Vision | Max Energy | Max Age | Attack | Defense | Max Pop | Initial Count |
+|---------|------|-------|--------|-----------|---------|--------|---------|---------|---------------|
+| 🐰 Rabbit | Herbivore | 1 | 10 | 100 | 1400 | 1 | 2 | 500 | 100 |
+| 🐿️ Squirrel | Herbivore | 1 | 11 | 90 | 1300 | 1 | 1 | 500 | 60 |
+| 🪲 Beetle | Herbivore | 1 | 7 | 70 | 1000 | 1 | 4 | 800 | 80 |
+| 🐐 Goat | Herbivore | 1 | 12 | 150 | 2200 | 3 | 5 | 300 | 35 |
+| 🦌 Deer | Herbivore | 2 | 14 | 140 | 2000 | 2 | 3 | 300 | 35 |
+| 🦟 Mosquito | Herbivore | 2 | 8 | 40 | 600 | 1 | 0 | 800 | 60 |
+| 🐛 Caterpillar | Herbivore | 1 | 5 | 50 | 800 | 0 | 1 | 800 | 70 |
+| 🦊 Fox | Carnivore | 2 | 14 | 130 | 1600 | 6 | 4 | 150 | 28 |
+| 🐺 Wolf | Carnivore | 2 | 16 | 160 | 1800 | 9 | 6 | 80 | 20 |
+| 🐍 Snake | Carnivore | 1 | 12 | 120 | 1600 | 5 | 3 | 150 | 20 |
+| 🦅 Hawk | Carnivore | 3 | 20 | 110 | 1800 | 7 | 3 | 150 | 15 |
+| 🐊 Crocodile | Carnivore | 1 | 12 | 180 | 2400 | 9 | 8 | 80 | 10 |
+| 🐗 Boar | Omnivore | 1 | 12 | 150 | 1800 | 5 | 5 | 300 | 30 |
+| 🐻 Bear | Omnivore | 1 | 14 | 200 | 2500 | 10 | 8 | 80 | 12 |
+| 🦝 Raccoon | Omnivore | 1 | 11 | 100 | 1400 | 3 | 3 | 300 | 25 |
+| 🐦‍⬛ Crow | Omnivore | 2 | 16 | 80 | 1200 | 2 | 1 | 300 | 35 |
 
 ### Species Data Fields
 
@@ -125,7 +127,7 @@ This file is the **single source of truth** for all animal data. `config.js` der
   max_hunger: 100,        // hunger cap
   max_thirst: 100,        // thirst cap
   max_age: 1400,          // ticks until death from old age
-  max_population: 5000,   // population cap per species
+  max_population: 500,    // population cap per species (varies by tier)
   mature_age: 80,         // ticks before eligible to mate
   life_stage_ages: [30, 60, 80], // [baby→young, young→young_adult, young_adult→adult] (optional)
   decision_interval: 2,   // ticks between AI decisions
@@ -134,6 +136,7 @@ This file is the **single source of truth** for all animal data. `config.js` der
   walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'], // terrain names (resolved to IDs at build time)
   edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT'],   // plant names (resolved to IDs at build time)
   prey_species: [],       // species IDs this animal can hunt
+  can_scavenge: false,    // whether the animal can eat decomposing bodies
   energy_costs: {         // energy per tick by action
     IDLE: 0.02, WALK: 0.1, RUN: 0.35,
     EAT: 0.05, DRINK: 0.05, SLEEP: -4.0,
@@ -150,10 +153,11 @@ This file is the **single source of truth** for all animal data. `config.js` der
 | Export | Type | Description |
 |--------|------|-------------|
 | `default` (ANIMAL_SPECIES) | Object | Full registry keyed by species ID |
-| `ALL_ANIMAL_IDS` | Array | All 14 species keys |
+| `ALL_ANIMAL_IDS` | Array | All 16 species keys |
 | `HERBIVORE_IDS` | Array | 7 herbivore species keys |
-| `CARNIVORE_IDS` | Array | 3 carnivore species keys |
+| `CARNIVORE_IDS` | Array | 5 carnivore species keys |
 | `OMNIVORE_IDS` | Array | 4 omnivore species keys |
+| `BASE_POP_TOTAL` | Number | Sum of all species' `max_population` (5690) |
 | `buildAnimalSpeciesConfig()` | Function | Returns sim-only params (strips display fields) |
 | `buildInitialAnimalCounts()` | Function | Returns `{RABBIT: 100, ...}` from registry |
 | `buildDecisionIntervals()` | Function | Returns `{RABBIT: 3, ...}` from registry |
@@ -166,20 +170,20 @@ This file is the **single source of truth** for all plant data. `flora.js` deriv
 
 ### Plant Species Table
 
-| Species | TypeId | Reproduction | Water Affinity | Stage Ages (seed→young→adult→max) |
-|---------|--------|-------------|----------------|-----------------------------------|
-| 🌱 Grass | 1 | Seed | low | 5, 18, 35, 180 |
-| 🍓 Strawberry | 2 | Fruit | medium | 10, 40, 100, 400 |
-| 🫐 Blueberry | 3 | Fruit | medium | 15, 55, 140, 550 |
-| 🍎 Apple Tree | 4 | Fruit | medium | 35, 140, 350, 1600 |
-| 🥭 Mango Tree | 5 | Fruit | medium | 40, 180, 420, 1800 |
-| 🥕 Carrot | 6 | Seed | low | 8, 35, 80, 350 |
-| 🌻 Sunflower | 7 | Seed | low | 8, 38, 100, 500 |
-| 🍅 Tomato | 8 | Fruit | medium | 10, 45, 120, 450 |
-| 🍄 Mushroom | 9 | Seed | low | 6, 22, 50, 220 |
-| 🌳 Oak Tree | 10 | Seed | high | 50, 220, 500, 2500 |
-| 🌵 Cactus | 11 | Seed | low | 20, 80, 200, 1200 |
-| 🌴 Coconut Palm | 12 | Fruit | medium | 45, 200, 450, 2000 |
+| Species | TypeId | Reproduction | Water Affinity | Edible Stages | Stage Ages (seed→young→adult→max) |
+|---------|--------|-------------|----------------|---------------|-----------------------------------|
+| 🌱 Grass | 1 | Seed | low (1) | Seed, Adult | 5, 18, 35, 180 |
+| 🍓 Strawberry | 2 | Fruit | medium (2) | Seed, Fruit | 10, 40, 100, 400 |
+| 🪶 Blueberry | 3 | Fruit | medium (2) | Seed, Fruit | 15, 55, 140, 550 |
+| 🍎 Apple Tree | 4 | Fruit | high (3) | Seed, Fruit | 35, 140, 350, 1600 |
+| 🥭 Mango Tree | 5 | Fruit | high (3) | Seed, Fruit | 40, 180, 420, 1800 |
+| 🥕 Carrot | 6 | Seed | low (1) | Seed, Adult | 8, 35, 80, 350 |
+| 🌻 Sunflower | 7 | Seed | medium (2) | Seed, Adult | 8, 38, 100, 500 |
+| 🍅 Tomato | 8 | Fruit | high (3) | Seed, Fruit | 10, 45, 120, 450 |
+| 🍄 Mushroom | 9 | Seed | low (1) | Seed, Adult | 6, 22, 50, 220 |
+| 🌳 Oak Tree | 10 | Seed | high (3) | Seed | 50, 220, 500, 2500 |
+| 🌵 Cactus | 11 | Seed | none (0) | Seed | 20, 80, 200, 1200 |
+| 🌴 Coconut Palm | 12 | Fruit | high (3) | Seed, Fruit | 45, 200, 450, 2000 |
 
 ### Exports
 
@@ -194,6 +198,8 @@ This file is the **single source of truth** for all plant data. `flora.js` deriv
 | `buildPlantEmojiMap()` | Function | Returns stage→emoji per typeId |
 | `buildProductionChances()` | Function | Returns seed spreading chance per typeId |
 | `buildReproductionModes()` | Function | Returns `SEED` or `FRUIT` per typeId |
+| `buildEdibleStagesMap()` | Function | Returns `{typeId: Set([stages...]), ...}` for edible stages |
+| `buildWaterAffinityMap()` | Function | Returns `{typeId: numericAffinity, ...}` (0–3) |
 
 ---
 
@@ -278,7 +284,7 @@ Stage is determined by comparing `animal.age` against `life_stage_ages` threshol
 const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 ```
 
-**Core Properties:** `id`, `x`, `y`, `species`, `diet`, `sex`, `state`, `energy`, `hunger`, `thirst`, `age`, `alive`, `_deathTick`
+**Core Properties:** `id`, `x`, `y`, `species`, `diet`, `sex`, `state`, `energy`, `hunger`, `thirst`, `age`, `alive`, `_deathTick`, `actionHistory`
 
 **Computed:** `lifeStage` (getter, derived from age + `life_stage_ages`)
 
@@ -293,7 +299,8 @@ const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 | `energyCost(action)` | Lookup cost from species config |
 | `applyEnergyCost(action)` | Subtract cost, clamp to [0, maxEnergy] |
 | `tickNeeds()` | Increment hunger/thirst by species rate, tick cooldowns |
-| `toDict()` | Serializable snapshot for renderer/UI (includes `lifeStage`, `_deathTick`) |
+| `logAction(tick, action, detail)` | Append action to `actionHistory` (max 100 entries, FIFO) |
+| `toDict()` | Serializable snapshot for renderer/UI (includes `lifeStage`, `_deathTick`, `actionHistory`) |
 
 **Sex Assignment:** `SEXUAL` → 50% male / 50% female. `HERMAPHRODITE` / `ASEXUAL` → assigned directly.
 

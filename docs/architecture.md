@@ -33,7 +33,7 @@ High-level overview of how EcoGame is structured and how data flows between laye
 |-------|-------|
 | **Engine** (`src/engine/`) | No DOM, no React, no Pixi. Pure classes and functions. Must be serializable for Worker. |
 | **Worker** (`src/worker/`) | Hosts the engine. Communicates via `postMessage` only. |
-| **Store** (`src/store/`) | Single Zustand store. Immutable updates via `set()`. No side effects. |
+| **Store** (`src/store/`) | Single Zustand store. Immutable updates via `set()`. No side effects. Includes `gameConfig` (synced from worker on `worldReady`). |
 | **Hooks** (`src/hooks/`) | Bridge worker messages to store. Own the worker lifecycle. |
 | **Renderer** (`src/renderer/`) | Pixi.js only. No game logic. Reads data, draws frames. |
 | **Components** (`src/components/`) | React + Bootstrap UI. Read store, dispatch commands via hooks. |

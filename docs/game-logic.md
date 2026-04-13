@@ -8,20 +8,30 @@ This document describes the simulation rules: how animals think, fight, reproduc
 
 Each tick, every alive animal runs `decideAndAct()`, which evaluates priorities in strict order. The first matching condition wins.
 
+### Ongoing Actions (always processed first)
+
+If the animal is currently SLEEPING, EATING, or DRINKING, the action continues until complete.
+
+### Opportunistic Actions
+
+| Condition | Action |
+|-----------|--------|
+| Adjacent to water AND thirst > 25 | Start drinking |
+| On edible plant tile AND hunger > threshold | Start eating (threshold varies by plant stage) |
+
+### Priority-Based Decisions
+
 | Priority | Condition | Action |
 |----------|-----------|--------|
-| 1 | Currently SLEEPING, EATING, or DRINKING | Continue (finish action) |
-| 2 | Adjacent to water AND thirst > 25 | Start drinking |
-| 3 | On food tile AND hunger > 20 | Start eating |
-| 4 | Thirst > 55 (critical) | Seek water via A* |
-| 5 | Hunger > 45 (critical) | Seek food (plants or prey) |
-| 6 | Energy < 20 | Sleep |
-| 7 | Predator in vision range (herbivores only) | Flee |
-| 8 | Hunger > 30 (moderate) | Proactive food seeking |
-| 9 | Thirst > 35 (moderate) | Proactive water seeking |
-| 10 | Adult + cooldown=0 + energy > 50 | Find mate |
-| 11 | Has existing path | Follow path |
-| 12 | Else | Random walk |
+| 1 | Thirst > 55 (critical) | Seek water via A* |
+| 2 | Predator in vision range (herbivores/omnivores) | Flee |
+| 3 | Hunger > 45 (critical) | Seek food (plants or prey) |
+| 4 | Energy < 20 | Sleep |
+| 5 | Hunger > 30 (moderate) | Proactive food seeking |
+| 6 | Thirst > 35 (moderate) | Proactive water seeking |
+| 7 | Adult + cooldown=0 + energy > 50 | Find mate |
+| 8 | Has existing path | Follow path |
+| 9 | Else | Random walk (30% chance) or idle |
 
 ---
 
@@ -44,6 +54,8 @@ Every action costs energy. Energy is clamped between 0 and `maxEnergy` (species-
 **Death conditions:**
 - Energy reaches 0 → death
 - Age exceeds `max_age` → death
+- Hunger reaches `max_hunger` → death
+- Thirst reaches `max_thirst` → death
 
 ---
 
@@ -59,15 +71,27 @@ Animals have two constantly increasing needs:
 ### Feeding
 
 **Herbivores** seek plants:
-- Priority: fruit > mature plant
+- Plants have **edible stages** defined per species (see `plantSpecies.js`)
+- Fruit-producing plants: edible at Seed (stage 1) and Fruit (stage 5)
+- Non-fruit plants: edible at Seed (stage 1) and Adult (stage 4)
+- Oak Tree and Cactus: only edible at Seed (stage 1)
+- Eating **removes the plant entirely** (tile cleared)
+- Stage-based nutrition: Seed=15 hunger, Adult=35, Fruit=55
 - Vision-range search; expands to 3× if hunger > 65 (desperation)
-- Eating reduces hunger
+- Seeds only eaten when hunger > 50; adults when hunger > 35; fruit when hunger > 20
 
 **Carnivores** seek prey:
 - Use spatial hash for radius query within vision range
 - Chase and attack nearest prey
 - Multi-step RUN pursuit if adjacent
 - Fallback: eat fruit if available
+
+### Scavenging
+
+Some species can eat decomposing bodies (dead animals still on the map). Only species with `can_scavenge: true` can scavenge.
+
+**Can scavenge:** Beetle, Fox, Wolf, Boar, Bear, Raccoon, Crow, Crocodile
+**Cannot scavenge:** Rabbit, Squirrel, Goat, Deer, Mosquito, Caterpillar, Snake, Hawk
 
 ---
 
@@ -82,14 +106,15 @@ minimum damage = 1
 
 - Defender's energy is reduced by `damage`
 - If defender energy ≤ 0 → defender dies
-- On kill: attacker recovers hunger (−40) and energy (+20)
+- On kill: attacker recovers hunger (−80) and energy (+25)
 - Cooldown: `attackCooldown` ticks between attacks
 
-### Threat Detection (Herbivores)
+### Threat Detection (Herbivores & Omnivores)
 
 - Scan vision range for carnivores using spatial hash
 - If threat found: FLEE state → move 3 tiles in opposite direction
 - Uses A* for escape pathfinding
+- Both herbivores and omnivores will flee from stronger predators
 
 ---
 
@@ -119,7 +144,15 @@ minimum damage = 1
 - Age: 0 (Life Stage: BABY)
 - Both parents enter `MATING` state
 - Both parents receive `mateCooldown = 100` ticks
+### Population Cap
 
+Reproduction is throttled by species population:
+
+- Each species has a `max_population` base cap (varies by tier: 80–800)
+- When `max_animal_population` (global budget) is set (> 0), effective caps are proportionally scaled: `effectiveCap = baseCap × globalBudget / BASE_POP_TOTAL`
+- At 60% of effective cap: 100% mating success
+- At 100% of effective cap: 0% mating success
+- Linear decline between 60–100% capacity
 ---
 
 ## Plant Lifecycle
@@ -200,10 +233,12 @@ Each tick during the plant phase:
 1. Collect all fruiting plants, shuffle
 2. Dynamic processing cap: 800 base, reduced to 400 if coverage > 40%, 200 if > 60%
 3. Each fruiting plant has a species-specific **production chance** to spread
-4. Seed lands 1–3 tiles away in a random direction (8-way)
-5. Target tile must be empty (no plant) and SOIL, DIRT, FERTILE_SOIL, or SAND terrain
-6. On DIRT terrain, seeding has only a 60% success rate
-7. Desert plants (Cactus, Coconut Palm) can seed on SAND tiles
+4. **Density check:** if local density (adjacent plants / 8) ≥ suppress threshold (0.7), reproduction is blocked; between reduce threshold (0.5) and suppress threshold, 50% chance to block
+5. Seed lands 1–3 tiles away in a random direction (8-way)
+6. Target tile must be empty (no plant) and SOIL, DIRT, FERTILE_SOIL, or SAND terrain
+7. On DIRT terrain, seeding has only a 60% success rate
+8. Desert plants (Cactus, Coconut Palm) can seed on SAND tiles
+9. Reproduction chance is multiplied by the **seasonal reproduction modifier**
 
 ### Initial Seeding
 
@@ -214,6 +249,52 @@ On world generation:
    - **Near water** → more berries, trees, and coconut palms
    - **Far from water** → more grass, carrots, and cacti
 4. Random initial stage: 33% seed, 33% sprout, 33% mature
+
+---
+
+## Seasonal Cycle
+
+The simulation features four seasons that affect plant growth, death, and reproduction. The season is determined by the simulation day:
+
+```
+season = floor(totalDays / season_length_days) % 4
+```
+
+| Season | Index | Growth Mult | Reproduction Mult | Death Mult |
+|--------|-------|------------|-------------------|------------|
+| 🌱 Spring | 0 | 1.2× | 1.5× | 0.8× |
+| ☀️ Summer | 1 | 1.0× | 1.0× | 1.0× |
+| 🍂 Autumn | 2 | 0.8× | 0.7× | 1.2× |
+| ❄️ Winter | 3 | 0.5× | 0.2× | 2.0× |
+
+Default `season_length_days` is 30. Growth multiplier affects plant aging speed. Reproduction multiplier scales seed-spreading chance. Death multiplier increases natural death probability.
+
+---
+
+## Water Stress
+
+Plants with medium or high water affinity (≥2) suffer mortality when far from water:
+
+- Applies when `waterProximity > water_stress_threshold` (default 20)
+- Base death rate: `water_stress_death_rate` (default 0.001) per tick phase
+- **Severe stress** (wp > 30): 2.0× death rate multiplier
+- **High affinity** (affinity = 3): 1.5× death rate multiplier
+- Seasonal death modifier also applies
+- Plants near water (wp ≤ threshold) get a growth bonus instead
+
+Affected species: Strawberry, Blueberry, Sunflower (medium); Apple Tree, Mango Tree, Tomato, Oak Tree, Coconut Palm (high).
+Unaffected: Grass, Carrot, Mushroom (low); Cactus (none).
+
+---
+
+## Density Competition
+
+Local plant density affects growth and reproduction:
+
+- **Crowding penalty:** ≥5 adjacent plants → growth rate multiplied by `plant_crowding_growth_penalty` (default 0.7)
+- **Reproduction suppression:** local density ≥ 0.7 (suppress threshold) → reproduction completely blocked
+- **Reproduction reduction:** local density 0.5–0.7 → 50% chance of reproduction being blocked
+- Local density = count of adjacent plant tiles / 8
 
 ---
 
@@ -231,6 +312,8 @@ On world generation:
 | Cause | Trigger |
 |-------|---------|
 | Starvation | Energy ≤ 0 |
+| Hunger | Hunger ≥ `max_hunger` |
+| Dehydration | Thirst ≥ `max_thirst` |
 | Old age | Age ≥ `max_age` |
 | Predation | Energy ≤ 0 from combat |
 | Manual removal | Player uses ERASE tool |
@@ -275,9 +358,26 @@ Each species defines `life_stage_ages: [baby→young, young→young_adult, young
 | 🦟 Mosquito | 8 | 18 | 30 |
 | 🐛 Caterpillar | 10 | 25 | 40 |
 | 🐍 Snake | 30 | 60 | 100 |
+| 🦅 Hawk | 30 | 65 | 110 |
+| 🐊 Crocodile | 50 | 100 | 160 |
 
 ### Gameplay Effects
 
 - **Mating** requires `LifeStage.ADULT` (both partners)
 - **Sprite size** scales with life stage for visual progression
 - The `lifeStage` field is included in `toDict()` and shown in the Entity Inspector
+
+---
+
+## Action History
+
+Each animal maintains a rolling `actionHistory` log (max 100 entries, FIFO). Actions are logged via `animal.logAction(tick, action, detail)`.
+
+**Logged actions:** Eat (plant/prey), Drink, Sleep, Flee, Attack, Kill, Mate, Born, Death, Scavenge, Wander
+
+Each entry contains:
+- `tick` — simulation tick when the action occurred
+- `action` — action type string
+- `detail` — additional context (species name, hunger value, etc.)
+
+Timestamps are displayed in the UI as `D{day} HH:MM` format, derived from the tick and `ticksPerDay` config.

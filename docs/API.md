@@ -33,9 +33,12 @@ worker.postMessage({
     island_size_factor: 0.3,
     seed: 42,
     initial_plant_density: 0.10,
+    max_animal_population: 10000,
     initial_animal_counts: {  // per-species populations
       RABBIT: 100, SQUIRREL: 60, BEETLE: 80, GOAT: 35, DEER: 35,
-      FOX: 28, WOLF: 20, BOAR: 30, BEAR: 12, RACCOON: 25, CROW: 35,
+      FOX: 28, WOLF: 20, SNAKE: 20, HAWK: 15, CROCODILE: 10,
+      BOAR: 30, BEAR: 12, RACCOON: 25, CROW: 35,
+      MOSQUITO: 60, CATERPILLAR: 70,
     },
   }
 });
@@ -50,6 +53,7 @@ worker.postMessage({
 | `config.island_size_factor` | float | 0.3 | Relative island radius (0.0–1.0) |
 | `config.seed` | int\|null | null | Random seed (null = random) |
 | `config.initial_plant_density` | float | 0.10 | Fraction of eligible tiles seeded |
+| `config.max_animal_population` | int | 10000 | Global animal population budget (0 = use per-species defaults) |
 | `config.initial_animal_counts` | object | (per-species) | Map of species ID → initial count |
 
 **Response:** Worker posts a `worldReady` message (see below).
@@ -225,6 +229,7 @@ Sent after a `generate` command completes. Contains the full initial world state
   width: 500,
   height: 500,
   seed: 42,
+  max_animal_population: 10000,
   terrain: ArrayBuffer,       // Uint8Array, flat [height × width], row-major
   waterProximity: ArrayBuffer, // Uint8Array, flat [height × width]
   plantType: ArrayBuffer,      // Uint8Array, flat [height × width]
@@ -271,6 +276,9 @@ Sent after each simulation tick. Contains the current state.
       age: 143,
       alive: true,
       lifeStage: 2,
+      actionHistory: [        // Last 100 actions (FIFO)
+        { tick: 140, action: 'Eat', detail: 'Strawberry (Fruit) hunger=22' },
+      ],
     }
   ],
   plantChanges: [
@@ -379,6 +387,8 @@ Confirmation after a `removeEntity` command.
 | 8 | Tomato | 10, 45, 120, 450 |
 | 9 | Mushroom | 6, 22, 50, 220 |
 | 10 | Oak Tree | 50, 220, 500, 2500 |
+| 11 | Cactus | 20, 80, 200, 1200 |
+| 12 | Coconut Palm | 45, 200, 450, 2000 |
 
 ### Plant Stages
 
@@ -412,13 +422,18 @@ Confirmation after a `removeEntity` command.
 | Species | ID | Diet | Speed | Vision | Attack | Defense | Max Energy | Max Age |
 |---|---|---|---|---|---|---|---|---|
 | 🐰 Rabbit | RABBIT | Herbivore | 1 | 10 | 1 | 2 | 100 | 1400 |
-| 🐿️ Squirrel | SQUIRREL | Herbivore | 1 | 11 | 1 | 1 | 80 | 1300 |
-| 🪲 Beetle | BEETLE | Herbivore | 1 | 7 | 1 | 4 | 60 | 1000 |
-| 🐐 Goat | GOAT | Herbivore | 1 | 12 | 3 | 5 | 140 | 2200 |
-| 🦌 Deer | DEER | Herbivore | 2 | 14 | 2 | 3 | 130 | 2000 |
-| 🦊 Fox | FOX | Carnivore | 2 | 14 | 6 | 4 | 120 | 1600 |
-| 🐺 Wolf | WOLF | Carnivore | 2 | 16 | 9 | 6 | 150 | 1800 |
-| 🐗 Boar | BOAR | Omnivore | 1 | 12 | 5 | 5 | 140 | 1800 |
-| 🐻 Bear | BEAR | Omnivore | 1 | 14 | 10 | 8 | 180 | 2500 |
-| 🦝 Raccoon | RACCOON | Omnivore | 1 | 11 | 3 | 3 | 90 | 1400 |
-| 🐦‍⬛ Crow | CROW | Omnivore | 2 | 16 | 2 | 1 | 70 | 1200 |
+| 🐿️ Squirrel | SQUIRREL | Herbivore | 1 | 11 | 1 | 1 | 90 | 1300 |
+| 🪲 Beetle | BEETLE | Herbivore | 1 | 7 | 1 | 4 | 70 | 1000 |
+| 🐐 Goat | GOAT | Herbivore | 1 | 12 | 3 | 5 | 150 | 2200 |
+| 🦌 Deer | DEER | Herbivore | 2 | 14 | 2 | 3 | 140 | 2000 |
+| 🦟 Mosquito | MOSQUITO | Herbivore | 2 | 8 | 1 | 0 | 40 | 600 |
+| 🐛 Caterpillar | CATERPILLAR | Herbivore | 1 | 5 | 0 | 1 | 50 | 800 |
+| 🦊 Fox | FOX | Carnivore | 2 | 14 | 6 | 4 | 130 | 1600 |
+| 🐺 Wolf | WOLF | Carnivore | 2 | 16 | 9 | 6 | 160 | 1800 |
+| 🐍 Snake | SNAKE | Carnivore | 1 | 12 | 5 | 3 | 120 | 1600 |
+| 🦅 Hawk | HAWK | Carnivore | 3 | 20 | 7 | 3 | 110 | 1800 |
+| 🐊 Crocodile | CROCODILE | Carnivore | 1 | 12 | 9 | 8 | 180 | 2400 |
+| 🐗 Boar | BOAR | Omnivore | 1 | 12 | 5 | 5 | 150 | 1800 |
+| 🐻 Bear | BEAR | Omnivore | 1 | 14 | 10 | 8 | 200 | 2500 |
+| 🦝 Raccoon | RACCOON | Omnivore | 1 | 11 | 3 | 3 | 100 | 1400 |
+| 🐦‍⬛ Crow | CROW | Omnivore | 2 | 16 | 2 | 1 | 80 | 1200 |

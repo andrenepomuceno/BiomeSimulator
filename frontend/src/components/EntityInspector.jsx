@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
 import ANIMAL_SPECIES from '../engine/animalSpecies';
-import { getPlantByTypeId } from '../engine/plantSpecies';
+import PLANT_SPECIES, { getPlantByTypeId } from '../engine/plantSpecies';
 
 function Bar({ label, value, max, color, icon }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
@@ -86,12 +86,6 @@ function SpeciesAttributes({ species }) {
   const sp = ANIMAL_SPECIES[species];
   if (!sp) return null;
 
-  const preyInfo = sp.diet === 'CARNIVORE'
-    ? Object.keys(ANIMAL_SPECIES).filter(k => ANIMAL_SPECIES[k].diet === 'HERBIVORE')
-    : sp.diet === 'OMNIVORE'
-      ? Object.keys(ANIMAL_SPECIES).filter(k => ANIMAL_SPECIES[k].diet === 'HERBIVORE')
-      : null;
-
   return (
     <CollapsibleSection title="Species Attributes" icon="📋" defaultOpen={true}>
       <div className="inspector-grid">
@@ -116,18 +110,37 @@ function SpeciesAttributes({ species }) {
           </div>
         </>
       )}
-      {preyInfo && preyInfo.length > 0 && (
-        <>
-          <h6 className="mt-2 mb-1" style={{ fontSize: '0.7rem' }}>🎯 Prey</h6>
+
+      {/* Diet — Edible Plants */}
+      {sp.edible_plants && sp.edible_plants.length > 0 && (
+        <CollapsibleSection title="Edible Plants" icon="🌿" defaultOpen={false}>
           <div style={{ fontSize: '0.65rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {preyInfo.map(k => (
-              <span key={k} style={{ background: '#1a1a3e', padding: '1px 6px', borderRadius: 4 }}>
-                {SPECIES_INFO[k]?.emoji} {SPECIES_INFO[k]?.name}
+            {sp.edible_plants.map(k => {
+              const plant = PLANT_SPECIES[k];
+              const emoji = plant?.fruitEmoji || plant?.emoji?.adult || '🌱';
+              return (
+                <span key={k} style={{ background: '#1a2e1a', padding: '2px 7px', borderRadius: 4, border: '1px solid #2a4a2a' }}>
+                  {emoji} {plant?.name || k}
+                </span>
+              );
+            })}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* Diet — Prey Species */}
+      {sp.prey_species && sp.prey_species.length > 0 && (
+        <CollapsibleSection title="Prey Species" icon="🎯" defaultOpen={false}>
+          <div style={{ fontSize: '0.65rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {sp.prey_species.map(k => (
+              <span key={k} style={{ background: '#2e1a1a', padding: '2px 7px', borderRadius: 4, border: '1px solid #4a2a2a' }}>
+                {SPECIES_INFO[k]?.emoji} {SPECIES_INFO[k]?.name || k}
               </span>
             ))}
           </div>
-        </>
+        </CollapsibleSection>
       )}
+
       <CollapsibleSection title="Energy Costs" icon="⚡" defaultOpen={false}>
         <EnergyCostTable costs={sp.energy_costs} />
       </CollapsibleSection>

@@ -307,6 +307,38 @@ html, body, #root {
   margin-bottom: 10px;
 }
 
+.gm-subtabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.gm-subtab {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gm-subtab:hover {
+  color: #e0e0e0;
+  background: rgba(83, 168, 182, 0.1);
+}
+
+.gm-subtab.active {
+  color: #e0e0e0;
+  background: rgba(83, 168, 182, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
 .gm-field {
   margin-bottom: 10px;
 }

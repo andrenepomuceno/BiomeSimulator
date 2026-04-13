@@ -28,7 +28,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [200, 210, 80, 200],
     waterAffinity: 'low',
-    terrainGrowth: { SOIL: 1.3, DIRT: 0.8, FERTILE_SOIL: 1.4, ROCK: 0.7, MOUNTAIN: 0.6, MUD: 0.9 },
+    terrainGrowth: { SOIL: 1.0, DIRT: 0.8, FERTILE_SOIL: 1.4, ROCK: 0.7, MOUNTAIN: 0.6, MUD: 0.1 },
   },
 
   STRAWBERRY: {
@@ -51,7 +51,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [240, 50, 60, 230],
     waterAffinity: 'medium',
-    terrainGrowth: { SOIL: 1.1, DIRT: 0.6, FERTILE_SOIL: 1.6, ROCK: 0.4, MOUNTAIN: 0.3, MUD: 0.7 },
+    terrainGrowth: { SOIL: 1.0, DIRT: 0.0, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
   },
 
   BLUEBERRY: {
@@ -74,7 +74,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [100, 50, 210, 230],
     waterAffinity: 'medium',
-    terrainGrowth: { SOIL: 1.2, DIRT: 0.6, FERTILE_SOIL: 1.5, ROCK: 0.5, MOUNTAIN: 0.3, MUD: 1.0 },
+    terrainGrowth: { SOIL: 1.0, DIRT: 0.0, FERTILE_SOIL: 1.5, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
   },
 
   APPLE_TREE: {
@@ -97,7 +97,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [210, 55, 45, 230],
     waterAffinity: 'high',
-    terrainGrowth: { SOIL: 1.1, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.6 },
+    terrainGrowth: { SOIL: 1.0, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
   },
 
   MANGO_TREE: {
@@ -120,7 +120,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [250, 190, 40, 230],
     waterAffinity: 'high',
-    terrainGrowth: { SOIL: 1.1, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.6 },
+    terrainGrowth: { SOIL: 1.1, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
   },
 
   CARROT: {
@@ -143,7 +143,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [245, 140, 30, 230],
     waterAffinity: 'low',
-    terrainGrowth: { SOIL: 0.9, DIRT: 1.3, FERTILE_SOIL: 1.5, ROCK: 0.5, MOUNTAIN: 0.4, MUD: 1.1 },
+    terrainGrowth: { SOIL: 0.9, DIRT: 1.3, FERTILE_SOIL: 1.5, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 1.1 },
   },
 
   SUNFLOWER: {
@@ -166,7 +166,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [230, 200, 30, 230],
     waterAffinity: 'medium',
-    terrainGrowth: { SOIL: 1.3, DIRT: 0.7, FERTILE_SOIL: 1.4, ROCK: 0.4, MOUNTAIN: 0.3, MUD: 0.6 },
+    terrainGrowth: { SOIL: 1.3, DIRT: 0.7, FERTILE_SOIL: 1.4, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.0 },
   },
 
   TOMATO: {
@@ -189,7 +189,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [230, 45, 35, 240],
     waterAffinity: 'high',
-    terrainGrowth: { SOIL: 1.1, DIRT: 0.5, FERTILE_SOIL: 1.7, ROCK: 0.3, MOUNTAIN: 0.2, MUD: 0.8 },
+    terrainGrowth: { SOIL: 1.1, DIRT: 0.5, FERTILE_SOIL: 1.7, ROCK: 0.3, MOUNTAIN: 0.2, MUD: 0.5 },
   },
 
   MUSHROOM: {
@@ -235,7 +235,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [140, 100, 40, 230],
     waterAffinity: 'high',
-    terrainGrowth: { SOIL: 1.2, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.6 },
+    terrainGrowth: { SOIL: 1.2, DIRT: 0.5, FERTILE_SOIL: 1.6, ROCK: 0.0, MOUNTAIN: 1.0, MUD: 0.0 },
   },
 
   CACTUS: {
@@ -258,7 +258,7 @@ const PLANT_SPECIES = {
     },
     fruitColor: [60, 130, 45, 230],
     waterAffinity: 'none',
-    terrainGrowth: { SOIL: 0.4, DIRT: 0.8, SAND: 1.5, FERTILE_SOIL: 0.3, ROCK: 1.2, MOUNTAIN: 0.8, MUD: 0.0 },
+    terrainGrowth: { SOIL: 0.2, DIRT: 0.8, SAND: 1.5, FERTILE_SOIL: 0.3, ROCK: 0.5, MOUNTAIN: 0.0, MUD: 0.0 },
   },
 
   COCONUT_PALM: {

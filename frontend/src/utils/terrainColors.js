@@ -107,6 +107,8 @@ export const ANIMAL_COLORS = {
   MOSQUITO:    0x556655,  // muted green
   CATERPILLAR: 0x88bb33,  // lime green
   SNAKE:       0x448844,  // forest green
+  HAWK:        0xaa6622,  // bronze
+  CROCODILE:   0x556b2f,  // dark olive green
 };
 
 // Species display info
@@ -125,6 +127,8 @@ export const SPECIES_INFO = {
   MOSQUITO:    { emoji: '🦟', name: 'Mosquito',    diet: 'Herbivore' },
   CATERPILLAR: { emoji: '🐛', name: 'Caterpillar', diet: 'Herbivore' },
   SNAKE:       { emoji: '🐍', name: 'Snake',       diet: 'Carnivore' },
+  HAWK:        { emoji: '🦅', name: 'Hawk',        diet: 'Carnivore' },
+  CROCODILE:   { emoji: '🐊', name: 'Crocodile',   diet: 'Carnivore' },
 };
 
 // Sex display names

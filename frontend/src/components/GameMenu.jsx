@@ -22,6 +22,7 @@ const TABS = ['new', 'save', 'load'];
 
 export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const [tab, setTab] = useState('new');
+  const [newTab, setNewTab] = useState('map');
   const [params, setParams] = useState(defaultParams);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -101,77 +102,119 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
           {/* NEW GAME TAB */}
           {tab === 'new' && (
             <div>
-              <h6>🗺️ Map Settings</h6>
-
-              <div className="gm-field">
-                <label>Map Size: {params.map_width} × {params.map_height}</label>
-                <input type="range" min={100} max={2000} step={100}
-                  value={params.map_width}
-                  onChange={e => { set('map_width', +e.target.value); set('map_height', +e.target.value); }} />
+              {/* Sub-tabs for new game sections */}
+              <div className="gm-subtabs">
+                {[['map', '🗺️ Map'], ['fauna', '🐾 Fauna'], ['flora', '🌿 Flora']].map(([k, label]) => (
+                  <button
+                    key={k}
+                    className={`gm-subtab ${newTab === k ? 'active' : ''}`}
+                    onClick={() => setNewTab(k)}
+                  >{label}</button>
+                ))}
               </div>
 
-              <div className="gm-field">
-                <label>Sea Level: {params.sea_level.toFixed(2)}</label>
-                <input type="range" min={0.1} max={0.7} step={0.02}
-                  value={params.sea_level}
-                  onChange={e => set('sea_level', +e.target.value)} />
-              </div>
+              {/* MAP SUB-TAB */}
+              {newTab === 'map' && (
+                <div>
+                  <div className="gm-field">
+                    <label>Map Size: {params.map_width} × {params.map_height}</label>
+                    <input type="range" min={100} max={2000} step={100}
+                      value={params.map_width}
+                      onChange={e => { set('map_width', +e.target.value); set('map_height', +e.target.value); }} />
+                  </div>
 
-              <div className="gm-field">
-                <label>Islands: {params.island_count}</label>
-                <input type="range" min={1} max={20}
-                  value={params.island_count}
-                  onChange={e => set('island_count', +e.target.value)} />
-              </div>
+                  <div className="gm-field">
+                    <label>Sea Level: {params.sea_level.toFixed(2)}</label>
+                    <input type="range" min={0.1} max={0.7} step={0.02}
+                      value={params.sea_level}
+                      onChange={e => set('sea_level', +e.target.value)} />
+                  </div>
 
-              <div className="gm-field">
-                <label>Island Size: {params.island_size_factor.toFixed(2)}</label>
-                <input type="range" min={0.1} max={0.8} step={0.05}
-                  value={params.island_size_factor}
-                  onChange={e => set('island_size_factor', +e.target.value)} />
-              </div>
+                  <div className="gm-field">
+                    <label>Islands: {params.island_count}</label>
+                    <input type="range" min={1} max={20}
+                      value={params.island_count}
+                      onChange={e => set('island_count', +e.target.value)} />
+                  </div>
 
-              <div className="gm-field">
-                <label>Seed (empty = random)</label>
-                <input type="text" className="form-control form-control-sm" placeholder="Random"
-                  value={params.seed}
-                  onChange={e => set('seed', e.target.value)} />
-              </div>
+                  <div className="gm-field">
+                    <label>Island Size: {params.island_size_factor.toFixed(2)}</label>
+                    <input type="range" min={0.1} max={0.8} step={0.05}
+                      value={params.island_size_factor}
+                      onChange={e => set('island_size_factor', +e.target.value)} />
+                  </div>
 
-              <div className="d-flex align-items-center mt-3 mb-1">
-                <h6 className="mb-0">🐾 Population</h6>
-                <button
-                  className="btn btn-sm btn-outline-secondary ms-2 py-0 px-1"
-                  title="Randomize all animal counts"
-                  onClick={() => {
-                    const counts = {};
-                    for (const [k, sp] of Object.entries(ANIMAL_SPECIES)) {
-                      const base = sp.initial_count;
-                      const lo = Math.round(base * 0.2);
-                      const hi = Math.round(base * 2.5);
-                      const max = SLIDER_MAX[sp.diet] || 100;
-                      counts[k] = Math.min(max, lo + Math.floor(Math.random() * (hi - lo + 1)));
-                    }
-                    setParams(p => ({ ...p, initial_animal_counts: counts }));
-                  }}
-                >🎲</button>
-              </div>
-
-              {Object.entries(ANIMAL_SPECIES).map(([key, sp]) => (
-                <div className="gm-field" key={key}>
-                  <label>{sp.emoji} {sp.name}: {params.initial_animal_counts[key]}</label>
-                  <input type="range" min={0} max={SLIDER_MAX[sp.diet] || 100}
-                    value={params.initial_animal_counts[key]}
-                    onChange={e => setParams(p => ({ ...p, initial_animal_counts: { ...p.initial_animal_counts, [key]: +e.target.value } }))} />
+                  <div className="gm-field">
+                    <label>Seed (empty = random)</label>
+                    <input type="text" className="form-control form-control-sm" placeholder="Random"
+                      value={params.seed}
+                      onChange={e => set('seed', e.target.value)} />
+                  </div>
                 </div>
-              ))}
+              )}
 
-              <div className="gm-field">
-                <label>🌿 Plant Density: {(params.initial_plant_density * 100).toFixed(0)}%</label>
-                <input type="range" min={0} max={0.5} step={0.01}
-                  value={params.initial_plant_density}
-                  onChange={e => set('initial_plant_density', +e.target.value)} />
-              </div>
+              {/* FAUNA SUB-TAB */}
+              {newTab === 'fauna' && (
+                <div>
+                  <div className="d-flex align-items-center mb-2">
+                    <span style={{ fontSize: '0.75rem', color: '#999' }}>Set initial population for each species</span>
+                    <button
+                      className="btn btn-sm btn-outline-secondary ms-auto py-0 px-1"
+                      title="Randomize all animal counts"
+                      onClick={() => {
+                        const counts = {};
+                        for (const [k, sp] of Object.entries(ANIMAL_SPECIES)) {
+                          const base = sp.initial_count;
+                          const lo = Math.round(base * 0.2);
+                          const hi = Math.round(base * 2.5);
+                          const max = SLIDER_MAX[sp.diet] || 100;
+                          counts[k] = Math.min(max, lo + Math.floor(Math.random() * (hi - lo + 1)));
+                        }
+                        setParams(p => ({ ...p, initial_animal_counts: counts }));
+                      }}
+                    >🎲</button>
+                    <button
+                      className="btn btn-sm btn-outline-secondary ms-1 py-0 px-1"
+                      title="Reset to defaults"
+                      onClick={() => setParams(p => ({ ...p, initial_animal_counts: buildInitialAnimalCounts() }))}
+                    >↺</button>
+                  </div>
+
+                  {['HERBIVORE', 'CARNIVORE', 'OMNIVORE'].map(diet => {
+                    const species = Object.entries(ANIMAL_SPECIES).filter(([, sp]) => sp.diet === diet);
+                    if (!species.length) return null;
+                    return (
+                      <div key={diet}>
+                        <h6 className="mt-2">{diet === 'HERBIVORE' ? '🌿 Herbivores' : diet === 'CARNIVORE' ? '🥩 Carnivores' : '🍽️ Omnivores'}</h6>
+                        {species.map(([key, sp]) => (
+                          <div className="gm-field" key={key}>
+                            <label>{sp.emoji} {sp.name}: {params.initial_animal_counts[key]}</label>
+                            <input type="range" min={0} max={SLIDER_MAX[sp.diet] || 100}
+                              value={params.initial_animal_counts[key]}
+                              onChange={e => setParams(p => ({ ...p, initial_animal_counts: { ...p.initial_animal_counts, [key]: +e.target.value } }))} />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* FLORA SUB-TAB */}
+              {newTab === 'flora' && (
+                <div>
+                  <div className="gm-field">
+                    <label>🌿 Plant Density: {(params.initial_plant_density * 100).toFixed(0)}%</label>
+                    <input type="range" min={0} max={0.5} step={0.01}
+                      value={params.initial_plant_density}
+                      onChange={e => set('initial_plant_density', +e.target.value)} />
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: '#999', marginTop: 8 }}>
+                    Controls the percentage of eligible land tiles that will be seeded with plants on world generation.
+                    Plant species are distributed based on terrain type and distance to water.
+                  </p>
+                </div>
+              )}
 
               <button className="btn btn-sim w-100 mt-3" onClick={handleNewGame}>
                 🚀 Start New Simulation

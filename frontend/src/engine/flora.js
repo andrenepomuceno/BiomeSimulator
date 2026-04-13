@@ -6,7 +6,7 @@
  *   - Fruit producers place S_FRUIT (edible, decays to S_SEED)
  *   - Seed producers place S_SEED directly
  */
-import { WATER, SAND, GRASS, DIRT, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
+import { WATER, SAND, SOIL, DIRT, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
 import { buildStageAges, buildFruitSpoilAges, buildProductionChances, buildReproductionModes, buildTerrainGrowthMap } from './plantSpecies.js';
 
 // Plant types
@@ -106,7 +106,7 @@ export function seedInitialPlants(world) {
   const eligible = [];
   for (let i = 0; i < w * h; i++) {
     const t = world.terrain[i];
-    if (t === GRASS || t === DIRT || t === FERTILE_SOIL || t === ROCK || t === MOUNTAIN || t === MUD) eligible.push(i);
+    if (t === SOIL || t === DIRT || t === FERTILE_SOIL || t === ROCK || t === MOUNTAIN || t === MUD) eligible.push(i);
   }
 
   // Shuffle (Fisher-Yates) and take first n

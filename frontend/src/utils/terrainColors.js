@@ -6,7 +6,7 @@
 export const WATER = 0;
 export const SAND = 1;
 export const DIRT = 2;
-export const GRASS = 3;
+export const SOIL = 3;
 export const ROCK = 4;
 export const FERTILE_SOIL = 5;
 export const DEEP_WATER = 6;
@@ -17,7 +17,7 @@ export const TERRAIN_COLORS = {
   [WATER]: [30, 100, 180, 255],
   [SAND]: [210, 190, 130, 255],
   [DIRT]: [140, 100, 60, 255],
-  [GRASS]: [60, 150, 60, 255],
+  [SOIL]: [60, 150, 60, 255],
   [ROCK]: [120, 120, 130, 255],
   [FERTILE_SOIL]: [85, 60, 30, 255],
   [DEEP_WATER]: [15, 55, 130, 255],
@@ -29,7 +29,7 @@ export const TERRAIN_NAMES = {
   [WATER]: 'Water',
   [SAND]: 'Sand',
   [DIRT]: 'Dirt',
-  [GRASS]: 'Grass',
+  [SOIL]: 'Soil',
   [ROCK]: 'Rock',
   [FERTILE_SOIL]: 'Fertile Soil',
   [DEEP_WATER]: 'Deep Water',

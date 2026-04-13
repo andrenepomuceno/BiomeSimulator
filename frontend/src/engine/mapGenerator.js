@@ -2,7 +2,7 @@
  * Terrain map generator — Perlin-like noise, island masks, BFS water proximity.
  * Pure JS port of the NumPy-based Python generator.
  */
-import { WATER, SAND, DIRT, GRASS, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
+import { WATER, SAND, DIRT, SOIL, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
 
 /**
  * Generate terrain grid with natural-looking islands.
@@ -55,7 +55,7 @@ export function generateTerrain(config) {
     const v = combined[i];
     if (v > seaLevel + 0.50) terrain[i] = MOUNTAIN;
     else if (v > seaLevel + 0.42) terrain[i] = ROCK;
-    else if (v > seaLevel + 0.12) terrain[i] = GRASS;
+    else if (v > seaLevel + 0.12) terrain[i] = SOIL;
     else if (v > seaLevel + 0.05) terrain[i] = DIRT;
     else if (v > seaLevel) terrain[i] = SAND;
     else if (v > seaLevel - 0.15) terrain[i] = WATER;
@@ -65,7 +65,7 @@ export function generateTerrain(config) {
   // Detail noise for terrain variation
   const detail = fbmNoise(w, h, seed + 9999, 3, 0.015);
   for (let i = 0; i < terrain.length; i++) {
-    if (terrain[i] === GRASS) {
+    if (terrain[i] === SOIL) {
       if (detail[i] > 0.55) terrain[i] = DIRT;
       else if (detail[i] < -0.6) terrain[i] = ROCK;
     }
@@ -86,7 +86,7 @@ export function generateTerrain(config) {
       terrain[i] = MUD;
     }
     // Fertile soil: grass/dirt tiles near water with favorable noise
-    else if ((t === GRASS || t === DIRT) && wp >= 2 && wp <= 6 && detail2[i] > 0.1) {
+    else if ((t === SOIL || t === DIRT) && wp >= 2 && wp <= 6 && detail2[i] > 0.1) {
       terrain[i] = FERTILE_SOIL;
     }
   }

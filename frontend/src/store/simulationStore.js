@@ -48,7 +48,7 @@ const useSimStore = create((set, get) => ({
   tool: 'SELECT', // SELECT, PAINT_TERRAIN, PLACE_ENTITY, ERASE
   setTool: (t) => set({ tool: t }),
 
-  paintTerrain: 3, // GRASS by default
+  paintTerrain: 3, // SOIL by default
   setPaintTerrain: (t) => set({ paintTerrain: t }),
 
   brushSize: 1,

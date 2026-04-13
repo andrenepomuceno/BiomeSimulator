@@ -3,9 +3,9 @@
  */
 import React from 'react';
 import useSimStore from '../store/simulationStore';
-import { TERRAIN_COLORS, TERRAIN_NAMES, WATER, SAND, DIRT, GRASS, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD, SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
+import { TERRAIN_COLORS, TERRAIN_NAMES, WATER, SAND, DIRT, SOIL, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD, SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
 
-const TERRAIN_TYPES = [WATER, DEEP_WATER, SAND, DIRT, GRASS, ROCK, FERTILE_SOIL, MOUNTAIN, MUD];
+const TERRAIN_TYPES = [WATER, DEEP_WATER, SAND, DIRT, SOIL, ROCK, FERTILE_SOIL, MOUNTAIN, MUD];
 
 function rgbaToHex([r, g, b]) {
   return `rgb(${r},${g},${b})`;

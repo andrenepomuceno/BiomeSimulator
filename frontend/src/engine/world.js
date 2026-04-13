@@ -6,7 +6,7 @@
 export const WATER = 0;
 export const SAND = 1;
 export const DIRT = 2;
-export const GRASS = 3;
+export const SOIL = 3;
 export const ROCK = 4;
 export const FERTILE_SOIL = 5;
 export const DEEP_WATER = 6;
@@ -14,10 +14,10 @@ export const MOUNTAIN = 7;
 export const MUD = 8;
 
 /** String→number lookup for terrain types (used by species config builders). */
-export const TERRAIN_IDS = { WATER, SAND, DIRT, GRASS, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD };
+export const TERRAIN_IDS = { WATER, SAND, DIRT, SOIL, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD };
 
 export const TERRAIN_NAMES = {
-  0: 'water', 1: 'sand', 2: 'dirt', 3: 'grass', 4: 'rock',
+  0: 'water', 1: 'sand', 2: 'dirt', 3: 'soil', 4: 'rock',
   5: 'fertile soil', 6: 'deep water', 7: 'mountain', 8: 'mud',
 };
 

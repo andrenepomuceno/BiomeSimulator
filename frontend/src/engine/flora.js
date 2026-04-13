@@ -443,7 +443,11 @@ function produceOffspring(world) {
   for (let n = 0; n < maxAttempts; n++) {
     const idx = adults[n];
     const ptype = world.plantType[idx];
-    const chance = (PRODUCTION_CHANCES[ptype] || 0.005) * seasonRepro;
+    const terrain = world.terrain[idx];
+    // Terrain fertility bonus: plants on better terrain reproduce more
+    const speciesGrowth = SPECIES_TERRAIN_GROWTH[ptype];
+    const terrainRepro = (speciesGrowth && speciesGrowth[terrain]) || 1.0;
+    const chance = (PRODUCTION_CHANCES[ptype] || 0.005) * seasonRepro * terrainRepro;
     if (Math.random() > chance) continue;
 
     // Local density suppression: block reproduction in crowded areas
@@ -462,12 +466,12 @@ function produceOffspring(world) {
 
     const ni = ny * w + nx;
     if (world.plantType[ni] !== P_NONE) continue;
-    const terrain = world.terrain[ni];
-    if (!_canPlantGrow(terrain, ptype)) continue;
+    const destTerrain = world.terrain[ni];
+    if (!_canPlantGrow(destTerrain, ptype)) continue;
 
     // Seeds are less likely to take root on poor terrain
-    if ((terrain === DIRT || terrain === ROCK || terrain === MUD) && Math.random() > 0.4) continue;
-    if (terrain === MOUNTAIN && Math.random() > 0.25) continue;
+    if ((destTerrain === DIRT || destTerrain === ROCK || destTerrain === MUD) && Math.random() > 0.4) continue;
+    if (destTerrain === MOUNTAIN && Math.random() > 0.25) continue;
 
     const offspringStage = mode === 'FRUIT' ? S_FRUIT : S_SEED;
     world.plantType[ni] = ptype;

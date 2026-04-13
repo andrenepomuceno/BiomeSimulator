@@ -8,6 +8,10 @@ const useSimStore = create((set, get) => ({
   worker: null,
   setWorker: (w) => set({ worker: w }),
 
+  // Game config (params used at game start)
+  gameConfig: {},
+  setGameConfig: (c) => set({ gameConfig: c }),
+
   // World
   mapWidth: 0,
   mapHeight: 0,

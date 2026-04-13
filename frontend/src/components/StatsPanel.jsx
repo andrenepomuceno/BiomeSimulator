@@ -1,9 +1,10 @@
 /**
  * StatsPanel — live population counters and chart.
  */
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import useSimStore from '../store/simulationStore';
 import { SPECIES_INFO } from '../utils/terrainColors';
+import ANIMAL_SPECIES, { BASE_POP_TOTAL } from '../engine/animalSpecies';
 import { Chart as ChartJS, LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
@@ -82,17 +83,41 @@ export default function StatsPanel() {
     animation: false,
   };
 
+  const gameConfig = useSimStore(s => s.gameConfig);
+  const speciesCaps = useMemo(() => {
+    const globalMax = gameConfig?.max_animal_population || 0;
+    const caps = {};
+    for (const k of speciesKeys) {
+      const base = ANIMAL_SPECIES[k]?.max_population || 0;
+      caps[k] = globalMax > 0
+        ? Math.max(2, Math.round(base * globalMax / BASE_POP_TOTAL))
+        : base;
+    }
+    return caps;
+  }, [gameConfig?.max_animal_population]);
+
   return (
     <div className="sidebar-section">
       <h6>Population</h6>
-      {speciesKeys.map(k => (
-        <div className="stat-row" key={k}>
-          <span className="stat-label">{SPECIES_INFO[k].emoji} {SPECIES_INFO[k].name}</span>
-          <span className="stat-value" style={{ color: SPECIES_CHART_COLORS[k] }}>
-            {(stats.species && stats.species[k]) || 0}
-          </span>
-        </div>
-      ))}
+      {speciesKeys.map(k => {
+        const count = (stats.species && stats.species[k]) || 0;
+        const cap = speciesCaps[k] || 0;
+        const pct = cap > 0 ? count / cap : 0;
+        const barColor = pct > 0.8 ? '#dd4444' : pct > 0.6 ? '#ddaa33' : SPECIES_CHART_COLORS[k] || '#66cc66';
+        return (
+          <div key={k} style={{ marginBottom: 2 }}>
+            <div className="stat-row">
+              <span className="stat-label">{SPECIES_INFO[k].emoji} {SPECIES_INFO[k].name}</span>
+              <span className="stat-value" style={{ color: SPECIES_CHART_COLORS[k] }}>
+                {count}<span style={{ color: '#666', fontSize: '0.7rem' }}>/{cap}</span>
+              </span>
+            </div>
+            <div style={{ height: 3, background: '#1a1a3e', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${Math.min(100, pct * 100)}%`, background: barColor, transition: 'width 0.3s' }} />
+            </div>
+          </div>
+        );
+      })}
       <div className="stat-row">
         <span className="stat-label">🌿 Plants</span>
         <span className="stat-value" style={{ color: '#88cc44' }}>{stats.plants_total}</span>

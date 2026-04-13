@@ -122,6 +122,7 @@ export default function App() {
 
   function _handleNewGame(params = {}) {
     postCmd('generate', { config: params });
+    useSimStore.getState().setGameConfig(params);
     useSimStore.getState().setSimState({ running: false, paused: true });
   }
 

@@ -61,6 +61,11 @@ export class Animal {
     this.consumed = false;
     this.homeX = x;
     this.homeY = y;
+
+    // Terrain / diet sets for fast O(1) lookups
+    this._walkableSet = new Set(config.walkable_terrain || [1, 2, 3, 5, 8]);
+    this._ediblePlants = new Set(config.edible_plants || []);
+    this._preySpecies = new Set(config.prey_species || []);
   }
 
   get speed() { return this._config.speed; }

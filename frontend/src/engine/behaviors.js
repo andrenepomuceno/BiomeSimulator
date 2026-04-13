@@ -11,6 +11,16 @@ import { buildDecisionIntervals } from './animalSpecies.js';
 // Decision interval per species (ticks between full AI evaluations)
 const DECISION_INTERVALS = buildDecisionIntervals();
 
+/** Check if this animal can eat the given plant type. */
+function _canEatPlant(animal, plantType) {
+  return animal._ediblePlants.size === 0 || animal._ediblePlants.has(plantType);
+}
+
+/** Check if this animal can hunt the given target species. */
+function _canHunt(animal, target) {
+  return animal._preySpecies.size === 0 || animal._preySpecies.has(target.species);
+}
+
 /**
  * Process one tick for an animal: decide action, execute it.
  */
@@ -62,7 +72,7 @@ export function decideAndAct(animal, world, spatialHash) {
   // --- Opportunistic: eat if standing on food and even slightly hungry ---
   if (animal.hunger > 20 && (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE')) {
     const idx = world.idx(animal.x, animal.y);
-    if (world.plantStage[idx] === S_FRUIT) {
+    if (world.plantStage[idx] === S_FRUIT && _canEatPlant(animal, world.plantType[idx])) {
       // Eat fruit — consume entirely (tile becomes empty)
       world.plantType[idx] = P_NONE;
       world.plantStage[idx] = S_NONE;
@@ -75,7 +85,7 @@ export function decideAndAct(animal, world, spatialHash) {
       world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
       return;
     }
-    if (animal.hunger > 35 && world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
+    if (animal.hunger > 35 && world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT && _canEatPlant(animal, world.plantType[idx])) {
       world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
       animal.state = AnimalState.EATING;
       animal.hunger = Math.max(0, animal.hunger - 35);
@@ -224,7 +234,7 @@ function _seekWater(animal, world, vision) {
   if (best) {
     // Path to an adjacent walkable tile near the water
     const pathLimit = desperate ? 80 : 50;
-    _setPath(animal, aStar(animal.x, animal.y, best[0], best[1], world, pathLimit), world.clock.tick);
+    _setPath(animal, aStar(animal.x, animal.y, best[0], best[1], world, pathLimit, animal._walkableSet), world.clock.tick);
   }
 
   if (animal.path.length) {
@@ -239,7 +249,7 @@ function _seekPlantFood(animal, world, vision) {
   const idx = world.idx(animal.x, animal.y);
 
   // Eat fruit on current tile (best food — consumes tile entirely)
-  if (world.plantStage[idx] === S_FRUIT) {
+  if (world.plantStage[idx] === S_FRUIT && _canEatPlant(animal, world.plantType[idx])) {
     world.plantType[idx] = P_NONE;
     world.plantStage[idx] = S_NONE;
     world.plantAge[idx] = 0;
@@ -253,7 +263,7 @@ function _seekPlantFood(animal, world, vision) {
   }
 
   // Eat adult sprout or adult plant on current tile (degrade stage)
-  if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
+  if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT && _canEatPlant(animal, world.plantType[idx])) {
     world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
     animal.state = AnimalState.EATING;
     animal.hunger = Math.max(0, animal.hunger - 35);
@@ -283,10 +293,10 @@ function _seekPlantFood(animal, world, vision) {
         if (!world.isInBounds(nx, ny)) continue;
         const ni = world.idx(nx, ny);
 
-        if (world.plantStage[ni] === S_FRUIT) {
+        if (world.plantStage[ni] === S_FRUIT && _canEatPlant(animal, world.plantType[ni])) {
           bestFruit = [nx, ny];
           break; // Fruit found at this ring — use it
-        } else if (!bestPlant && world.plantType[ni] > 0 && world.plantStage[ni] >= S_ADULT_SPROUT) {
+        } else if (!bestPlant && world.plantType[ni] > 0 && world.plantStage[ni] >= S_ADULT_SPROUT && _canEatPlant(animal, world.plantType[ni])) {
           bestPlant = [nx, ny];
         }
       }
@@ -301,7 +311,7 @@ function _seekPlantFood(animal, world, vision) {
   const target = bestFruit || bestPlant;
   if (target) {
     const pathLimit = target === bestFruit ? 40 : 60;
-    _setPath(animal, aStar(animal.x, animal.y, target[0], target[1], world, pathLimit), world.clock.tick);
+    _setPath(animal, aStar(animal.x, animal.y, target[0], target[1], world, pathLimit, animal._walkableSet), world.clock.tick);
     if (animal.path.length) { _followPath(animal, world); return; }
   }
 
@@ -311,7 +321,7 @@ function _seekPlantFood(animal, world, vision) {
 function _seekPrey(animal, world, spatialHash, vision) {
   // Carnivores can also eat fruit opportunistically when very hungry and no prey
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
-  const prey = nearby.filter(e => (e.diet === 'HERBIVORE' || e.diet === 'OMNIVORE') && e.alive && e.id !== animal.id);
+  const prey = nearby.filter(e => e.alive && e.id !== animal.id && _canHunt(animal, e));
 
   if (prey.length) {
     const target = prey.reduce((a, b) =>
@@ -323,7 +333,7 @@ function _seekPrey(animal, world, spatialHash, vision) {
     if (dist <= 1) {
       _attack(animal, target, world);
     } else {
-      _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30), world.clock.tick);
+      _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30, animal._walkableSet), world.clock.tick);
       animal.state = AnimalState.RUNNING;
       for (let s = 0; s < animal.speed; s++) {
         _followPath(animal, world);
@@ -339,7 +349,7 @@ function _seekPrey(animal, world, spatialHash, vision) {
   // No prey — carnivores eat fruit as fallback when desperate
   if (animal.hunger > 50) {
     const idx = world.idx(animal.x, animal.y);
-    if (world.plantStage[idx] === S_FRUIT) {
+    if (world.plantStage[idx] === S_FRUIT && _canEatPlant(animal, world.plantType[idx])) {
       world.plantType[idx] = P_NONE;
       world.plantStage[idx] = S_NONE;
       world.plantAge[idx] = 0;
@@ -365,7 +375,7 @@ function _seekPrey(animal, world, spatialHash, vision) {
 function _seekOmnivoreFood(animal, world, spatialHash, vision) {
   // Try eating plant on current tile first
   const idx = world.idx(animal.x, animal.y);
-  if (world.plantStage[idx] === S_FRUIT) {
+  if (world.plantStage[idx] === S_FRUIT && _canEatPlant(animal, world.plantType[idx])) {
     world.plantType[idx] = P_NONE;
     world.plantStage[idx] = S_NONE;
     world.plantAge[idx] = 0;
@@ -377,7 +387,7 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
     world.plantChanges.push([animal.x, animal.y, P_NONE, S_NONE]);
     return;
   }
-  if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT) {
+  if (world.plantType[idx] > 0 && world.plantStage[idx] >= S_ADULT_SPROUT && _canEatPlant(animal, world.plantType[idx])) {
     world.plantStage[idx] = Math.max(1, world.plantStage[idx] - 1);
     animal.state = AnimalState.EATING;
     animal.hunger = Math.max(0, animal.hunger - 35);
@@ -386,12 +396,11 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
     return;
   }
 
-  // When very hungry, try hunting small prey (weaker than self)
+  // When very hungry, try hunting prey from prey_species list
   if (animal.hunger > 55) {
     const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
     const prey = nearby.filter(e =>
-      e.alive && e.id !== animal.id && e.diet === 'HERBIVORE' &&
-      e._config.defense < animal._config.attack_power
+      e.alive && e.id !== animal.id && _canHunt(animal, e)
     );
     if (prey.length) {
       const target = prey.reduce((a, b) =>
@@ -402,7 +411,7 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
       if (dist <= 1) {
         _attack(animal, target, world);
       } else {
-        _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30), world.clock.tick);
+        _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30, animal._walkableSet), world.clock.tick);
         animal.state = AnimalState.RUNNING;
         for (let s = 0; s < animal.speed; s++) {
           _followPath(animal, world);
@@ -447,7 +456,7 @@ function _tryScavenge(animal, world, spatialHash, vision) {
   }
 
   // Walk toward corpse
-  _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30), world.clock.tick);
+  _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30, animal._walkableSet), world.clock.tick);
   if (animal.path.length) {
     _followPath(animal, world);
     return true;
@@ -482,6 +491,8 @@ function _findNearestThreat(animal, spatialHash, vision) {
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
   const threats = nearby.filter(e => {
     if (!e.alive || e.id === animal.id) return false;
+    // Only fear animals that list us as prey
+    if (e._preySpecies.size > 0 && !e._preySpecies.has(animal.species)) return false;
     if (e.diet === 'CARNIVORE') return true;
     // Omnivores only fear stronger omnivores/carnivores
     if (animal.diet === 'OMNIVORE' && e.diet === 'OMNIVORE') {
@@ -511,7 +522,7 @@ function _fleeFrom(animal, threat, world) {
       let fy = animal.y + Math.round(cy / cd * step);
       fx = Math.max(0, Math.min(world.width - 1, fx));
       fy = Math.max(0, Math.min(world.height - 1, fy));
-      if (world.isWalkable(fx, fy) && !world.isTileOccupied(fx, fy)) {
+      if (world.isWalkableFor(fx, fy, animal._walkableSet) && !world.isTileOccupied(fx, fy)) {
         _moveAnimal(animal, fx, fy, world);
         moved = true;
         break;
@@ -570,7 +581,7 @@ function _doMate(animal, mate, world) {
   let babyPlaced = false;
   for (const [ddx, ddy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
     const nx = animal.x + ddx, ny = animal.y + ddy;
-    if (world.isWalkable(nx, ny) && !world.isTileOccupied(nx, ny)) {
+    if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
       bx = nx; by = ny; babyPlaced = true; break;
     }
   }
@@ -602,7 +613,7 @@ function _followPath(animal, world) {
   }
 
   const [nx, ny] = animal.path[animal.pathIndex];
-  if (world.isWalkable(nx, ny) && !world.isTileOccupied(nx, ny)) {
+  if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
     _moveAnimal(animal, nx, ny, world);
   }
   animal.pathIndex++;
@@ -639,7 +650,7 @@ function _randomWalk(animal, world) {
 
   for (const [dx, dy] of dirs) {
     const nx = animal.x + dx, ny = animal.y + dy;
-    if (world.isWalkable(nx, ny) && !world.isTileOccupied(nx, ny)) {
+    if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
       _moveAnimal(animal, nx, ny, world);
       animal.state = AnimalState.WALKING;
       animal.applyEnergyCost('WALK');

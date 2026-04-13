@@ -117,6 +117,11 @@ export class World {
     return t !== WATER && t !== DEEP_WATER && t !== MOUNTAIN;
   }
 
+  isWalkableFor(x, y, walkableSet) {
+    if (!this.isInBounds(x, y)) return false;
+    return walkableSet.has(this.terrain[this.idx(x, y)]);
+  }
+
   isTileOccupied(x, y) {
     if (!this.isInBounds(x, y)) return true;
     return this.animalGrid[this.idx(x, y)] > 0;

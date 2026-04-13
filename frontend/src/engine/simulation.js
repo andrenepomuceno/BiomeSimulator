@@ -68,11 +68,12 @@ export class SimulationEngine {
     for (const [species, count] of Object.entries(counts)) {
       const speciesConfig = this.config.animal_species[species];
       if (!speciesConfig) continue;
+      const walkableSet = new Set(speciesConfig.walkable_terrain || [1, 2, 3, 5, 8]);
       let placed = 0, attempts = 0;
       while (placed < count && attempts < count * 50) {
         const x = Math.floor(Math.random() * w.width);
         const y = Math.floor(Math.random() * w.height);
-        if (w.isWalkable(x, y) && !w.isTileOccupied(x, y)) {
+        if (w.isWalkableFor(x, y, walkableSet) && !w.isTileOccupied(x, y)) {
           const animal = new Animal(w.nextId(), x, y, species, speciesConfig);
           w.animals.push(animal);
           w.placeAnimal(x, y);

@@ -3,7 +3,15 @@
  *
  * Each entry defines the species' simulation parameters, display info,
  * and default initial count. config.js derives its fauna config from here.
+ *
+ * Terrain types: WATER=0, SAND=1, DIRT=2, GRASS=3, ROCK=4,
+ *   FERTILE_SOIL=5, DEEP_WATER=6, MOUNTAIN=7, MUD=8
+ * Plant types:  GRASS=1, STRAWBERRY=2, BLUEBERRY=3, APPLE_TREE=4,
+ *   MANGO_TREE=5, CARROT=6, SUNFLOWER=7, TOMATO=8, MUSHROOM=9, OAK_TREE=10
  */
+
+const TERRAIN_IDS = { WATER: 0, SAND: 1, DIRT: 2, GRASS: 3, ROCK: 4, FERTILE_SOIL: 5, DEEP_WATER: 6, MOUNTAIN: 7, MUD: 8 };
+const PLANT_IDS = { GRASS: 1, STRAWBERRY: 2, BLUEBERRY: 3, APPLE_TREE: 4, MANGO_TREE: 5, CARROT: 6, SUNFLOWER: 7, TOMATO: 8, MUSHROOM: 9, OAK_TREE: 10 };
 
 const ANIMAL_SPECIES = {
   RABBIT: {
@@ -33,6 +41,9 @@ const ANIMAL_SPECIES = {
     max_population: 2000,
     mate_cooldown: 40,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT'],
+    prey_species: [],
   },
 
   SQUIRREL: {
@@ -63,6 +74,9 @@ const ANIMAL_SPECIES = {
     max_population: 2000,
     mate_cooldown: 40,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'OAK_TREE'],
+    prey_species: [],
   },
 
   BEETLE: {
@@ -93,6 +107,9 @@ const ANIMAL_SPECIES = {
     max_population: 2000,
     mate_cooldown: 35,
     decision_interval: 3,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'ROCK', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['GRASS', 'MUSHROOM', 'CARROT'],
+    prey_species: [],
   },
 
   GOAT: {
@@ -123,6 +140,9 @@ const ANIMAL_SPECIES = {
     max_population: 1500,
     mate_cooldown: 80,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
+    edible_plants: ['GRASS', 'CARROT', 'SUNFLOWER'],
+    prey_species: [],
   },
 
   DEER: {
@@ -153,6 +173,9 @@ const ANIMAL_SPECIES = {
     max_population: 1500,
     mate_cooldown: 70,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'CARROT'],
+    prey_species: [],
   },
 
   FOX: {
@@ -184,6 +207,9 @@ const ANIMAL_SPECIES = {
     max_population: 1500,
     mate_cooldown: 60,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['STRAWBERRY', 'BLUEBERRY'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'CROW'],
   },
 
   WOLF: {
@@ -214,6 +240,9 @@ const ANIMAL_SPECIES = {
     max_population: 1200,
     mate_cooldown: 80,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'ROCK', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['BLUEBERRY'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'RACCOON', 'BOAR', 'FOX'],
   },
 
   BOAR: {
@@ -244,6 +273,9 @@ const ANIMAL_SPECIES = {
     max_population: 1500,
     mate_cooldown: 65,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'MUSHROOM', 'OAK_TREE'],
+    prey_species: ['BEETLE'],
   },
 
   BEAR: {
@@ -275,6 +307,9 @@ const ANIMAL_SPECIES = {
     max_population: 800,
     mate_cooldown: 90,
     decision_interval: 3,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
+    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'FOX', 'WOLF'],
   },
 
   RACCOON: {
@@ -306,6 +341,9 @@ const ANIMAL_SPECIES = {
     max_population: 1500,
     mate_cooldown: 50,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'FERTILE_SOIL', 'MUD'],
+    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'CARROT', 'TOMATO'],
+    prey_species: ['BEETLE'],
   },
 
   CROW: {
@@ -337,6 +375,9 @@ const ANIMAL_SPECIES = {
     max_population: 1500,
     mate_cooldown: 45,
     decision_interval: 2,
+    walkable_terrain: ['SAND', 'DIRT', 'GRASS', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
+    edible_plants: ['SUNFLOWER', 'TOMATO', 'CARROT'],
+    prey_species: ['BEETLE'],
   },
 };
 
@@ -359,6 +400,10 @@ export function buildAnimalSpeciesConfig() {
   const cfg = {};
   for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
     const { id, name, color, initial_count, ...simParams } = sp;
+    if (simParams.walkable_terrain)
+      simParams.walkable_terrain = simParams.walkable_terrain.map(t => TERRAIN_IDS[t]);
+    if (simParams.edible_plants)
+      simParams.edible_plants = simParams.edible_plants.map(p => PLANT_IDS[p]);
     cfg[key] = simParams;
   }
   return cfg;

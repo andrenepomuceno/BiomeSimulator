@@ -7,7 +7,7 @@
  *   - Seed producers place S_SEED directly
  */
 import { WATER, SAND, GRASS, DIRT, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
-import { buildStageAges, buildFruitSpoilAges, buildProductionChances, buildReproductionModes } from './plantSpecies.js';
+import { buildStageAges, buildFruitSpoilAges, buildProductionChances, buildReproductionModes, buildTerrainGrowthMap } from './plantSpecies.js';
 
 // Plant types
 export const P_NONE = 0;
@@ -60,15 +60,8 @@ const PRODUCTION_CHANCES = buildProductionChances();
 // Reproduction mode per type: 'FRUIT' or 'SEED'
 const REPRODUCTION_MODES = buildReproductionModes();
 
-// Terrain growth multipliers: higher = faster effective aging
-const TERRAIN_GROWTH_MULT = {
-  [GRASS]: 1.2,          // grass terrain boosts growth by 20%
-  [DIRT]:  0.7,          // dirt terrain slows growth by 30%
-  [FERTILE_SOIL]: 1.5,   // fertile soil boosts growth by 50%
-  [ROCK]: 0.6,           // rock terrain slows growth by 40%
-  [MOUNTAIN]: 0.5,       // mountain terrain slows growth by 50%
-  [MUD]: 0.8,            // mud terrain slows growth by 20%
-};
+// Per-species terrain growth multipliers (built from plantSpecies.js)
+const SPECIES_TERRAIN_GROWTH = buildTerrainGrowthMap();
 
 // Per-tick chance a plant on dirt dies prematurely (seeds/sprouts are more fragile)
 const DIRT_DEATH_CHANCE = {
@@ -226,7 +219,8 @@ export function processPlants(world) {
     world.plantAge[i] += PLANT_TICK_PHASES;
 
     const terrain = world.terrain[i];
-    const terrainMult = TERRAIN_GROWTH_MULT[terrain] || 1.0;
+    const speciesGrowth = SPECIES_TERRAIN_GROWTH[ptype];
+    const terrainMult = (speciesGrowth && speciesGrowth[terrain]) || 1.0;
 
     // Harsh terrain: random chance to kill the plant each tick
     if (terrain === DIRT || terrain === ROCK || terrain === MOUNTAIN || terrain === MUD) {

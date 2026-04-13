@@ -7,16 +7,20 @@
  * Returns array of [x,y] waypoints, or empty array if no path.
  * Limited to maxDist expansion radius.
  */
-export function aStar(sx, sy, gx, gy, world, maxDist = 50) {
+export function aStar(sx, sy, gx, gy, world, maxDist = 50, walkableSet = null) {
   if (sx === gx && sy === gy) return [];
 
+  const _walkable = walkableSet
+    ? (x, y) => world.isWalkableFor(x, y, walkableSet)
+    : (x, y) => world.isWalkable(x, y);
+
   // Goal must be walkable (or water-adjacent for drinking)
-  if (!world.isWalkable(gx, gy)) {
+  if (!_walkable(gx, gy)) {
     let found = false;
     for (let dx = -1; dx <= 1 && !found; dx++) {
       for (let dy = -1; dy <= 1 && !found; dy++) {
         const nx = gx + dx, ny = gy + dy;
-        if (world.isWalkable(nx, ny)) {
+        if (_walkable(nx, ny)) {
           gx = nx; gy = ny;
           found = true;
         }
@@ -64,7 +68,7 @@ export function aStar(sx, sy, gx, gy, world, maxDist = 50) {
       const nx = cx + dx, ny = cy + dy;
       const nk = `${nx},${ny}`;
       if (visited.has(nk)) continue;
-      if (!world.isWalkable(nx, ny)) continue;
+      if (!_walkable(nx, ny)) continue;
 
       const ng = cg + 1;
       if (ng < (gScore.get(nk) ?? Infinity)) {

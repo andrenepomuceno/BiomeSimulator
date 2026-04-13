@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "profile:headless": "node scripts/headlessProfile.mjs",
+    "profile:headless:ci": "node scripts/headlessProfile.mjs --ci",
+    "profile:cpu:analyze": "node scripts/analyzeCpuProfile.mjs",
+    "profile:phase2": "node scripts/headlessProfile.mjs --scenario phase2"
   },
   "dependencies": {
     "@pixi/utils": "^7.4.2",

@@ -21,6 +21,12 @@ import {
   S_ADULT,
 } from './flora.js';
 import { decideAndAct } from './behaviors.js';
+import {
+  createBenchmarkCollector,
+  resetBenchmarkCollector,
+  cloneBenchmarkCollector,
+  benchmarkAdd,
+} from './benchmarkProfiler.js';
 
 export class SimulationEngine {
   constructor(config) {
@@ -29,6 +35,8 @@ export class SimulationEngine {
     this.spatialHash = new SpatialHash(16);
     this.profilingEnabled = false;
     this._latestProfile = null;
+    this._benchmarkCollector = createBenchmarkCollector();
+    this.spatialHash.setBenchmarkCollector(this._benchmarkCollector);
   }
 
   setProfilingEnabled(enabled) {
@@ -39,12 +47,23 @@ export class SimulationEngine {
     return this._latestProfile;
   }
 
+  resetBenchmarkStats() {
+    resetBenchmarkCollector(this._benchmarkCollector);
+    if (this.world) this.world._benchmarkCollector = this._benchmarkCollector;
+    this.spatialHash.setBenchmarkCollector(this._benchmarkCollector);
+  }
+
+  getBenchmarkStats() {
+    return cloneBenchmarkCollector(this._benchmarkCollector);
+  }
+
   /**
    * Generate a new world with terrain, plants, and animals.
    * Returns the seed used.
    */
   generateWorld() {
     this.world = new World(this.config);
+    this.world._benchmarkCollector = this._benchmarkCollector;
     const { terrain, waterProximity, heightmap, seed } = generateTerrain(this.config);
     this.world.terrain = terrain;
     this.world.waterProximity = waterProximity;
@@ -61,6 +80,7 @@ export class SimulationEngine {
    */
   resetSimulation() {
     const w = this.world;
+    w._benchmarkCollector = this._benchmarkCollector;
     // Reset plants
     w.plantType.fill(0);
     w.plantStage.fill(0);
@@ -136,8 +156,10 @@ export class SimulationEngine {
     // Process fauna
     const behaviorStart = profiling ? performance.now() : 0;
     const deadThisTick = [];
+    let processedAnimals = 0;
     for (const animal of w.animals) {
       if (animal.alive) {
+        processedAnimals++;
         decideAndAct(animal, w, this.spatialHash);
         // Incremental spatial hash update — only re-hash if cell changed
         this.spatialHash.update(animal);
@@ -180,6 +202,7 @@ export class SimulationEngine {
       }
     }
     if (profiling) {
+      benchmarkAdd(this._benchmarkCollector, 'animalsProcessed', processedAnimals);
       phases.statsMs = performance.now() - statsStart;
       let animalsAlive = 0;
       for (const a of w.animals) {

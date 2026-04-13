@@ -8,6 +8,7 @@ import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REP
 import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_SEED, S_NONE, P_NONE, SEASONS, getSeason } from './flora.js';
 import { buildDecisionIntervals, BASE_POP_TOTAL } from './animalSpecies.js';
 import { buildEdibleStagesMap } from './plantSpecies.js';
+import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
 
 // Decision interval per species (ticks between full AI evaluations)
 const DECISION_INTERVALS = buildDecisionIntervals();
@@ -78,6 +79,10 @@ function _eatPlantTile(animal, world, idx) {
  * Process one tick for an animal: decide action, execute it.
  */
 export function decideAndAct(animal, world, spatialHash) {
+  const collector = world._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
+  try {
+  benchmarkAddKeyed(collector, 'speciesDecisions', animal.species, 1);
   if (!animal.alive) return;
 
   animal.tickNeeds(world.hungerMultiplier, world.thirstMultiplier);
@@ -115,9 +120,15 @@ export function decideAndAct(animal, world, spatialHash) {
   // Stagger: between decision ticks, just continue current action
   const interval = DECISION_INTERVALS[animal.species] || 2;
   if (animal.id % interval !== world.clock.tick % interval) {
+    benchmarkAdd(collector, 'decisionStaggerSkips', 1);
+    benchmarkAddKeyed(collector, 'speciesDecisionStaggerSkips', animal.species, 1);
     // Continue following path or stay idle
     if (animal.path.length && animal.pathIndex < animal.path.length) {
-      _followPath(animal, world);
+      if (!_reusePathIfValid(animal, world, 'stagger')) {
+        animal.applyEnergyCost('IDLE');
+        animal.energy = Math.min(animal.maxEnergy, animal.energy + 0.01);
+        animal.hp = Math.min(animal.maxHp, animal.hp + 0.01);
+      }
     } else {
       animal.applyEnergyCost('IDLE');
       // Passive regen while idle (stagger tick)
@@ -159,7 +170,7 @@ export function decideAndAct(animal, world, spatialHash) {
 
   // 2. Flee from predators (herbivores and omnivores from stronger predators)
   if (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE') {
-    const threat = _findNearestThreat(animal, spatialHash, vision);
+    const threat = _findNearestThreat(animal, world, spatialHash, vision);
     if (threat) { _fleeFrom(animal, threat, world); return; }
   }
 
@@ -190,7 +201,7 @@ export function decideAndAct(animal, world, spatialHash) {
         _doMate(animal, mate, world);
       } else {
         // Walk toward mate
-        _setPath(animal, aStar(animal.x, animal.y, mate.x, mate.y, world, 40, animal._walkableSet), world.clock.tick);
+        _computePath(animal, world, mate.x, mate.y, 40, 'mate');
         if (animal.path.length) _followPath(animal, world);
         else _randomWalk(animal, world);
       }
@@ -228,6 +239,9 @@ export function decideAndAct(animal, world, spatialHash) {
     animal.energy = Math.min(animal.maxEnergy, animal.energy + 0.01);
     animal.hp = Math.min(animal.maxHp, animal.hp + 0.01);
   }
+  } finally {
+    benchmarkEnd(collector, 'decideAndAct', startedAt);
+  }
 }
 
 // ---- Ongoing action handlers ----
@@ -256,11 +270,52 @@ function _doDrink(animal /*, world */) {
 
 // Max ticks before a cached path is considered stale
 const PATH_CACHE_TTL = 15;
+const THREAT_CACHE_TTL = 4;
+const THREAT_SCAN_COOLDOWN = 2;
 
 function _hasValidPath(animal, tick) {
   return animal.path.length > 0 &&
     animal.pathIndex < animal.path.length &&
     (tick - animal._pathTick) < PATH_CACHE_TTL;
+}
+
+function _reusePathIfValid(animal, world, reason) {
+  const collector = world._benchmarkCollector;
+  const valid = _hasValidPath(animal, world.clock.tick);
+  benchmarkAdd(collector, valid ? 'pathCacheHits' : 'pathCacheMisses', 1);
+  benchmarkAddKeyed(collector, valid ? 'speciesPathCacheHits' : 'speciesPathCacheMisses', animal.species, 1);
+  if (!valid) return false;
+  benchmarkAddKeyed(collector, 'pathReuseReasons', reason, 1);
+  _followPath(animal, world);
+  return true;
+}
+
+function _computePath(animal, world, targetX, targetY, maxDist, reason) {
+  const collector = world._benchmarkCollector;
+  benchmarkAdd(collector, 'pathRequests', 1);
+  benchmarkAddKeyed(collector, 'speciesPathRequests', animal.species, 1);
+  benchmarkAddKeyed(collector, 'pathRequestReasons', reason, 1);
+  const path = aStar(animal.x, animal.y, targetX, targetY, world, maxDist, animal._walkableSet);
+  _setPath(animal, path, world.clock.tick);
+  if (path.length > 0) {
+    benchmarkAdd(collector, 'pathSuccesses', 1);
+    benchmarkAddKeyed(collector, 'speciesPathSuccesses', animal.species, 1);
+  } else {
+    benchmarkAdd(collector, 'pathFailures', 1);
+    benchmarkAddKeyed(collector, 'speciesPathFailures', animal.species, 1);
+  }
+}
+
+function _isThreatValidFor(animal, threat, vision) {
+  if (!threat || !threat.alive || threat.id === animal.id) return false;
+  const dist = Math.abs(threat.x - animal.x) + Math.abs(threat.y - animal.y);
+  if (dist > vision + 2) return false;
+  if (threat._preySpecies.size > 0 && !threat._preySpecies.has(animal.species)) return false;
+  if (threat.diet === 'CARNIVORE') return true;
+  if (animal.diet === 'OMNIVORE' && threat.diet === 'OMNIVORE') {
+    return threat._config.attack_power > animal._config.attack_power + 2;
+  }
+  return false;
 }
 
 function _setPath(animal, path, tick) {
@@ -270,6 +325,10 @@ function _setPath(animal, path, tick) {
 }
 
 function _seekWater(animal, world, vision) {
+  const collector = world._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
+  try {
+  benchmarkAddKeyed(collector, 'speciesSeekWater', animal.species, 1);
   // Already adjacent? Drink immediately
   if (world.isWaterAdjacent(animal.x, animal.y)) {
     animal.state = AnimalState.DRINKING;
@@ -278,8 +337,7 @@ function _seekWater(animal, world, vision) {
   }
 
   // Already following a path? Continue if still fresh
-  if (_hasValidPath(animal, world.clock.tick)) {
-    _followPath(animal, world);
+  if (_reusePathIfValid(animal, world, 'water')) {
     return;
   }
 
@@ -304,7 +362,7 @@ function _seekWater(animal, world, vision) {
   if (best) {
     // Path to an adjacent walkable tile near the water
     const pathLimit = desperate ? 80 : 50;
-    _setPath(animal, aStar(animal.x, animal.y, best[0], best[1], world, pathLimit, animal._walkableSet), world.clock.tick);
+    _computePath(animal, world, best[0], best[1], pathLimit, 'water');
   }
 
   if (animal.path.length) {
@@ -313,9 +371,16 @@ function _seekWater(animal, world, vision) {
     // Wander toward center of map (likely has water near islands)
     _randomWalk(animal, world);
   }
+  } finally {
+    benchmarkEnd(collector, 'seekWater', startedAt);
+  }
 }
 
 function _seekPlantFood(animal, world, vision) {
+  const collector = world._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
+  try {
+  benchmarkAddKeyed(collector, 'speciesSeekPlantFood', animal.species, 1);
   const idx = world.idx(animal.x, animal.y);
 
   // Eat edible plant on current tile (consumes entirely)
@@ -327,8 +392,7 @@ function _seekPlantFood(animal, world, vision) {
   }
 
   // Already following food path? Continue if fresh
-  if (_hasValidPath(animal, world.clock.tick)) {
-    _followPath(animal, world);
+  if (_reusePathIfValid(animal, world, 'plant')) {
     return;
   }
 
@@ -371,14 +435,21 @@ function _seekPlantFood(animal, world, vision) {
   const target = bestFruit || bestPlant || (animal.hunger > 60 ? bestSeed : null);
   if (target) {
     const pathLimit = target === bestFruit ? 40 : 60;
-    _setPath(animal, aStar(animal.x, animal.y, target[0], target[1], world, pathLimit, animal._walkableSet), world.clock.tick);
+    _computePath(animal, world, target[0], target[1], pathLimit, target === bestFruit ? 'fruit' : 'plant');
     if (animal.path.length) { _followPath(animal, world); return; }
   }
 
   _randomWalk(animal, world);
+  } finally {
+    benchmarkEnd(collector, 'seekPlantFood', startedAt);
+  }
 }
 
 function _seekPrey(animal, world, spatialHash, vision) {
+  const collector = world._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
+  try {
+  benchmarkAddKeyed(collector, 'speciesSeekPrey', animal.species, 1);
   // Carnivores can also eat fruit opportunistically when very hungry and no prey
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
   const prey = nearby.filter(e => e.alive && e.id !== animal.id && _canHunt(animal, e));
@@ -393,7 +464,7 @@ function _seekPrey(animal, world, spatialHash, vision) {
     if (dist <= 1) {
       _attack(animal, target, world);
     } else {
-      _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30, animal._walkableSet), world.clock.tick);
+      _computePath(animal, world, target.x, target.y, 30, 'prey');
       animal.state = AnimalState.RUNNING;
       for (let s = 0; s < animal.speed; s++) {
         _followPath(animal, world);
@@ -422,12 +493,19 @@ function _seekPrey(animal, world, spatialHash, vision) {
   }
 
   _randomWalk(animal, world);
+  } finally {
+    benchmarkEnd(collector, 'seekPrey', startedAt);
+  }
 }
 
 /**
  * Omnivore food-seeking: prefer plants first, hunt small prey when hungrier.
  */
 function _seekOmnivoreFood(animal, world, spatialHash, vision) {
+  const collector = world._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
+  try {
+  benchmarkAddKeyed(collector, 'speciesSeekOmnivoreFood', animal.species, 1);
   // Try eating edible plant on current tile first
   const idx = world.idx(animal.x, animal.y);
   const ptype = world.plantType[idx];
@@ -452,7 +530,7 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
       if (dist <= 1) {
         _attack(animal, target, world);
       } else {
-        _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30, animal._walkableSet), world.clock.tick);
+        _computePath(animal, world, target.x, target.y, 30, 'omnivore-prey');
         animal.state = AnimalState.RUNNING;
         for (let s = 0; s < animal.speed; s++) {
           _followPath(animal, world);
@@ -468,11 +546,16 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
 
   // Fallback: seek plants in vision range
   _seekPlantFood(animal, world, vision);
+  } finally {
+    benchmarkEnd(collector, 'seekOmnivoreFood', startedAt);
+  }
 }
 
 // ---- Scavenging ----
 
 function _tryScavenge(animal, world, spatialHash, vision) {
+  const collector = world._benchmarkCollector;
+  benchmarkAddKeyed(collector, 'speciesTryScavenge', animal.species, 1);
   const tick = world.clock.tick;
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
   const corpses = nearby.filter(e =>
@@ -499,7 +582,7 @@ function _tryScavenge(animal, world, spatialHash, vision) {
   }
 
   // Walk toward corpse
-  _setPath(animal, aStar(animal.x, animal.y, target.x, target.y, world, 30, animal._walkableSet), world.clock.tick);
+  _computePath(animal, world, target.x, target.y, 30, 'scavenge');
   if (animal.path.length) {
     _followPath(animal, world);
     return true;
@@ -536,7 +619,26 @@ function _attack(attacker, defender, world) {
 
 // ---- Threat detection & fleeing ----
 
-function _findNearestThreat(animal, spatialHash, vision) {
+function _findNearestThreat(animal, world, spatialHash, vision) {
+  const collector = spatialHash._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
+  try {
+  benchmarkAddKeyed(collector, 'speciesThreatChecks', animal.species, 1);
+  const tick = world.clock.tick;
+  if (animal._cachedThreat && (tick - animal._cachedThreatTick) <= THREAT_CACHE_TTL && _isThreatValidFor(animal, animal._cachedThreat, vision)) {
+    benchmarkAdd(collector, 'threatCacheHits', 1);
+    benchmarkAddKeyed(collector, 'speciesThreatCacheHits', animal.species, 1);
+    return animal._cachedThreat;
+  }
+
+  if (tick < animal._nextThreatCheckTick) {
+    benchmarkAdd(collector, 'threatCheckCooldownSkips', 1);
+    benchmarkAddKeyed(collector, 'speciesThreatCooldownSkips', animal.species, 1);
+    return null;
+  }
+
+  benchmarkAdd(collector, 'threatCacheMisses', 1);
+  benchmarkAddKeyed(collector, 'speciesThreatCacheMisses', animal.species, 1);
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
   const threats = nearby.filter(e => {
     if (!e.alive || e.id === animal.id) return false;
@@ -549,11 +651,23 @@ function _findNearestThreat(animal, spatialHash, vision) {
     }
     return false;
   });
-  if (!threats.length) return null;
-  return threats.reduce((a, b) =>
+  if (!threats.length) {
+    animal._cachedThreat = null;
+    animal._cachedThreatTick = tick;
+    animal._nextThreatCheckTick = tick + THREAT_SCAN_COOLDOWN;
+    return null;
+  }
+  const threat = threats.reduce((a, b) =>
     (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
     (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
   );
+  animal._cachedThreat = threat;
+  animal._cachedThreatTick = tick;
+  animal._nextThreatCheckTick = tick + 1;
+  return threat;
+  } finally {
+    benchmarkEnd(collector, 'findNearestThreat', startedAt);
+  }
 }
 
 function _fleeFrom(animal, threat, world) {
@@ -587,6 +701,9 @@ function _fleeFrom(animal, threat, world) {
 // ---- Mating ----
 
 function _findMate(animal, spatialHash, searchRadius) {
+  const collector = spatialHash._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
+  try {
   const nearby = spatialHash.queryRadius(animal.x, animal.y, searchRadius || 10);
   const repro = animal._config.reproduction || REPRO_SEXUAL;
   const candidates = nearby.filter(e => {
@@ -606,6 +723,9 @@ function _findMate(animal, spatialHash, searchRadius) {
     (Math.abs(a.x - animal.x) + Math.abs(a.y - animal.y)) <=
     (Math.abs(b.x - animal.x) + Math.abs(b.y - animal.y)) ? a : b
   );
+  } finally {
+    benchmarkEnd(collector, 'findMate', startedAt);
+  }
 }
 
 function _doMate(animal, mate, world) {
@@ -693,36 +813,41 @@ function _followPath(animal, world) {
 }
 
 function _randomWalk(animal, world) {
-  const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+  const collector = world._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
+  try {
+    const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
-  // Home bias: when far from home, prefer direction toward home (60% chance)
-  const homeDist = Math.abs(animal.x - animal.homeX) + Math.abs(animal.y - animal.homeY);
-  if (homeDist > 15 && Math.random() < 0.6) {
-    const hdx = Math.sign(animal.homeX - animal.x);
-    const hdy = Math.sign(animal.homeY - animal.y);
-    // Sort: preferred home direction first
-    dirs.sort((a, b) => {
-      const sa = (a[0] === hdx ? -1 : 0) + (a[1] === hdy ? -1 : 0);
-      const sb = (b[0] === hdx ? -1 : 0) + (b[1] === hdy ? -1 : 0);
-      return sa - sb;
-    });
-  } else {
-    // Fisher-Yates shuffle
-    for (let i = dirs.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+    // Home bias: when far from home, prefer direction toward home (60% chance)
+    const homeDist = Math.abs(animal.x - animal.homeX) + Math.abs(animal.y - animal.homeY);
+    if (homeDist > 15 && Math.random() < 0.6) {
+      const hdx = Math.sign(animal.homeX - animal.x);
+      const hdy = Math.sign(animal.homeY - animal.y);
+      dirs.sort((a, b) => {
+        const sa = (a[0] === hdx ? -1 : 0) + (a[1] === hdy ? -1 : 0);
+        const sb = (b[0] === hdx ? -1 : 0) + (b[1] === hdy ? -1 : 0);
+        return sa - sb;
+      });
+    } else {
+      for (let i = dirs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+      }
     }
-  }
 
-  for (const [dx, dy] of dirs) {
-    const nx = animal.x + dx, ny = animal.y + dy;
-    if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
-      _moveAnimal(animal, nx, ny, world);
-      animal.state = AnimalState.WALKING;
-      animal.applyEnergyCost('WALK');
-      return;
+    for (const [dx, dy] of dirs) {
+      const nx = animal.x + dx, ny = animal.y + dy;
+      if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
+        _moveAnimal(animal, nx, ny, world);
+        animal.state = AnimalState.WALKING;
+        animal.applyEnergyCost('WALK');
+        return;
+      }
     }
+
+    animal.state = AnimalState.IDLE;
+    animal.applyEnergyCost('IDLE');
+  } finally {
+    benchmarkEnd(collector, 'randomWalk', startedAt);
   }
-  animal.state = AnimalState.IDLE;
-  animal.applyEnergyCost('IDLE');
 }

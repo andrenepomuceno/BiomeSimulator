@@ -21,6 +21,57 @@ Vite dev server starts on **http://localhost:3000** with hot module replacement.
 | `npm run dev` | Start development server |
 | `npm run build` | Build for production (`dist/`) |
 | `npm run preview` | Preview production build locally |
+| `npm run profile:headless` | Run headless engine profiling scenarios and save JSON report |
+| `npm run profile:headless:ci` | Run headless profiling in CI mode (fails on threshold regression) |
+
+### Headless Performance Profiling
+
+The simulation engine can be benchmarked without React/Pixi rendering:
+
+```bash
+npm run profile:headless
+```
+
+This runs predefined `small`, `medium`, and `stress` scenarios, prints tick/phase metrics, and saves a JSON report under `perf-reports/`.
+At the end of each run, it also saves a text report using the same format as the UI export button.
+
+Advanced options:
+
+```bash
+node scripts/headlessProfile.mjs --scenario stress --ticks 500 --warmup 120
+node scripts/headlessProfile.mjs --scenario medium --out perf-reports/medium.json
+node scripts/headlessProfile.mjs --ci
+node scripts/headlessProfile.mjs --map 500x500 --days 30 --name map500_30d --out perf-reports/map500x500-30d.json
+```
+
+- `--scenario`: `small`, `medium`, `stress`, or `all`
+- `--ticks`: measured ticks per scenario
+- `--warmup`: warmup ticks before measurement
+- `--out`: custom output path for the JSON report
+- `--ci`: exits with code `1` when thresholds are exceeded
+
+Custom long-run options:
+
+- `--map`: map size in `WIDTHxHEIGHT` format (for example `1000x1000`)
+- `--days`: converts to measured ticks using `days * ticks_per_day`
+- `--ticks-per-day`: override day length
+- `--animal-scale`: scales all initial species counts
+- `--max-animals`: override global animal population cap
+- `--name`: custom scenario name in output
+
+### CPU Hotspot Profiling (Function-Level)
+
+Capture V8 CPU profile while running the headless simulation:
+
+```bash
+node --cpu-prof --cpu-prof-dir perf-reports --cpu-prof-name cpu-500x500-30d.cpuprofile scripts/headlessProfile.mjs --map 500x500 --days 30 --name map500_30d
+```
+
+Analyze the generated `.cpuprofile` and print top functions:
+
+```bash
+npm run profile:cpu:analyze -- --input perf-reports/cpu-500x500-30d.cpuprofile --top 20
+```
 
 ### Dependencies
 

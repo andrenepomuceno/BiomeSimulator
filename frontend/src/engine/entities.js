@@ -55,6 +55,9 @@ export class Animal {
     this.path = [];
     this.pathIndex = 0;
     this._pathTick = 0; // tick when path was last computed
+    this._cachedThreat = null;
+    this._cachedThreatTick = -1;
+    this._nextThreatCheckTick = 0;
 
     this.mateCooldown = 0;
     this.attackCooldown = 0;

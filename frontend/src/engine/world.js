@@ -106,6 +106,9 @@ export class World {
     // Global rate multipliers (adjustable at runtime)
     this.hungerMultiplier = 1.0;
     this.thirstMultiplier = 1.0;
+
+    // Optional benchmark collector used by headless profiling.
+    this._benchmarkCollector = null;
   }
 
   nextId() {

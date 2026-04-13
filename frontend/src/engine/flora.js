@@ -8,6 +8,7 @@
  */
 import { WATER, SAND, SOIL, DIRT, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
 import { buildStageAges, buildFruitSpoilAges, buildProductionChances, buildReproductionModes, buildTerrainGrowthMap, buildWaterAffinityMap } from './plantSpecies.js';
+import { benchmarkAdd, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
 
 // Plant types
 export const P_NONE = 0;
@@ -260,6 +261,8 @@ export function seedInitialPlants(world) {
 const PLANT_TICK_PHASES = 4;
 
 export function processPlants(world) {
+  const collector = world._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
   const w = world.width, h = world.height;
   const wpThreshold = world.config.water_proximity_threshold ?? 10;
   const currentPhase = world.clock.tick % PLANT_TICK_PHASES;
@@ -272,6 +275,7 @@ export function processPlants(world) {
   const seasonDeath = SEASON_DEATH_MULT[season];
 
   // --- Age alive plants and process stage transitions (staggered) ---
+  const activePlantCount = world.activePlantTiles.size;
   for (const i of world.activePlantTiles) {
     // Stagger: only process tiles whose index matches current phase
     if (i % PLANT_TICK_PHASES !== currentPhase) continue;
@@ -402,6 +406,8 @@ export function processPlants(world) {
 
   // --- Adult plants produce offspring ---
   produceOffspring(world);
+  benchmarkAdd(collector, 'activePlantsScanned', activePlantCount);
+  benchmarkEnd(collector, 'processPlants', startedAt);
 }
 
 const DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
@@ -410,6 +416,8 @@ const DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1]
  * Adult plants produce fruits or seeds in adjacent empty tiles.
  */
 function produceOffspring(world) {
+  const collector = world._benchmarkCollector;
+  const startedAt = benchmarkStart(collector);
   const w = world.width, h = world.height;
 
   // Seasonal reproduction modifier
@@ -435,6 +443,7 @@ function produceOffspring(world) {
     [adults[i], adults[j]] = [adults[j], adults[i]];
   }
   const maxAttempts = Math.min(adults.length, dynamicCap);
+  let births = 0;
 
   // Local density thresholds
   const suppressThreshold = world.config.plant_density_suppress_threshold ?? 0.7;
@@ -482,5 +491,10 @@ function produceOffspring(world) {
     world.plantEvents.births[ptype] = (world.plantEvents.births[ptype] || 0) + 1;
     world.clearPlantLog(ni);
     world.logPlantEvent(ni, 'BORN', { parentX: x, parentY: y, stage: offspringStage });
+    births++;
   }
+  benchmarkAdd(collector, 'adultPlantsConsidered', adults.length);
+  benchmarkAdd(collector, 'offspringAttempts', maxAttempts);
+  benchmarkAdd(collector, 'offspringBirths', births);
+  benchmarkEnd(collector, 'produceOffspring', startedAt);
 }

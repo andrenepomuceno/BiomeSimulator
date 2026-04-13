@@ -1,12 +1,18 @@
 /**
  * Spatial hash grid for O(1) neighbor lookups.
  */
+import { benchmarkAdd, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
 
 export class SpatialHash {
   constructor(cellSize = 16) {
     this.cellSize = cellSize;
     this._cells = new Map(); // "cx,cy" → Map<id, entity>
     this._entityCell = new Map(); // id → "cx,cy"
+    this._benchmarkCollector = null;
+  }
+
+  setBenchmarkCollector(collector) {
+    this._benchmarkCollector = collector;
   }
 
   _key(x, y) {
@@ -50,6 +56,7 @@ export class SpatialHash {
   }
 
   queryRadius(x, y, radius) {
+    const startedAt = benchmarkStart(this._benchmarkCollector);
     const results = [];
     const cellsRange = Math.floor(radius / this.cellSize) + 1;
     const cx = Math.floor(x / this.cellSize);
@@ -69,6 +76,8 @@ export class SpatialHash {
         }
       }
     }
+    benchmarkEnd(this._benchmarkCollector, 'queryRadius', startedAt);
+    benchmarkAdd(this._benchmarkCollector, 'queryRadiusResults', results.length);
     return results;
   }
 

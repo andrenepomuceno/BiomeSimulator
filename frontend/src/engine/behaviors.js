@@ -120,6 +120,9 @@ export function decideAndAct(animal, world, spatialHash) {
       _followPath(animal, world);
     } else {
       animal.applyEnergyCost('IDLE');
+      // Passive regen while idle (stagger tick)
+      animal.energy = Math.min(animal.maxEnergy, animal.energy + 0.01);
+      animal.hp = Math.min(animal.maxHp, animal.hp + 0.01);
     }
     return;
   }
@@ -221,6 +224,9 @@ export function decideAndAct(animal, world, spatialHash) {
   } else {
     animal.state = AnimalState.IDLE;
     animal.applyEnergyCost('IDLE');
+    // Passive regen while idle
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + 0.01);
+    animal.hp = Math.min(animal.maxHp, animal.hp + 0.01);
   }
 }
 
@@ -228,7 +234,7 @@ export function decideAndAct(animal, world, spatialHash) {
 
 function _doSleep(animal) {
   animal.applyEnergyCost('SLEEP'); // negative cost = recovery
-  animal.hp = Math.min(animal.maxHp, animal.hp + 0.5);
+  animal.hp = Math.min(animal.maxHp, animal.hp + 0.8);
   if (animal.energy >= 70) animal.state = AnimalState.IDLE;
 }
 

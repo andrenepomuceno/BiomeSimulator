@@ -11,11 +11,14 @@ import { TERRAIN_IDS } from './world.js';
 import { PLANT_IDS } from './plantSpecies.js';
 
 // Population caps by trophic level (food pyramid: prey > mid-predator > apex)
-const POP_PREY = 3000;       // Herbivores & small insects
-const POP_MID_PRED = 1000;   // Mid-level predators (Fox, Snake, Hawk)
-const POP_APEX = 400;        // Apex predators (Wolf, Crocodile)
-const POP_OMNI_LARGE = 500;  // Large omnivores (Bear)
-const POP_OMNI_MED = 1500;   // Medium omnivores (Boar, Raccoon, Crow)
+// Tuned for default global cap of 5000 — sum of all species maxes ≈ 5600
+const POP_INSECT = 800;       // Numerous small invertebrates (Beetle, Mosquito, Caterpillar)
+const POP_SMALL_HERB = 500;   // Fast-breeding small herbivores (Rabbit, Squirrel)
+const POP_LARGE_HERB = 300;   // Slower large herbivores (Deer, Goat)
+const POP_MID_PRED = 150;     // Mid-level predators (Fox, Snake, Hawk)
+const POP_APEX = 80;          // Apex predators (Wolf, Crocodile)
+const POP_OMNI_LARGE = 80;    // Large omnivores (Bear)
+const POP_OMNI_MED = 300;     // Medium omnivores (Boar, Raccoon, Crow)
 
 const ANIMAL_SPECIES = {
   RABBIT: {
@@ -42,7 +45,7 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.06,
     thirst_rate: 0.07,
     initial_count: 100,
-    max_population: POP_PREY,
+    max_population: POP_SMALL_HERB,
     mate_cooldown: 28,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
@@ -75,7 +78,7 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.065,
     thirst_rate: 0.065,
     initial_count: 60,
-    max_population: POP_PREY,
+    max_population: POP_SMALL_HERB,
     mate_cooldown: 32,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
@@ -108,7 +111,7 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.04,
     thirst_rate: 0.045,
     initial_count: 100,
-    max_population: POP_PREY,
+    max_population: POP_INSECT,
     mate_cooldown: 22,
     decision_interval: 3,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],
@@ -141,7 +144,7 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.075,
     thirst_rate: 0.06,
     initial_count: 35,
-    max_population: POP_PREY,
+    max_population: POP_LARGE_HERB,
     mate_cooldown: 70,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
@@ -174,7 +177,7 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.07,
     thirst_rate: 0.065,
     initial_count: 50,
-    max_population: POP_PREY,
+    max_population: POP_LARGE_HERB,
     mate_cooldown: 55,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
@@ -409,7 +412,7 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.08,
     thirst_rate: 0.09,
     initial_count: 120,
-    max_population: POP_PREY,
+    max_population: POP_INSECT,
     mate_cooldown: 12,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
@@ -442,7 +445,7 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.07,
     thirst_rate: 0.06,
     initial_count: 120,
-    max_population: POP_PREY,
+    max_population: POP_INSECT,
     mate_cooldown: 15,
     decision_interval: 3,
     walkable_terrain: ['DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
@@ -546,9 +549,13 @@ const ANIMAL_SPECIES = {
     decision_interval: 3,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: [],
-    prey_species: ['RABBIT', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'SNAKE', 'CATERPILLAR'],
+    prey_species: ['RABBIT', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'SNAKE'],
   },
 };
+
+/** Sum of all species' base max_population (used to proportionally distribute global cap) */
+export const BASE_POP_TOTAL = Object.values(ANIMAL_SPECIES)
+  .reduce((sum, sp) => sum + (sp.max_population || 0), 0);
 
 /** Ordered list of all species keys */
 export const ALL_ANIMAL_IDS = Object.keys(ANIMAL_SPECIES);

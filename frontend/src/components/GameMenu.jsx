@@ -16,6 +16,7 @@ const defaultParams = {
   seed: '',
   initial_animal_counts: buildInitialAnimalCounts(),
   initial_plant_density: 0.1,
+  max_animal_population: 5000,
 };
 
 const TABS = ['new', 'save', 'load'];
@@ -156,7 +157,17 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
               {/* FAUNA SUB-TAB */}
               {newTab === 'fauna' && (
                 <div>
-                  <div className="d-flex align-items-center mb-2">
+                  <div className="gm-field">
+                    <label>🌐 Max Animal Population: {params.max_animal_population === 0 ? 'Default (per-species)' : params.max_animal_population}</label>
+                    <input type="range" min={0} max={10000} step={100}
+                      value={params.max_animal_population}
+                      onChange={e => set('max_animal_population', +e.target.value)} />
+                    <div style={{ fontSize: '0.7rem', color: '#777', marginTop: 2 }}>
+                      Budget distributed proportionally per species. 0 = use each species' default cap.
+                    </div>
+                  </div>
+
+                  <div className="d-flex align-items-center mb-2 mt-3">
                     <span style={{ fontSize: '0.75rem', color: '#999' }}>Set initial population for each species</span>
                     <button
                       className="btn btn-sm btn-outline-secondary ms-auto py-0 px-1"

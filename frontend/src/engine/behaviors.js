@@ -6,7 +6,7 @@ import { WATER, DEEP_WATER } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
 import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_SEED, S_NONE, P_NONE, SEASONS, getSeason } from './flora.js';
-import { buildDecisionIntervals } from './animalSpecies.js';
+import { buildDecisionIntervals, BASE_POP_TOTAL } from './animalSpecies.js';
 import { buildEdibleStagesMap } from './plantSpecies.js';
 
 // Decision interval per species (ticks between full AI evaluations)
@@ -587,16 +587,20 @@ function _doMate(animal, mate, world) {
   animal.logAction(world.clock.tick, 'MATED', { partner: mate.species, partnerId: mate.id });
   mate.logAction(world.clock.tick, 'MATED', { partner: animal.species, partnerId: animal.id });
 
-  // Soft population cap: reproduction chance decreases as population grows
-  const maxPop = animal._config.max_population;
-  if (maxPop) {
+  // Per-species population cap, scaled by global cap when set
+  const baseMax = animal._config.max_population;
+  if (baseMax) {
+    const globalMax = world.config.max_animal_population;
+    const effectiveMax = globalMax > 0
+      ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
+      : baseMax;
     let count = 0;
     for (const a of world.animals) {
       if (a.alive && a.species === animal.species) count++;
     }
-    if (count >= maxPop) return;
+    if (count >= effectiveMax) return;
     // Gradual slowdown: from 60% capacity onward, reproduction chance drops linearly
-    const ratio = count / maxPop;
+    const ratio = count / effectiveMax;
     if (ratio > 0.6) {
       const chance = 1 - ((ratio - 0.6) / 0.4); // 100% at 60% → 0% at 100%
       if (Math.random() > chance) return;

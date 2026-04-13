@@ -390,6 +390,28 @@ export const PLANT_IDS = Object.fromEntries(
   Object.values(PLANT_SPECIES).map(sp => [sp.id, sp.typeId])
 );
 
+const TREE_PLANTS = ['APPLE_TREE', 'MANGO_TREE', 'OAK_TREE', 'COCONUT_PALM', 'OLIVE_TREE'];
+const LOW_PLANTS = ['GRASS', 'MUSHROOM', 'CARROT', 'POTATO'];
+const DESERT_PLANTS = ['CACTUS', 'COCONUT_PALM', 'CHILI_PEPPER'];
+
+const SPAWN_WEIGHTS = {
+  GRASS: { near: 7, mid: 14, far: 18 },
+  STRAWBERRY: { near: 7, mid: 6, far: 5 },
+  BLUEBERRY: { near: 7, mid: 6, far: 5 },
+  APPLE_TREE: { near: 8, mid: 8, far: 4 },
+  MANGO_TREE: { near: 8, mid: 7, far: 4 },
+  CARROT: { near: 5, mid: 7, far: 8 },
+  SUNFLOWER: { near: 7, mid: 8, far: 9 },
+  TOMATO: { near: 8, mid: 8, far: 5 },
+  MUSHROOM: { near: 6, mid: 8, far: 11 },
+  OAK_TREE: { near: 8, mid: 7, far: 8 },
+  POTATO: { near: 6, mid: 7, far: 9 },
+  CHILI_PEPPER: { near: 5, mid: 5, far: 6 },
+  CACTUS: { near: 5, mid: 4, far: 5 },
+  COCONUT_PALM: { near: 8, mid: 3, far: 2 },
+  OLIVE_TREE: { near: 5, mid: 2, far: 1 },
+};
+
 /** Lookup by typeId → species object */
 export function getPlantByTypeId(typeId) {
   return Object.values(PLANT_SPECIES).find(p => p.typeId === typeId) || null;
@@ -550,6 +572,32 @@ export function buildEdibleStagesMap() {
   const map = {};
   for (const sp of Object.values(PLANT_SPECIES)) {
     map[sp.typeId] = new Set(sp.edibleStages || []);
+  }
+  return map;
+}
+
+export function buildTreeTypes() {
+  return new Set(TREE_PLANTS.map(id => PLANT_IDS[id]).filter(Boolean));
+}
+
+export function buildLowPlantTypes() {
+  return new Set(LOW_PLANTS.map(id => PLANT_IDS[id]).filter(Boolean));
+}
+
+export function buildDesertPlantTypes() {
+  return new Set(DESERT_PLANTS.map(id => PLANT_IDS[id]).filter(Boolean));
+}
+
+export function buildSpawnWeightMap() {
+  const map = {};
+  for (const [id, weights] of Object.entries(SPAWN_WEIGHTS)) {
+    const typeId = PLANT_IDS[id];
+    if (typeId == null) continue;
+    map[typeId] = {
+      near: weights.near ?? 0,
+      mid: weights.mid ?? 0,
+      far: weights.far ?? 0,
+    };
   }
   return map;
 }

@@ -7,7 +7,18 @@
  *   - Seed producers place S_SEED directly
  */
 import { WATER, SAND, SOIL, DIRT, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD } from './world.js';
-import { buildStageAges, buildFruitSpoilAges, buildProductionChances, buildReproductionModes, buildTerrainGrowthMap, buildWaterAffinityMap } from './plantSpecies.js';
+import {
+  buildStageAges,
+  buildFruitSpoilAges,
+  buildProductionChances,
+  buildReproductionModes,
+  buildTerrainGrowthMap,
+  buildWaterAffinityMap,
+  buildTreeTypes,
+  buildLowPlantTypes,
+  buildDesertPlantTypes,
+  buildSpawnWeightMap,
+} from './plantSpecies.js';
 import { benchmarkAdd, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
 
 // Plant types
@@ -74,23 +85,16 @@ const REPRODUCTION_MODES = buildReproductionModes();
 // Per-species terrain growth multipliers (built from plantSpecies.js)
 const SPECIES_TERRAIN_GROWTH = buildTerrainGrowthMap();
 
-// Per-tick chance a plant on dirt dies prematurely (seeds/sprouts are more fragile)
-const DIRT_DEATH_CHANCE = {
-  [S_SEED]:          0.003,  // 0.3% per tick
-  [S_YOUNG_SPROUT]:  0.002,  // 0.2% per tick
-  [S_ADULT_SPROUT]:  0.001,  // 0.1% per tick
-  [S_ADULT]:         0.0005, // 0.05% per tick
-  [S_FRUIT]:         0.002,  // 0.2% per tick (fruit on dirt rots faster)
-};
-
 // Tree types (cannot grow on rock or mountain)
-const TREE_TYPES = new Set([P_APPLE_TREE, P_MANGO_TREE, P_OAK_TREE, P_COCONUT_PALM, P_OLIVE_TREE]);
+const TREE_TYPES = buildTreeTypes();
 
 // Low plants (can grow on mountain)
-const LOW_PLANT_TYPES = new Set([P_GRASS, P_MUSHROOM, P_CARROT, P_POTATO]);
+const LOW_PLANT_TYPES = buildLowPlantTypes();
 
 // Desert plants (can grow on sand)
-const DESERT_PLANT_TYPES = new Set([P_CACTUS, P_COCONUT_PALM, P_CHILI_PEPPER]);
+const DESERT_PLANT_TYPES = buildDesertPlantTypes();
+
+const SPAWN_WEIGHT_MAP = buildSpawnWeightMap();
 
 function _isTree(ptype) { return TREE_TYPES.has(ptype); }
 function _isLowPlant(ptype) { return LOW_PLANT_TYPES.has(ptype); }
@@ -100,9 +104,69 @@ const WATER_AFFINITY = buildWaterAffinityMap();
 
 // Season definitions: 0=Spring, 1=Summer, 2=Autumn, 3=Winter
 export const SEASONS = ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'];
-const SEASON_GROWTH_MULT = [1.2, 1.0, 0.8, 0.5];
-const SEASON_REPRO_MULT = [1.5, 1.0, 0.7, 0.2];
-const SEASON_DEATH_MULT = [0.8, 1.0, 1.2, 2.0];
+
+function _seasonGrowthMult(world) {
+  return world.config.season_growth_multiplier || [1.2, 1.0, 0.8, 0.5];
+}
+
+function _seasonReproMult(world) {
+  return world.config.season_reproduction_multiplier || [1.5, 1.0, 0.7, 0.2];
+}
+
+function _seasonDeathMult(world) {
+  return world.config.season_death_multiplier || [0.8, 1.0, 1.2, 2.0];
+}
+
+function _dirtDeathChance(world) {
+  return world.config.plant_dirt_death_chance_by_stage || {
+    [S_SEED]: 0.003,
+    [S_YOUNG_SPROUT]: 0.002,
+    [S_ADULT_SPROUT]: 0.001,
+    [S_ADULT]: 0.0005,
+    [S_FRUIT]: 0.002,
+  };
+}
+
+function _pickPlantTypeByWaterProximity(wp, world) {
+  const thresholds = world.config.plant_spawn_water_thresholds || { near: 5, mid: 15 };
+  const zone = wp < thresholds.near ? 'near' : wp < thresholds.mid ? 'mid' : 'far';
+  const weighted = [];
+  let total = 0;
+  for (const ptype of ALL_PLANT_TYPES) {
+    const w = SPAWN_WEIGHT_MAP[ptype]?.[zone] ?? 0;
+    if (w <= 0) continue;
+    total += w;
+    weighted.push([ptype, total]);
+  }
+  if (total <= 0) return P_GRASS;
+  const roll = Math.random() * total;
+  for (const [ptype, cumulative] of weighted) {
+    if (roll < cumulative) return ptype;
+  }
+  return weighted[weighted.length - 1][0];
+}
+
+function _pickInitialStageAndAge(ages, world) {
+  const stageDist = world.config.initial_plant_stage_distribution || [0.25, 0.25, 0.25, 0.25];
+  const adultAgeFraction = world.config.initial_plant_adult_age_fraction ?? 0.3;
+  const sr = Math.random();
+  const c1 = stageDist[0] ?? 0.25;
+  const c2 = c1 + (stageDist[1] ?? 0.25);
+  const c3 = c2 + (stageDist[2] ?? 0.25);
+  if (sr < c1) {
+    return { stage: S_SEED, age: Math.floor(Math.random() * ages[0]) };
+  }
+  if (sr < c2) {
+    return { stage: S_YOUNG_SPROUT, age: ages[0] + Math.floor(Math.random() * (ages[1] - ages[0])) };
+  }
+  if (sr < c3) {
+    return { stage: S_ADULT_SPROUT, age: ages[1] + Math.floor(Math.random() * (ages[2] - ages[1])) };
+  }
+  return {
+    stage: S_ADULT,
+    age: ages[2] + Math.floor(Math.random() * (ages[3] - ages[2]) * adultAgeFraction),
+  };
+}
 
 /** Get current season index (0=Spring, 1=Summer, 2=Autumn, 3=Winter). */
 export function getSeason(world) {
@@ -166,61 +230,7 @@ export function seedInitialPlants(world) {
     const idx = eligible[n];
     const wp = world.waterProximity[idx];
 
-    // Weighted type selection based on water proximity
-    let ptype;
-    const r = Math.random();
-    if (wp < 5) {
-      // Near water: berries, fruit trees, and moisture-loving crops
-      if (r < 0.07) ptype = P_GRASS;
-      else if (r < 0.14) ptype = P_STRAWBERRY;
-      else if (r < 0.21) ptype = P_BLUEBERRY;
-      else if (r < 0.29) ptype = P_APPLE_TREE;
-      else if (r < 0.37) ptype = P_MANGO_TREE;
-      else if (r < 0.42) ptype = P_CARROT;
-      else if (r < 0.49) ptype = P_SUNFLOWER;
-      else if (r < 0.57) ptype = P_TOMATO;
-      else if (r < 0.63) ptype = P_MUSHROOM;
-      else if (r < 0.71) ptype = P_OAK_TREE;
-      else if (r < 0.77) ptype = P_POTATO;
-      else if (r < 0.82) ptype = P_CHILI_PEPPER;
-      else if (r < 0.87) ptype = P_CACTUS;
-      else if (r < 0.95) ptype = P_COCONUT_PALM;
-      else ptype = P_OLIVE_TREE;
-    } else if (wp < 15) {
-      // Medium distance: balanced
-      if (r < 0.14) ptype = P_GRASS;
-      else if (r < 0.20) ptype = P_STRAWBERRY;
-      else if (r < 0.26) ptype = P_BLUEBERRY;
-      else if (r < 0.34) ptype = P_APPLE_TREE;
-      else if (r < 0.41) ptype = P_MANGO_TREE;
-      else if (r < 0.48) ptype = P_CARROT;
-      else if (r < 0.56) ptype = P_SUNFLOWER;
-      else if (r < 0.64) ptype = P_TOMATO;
-      else if (r < 0.72) ptype = P_MUSHROOM;
-      else if (r < 0.79) ptype = P_OAK_TREE;
-      else if (r < 0.86) ptype = P_POTATO;
-      else if (r < 0.91) ptype = P_CHILI_PEPPER;
-      else if (r < 0.95) ptype = P_CACTUS;
-      else if (r < 0.98) ptype = P_COCONUT_PALM;
-      else ptype = P_OLIVE_TREE;
-    } else {
-      // Far from water: hardy crops and low-water species dominate
-      if (r < 0.18) ptype = P_GRASS;
-      else if (r < 0.23) ptype = P_STRAWBERRY;
-      else if (r < 0.28) ptype = P_BLUEBERRY;
-      else if (r < 0.32) ptype = P_APPLE_TREE;
-      else if (r < 0.36) ptype = P_MANGO_TREE;
-      else if (r < 0.44) ptype = P_CARROT;
-      else if (r < 0.53) ptype = P_SUNFLOWER;
-      else if (r < 0.58) ptype = P_TOMATO;
-      else if (r < 0.69) ptype = P_MUSHROOM;
-      else if (r < 0.77) ptype = P_OAK_TREE;
-      else if (r < 0.86) ptype = P_POTATO;
-      else if (r < 0.92) ptype = P_CHILI_PEPPER;
-      else if (r < 0.97) ptype = P_CACTUS;
-      else if (r < 0.99) ptype = P_COCONUT_PALM;
-      else ptype = P_OLIVE_TREE;
-    }
+    const ptype = _pickPlantTypeByWaterProximity(wp, world);
 
     // Terrain restrictions: no trees on rock/mountain; only low plants on mountain
     const terrain = world.terrain[idx];
@@ -228,22 +238,8 @@ export function seedInitialPlants(world) {
     if (terrain === MOUNTAIN && !_isLowPlant(ptype)) continue;
 
     // Random initial stage
-    const sr = Math.random();
-    let stage, age;
     const ages = STAGE_AGES[ptype];
-    if (sr < 0.25) {
-      stage = S_SEED;
-      age = Math.floor(Math.random() * ages[0]);
-    } else if (sr < 0.50) {
-      stage = S_YOUNG_SPROUT;
-      age = ages[0] + Math.floor(Math.random() * (ages[1] - ages[0]));
-    } else if (sr < 0.75) {
-      stage = S_ADULT_SPROUT;
-      age = ages[1] + Math.floor(Math.random() * (ages[2] - ages[1]));
-    } else {
-      stage = S_ADULT;
-      age = ages[2] + Math.floor(Math.random() * (ages[3] - ages[2]) * 0.3);
-    }
+    const { stage, age } = _pickInitialStageAndAge(ages, world);
 
     world.plantType[idx] = ptype;
     world.plantStage[idx] = stage;
@@ -258,27 +254,27 @@ export function seedInitialPlants(world) {
  * Process one tick of the plant lifecycle.
  * Uses active-tile tracking and 4-phase staggering to reduce per-tick cost.
  */
-const PLANT_TICK_PHASES = 4;
-
 export function processPlants(world) {
   const collector = world._benchmarkCollector;
   const startedAt = benchmarkStart(collector);
   const w = world.width, h = world.height;
   const wpThreshold = world.config.water_proximity_threshold ?? 10;
-  const currentPhase = world.clock.tick % PLANT_TICK_PHASES;
+  const plantTickPhases = world.config.plant_tick_phases ?? 4;
+  const currentPhase = world.clock.tick % plantTickPhases;
   world.plantChanges = [];
 
   // Seasonal modifiers
   const season = getSeason(world);
   world.currentSeason = season;
-  const seasonGrowth = SEASON_GROWTH_MULT[season];
-  const seasonDeath = SEASON_DEATH_MULT[season];
+  const seasonGrowth = _seasonGrowthMult(world)[season] ?? 1;
+  const seasonDeath = _seasonDeathMult(world)[season] ?? 1;
+  const dirtDeathChanceByStage = _dirtDeathChance(world);
 
   // --- Age alive plants and process stage transitions (staggered) ---
   const activePlantCount = world.activePlantTiles.size;
   for (const i of world.activePlantTiles) {
     // Stagger: only process tiles whose index matches current phase
-    if (i % PLANT_TICK_PHASES !== currentPhase) continue;
+    if (i % plantTickPhases !== currentPhase) continue;
 
     const ptype = world.plantType[i];
     const stage = world.plantStage[i];
@@ -287,8 +283,8 @@ export function processPlants(world) {
       continue;
     }
 
-    // Age by PLANT_TICK_PHASES to compensate for staggering
-    world.plantAge[i] += PLANT_TICK_PHASES;
+    // Age by configured phase count to compensate for staggering
+    world.plantAge[i] += plantTickPhases;
 
     const terrain = world.terrain[i];
     const speciesGrowth = SPECIES_TERRAIN_GROWTH[ptype];
@@ -296,9 +292,14 @@ export function processPlants(world) {
 
     // Harsh terrain: random chance to kill the plant each tick
     if (terrain === DIRT || terrain === ROCK || terrain === MOUNTAIN || terrain === MUD) {
-      const deathChance = DIRT_DEATH_CHANCE[stage] || 0;
-      const harshMult = terrain === MOUNTAIN ? 2.0 : terrain === ROCK ? 1.5 : 1.0;
-      if (deathChance > 0 && Math.random() < deathChance * PLANT_TICK_PHASES * harshMult * seasonDeath) {
+      const deathChance = dirtDeathChanceByStage[stage] || 0;
+      const harshTerrainMult = world.config.plant_harsh_terrain_death_multiplier || {};
+      const harshMult = terrain === MOUNTAIN
+        ? (harshTerrainMult.mountain ?? 2.0)
+        : terrain === ROCK
+          ? (harshTerrainMult.rock ?? 1.5)
+          : (harshTerrainMult.default ?? 1.0);
+      if (deathChance > 0 && Math.random() < deathChance * plantTickPhases * harshMult * seasonDeath) {
         world.plantStage[i] = S_DEAD;
         world.plantEvents.deaths_terrain[ptype] = (world.plantEvents.deaths_terrain[ptype] || 0) + 1;
         world.logPlantEvent(i, 'DIED', { cause: 'harsh_terrain' });
@@ -328,9 +329,11 @@ export function processPlants(world) {
     // Water stress: plants with medium/high water needs can die when far from water
     if (affinity >= 2 && wp > (world.config.water_stress_threshold ?? 20)) {
       const stressRate = world.config.water_stress_death_rate ?? 0.001;
-      const severeMult = wp > (world.config.water_stress_severe_threshold ?? 30) ? 2.0 : 1.0;
-      const affinityMult = affinity === 3 ? 1.5 : 1.0;
-      if (Math.random() < stressRate * PLANT_TICK_PHASES * severeMult * affinityMult * seasonDeath) {
+      const severeMult = wp > (world.config.water_stress_severe_threshold ?? 30)
+        ? (world.config.water_stress_severe_multiplier ?? 2.0)
+        : 1.0;
+      const affinityMult = affinity === 3 ? (world.config.water_stress_high_affinity_multiplier ?? 1.5) : 1.0;
+      if (Math.random() < stressRate * plantTickPhases * severeMult * affinityMult * seasonDeath) {
         world.plantStage[i] = S_DEAD;
         world.plantEvents.deaths_water[ptype] = (world.plantEvents.deaths_water[ptype] || 0) + 1;
         world.logPlantEvent(i, 'DIED', { cause: 'water_stress' });
@@ -341,20 +344,23 @@ export function processPlants(world) {
     }
 
     // Water proximity growth modifier (bonus near water, penalty when far for water-needy species)
+    const waterGrowth = world.config.plant_water_growth_modifiers || {};
+    const farThreshold = world.config.plant_water_far_threshold ?? 25;
     let waterMult;
     if (wp < wpThreshold) {
-      waterMult = 1.3;
+      waterMult = waterGrowth.near ?? 1.3;
     } else if (affinity <= 1) {
-      waterMult = 1.0; // low/no water need — unaffected
-    } else if (wp < 25) {
-      waterMult = 0.8;
+      waterMult = waterGrowth.lowAffinity ?? 1.0;
+    } else if (wp < farThreshold) {
+      waterMult = waterGrowth.mid ?? 0.8;
     } else {
-      waterMult = affinity === 3 ? 0.5 : 0.7;
+      waterMult = affinity === 3 ? (waterGrowth.farHighAffinity ?? 0.5) : (waterGrowth.farMediumAffinity ?? 0.7);
     }
 
     // Crowding penalty: dense neighborhoods slow growth
     const crowding = _countAdjacentPlants(world, i, w, h);
-    const crowdingMult = crowding >= 5 ? (world.config.plant_crowding_growth_penalty ?? 0.7) : 1.0;
+    const crowdingThreshold = world.config.plant_crowding_neighbor_threshold ?? 5;
+    const crowdingMult = crowding >= crowdingThreshold ? (world.config.plant_crowding_growth_penalty ?? 0.7) : 1.0;
 
     const effectiveAge = Math.floor(world.plantAge[i] * waterMult * terrainMult * seasonGrowth * crowdingMult);
 
@@ -422,7 +428,7 @@ function produceOffspring(world) {
 
   // Seasonal reproduction modifier
   const season = getSeason(world);
-  const seasonRepro = SEASON_REPRO_MULT[season];
+  const seasonRepro = _seasonReproMult(world)[season] ?? 1;
 
   // Collect all adult plants from active tiles only
   const adults = [];
@@ -432,9 +438,13 @@ function produceOffspring(world) {
 
   // Dynamic cap — reduce attempts when plant coverage is high
   const coverage = world.activePlantTiles.size / (w * h);
-  const baseCap = 800;
-  const dynamicCap = coverage > 0.6 ? Math.floor(baseCap * 0.25)
-    : coverage > 0.4 ? Math.floor(baseCap * 0.5)
+  const baseCap = world.config.plant_reproduction_base_cap ?? 800;
+  const highCoverageThreshold = world.config.plant_reproduction_high_coverage_threshold ?? 0.6;
+  const mediumCoverageThreshold = world.config.plant_reproduction_medium_coverage_threshold ?? 0.4;
+  const highCoverageFactor = world.config.plant_reproduction_high_coverage_factor ?? 0.25;
+  const mediumCoverageFactor = world.config.plant_reproduction_medium_coverage_factor ?? 0.5;
+  const dynamicCap = coverage > highCoverageThreshold ? Math.floor(baseCap * highCoverageFactor)
+    : coverage > mediumCoverageThreshold ? Math.floor(baseCap * mediumCoverageFactor)
     : baseCap;
 
   // Shuffle to avoid positional bias
@@ -463,13 +473,14 @@ function produceOffspring(world) {
     const neighbors = _countAdjacentPlants(world, idx, w, h);
     const density = neighbors / 8;
     if (density >= suppressThreshold) continue;
-    if (density >= reduceThreshold && Math.random() > 0.5) continue;
+    if (density >= reduceThreshold && Math.random() > (world.config.plant_density_reduce_success_chance ?? 0.5)) continue;
 
     const x = idx % w, y = Math.floor(idx / w);
     const mode = REPRODUCTION_MODES[ptype] || 'SEED';
 
     const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
-    const spread = 1 + Math.floor(Math.random() * 3); // 1-3 tiles
+    const maxSpread = world.config.plant_offspring_max_spread ?? 3;
+    const spread = 1 + Math.floor(Math.random() * maxSpread);
     const nx = x + dir[0] * spread, ny = y + dir[1] * spread;
     if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
 
@@ -479,8 +490,10 @@ function produceOffspring(world) {
     if (!_canPlantGrow(destTerrain, ptype)) continue;
 
     // Seeds are less likely to take root on poor terrain
-    if ((destTerrain === DIRT || destTerrain === ROCK || destTerrain === MUD) && Math.random() > 0.4) continue;
-    if (destTerrain === MOUNTAIN && Math.random() > 0.25) continue;
+    const harshRootChance = world.config.plant_offspring_harsh_root_chance ?? 0.4;
+    const mountainRootChance = world.config.plant_offspring_mountain_root_chance ?? 0.25;
+    if ((destTerrain === DIRT || destTerrain === ROCK || destTerrain === MUD) && Math.random() > harshRootChance) continue;
+    if (destTerrain === MOUNTAIN && Math.random() > mountainRootChance) continue;
 
     const offspringStage = mode === 'FRUIT' ? S_FRUIT : S_SEED;
     world.plantType[ni] = ptype;

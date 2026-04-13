@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import useSimStore from '../store/simulationStore';
+import { formatTimeOfDay } from '../utils/time';
 
 const TOOLS = [
   { id: 'SELECT', label: '🔍 Select' },
@@ -42,7 +43,7 @@ export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, o
 
       {/* Day/Night indicator */}
       <div className={`day-indicator ${clock.is_night ? 'night' : 'day'}`}>
-        {clock.is_night ? '🌙' : '☀️'} Day {clock.day} · Tick {clock.tick}
+        {clock.is_night ? '🌙' : '☀️'} {formatTimeOfDay(clock.tick_in_day, clock.ticks_per_day)} · Day {clock.day} · Tick {clock.tick}
       </div>
 
       {/* Tool selector */}

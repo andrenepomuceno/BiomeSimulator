@@ -17,22 +17,27 @@ ChartJS.register(
 );
 
 const SPECIES_COLORS = {
-  RABBIT:   '#66cc66',
-  SQUIRREL: '#cc8844',
-  BEETLE:   '#556633',
-  GOAT:     '#bbbbbb',
-  DEER:     '#cc9955',
-  FOX:      '#dd8833',
-  WOLF:     '#dd4444',
-  BOAR:     '#885533',
-  BEAR:     '#8B4513',
-  RACCOON:  '#778899',
-  CROW:     '#555566',
+  RABBIT:      '#66cc66',
+  SQUIRREL:    '#cc8844',
+  BEETLE:      '#556633',
+  GOAT:        '#bbbbbb',
+  DEER:        '#cc9955',
+  FOX:         '#dd8833',
+  WOLF:        '#dd4444',
+  BOAR:        '#885533',
+  BEAR:        '#8B4513',
+  RACCOON:     '#778899',
+  CROW:        '#555566',
+  MOSQUITO:    '#556655',
+  CATERPILLAR: '#88bb33',
+  SNAKE:       '#448844',
+  HAWK:        '#aa6622',
+  CROCODILE:   '#556b2f',
 };
 
 const DIET_GROUPS = {
-  Herbivore: ['RABBIT', 'SQUIRREL', 'BEETLE', 'GOAT', 'DEER'],
-  Carnivore: ['FOX', 'WOLF'],
+  Herbivore: ['RABBIT', 'SQUIRREL', 'BEETLE', 'GOAT', 'DEER', 'MOSQUITO', 'CATERPILLAR'],
+  Carnivore: ['FOX', 'WOLF', 'SNAKE', 'HAWK', 'CROCODILE'],
   Omnivore:  ['BOAR', 'BEAR', 'RACCOON', 'CROW'],
 };
 
@@ -43,16 +48,23 @@ const DIET_COLORS = {
 };
 
 const PLANT_COLORS_MAP = {
-  1: '#7fbb5c', // Grass
-  2: '#ff6b6b', // Strawberry
-  3: '#6b6bff', // Blueberry
-  4: '#66aa44', // Apple Tree
-  5: '#ffaa33', // Mango Tree
-  6: '#ff8844', // Carrot
-  7: '#ffdd44', // Sunflower
-  8: '#ff4444', // Tomato
-  9: '#aa8866', // Mushroom
+  1: '#7fbb5c',  // Grass
+  2: '#ff6b6b',  // Strawberry
+  3: '#6b6bff',  // Blueberry
+  4: '#66aa44',  // Apple Tree
+  5: '#ffaa33',  // Mango Tree
+  6: '#ff8844',  // Carrot
+  7: '#ffdd44',  // Sunflower
+  8: '#ff4444',  // Tomato
+  9: '#aa8866',  // Mushroom
   10: '#8B6914', // Oak Tree
+  11: '#88cc88', // Cactus
+  12: '#44bb88', // Coconut Palm
+};
+
+const PLANT_EMOJIS = {
+  1: '🌱', 2: '🍓', 3: '🪶', 4: '🍎', 5: '🥭', 6: '🥕',
+  7: '🌻', 8: '🍅', 9: '🍄', 10: '🌳', 11: '🌵', 12: '🌴',
 };
 
 const TABS = [
@@ -159,10 +171,51 @@ export default function SimulationReport({ open, onClose }) {
       }
     });
 
+    // --- Plant per-species data ---
+    const plantTypeKeys = Object.keys(PLANT_TYPE_NAMES).filter(k => k !== '0');
+    const plantSpeciesData = {};
+    plantTypeKeys.forEach(k => {
+      plantSpeciesData[k] = statsHistory.map(s => (s.plant_types && s.plant_types[k]) || 0);
+    });
+    const plantPeaks = {};
+    const plantMins = {};
+    plantTypeKeys.forEach(k => {
+      const arr = plantSpeciesData[k];
+      plantPeaks[k] = Math.max(...arr);
+      plantMins[k] = Math.min(...arr);
+    });
+
+    // --- Plant events aggregation ---
+    const plantBirthsTotal = statsHistory.map(s => {
+      const ev = s.plant_events;
+      if (!ev || !ev.births) return 0;
+      return Object.values(ev.births).reduce((a, b) => a + b, 0);
+    });
+    const plantDeathsTotal = statsHistory.map(s => {
+      const ev = s.plant_events;
+      if (!ev) return 0;
+      let sum = 0;
+      for (const cat of ['deaths_terrain', 'deaths_water', 'deaths_age', 'deaths_eaten']) {
+        if (ev[cat]) sum += Object.values(ev[cat]).reduce((a, b) => a + b, 0);
+      }
+      return sum;
+    });
+    const deathCauseTotals = { terrain: 0, water: 0, age: 0, eaten: 0 };
+    statsHistory.forEach(s => {
+      const ev = s.plant_events;
+      if (!ev) return;
+      if (ev.deaths_terrain) deathCauseTotals.terrain += Object.values(ev.deaths_terrain).reduce((a, b) => a + b, 0);
+      if (ev.deaths_water) deathCauseTotals.water += Object.values(ev.deaths_water).reduce((a, b) => a + b, 0);
+      if (ev.deaths_age) deathCauseTotals.age += Object.values(ev.deaths_age).reduce((a, b) => a + b, 0);
+      if (ev.deaths_eaten) deathCauseTotals.eaten += Object.values(ev.deaths_eaten).reduce((a, b) => a + b, 0);
+    });
+
     return {
       ticks, tickLabels, speciesKeys, speciesData,
       dietData, plantsTotal, fruits, plantTypes, latest,
       peaks, mins, totalAnimals, diversity, extinctions,
+      plantTypeKeys, plantSpeciesData, plantPeaks, plantMins,
+      plantBirthsTotal, plantDeathsTotal, deathCauseTotals,
     };
   }, [statsHistory, clock.ticks_per_day]);
 
@@ -172,6 +225,32 @@ export default function SimulationReport({ open, onClose }) {
 
   function renderPopulationTab() {
     if (noData) return <p className="report-empty">No history data yet. Start the simulation first.</p>;
+
+    const totalChart = {
+      labels: data.tickLabels,
+      datasets: [
+        {
+          label: 'Total Animals',
+          data: data.totalAnimals,
+          borderColor: '#eee',
+          backgroundColor: '#eee22',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false,
+        },
+        ...Object.entries(DIET_GROUPS).map(([diet]) => ({
+          label: diet + 's',
+          data: data.dietData[diet],
+          borderColor: DIET_COLORS[diet],
+          backgroundColor: DIET_COLORS[diet] + '33',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+        })),
+      ],
+    };
 
     const chartData = {
       labels: data.tickLabels,
@@ -190,31 +269,61 @@ export default function SimulationReport({ open, onClose }) {
     };
 
     return (
-      <div className="report-chart-section">
-        <h6>Species Population Over Time</h6>
-        <div className="report-chart-container" style={{ height: 320 }}>
-          <Line data={chartData} options={CHART_BASE} />
+      <>
+        <div className="report-chart-section">
+          <h6>Total Animal Population</h6>
+          <div className="report-chart-container" style={{ height: 260 }}>
+            <Line data={totalChart} options={CHART_BASE} />
+          </div>
         </div>
-      </div>
+
+        <div className="report-chart-section">
+          <h6>Species Population Over Time</h6>
+          <div className="report-chart-container" style={{ height: 320 }}>
+            <Line data={chartData} options={CHART_BASE} />
+          </div>
+        </div>
+
+        <div className="report-chart-section">
+          <h6>Animal Species Details</h6>
+          <div className="report-species-table">
+            <div className="report-species-header">
+              <span>Species</span>
+              <span>Current</span>
+              <span>Peak</span>
+              <span>Min</span>
+              <span>Diet</span>
+              <span>Status</span>
+            </div>
+            {data.speciesKeys.map(k => {
+              const current = data.speciesData[k][data.speciesData[k].length - 1] || 0;
+              const extinct = data.peaks[k] > 0 && current === 0;
+              const diet = Object.entries(DIET_GROUPS).find(([, list]) => list.includes(k));
+              const dietName = diet ? diet[0] : '\u2014';
+              return (
+                <div key={k} className={`report-species-row ${extinct ? 'extinct' : ''}`}>
+                  <span>
+                    <span style={{ color: SPECIES_COLORS[k] }}>{SPECIES_INFO[k].emoji}</span>{' '}
+                    {SPECIES_INFO[k].name}
+                  </span>
+                  <span>{current}</span>
+                  <span>{data.peaks[k]}</span>
+                  <span>{data.mins[k]}</span>
+                  <span style={{ color: DIET_COLORS[dietName] || '#ccc' }}>{dietName}</span>
+                  <span className={extinct ? 'text-danger' : current > 0 ? 'text-success' : 'text-muted'}>
+                    {data.peaks[k] === 0 ? 'Never spawned' : extinct ? 'Extinct' : 'Alive'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </>
     );
   }
 
   function renderEcosystemTab() {
     if (noData) return <p className="report-empty">No history data yet.</p>;
-
-    const dietChart = {
-      labels: data.tickLabels,
-      datasets: Object.entries(DIET_GROUPS).map(([diet]) => ({
-        label: diet + 's',
-        data: data.dietData[diet],
-        borderColor: DIET_COLORS[diet],
-        backgroundColor: DIET_COLORS[diet] + '33',
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: 0.3,
-        fill: true,
-      })),
-    };
 
     const diversityChart = {
       labels: data.tickLabels,
@@ -232,12 +341,6 @@ export default function SimulationReport({ open, onClose }) {
 
     return (
       <>
-        <div className="report-chart-section">
-          <h6>Diet Group Balance</h6>
-          <div className="report-chart-container" style={{ height: 260 }}>
-            <Line data={dietChart} options={CHART_BASE} />
-          </div>
-        </div>
         <div className="report-chart-section">
           <h6>Biodiversity (Shannon Index)</h6>
           <div className="report-chart-container" style={{ height: 200 }}>
@@ -291,30 +394,6 @@ export default function SimulationReport({ open, onClose }) {
       ],
     };
 
-    // Plant type breakdown doughnut
-    const ptEntries = Object.entries(data.plantTypes).filter(([, v]) => v > 0);
-    const doughnutData = {
-      labels: ptEntries.map(([k]) => PLANT_TYPE_NAMES[k] || `Type ${k}`),
-      datasets: [{
-        data: ptEntries.map(([, v]) => v),
-        backgroundColor: ptEntries.map(([k]) => PLANT_COLORS_MAP[k] || '#888'),
-        borderColor: '#16213e',
-        borderWidth: 2,
-      }],
-    };
-
-    const doughnutOpts = {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: { color: '#ccc', font: { size: 11 }, padding: 8, usePointStyle: true },
-        },
-      },
-    };
-
     return (
       <>
         <div className="report-chart-section">
@@ -323,14 +402,63 @@ export default function SimulationReport({ open, onClose }) {
             <Line data={floraChart} options={CHART_BASE} />
           </div>
         </div>
-        {ptEntries.length > 0 && (
-          <div className="report-chart-section">
-            <h6>Current Plant Distribution</h6>
-            <div className="report-chart-container" style={{ height: 220 }}>
-              <Doughnut data={doughnutData} options={doughnutOpts} />
-            </div>
+
+        {/* Per-species plant population over time */}
+        <div className="report-chart-section">
+          <h6>Plant Species Over Time</h6>
+          <div className="report-chart-container" style={{ height: 320 }}>
+            <Line data={{
+              labels: data.tickLabels,
+              datasets: data.plantTypeKeys
+                .filter(k => data.plantPeaks[k] > 0)
+                .map(k => ({
+                  label: PLANT_TYPE_NAMES[k] || `Type ${k}`,
+                  data: data.plantSpeciesData[k],
+                  borderColor: PLANT_COLORS_MAP[k] || '#888',
+                  backgroundColor: (PLANT_COLORS_MAP[k] || '#888') + '22',
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: false,
+                })),
+            }} options={CHART_BASE} />
           </div>
-        )}
+        </div>
+
+        {/* Plant species detail table */}
+        <div className="report-chart-section">
+          <h6>Plant Species Details</h6>
+          <div className="report-species-table">
+            <div className="report-species-header">
+              <span>Species</span>
+              <span>Current</span>
+              <span>Peak</span>
+              <span>Min</span>
+              <span>Status</span>
+            </div>
+            {data.plantTypeKeys.map(k => {
+              const arr = data.plantSpeciesData[k];
+              const current = arr[arr.length - 1] || 0;
+              const peak = data.plantPeaks[k];
+              const min = data.plantMins[k];
+              const extinct = peak > 0 && current === 0;
+              return (
+                <div key={k} className={`report-species-row ${extinct ? 'extinct' : ''}`}>
+                  <span>
+                    <span style={{ color: PLANT_COLORS_MAP[k] }}>{PLANT_EMOJIS[k] || ''}</span>{' '}
+                    {PLANT_TYPE_NAMES[k] || `Type ${k}`}
+                  </span>
+                  <span>{current.toLocaleString()}</span>
+                  <span>{peak.toLocaleString()}</span>
+                  <span>{min.toLocaleString()}</span>
+                  <span className={extinct ? 'text-danger' : current > 0 ? 'text-success' : 'text-muted'}>
+                    {peak === 0 ? 'Never seeded' : extinct ? 'Extinct' : 'Growing'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </>
     );
   }
@@ -385,35 +513,6 @@ export default function SimulationReport({ open, onClose }) {
             <div className="report-card-value">{(data.fruits[data.fruits.length - 1] || 0).toLocaleString()}</div>
             <div className="report-card-sub">Food sources</div>
           </div>
-        </div>
-
-        <h6 style={{ marginTop: 20 }}>Species Details</h6>
-        <div className="report-species-table">
-          <div className="report-species-header">
-            <span>Species</span>
-            <span>Current</span>
-            <span>Peak</span>
-            <span>Min</span>
-            <span>Status</span>
-          </div>
-          {data.speciesKeys.map(k => {
-            const current = data.speciesData[k][data.speciesData[k].length - 1] || 0;
-            const extinct = data.peaks[k] > 0 && current === 0;
-            return (
-              <div key={k} className={`report-species-row ${extinct ? 'extinct' : ''}`}>
-                <span>
-                  <span style={{ color: SPECIES_COLORS[k] }}>{SPECIES_INFO[k].emoji}</span>{' '}
-                  {SPECIES_INFO[k].name}
-                </span>
-                <span>{current}</span>
-                <span>{data.peaks[k]}</span>
-                <span>{data.mins[k]}</span>
-                <span className={extinct ? 'text-danger' : current > 0 ? 'text-success' : 'text-muted'}>
-                  {data.peaks[k] === 0 ? 'Never spawned' : extinct ? 'Extinct' : 'Alive'}
-                </span>
-              </div>
-            );
-          })}
         </div>
       </div>
     );
@@ -517,44 +616,19 @@ export default function SimulationReport({ open, onClose }) {
     lines.push('╚══════════════════════════════════╝');
     lines.push('');
 
-    // Diet groups current
-    lines.push('Diet Groups (current):');
-    Object.entries(DIET_GROUPS).forEach(([diet, speciesList]) => {
-      const total = speciesList.reduce((sum, sp) => {
-        const arr = data.speciesData[sp];
-        return sum + (arr[arr.length - 1] || 0);
-      }, 0);
-      const members = speciesList.map(sp => SPECIES_INFO[sp]?.name || sp).join(', ');
-      lines.push(`  ${diet}: ${total}  (${members})`);
-    });
-    lines.push('');
-
-    // Diet group + diversity timeline
-    lines.push('Diet Group & Diversity Over Time:');
-    const dietNames = Object.keys(DIET_GROUPS);
-    let ecoHeader = '  ' + 'Day'.padStart(5) + 'Tick'.padStart(8);
-    dietNames.forEach(d => { ecoHeader += d.slice(0, 9).padStart(11); });
-    ecoHeader += 'Diversity'.padStart(11);
-    lines.push(ecoHeader);
-    lines.push('  ' + '-'.repeat(ecoHeader.length - 2));
+    // Biodiversity timeline
+    lines.push('Biodiversity (Shannon Index) Over Time:');
+    let divHeader = '  ' + 'Day'.padStart(5) + 'Tick'.padStart(8) + 'Diversity'.padStart(11);
+    lines.push(divHeader);
+    lines.push('  ' + '-'.repeat(divHeader.length - 2));
 
     for (let i = 0; i < data.ticks.length; i += step) {
       const day = Math.floor(data.ticks[i] / tpd);
-      let row = '  ' + String(day).padStart(5) + String(data.ticks[i]).padStart(8);
-      dietNames.forEach(d => {
-        row += String(data.dietData[d][i]).padStart(11);
-      });
-      row += data.diversity[i].toFixed(3).padStart(11);
-      lines.push(row);
+      lines.push('  ' + String(day).padStart(5) + String(data.ticks[i]).padStart(8) + data.diversity[i].toFixed(3).padStart(11));
     }
     if (lastIdx % step !== 0) {
       const day = Math.floor(data.ticks[lastIdx] / tpd);
-      let row = '  ' + String(day).padStart(5) + String(data.ticks[lastIdx]).padStart(8);
-      dietNames.forEach(d => {
-        row += String(data.dietData[d][lastIdx]).padStart(11);
-      });
-      row += data.diversity[lastIdx].toFixed(3).padStart(11);
-      lines.push(row);
+      lines.push('  ' + String(day).padStart(5) + String(data.ticks[lastIdx]).padStart(8) + data.diversity[lastIdx].toFixed(3).padStart(11));
     }
     lines.push('');
 
@@ -583,6 +657,38 @@ export default function SimulationReport({ open, onClose }) {
         const pct = plantTotal > 0 ? ((v / plantTotal) * 100).toFixed(1) : '0.0';
         lines.push(`  ${(PLANT_TYPE_NAMES[k] || 'Type ' + k).padEnd(16)} ${String(v.toLocaleString()).padStart(8)}  (${pct}%)`);
       });
+      lines.push('');
+    }
+
+    // Plant species details table
+    lines.push('Plant Species Details:');
+    lines.push('  ' + 'Species'.padEnd(16) + 'Current'.padStart(9) + 'Peak'.padStart(9) + 'Min'.padStart(9) + '  Status');
+    lines.push('  ' + '-'.repeat(56));
+    data.plantTypeKeys.forEach(k => {
+      const arr = data.plantSpeciesData[k];
+      const current = arr[arr.length - 1] || 0;
+      const peak = data.plantPeaks[k];
+      const min = data.plantMins[k];
+      const status = peak === 0 ? 'Never seeded' : (peak > 0 && current === 0) ? 'Extinct' : 'Growing';
+      lines.push(
+        '  ' + (PLANT_TYPE_NAMES[k] || `Type ${k}`).padEnd(16) +
+        String(current).padStart(9) +
+        String(peak).padStart(9) +
+        String(min).padStart(9) +
+        '  ' + status
+      );
+    });
+    lines.push('');
+
+    // Plant death causes
+    const totalDeaths = data.deathCauseTotals.terrain + data.deathCauseTotals.water + data.deathCauseTotals.age + data.deathCauseTotals.eaten;
+    if (totalDeaths > 0) {
+      lines.push('Plant Death Causes (All Time):');
+      lines.push(`  Harsh Terrain:  ${data.deathCauseTotals.terrain.toLocaleString()}`);
+      lines.push(`  Water Stress:   ${data.deathCauseTotals.water.toLocaleString()}`);
+      lines.push(`  Old Age:        ${data.deathCauseTotals.age.toLocaleString()}`);
+      lines.push(`  Eaten:          ${data.deathCauseTotals.eaten.toLocaleString()}`);
+      lines.push(`  Total:          ${totalDeaths.toLocaleString()}`);
       lines.push('');
     }
 

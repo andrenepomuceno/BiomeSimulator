@@ -280,6 +280,7 @@ export function processPlants(world) {
       const harshMult = terrain === MOUNTAIN ? 2.0 : terrain === ROCK ? 1.5 : 1.0;
       if (deathChance > 0 && Math.random() < deathChance * PLANT_TICK_PHASES * harshMult * seasonDeath) {
         world.plantStage[i] = S_DEAD;
+        world.plantEvents.deaths_terrain[ptype] = (world.plantEvents.deaths_terrain[ptype] || 0) + 1;
         const x = i % w, y = Math.floor(i / w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
         continue;
@@ -309,6 +310,7 @@ export function processPlants(world) {
       const affinityMult = affinity === 3 ? 1.5 : 1.0;
       if (Math.random() < stressRate * PLANT_TICK_PHASES * severeMult * affinityMult * seasonDeath) {
         world.plantStage[i] = S_DEAD;
+        world.plantEvents.deaths_water[ptype] = (world.plantEvents.deaths_water[ptype] || 0) + 1;
         const x = i % w, y = Math.floor(i / w);
         world.plantChanges.push([x, y, ptype, S_DEAD]);
         continue;
@@ -348,6 +350,11 @@ export function processPlants(world) {
 
     if (newStage !== stage) {
       world.plantStage[i] = newStage;
+      if (newStage === S_DEAD) {
+        world.plantEvents.deaths_age[ptype] = (world.plantEvents.deaths_age[ptype] || 0) + 1;
+      } else if (newStage === S_ADULT) {
+        world.plantEvents.matured[ptype] = (world.plantEvents.matured[ptype] || 0) + 1;
+      }
       const x = i % w, y = Math.floor(i / w);
       world.plantChanges.push([x, y, ptype, newStage]);
     }
@@ -444,5 +451,6 @@ function produceOffspring(world) {
     world.plantAge[ni] = 0;
     world.activePlantTiles.add(ni);
     world.plantChanges.push([nx, ny, ptype, offspringStage]);
+    world.plantEvents.births[ptype] = (world.plantEvents.births[ptype] || 0) + 1;
   }
 }

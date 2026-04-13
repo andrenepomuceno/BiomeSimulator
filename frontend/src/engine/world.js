@@ -97,6 +97,9 @@ export class World {
     // Plant changes per tick (delta for renderer)
     this.plantChanges = [];
 
+    // Plant event counters (accumulated between stats snapshots)
+    this.plantEvents = { births: {}, deaths_terrain: {}, deaths_water: {}, deaths_age: {}, deaths_eaten: {}, matured: {} };
+
     // Global rate multipliers (adjustable at runtime)
     this.hungerMultiplier = 1.0;
     this.thirstMultiplier = 1.0;
@@ -139,6 +142,10 @@ export class World {
     if (this.animalGrid[i] > 0) this.animalGrid[i]--;
   }
 
+  resetPlantEvents() {
+    this.plantEvents = { births: {}, deaths_terrain: {}, deaths_water: {}, deaths_age: {}, deaths_eaten: {}, matured: {} };
+  }
+
   isWaterAdjacent(x, y) {
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
@@ -169,12 +176,9 @@ export class World {
       const t = this.plantType[i];
       const s = this.plantStage[i];
       if (t > 0 && s > 0 && s < 6) {
-        if (s === 5) {
-          fruits++;  // S_FRUIT stage
-        } else {
-          plantCounts[t] = (plantCounts[t] || 0) + 1;
-          plantsTotal++;
-        }
+        plantCounts[t] = (plantCounts[t] || 0) + 1;
+        plantsTotal++;
+        if (s === 5) fruits++;
       }
     }
 

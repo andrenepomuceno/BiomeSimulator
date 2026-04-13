@@ -67,6 +67,7 @@ function _eatPlantTile(animal, world, idx) {
   world.plantAge[idx] = 0;
   world.activePlantTiles.delete(idx);
   world.plantChanges.push([x, y, P_NONE, S_NONE]);
+  world.plantEvents.deaths_eaten[ptype] = (world.plantEvents.deaths_eaten[ptype] || 0) + 1;
 }
 
 /**
@@ -167,7 +168,24 @@ export function decideAndAct(animal, world, spatialHash) {
     return;
   }
 
-  // 5. Moderate hunger — proactively seek food
+  // 5. Mating opportunity (promoted — breed before moderate hunger/thirst)
+  if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && animal.energy > 50) {
+    const mate = _findMate(animal, spatialHash, Math.max(vision, 10));
+    if (mate) {
+      const dist = Math.abs(mate.x - animal.x) + Math.abs(mate.y - animal.y);
+      if (dist <= 2) {
+        _doMate(animal, mate, world);
+      } else {
+        // Walk toward mate
+        _setPath(animal, aStar(animal.x, animal.y, mate.x, mate.y, world, 40, animal._walkableSet), world.clock.tick);
+        if (animal.path.length) _followPath(animal, world);
+        else _randomWalk(animal, world);
+      }
+      return;
+    }
+  }
+
+  // 6. Moderate hunger — proactively seek food
   if (animal.hunger > 30) {
     if (animal.diet === 'HERBIVORE') {
       _seekPlantFood(animal, world, vision);
@@ -179,16 +197,10 @@ export function decideAndAct(animal, world, spatialHash) {
     return;
   }
 
-  // 6. Moderate thirst — proactively seek water
+  // 7. Moderate thirst — proactively seek water
   if (animal.thirst > 35) {
     _seekWater(animal, world, vision);
     return;
-  }
-
-  // 7. Mating opportunity
-  if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && animal.energy > 50) {
-    const mate = _findMate(animal, spatialHash);
-    if (mate) { _doMate(animal, mate, world); return; }
   }
 
   // 8. Idle or wander
@@ -554,8 +566,8 @@ function _fleeFrom(animal, threat, world) {
 
 // ---- Mating ----
 
-function _findMate(animal, spatialHash) {
-  const nearby = spatialHash.queryRadius(animal.x, animal.y, 3);
+function _findMate(animal, spatialHash, searchRadius) {
+  const nearby = spatialHash.queryRadius(animal.x, animal.y, searchRadius || 10);
   const repro = animal._config.reproduction || REPRO_SEXUAL;
   const candidates = nearby.filter(e => {
     if (e.species !== animal.species || !e.alive || e.id === animal.id) return false;

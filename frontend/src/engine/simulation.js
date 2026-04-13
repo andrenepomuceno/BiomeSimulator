@@ -54,6 +54,7 @@ export class SimulationEngine {
 
     // Reset stats
     w.statsHistory = [];
+    w.resetPlantEvents();
 
     // Re-seed plants and animals
     seedInitialPlants(w);
@@ -69,12 +70,16 @@ export class SimulationEngine {
       const speciesConfig = this.config.animal_species[species];
       if (!speciesConfig) continue;
       const walkableSet = new Set(speciesConfig.walkable_terrain || [1, 2, 3, 5, 8]);
+      // Max initial age: 50% of max_age — gives natural age distribution
+      // and prevents synchronized mass die-offs
+      const maxInitAge = Math.floor((speciesConfig.max_age || 1000) * 0.5);
       let placed = 0, attempts = 0;
       while (placed < count && attempts < count * 50) {
         const x = Math.floor(Math.random() * w.width);
         const y = Math.floor(Math.random() * w.height);
         if (w.isWalkableFor(x, y, walkableSet) && !w.isTileOccupied(x, y)) {
           const animal = new Animal(w.nextId(), x, y, species, speciesConfig);
+          animal.age = Math.floor(Math.random() * maxInitAge);
           w.animals.push(animal);
           w.placeAnimal(x, y);
           placed++;
@@ -131,6 +136,8 @@ export class SimulationEngine {
     if (w.clock.tick % 10 === 0) {
       const stats = w.getStats();
       stats.tick = w.clock.tick;
+      stats.plant_events = w.plantEvents;
+      w.resetPlantEvents();
       w.statsHistory.push(stats);
       if (w.statsHistory.length > 1000) {
         w.statsHistory = w.statsHistory.slice(-1000);

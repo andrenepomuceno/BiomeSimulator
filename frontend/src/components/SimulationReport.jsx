@@ -8,15 +8,15 @@ import { buildSimulationReportText, deriveSimulationReportData, DIET_GROUPS } fr
 import {
   Chart as ChartJS,
   LineElement, PointElement, LinearScale, CategoryScale,
-  Legend, Tooltip, Filler, Title, ArcElement, BarElement,
+  Legend, Tooltip, Filler, Title,
 } from 'chart.js';
-import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import { DIET_COLORS } from '../constants/statusColors';
 import { resolveTicksPerDay, ticksToDay } from '../utils/time';
 
 ChartJS.register(
   LineElement, PointElement, LinearScale, CategoryScale,
-  Legend, Tooltip, Filler, Title, ArcElement, BarElement,
+  Legend, Tooltip, Filler, Title,
 );
 
 const PLANT_COLORS_MAP = {
@@ -74,7 +74,7 @@ const CHART_BASE = {
 
 export default function SimulationReport({ open, onClose }) {
   const [tab, setTab] = useState('population');
-  const { statsHistory, stats, clock } = useSimStore();
+  const { statsHistory, clock } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
 
   // Derive all chart data from statsHistory

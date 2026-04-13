@@ -155,22 +155,19 @@ Procedural terrain generation with:
 
 Plant lifecycle processing:
 - `seedInitialPlants()` — scatters plants on eligible terrain
-- `processPlants()` — ages plants, applies stage transitions with water proximity bonus
-- `spreadSeeds()` — seed dispersal from fruiting plants (capped for performance)
+- `processPlants()` — ages plants, applies terrain/water/season modifiers, handles stage transitions
+- `produceOffspring()` — configurable seed/fruit dispersal from adult plants with density/cap controls
 
 #### `behaviors.js`
 
 Animal AI state machine with priority-based decisions:
-1. Opportunistic drink (thirst > 25 and adjacent to water)
-2. Opportunistic eat (hunger > 20 and on food tile)
-3. Critical thirst > 55 → seek water
-4. Critical hunger > 45 → seek food
-5. Energy < 20 → sleep
-6. Predator nearby → flee
-7. Moderate hunger > 30 → seek food
-8. Moderate thirst > 35 → seek water
-9. Adult + cooldown=0 + energy > 50 → find mate
-10. Otherwise → wander
+1. Opportunistic drink / eat when local conditions are met
+2. Critical thirst, predator response, and critical hunger handling
+3. Energy-based sleep and mating opportunity checks
+4. Moderate hunger/thirst proactive seeking
+5. Path follow, wander, or idle fallback
+
+Most thresholds are now species-configurable via `animalSpecies.js` (`decision_thresholds`, `recovery`, `combat`) and global behavior knobs in `config.js`.
 
 #### `pathfinding.js`
 
@@ -190,7 +187,7 @@ Grid-based spatial hash (`Map<string, Map<id, entity>>`) for O(1) neighbor looku
 
 #### `plantSpecies.js`
 
-Plant species registry (10 species). Single source of truth for plant data: stage ages, emojis, colors, reproduction modes, production chances. Provides builder functions used by `flora.js` and the renderer.
+Plant species registry (15 species). Single source of truth for plant data: stage ages, emojis, colors, reproduction modes, production chances, terrain categories, and water-zone spawn weights. Provides builder functions used by `flora.js` and the renderer.
 
 ---
 

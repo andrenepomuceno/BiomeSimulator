@@ -27,11 +27,15 @@ If the animal is currently SLEEPING, EATING, or DRINKING, the action continues u
 | 2 | Predator in vision range (herbivores/omnivores) | Flee |
 | 3 | Hunger > 45 (critical) | Seek food (plants or prey) |
 | 4 | Energy < 20 | Sleep |
-| 5 | Hunger > 30 (moderate) | Proactive food seeking |
-| 6 | Thirst > 35 (moderate) | Proactive water seeking |
-| 7 | Adult + cooldown=0 + energy > 50 | Find mate |
+| 5 | Adult + cooldown=0 + energy > 50 | Find mate |
+| 6 | Hunger > 30 (moderate) | Proactive food seeking |
+| 7 | Thirst > 35 (moderate) | Proactive water seeking |
 | 8 | Has existing path | Follow path |
 | 9 | Else | Random walk (30% chance) or idle |
+
+Notes:
+- These thresholds are now driven by species config (`decision_thresholds`) with defaults injected by `animalSpecies.js`.
+- Day/night changes effective vision (`night_vision_reduction_factor`, `nocturnal_day_vision_factor`).
 
 ---
 
@@ -57,8 +61,10 @@ Animals slowly recover energy and HP during light activities:
 
 | State | Energy Regen/tick | HP Regen/tick |
 |-------|-------------------|---------------|
-| Idle | +0.15 | +0.1 |
+| Idle | +0.01 | +0.01 |
 | Sleeping | via SLEEP cost (e.g. +2.0 to +5.0) | +0.8 |
+
+These recovery values are configurable per species via `recovery` in the derived animal config.
 
 ### Energy Depletion
 
@@ -93,18 +99,19 @@ Every animal has an HP stat (`hp`) that represents physical health. HP is the **
 
 | Source | Damage | Notes |
 |--------|--------|-------|
-| Combat (attacked) | `attackPower - defense × 0.5` (min 1) | Per attack hit |
+| Combat (attacked) | `attackPower - defense × defense_factor` (min `min_damage`) | Per attack hit |
 | High hunger (> 80% of max) | 0–0.5 per tick (scales linearly) | Stacks with thirst penalty |
 | High thirst (> 80% of max) | 0–0.5 per tick (scales linearly) | Stacks with hunger penalty |
 
-HP penalty formula: `penalty = 0.5 × (stat - threshold) / (max_stat - threshold)` where threshold = 80% of max.
+HP penalty formula: `penalty = max_penalty × (stat - threshold) / (max_stat - threshold)` where `threshold = threshold_fraction × max_stat`.
+Defaults remain `threshold_fraction = 0.8` and `max_penalty = 0.5`.
 
 ### HP Recovery Sources
 
 | Source | Recovery | Notes |
 |--------|----------|-------|
 | Sleeping | +0.8 per tick | Most reliable recovery method |
-| Idle | +0.1 per tick | Slow passive regen |
+| Idle | +0.01 per tick | Slow passive regen |
 | Eating plant (Fruit stage) | +10 | Best plant nutrition |
 | Eating plant (Adult stage) | +5 | Moderate |
 | Eating plant (Seed stage) | +3 | Minimal |
@@ -126,8 +133,8 @@ Animals have two constantly increasing needs:
 
 | Need | Rate | Consequences |
 |------|------|-------------|
-| **Hunger** | 0.07–0.16 per tick (species-specific) | > 45 = critical seek food, > 30 = moderate seek |
-| **Thirst** | 0.08–0.14 per tick (species-specific) | > 55 = critical seek water, > 35 = moderate seek |
+| **Hunger** | species-specific | Decision thresholds are species-configurable (`decision_thresholds`) |
+| **Thirst** | species-specific | Decision thresholds are species-configurable (`decision_thresholds`) |
 
 ### Feeding
 
@@ -138,8 +145,8 @@ Animals have two constantly increasing needs:
 - Oak Tree and Cactus: only edible at Seed (stage 1)
 - Eating **removes the plant entirely** (tile cleared)
 - Stage-based nutrition: Seed=15 hunger, Adult=35, Fruit=55
-- Vision-range search; expands to 3× if hunger > 65 (desperation)
-- Seeds only eaten when hunger > 50; adults when hunger > 35; fruit when hunger > 20
+- Vision-range search can expand when hunger is high (species-configurable desperation thresholds)
+- Seed/adult/opportunistic minimum hunger checks are now species-configurable thresholds
 
 **Carnivores** seek prey:
 - Use spatial hash for radius query within vision range
@@ -161,14 +168,14 @@ Some species can eat decomposing bodies (dead animals still on the map). Only sp
 Triggered when a carnivore reaches an adjacent prey tile.
 
 ```
-damage = attacker.attackPower - (defender.defense × 0.5)
-minimum damage = 1
+damage = attacker.attackPower - (defender.defense × defense_factor)
+minimum damage = min_damage
 ```
 
 - Defender's **HP** is reduced by `damage`
 - If defender HP ≤ 0 → defender dies
 - On kill: attacker recovers hunger (−80), energy (+25), and HP (+15)
-- Cooldown: `attackCooldown` ticks between attacks
+- Cooldown and damage coefficients are now species-configurable via `combat` (defaults: cooldown=3, defense_factor=0.5, min_damage=1)
 
 ### Threat Detection (Herbivores & Omnivores)
 
@@ -234,6 +241,9 @@ Reproduction is throttled by species population:
 | 🌳 Oak Tree | `P_OAK_TREE = 10` | Seed | Longest-lived, slow growth |
 | 🌵 Cactus | `P_CACTUS = 11` | Seed | Desert plant, thrives on sand/rock |
 | 🌴 Coconut Palm | `P_COCONUT_PALM = 12` | Fruit | Coastal tree, grows on sand |
+| 🥔 Potato | `P_POTATO = 13` | Seed | Root crop, resilient inland |
+| 🌶️ Chili Pepper | `P_CHILI_PEPPER = 14` | Fruit | Medium water affinity |
+| 🫒 Olive Tree | `P_OLIVE_TREE = 15` | Fruit | Drought-tolerant tree |
 
 ### Growth Stages
 
@@ -255,12 +265,15 @@ Each stage transition is governed by age thresholds (in ticks) defined in `plant
 | Tomato | 10 | 45 | 120 | 450 |
 | Mushroom | 6 | 22 | 50 | 220 |
 | Oak Tree | 50 | 220 | 500 | 2500 |
-| Cactus | 20 | 80 | 200 | 1200 |
-| Coconut Palm | 45 | 200 | 450 | 2000 |
+| Cactus | 30 | 120 | 300 | 1600 |
+| Coconut Palm | 60 | 260 | 580 | 2400 |
+| Potato | 12 | 42 | 95 | 420 |
+| Chili Pepper | 11 | 46 | 125 | 500 |
+| Olive Tree | 55 | 240 | 560 | 2600 |
 
 ### Water Proximity Bonus
 
-Plants within `water_proximity_threshold` (10) tiles of water grow **30% faster** (age multiplied by 1.3 per tick).
+Plants within `water_proximity_threshold` (default 10) tiles of water get a growth bonus. Water growth multipliers are now configurable through `plant_water_growth_modifiers`.
 
 ### Terrain Growth Modifiers
 
@@ -292,12 +305,12 @@ Plants on **dirt terrain** also have a per-tick chance of premature death:
 
 Each tick during the plant phase:
 1. Collect all fruiting plants, shuffle
-2. Dynamic processing cap: 800 base, reduced to 400 if coverage > 40%, 200 if > 60%
+2. Dynamic processing cap is configurable (defaults: base 800, 50% at >40% coverage, 25% at >60% coverage)
 3. Each fruiting plant has a species-specific **production chance** to spread
-4. **Density check:** if local density (adjacent plants / 8) ≥ suppress threshold (0.7), reproduction is blocked; between reduce threshold (0.5) and suppress threshold, 50% chance to block
-5. Seed lands 1–3 tiles away in a random direction (8-way)
+4. **Density check:** if local density (adjacent plants / 8) ≥ suppress threshold (default 0.7), reproduction is blocked; between reduce threshold (default 0.5) and suppress threshold, reduction chance is configurable (default 50%)
+5. Seed lands `1..plant_offspring_max_spread` tiles away (default 1–3), random 8-way direction
 6. Target tile must be empty (no plant) and SOIL, DIRT, FERTILE_SOIL, or SAND terrain
-7. On DIRT terrain, seeding has only a 60% success rate
+7. On harsh terrain, rooting success is configurable (`plant_offspring_harsh_root_chance`, `plant_offspring_mountain_root_chance`)
 8. Desert plants (Cactus, Coconut Palm) can seed on SAND tiles
 9. Reproduction chance is multiplied by the **seasonal reproduction modifier**
 
@@ -309,7 +322,7 @@ On world generation:
 3. Type selection weighted by water proximity:
    - **Near water** → more berries, trees, and coconut palms
    - **Far from water** → more grass, carrots, and cacti
-4. Random initial stage: 33% seed, 33% sprout, 33% mature
+4. Random initial stage distribution is configurable via `initial_plant_stage_distribution` (default 25/25/25/25 across seed/young/adult sprout/adult)
 
 ---
 
@@ -338,8 +351,8 @@ Plants with medium or high water affinity (≥2) suffer mortality when far from 
 
 - Applies when `waterProximity > water_stress_threshold` (default 20)
 - Base death rate: `water_stress_death_rate` (default 0.001) per tick phase
-- **Severe stress** (wp > 30): 2.0× death rate multiplier
-- **High affinity** (affinity = 3): 1.5× death rate multiplier
+- **Severe stress** multiplier is configurable (`water_stress_severe_multiplier`, default 2.0)
+- **High affinity** multiplier is configurable (`water_stress_high_affinity_multiplier`, default 1.5)
 - Seasonal death modifier also applies
 - Plants near water (wp ≤ threshold) get a growth bonus instead
 
@@ -352,7 +365,7 @@ Unaffected: Grass, Carrot, Mushroom (low); Cactus (none).
 
 Local plant density affects growth and reproduction:
 
-- **Crowding penalty:** ≥5 adjacent plants → growth rate multiplied by `plant_crowding_growth_penalty` (default 0.7)
+- **Crowding penalty:** adjacent plants threshold is configurable (`plant_crowding_neighbor_threshold`, default 5), growth multiplier via `plant_crowding_growth_penalty` (default 0.7)
 - **Reproduction suppression:** local density ≥ 0.7 (suppress threshold) → reproduction completely blocked
 - **Reproduction reduction:** local density 0.5–0.7 → 50% chance of reproduction being blocked
 - Local density = count of adjacent plant tiles / 8
@@ -364,7 +377,7 @@ Local plant density affects growth and reproduction:
 - **Day length:** `ticks_per_day` (default 200 ticks)
 - **Daylight fraction:** `day_fraction` (default 0.6 = 60%)
 - **Night:** Visual overlay at 35% opacity
-- **No gameplay effect** on animal behavior (visual only)
+- **Gameplay effect on fauna:** effective vision is reduced at night for non-nocturnal species and reduced during daytime for nocturnal species
 
 ---
 
@@ -372,19 +385,15 @@ Local plant density affects growth and reproduction:
 
 | Cause | Trigger |
 |-------|---------|
-| Starvation | Energy ≤ 0 |
-| Hunger | Hunger ≥ `max_hunger` |
-| Dehydration | Thirst ≥ `max_thirst` |
 | Old age | Age ≥ `max_age` |
-| Predation | Energy ≤ 0 from combat |
+| HP depletion | HP ≤ 0 (combat or need penalties) |
 | Manual removal | Player uses ERASE tool |
 
 - Dead animals are marked `alive = false`, state = `DEAD`
 - A `_deathTick` timestamp is recorded for fade timing
-- Dead animals remain on the map as 💀 skulls for **300 ticks**
-- Skull alpha fades from 0.5 → 0.05 over the 200-tick window
-- After 200 ticks, the entity is permanently removed from the animal array
-- Cleanup runs every 50 ticks
+- Dead animals remain on the map for up to `corpse_persistence_ticks` (default currently 300 in simulation logic)
+- Cleanup interval is adaptive by population (faster cleanup at high populations)
+- Corpses may be consumed by scavengers before cleanup
 
 ---
 
@@ -432,7 +441,7 @@ Each species defines `life_stage_ages: [baby→young, young→young_adult, young
 
 ## Action History
 
-Each animal maintains a rolling `actionHistory` log (max 100 entries, FIFO). Actions are logged via `animal.logAction(tick, action, detail)`.
+Each animal maintains a rolling `actionHistory` log (default max 100 entries, FIFO). The cap is now configurable per species via `action_history_max_size`.
 
 **Logged actions:** Eat (plant/prey), Drink, Sleep, Flee, Attack, Kill, Mate, Born, Death, Scavenge, Wander
 

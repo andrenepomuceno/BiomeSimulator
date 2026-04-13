@@ -10,7 +10,7 @@ The engine layer (`frontend/src/engine/`) contains all simulation logic. It is c
 |------|---------|
 | `config.js` | Default simulation parameters, sex/reproduction constants |
 | `animalSpecies.js` | Canonical animal species registry (single source of truth) |
-| `plantSpecies.js` | Canonical plant species registry (12 species, single source of truth) |
+| `plantSpecies.js` | Canonical plant species registry (15 species, single source of truth) |
 | `simulation.js` | Tick orchestration, world generation, entity management |
 | `world.js` | World model: terrain grid, plant arrays, animal list, clock |
 | `entities.js` | Animal class with state machine, energy, needs |
@@ -50,7 +50,7 @@ flora.js
 mapGenerator.js ← world.js (terrain constants)
 pathfinding.js ← world.js (walkability)
 entities.js ← config.js (sex constants)
-plantSpecies.js — no dependencies
+plantSpecies.js ← world.js (terrain IDs)
 spatialHash.js — no dependencies
 world.js — no dependencies
 ```
@@ -81,6 +81,18 @@ world.js — no dependencies
 | Clock | `day_fraction` | 0.6 | Fraction of day that is daylight |
 | Flora | `initial_plant_density` | 0.10 | Fraction of eligible tiles seeded |
 | Flora | `water_proximity_threshold` | 10 | Tiles from water for growth bonus |
+| Flora | `plant_spawn_water_thresholds` | `{near: 5, mid: 15}` | Bands for weighted plant spawning |
+| Flora | `plant_tick_phases` | 4 | Staggered plant processing phases |
+| Flora | `season_*_multiplier` | arrays | Growth/reproduction/death per season |
+| Flora | `plant_reproduction_*` | various | Dynamic offspring caps at high coverage |
+| Flora | `plant_water_growth_modifiers` | object | Near/far growth factors by water context |
+| Flora | `plant_dirt_death_chance_by_stage` | object | Stage-based harsh-terrain death rates |
+| Fauna | `pathfinding_cache_ttl` | 15 | Path reuse TTL in ticks |
+| Fauna | `threat_cache_ttl` | 4 | Threat cache TTL in ticks |
+| Fauna | `threat_scan_cooldown_ticks` | 2 | Delay between expensive threat rescans |
+| Fauna | `night_vision_reduction_factor` | 0.65 | Night vision reduction for non-nocturnal species |
+| Fauna | `nocturnal_day_vision_factor` | 0.8 | Day vision reduction for nocturnal species |
+| Fauna | `scavenge_decay_ticks` | 100 | Fresh-corpse window for scavenging |
 | Fauna | `initial_animal_counts` | `{RABBIT: 25, ...}` | Derived from `animalSpecies.js` |
 | Fauna | `animal_species` | `{RABBIT: {...}, ...}` | Derived from `animalSpecies.js` |
 
@@ -156,10 +168,10 @@ This file is the **single source of truth** for all animal data. `config.js` der
 | Export | Type | Description |
 |--------|------|-------------|
 | `default` (ANIMAL_SPECIES) | Object | Full registry keyed by species ID |
-| `ALL_ANIMAL_IDS` | Array | All 16 species keys |
-| `HERBIVORE_IDS` | Array | 7 herbivore species keys |
+| `ALL_ANIMAL_IDS` | Array | All 18 species keys |
+| `HERBIVORE_IDS` | Array | 8 herbivore species keys |
 | `CARNIVORE_IDS` | Array | 5 carnivore species keys |
-| `OMNIVORE_IDS` | Array | 4 omnivore species keys |
+| `OMNIVORE_IDS` | Array | 5 omnivore species keys |
 | `BASE_POP_TOTAL` | Number | Sum of all species' `max_population` (5690) |
 | `buildAnimalSpeciesConfig()` | Function | Returns sim-only params (strips display fields) |
 | `buildInitialAnimalCounts()` | Function | Returns `{RABBIT: 100, ...}` from registry |
@@ -185,15 +197,18 @@ This file is the **single source of truth** for all plant data. `flora.js` deriv
 | 🍅 Tomato | 8 | Fruit | high (3) | Seed, Fruit | 10, 45, 120, 450 |
 | 🍄 Mushroom | 9 | Seed | low (1) | Seed, Adult | 6, 22, 50, 220 |
 | 🌳 Oak Tree | 10 | Seed | high (3) | Seed | 50, 220, 500, 2500 |
-| 🌵 Cactus | 11 | Seed | none (0) | Seed | 20, 80, 200, 1200 |
-| 🌴 Coconut Palm | 12 | Fruit | high (3) | Seed, Fruit | 45, 200, 450, 2000 |
+| 🌵 Cactus | 11 | Seed | none (0) | Seed | 30, 120, 300, 1600 |
+| 🌴 Coconut Palm | 12 | Fruit | high (3) | Seed, Fruit | 60, 260, 580, 2400 |
+| 🥔 Potato | 13 | Seed | low (1) | Seed, Adult | 12, 42, 95, 420 |
+| 🌶️ Chili Pepper | 14 | Fruit | medium (2) | Seed, Fruit | 11, 46, 125, 500 |
+| 🫒 Olive Tree | 15 | Fruit | medium (2) | Seed, Fruit | 55, 240, 560, 2600 |
 
 ### Exports
 
 | Export | Type | Description |
 |--------|------|-------------|
 | `PLANT_SPECIES` | Object | Full registry keyed by species ID |
-| `ALL_PLANT_IDS` | Array | All 12 plant species keys |
+| `ALL_PLANT_IDS` | Array | All 15 plant species keys |
 | `getPlantByTypeId(typeId)` | Function | Lookup plant data by numeric typeId |
 | `buildStageAges()` | Function | Returns `{1: [5,18,35,180], ...}` per typeId |
 | `buildFruitSpoilAges()` | Function | Returns fruit decay thresholds per typeId |
@@ -203,6 +218,10 @@ This file is the **single source of truth** for all plant data. `flora.js` deriv
 | `buildReproductionModes()` | Function | Returns `SEED` or `FRUIT` per typeId |
 | `buildEdibleStagesMap()` | Function | Returns `{typeId: Set([stages...]), ...}` for edible stages |
 | `buildWaterAffinityMap()` | Function | Returns `{typeId: numericAffinity, ...}` (0–3) |
+| `buildTreeTypes()` | Function | Returns `Set<typeId>` for tree compatibility rules |
+| `buildLowPlantTypes()` | Function | Returns `Set<typeId>` for mountain-compatible low plants |
+| `buildDesertPlantTypes()` | Function | Returns `Set<typeId>` for sand-compatible desert plants |
+| `buildSpawnWeightMap()` | Function | Returns per-type weighted spawn data for near/mid/far water zones |
 
 ---
 
@@ -245,7 +264,7 @@ Holds the entire world state using flat TypedArrays for memory efficiency.
 |-------|------|-------------|
 | `terrain` | `Uint8Array` | Terrain type per tile (0–8) |
 | `waterProximity` | `Uint8Array` | BFS distance to nearest water (capped 255) |
-| `plantType` | `Uint8Array` | Plant type per tile (0 = none, 1–12) |
+| `plantType` | `Uint8Array` | Plant type per tile (0 = none, 1–15) |
 | `plantStage` | `Uint8Array` | Growth stage (0–6) |
 | `plantAge` | `Uint16Array` | Ticks since planted |
 | `plantFruit` | `Uint8Array` | Boolean (0 or 1) |

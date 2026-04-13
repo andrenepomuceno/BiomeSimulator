@@ -2,6 +2,8 @@
 
 High-level overview of how EcoGame is structured and how data flows between layers.
 
+Related documentation: [README](README.md), [Engine](engine.md), [Renderer](renderer.md), [API](API.md).
+
 ---
 
 ## Layer Architecture
@@ -120,6 +122,8 @@ If tool = ERASE:
 ## Worker Protocol
 
 Communication between main thread and worker uses structured messages.
+
+For the full message schema and payload examples, see [API](API.md).
 
 ### Main → Worker
 

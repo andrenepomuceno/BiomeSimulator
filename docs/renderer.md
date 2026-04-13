@@ -2,6 +2,8 @@
 
 The renderer layer (`frontend/src/renderer/`) handles all visual output using Pixi.js 7. It is strictly presentation — no game logic.
 
+See [README](README.md) for the docs index and [Architecture](architecture.md) for how the renderer fits into the broader application flow.
+
 ---
 
 ## File Overview

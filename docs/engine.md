@@ -2,6 +2,8 @@
 
 The engine layer (`frontend/src/engine/`) contains all simulation logic. It is class-based, has zero DOM or React dependencies, and is designed to run inside a Web Worker.
 
+See [README](README.md) for the docs index, [Architecture](architecture.md) for layer boundaries, and [Game Logic](game-logic.md) for the runtime rules implemented by these modules.
+
 ---
 
 ## File Overview

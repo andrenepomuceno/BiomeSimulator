@@ -12,6 +12,7 @@ A browser-based 2D ecosystem simulation featuring procedural terrain generation,
 
 - [Features](#features)
 - [Architecture](#architecture)
+- [Documentation](#documentation)
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
@@ -118,6 +119,19 @@ No backend server is needed. The entire simulation runs in the browser.
 
 ---
 
+## Documentation
+
+Use [`docs/README.md`](docs/README.md) as the central index for the technical documentation set.
+
+- [`docs/README.md`](docs/README.md) — documentation hub
+- [`docs/architecture.md`](docs/architecture.md) — system architecture and data flow
+- [`docs/engine.md`](docs/engine.md) — engine layer internals
+- [`docs/game-logic.md`](docs/game-logic.md) — simulation rules and AI behavior
+- [`docs/renderer.md`](docs/renderer.md) — Pixi.js rendering pipeline
+- [`docs/API.md`](docs/API.md) — Web Worker message protocol
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -206,6 +220,8 @@ ecogame/
 ├── .gitignore
 └── README.md
 ```
+
+For deeper technical reading, start with [`docs/README.md`](docs/README.md), then branch into architecture, engine, renderer, and API details as needed.
 
 ---
 

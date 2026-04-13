@@ -2,6 +2,8 @@
 
 Detailed technical documentation for the EcoGame ecosystem simulation.
 
+Start here for the technical docs, or go back to the project overview in [../README.md](../README.md).
+
 ---
 
 ## Contents
@@ -14,4 +16,4 @@ Detailed technical documentation for the EcoGame ecosystem simulation.
 | [Renderer](renderer.md) | Pixi.js rendering: layer stack, camera, terrain/plant/entity rendering, emoji textures, viewport culling |
 | [API](API.md) | Web Worker message protocol: commands, responses, data types |
 
-Performance benchmarking and profiling commands are documented in `frontend/README.md`, including the headless runner, phase 2 dense scenarios, CPU profile analysis, and the expected outputs under `frontend/perf-reports/`.
+For setup, build commands, and performance profiling workflows, see [../frontend/README.md](../frontend/README.md).

@@ -35,6 +35,7 @@ const ANIMAL_SPECIES = {
     max_thirst: 100,
     max_age: 1400,
     mature_age: 80,
+    max_hp: 50,
     attack_power: 1,
     defense: 2,
     energy_costs: {
@@ -69,6 +70,7 @@ const ANIMAL_SPECIES = {
     max_age: 1300,
     mature_age: 70,
     life_stage_ages: [20, 45, 70],
+    max_hp: 40,
     attack_power: 1,
     defense: 1,
     energy_costs: {
@@ -103,6 +105,7 @@ const ANIMAL_SPECIES = {
     max_age: 1000,
     mature_age: 50,
     life_stage_ages: [12, 30, 50],
+    max_hp: 20,
     attack_power: 1,
     defense: 4,
     energy_costs: {
@@ -137,6 +140,7 @@ const ANIMAL_SPECIES = {
     max_age: 2200,
     mature_age: 150,
     life_stage_ages: [45, 90, 150],
+    max_hp: 80,
     attack_power: 3,
     defense: 5,
     energy_costs: {
@@ -171,6 +175,7 @@ const ANIMAL_SPECIES = {
     max_age: 2000,
     mature_age: 120,
     life_stage_ages: [35, 75, 120],
+    max_hp: 70,
     attack_power: 2,
     defense: 3,
     energy_costs: {
@@ -206,6 +211,7 @@ const ANIMAL_SPECIES = {
     max_age: 1600,
     mature_age: 120,
     life_stage_ages: [35, 75, 120],
+    max_hp: 60,
     attack_power: 6,
     defense: 4,
     energy_costs: {
@@ -240,6 +246,7 @@ const ANIMAL_SPECIES = {
     max_age: 1800,
     mature_age: 150,
     life_stage_ages: [45, 90, 150],
+    max_hp: 120,
     attack_power: 9,
     defense: 6,
     energy_costs: {
@@ -274,6 +281,7 @@ const ANIMAL_SPECIES = {
     max_age: 1800,
     mature_age: 130,
     life_stage_ages: [40, 80, 130],
+    max_hp: 100,
     attack_power: 5,
     defense: 5,
     energy_costs: {
@@ -309,6 +317,7 @@ const ANIMAL_SPECIES = {
     max_age: 2500,
     mature_age: 220,
     life_stage_ages: [65, 140, 220],
+    max_hp: 200,
     attack_power: 10,
     defense: 8,
     energy_costs: {
@@ -344,6 +353,7 @@ const ANIMAL_SPECIES = {
     max_age: 1400,
     mature_age: 80,
     life_stage_ages: [25, 50, 80],
+    max_hp: 50,
     attack_power: 3,
     defense: 3,
     energy_costs: {
@@ -379,6 +389,7 @@ const ANIMAL_SPECIES = {
     max_age: 1200,
     mature_age: 60,
     life_stage_ages: [18, 38, 60],
+    max_hp: 30,
     attack_power: 2,
     defense: 1,
     energy_costs: {
@@ -413,6 +424,7 @@ const ANIMAL_SPECIES = {
     max_age: 600,
     mature_age: 30,
     life_stage_ages: [8, 18, 30],
+    max_hp: 10,
     attack_power: 1,
     defense: 0,
     energy_costs: {
@@ -447,6 +459,7 @@ const ANIMAL_SPECIES = {
     max_age: 800,
     mature_age: 40,
     life_stage_ages: [10, 25, 40],
+    max_hp: 15,
     attack_power: 0,
     defense: 1,
     energy_costs: {
@@ -481,6 +494,7 @@ const ANIMAL_SPECIES = {
     max_age: 700,
     mature_age: 35,
     life_stage_ages: [10, 22, 35],
+    max_hp: 15,
     attack_power: 0,
     defense: 0,
     energy_costs: {
@@ -515,6 +529,7 @@ const ANIMAL_SPECIES = {
     max_age: 1300,
     mature_age: 75,
     life_stage_ages: [22, 45, 75],
+    max_hp: 45,
     attack_power: 3,
     defense: 2,
     energy_costs: {
@@ -549,6 +564,7 @@ const ANIMAL_SPECIES = {
     max_age: 1600,
     mature_age: 100,
     life_stage_ages: [30, 60, 100],
+    max_hp: 40,
     attack_power: 5,
     defense: 3,
     energy_costs: {
@@ -583,6 +599,7 @@ const ANIMAL_SPECIES = {
     max_age: 1800,
     mature_age: 110,
     life_stage_ages: [30, 65, 110],
+    max_hp: 45,
     attack_power: 7,
     defense: 3,
     energy_costs: {
@@ -617,6 +634,7 @@ const ANIMAL_SPECIES = {
     max_age: 2400,
     mature_age: 160,
     life_stage_ages: [50, 100, 160],
+    max_hp: 180,
     attack_power: 9,
     defense: 8,
     energy_costs: {

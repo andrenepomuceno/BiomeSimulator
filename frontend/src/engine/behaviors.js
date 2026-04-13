@@ -58,6 +58,9 @@ function _eatPlantTile(animal, world, idx) {
   const nutr = STAGE_NUTRITION[stage] || { hunger: 20, energy: 3 };
   animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, nutr.hunger));
   animal.energy = Math.min(animal.maxEnergy, animal.energy + _plantEnergyGain(animal, nutr.energy));
+  // HP recovery from eating plants
+  const hpGain = stage === S_SEED ? 3 : stage === S_ADULT ? 5 : 10;
+  animal.hp = Math.min(animal.maxHp, animal.hp + hpGain);
   animal.state = AnimalState.EATING;
   animal.applyEnergyCost('EAT');
   const x = idx % world.width, y = Math.floor(idx / world.width);
@@ -79,15 +82,21 @@ export function decideAndAct(animal, world, spatialHash) {
 
   animal.tickNeeds(world.hungerMultiplier, world.thirstMultiplier);
 
-  // Die of old age, zero energy, or max hunger/thirst
-  if (animal.age > animal.maxAge || animal.energy <= 0 ||
-      animal.hunger >= animal._config.max_hunger || animal.thirst >= animal._config.max_thirst) {
+  // Die of old age or zero HP
+  if (animal.age > animal.maxAge || animal.hp <= 0) {
     animal.alive = false;
     animal.state = AnimalState.DEAD;
     animal._deathTick = world.clock.tick;
     animal.logAction(world.clock.tick, 'DIED', {
-      cause: animal.age > animal.maxAge ? 'old_age' : animal.energy <= 0 ? 'no_energy' : animal.hunger >= animal._config.max_hunger ? 'starvation' : 'dehydration'
+      cause: animal.age > animal.maxAge ? 'old_age' : 'hp_depleted'
     });
+    return;
+  }
+
+  // Zero energy — force sleep (cannot do anything else)
+  if (animal.energy <= 0) {
+    animal.state = AnimalState.SLEEPING;
+    _doSleep(animal);
     return;
   }
 
@@ -219,12 +228,14 @@ export function decideAndAct(animal, world, spatialHash) {
 
 function _doSleep(animal) {
   animal.applyEnergyCost('SLEEP'); // negative cost = recovery
+  animal.hp = Math.min(animal.maxHp, animal.hp + 0.5);
   if (animal.energy >= 70) animal.state = AnimalState.IDLE;
 }
 
 function _doEat(animal /*, world */) {
   animal.hunger = Math.max(0, animal.hunger - 45);
   animal.energy = Math.min(animal.maxEnergy, animal.energy + 5);
+  animal.hp = Math.min(animal.maxHp, animal.hp + 2);
   animal.applyEnergyCost('EAT');
   animal.state = AnimalState.IDLE;
 }
@@ -473,6 +484,7 @@ function _tryScavenge(animal, world, spatialHash, vision) {
     // Consume corpse
     animal.hunger = Math.max(0, animal.hunger - 60);
     animal.energy = Math.min(animal.maxEnergy, animal.energy + 15);
+    animal.hp = Math.min(animal.maxHp, animal.hp + 8);
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
     animal.logAction(world.clock.tick, 'SCAVENGED', { corpse: target.species, corpseId: target.id });
@@ -498,12 +510,12 @@ function _attack(attacker, defender, world) {
 
   let damage = attacker._config.attack_power - defender._config.defense * 0.5;
   if (damage < 1) damage = 1;
-  defender.energy -= damage;
+  defender.hp -= damage;
 
   attacker.logAction(world.clock.tick, 'ATTACK', { target: defender.species, targetId: defender.id, damage: Math.round(damage * 10) / 10 });
   defender.logAction(world.clock.tick, 'DEFENDED', { attacker: attacker.species, attackerId: attacker.id, damage: Math.round(damage * 10) / 10 });
 
-  if (defender.energy <= 0) {
+  if (defender.hp <= 0) {
     defender.alive = false;
     defender.state = AnimalState.DEAD;
     defender._deathTick = world.clock.tick;
@@ -511,6 +523,7 @@ function _attack(attacker, defender, world) {
     attacker.logAction(world.clock.tick, 'KILLED', { target: defender.species, targetId: defender.id });
     attacker.hunger = Math.max(0, attacker.hunger - 80);
     attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + 25);
+    attacker.hp = Math.min(attacker.maxHp, attacker.hp + 15);
     attacker.state = AnimalState.EATING;
   }
 }

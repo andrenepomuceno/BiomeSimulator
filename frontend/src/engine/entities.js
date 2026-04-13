@@ -44,6 +44,7 @@ export class Animal {
     }
 
     this.energy = config.max_energy * 0.8;
+    this.hp = config.max_hp;
     this.hunger = 10 + Math.random() * 20;
     this.thirst = 10 + Math.random() * 20;
     this.age = 0;
@@ -80,6 +81,7 @@ export class Animal {
   get speed() { return this._config.speed; }
   get visionRange() { return this._config.vision_range; }
   get maxEnergy() { return this._config.max_energy; }
+  get maxHp() { return this._config.max_hp; }
   get maxAge() { return this._config.max_age; }
   get matureAge() { return this._config.mature_age; }
 
@@ -108,6 +110,19 @@ export class Animal {
     const tMult = stage === LifeStage.BABY ? 0.6 : stage === LifeStage.YOUNG ? 0.8 : 1;
     this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate * hungerMult * hMult);
     this.thirst = Math.min(this._config.max_thirst, this.thirst + this._config.thirst_rate * thirstMult * tMult);
+
+    // HP penalty when hunger or thirst exceed 80% of max
+    const hungerThreshold = this._config.max_hunger * 0.8;
+    const thirstThreshold = this._config.max_thirst * 0.8;
+    if (this.hunger > hungerThreshold) {
+      const penalty = 0.5 * (this.hunger - hungerThreshold) / (this._config.max_hunger - hungerThreshold);
+      this.hp -= penalty;
+    }
+    if (this.thirst > thirstThreshold) {
+      const penalty = 0.5 * (this.thirst - thirstThreshold) / (this._config.max_thirst - thirstThreshold);
+      this.hp -= penalty;
+    }
+
     this.age++;
     if (this.mateCooldown > 0) this.mateCooldown--;
     if (this.attackCooldown > 0) this.attackCooldown--;
@@ -123,6 +138,7 @@ export class Animal {
       sex: this.sex,
       state: this.state,
       energy: Math.round(this.energy * 10) / 10,
+      hp: Math.round(this.hp * 10) / 10,
       hunger: Math.round(this.hunger * 10) / 10,
       thirst: Math.round(this.thirst * 10) / 10,
       age: this.age,

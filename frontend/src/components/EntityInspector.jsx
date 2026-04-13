@@ -92,6 +92,7 @@ function SpeciesAttributes({ species }) {
         <div className="stat-row"><span className="stat-label">🏃 Speed</span><span className="stat-value">{sp.speed}</span></div>
         <div className="stat-row"><span className="stat-label">👁️ Vision</span><span className="stat-value">{sp.vision_range}</span></div>
         <div className="stat-row"><span className="stat-label">⚡ Max Energy</span><span className="stat-value">{sp.max_energy}</span></div>
+        <div className="stat-row"><span className="stat-label">❤️ Max HP</span><span className="stat-value">{sp.max_hp}</span></div>
         <div className="stat-row"><span className="stat-label">⏳ Max Age</span><span className="stat-value">{sp.max_age}</span></div>
         <div className="stat-row"><span className="stat-label">🌱 Mature Age</span><span className="stat-value">{sp.mature_age}</span></div>
         <div className="stat-row"><span className="stat-label">⚔️ Attack</span><span className="stat-value">{sp.attack_power}</span></div>
@@ -255,6 +256,7 @@ export default function EntityInspector() {
     const maxHunger = sp?.max_hunger || 100;
     const maxThirst = sp?.max_thirst || 100;
     const maxEnergy = sp?.max_energy || 100;
+    const maxHp = sp?.max_hp || 100;
     const maxAge = sp?.max_age || 1;
     const agePct = Math.min(100, (e.age / maxAge) * 100);
 
@@ -302,6 +304,7 @@ export default function EntityInspector() {
 
         {/* Vital signs */}
         <CollapsibleSection title="Vitals" icon="❤️" defaultOpen={true}>
+          <Bar icon="❤️" label="HP" value={e.hp} max={maxHp} color="#ff4757" />
           <Bar icon="⚡" label="Energy" value={e.energy} max={maxEnergy} color="#4ecdc4" />
           <Bar icon="🍖" label="Hunger" value={e.hunger} max={maxHunger} color="#ff6b6b" />
           <Bar icon="💧" label="Thirst" value={e.thirst} max={maxThirst} color="#4d96ff" />

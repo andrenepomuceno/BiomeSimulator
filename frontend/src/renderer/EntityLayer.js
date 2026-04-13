@@ -118,7 +118,8 @@ export class EntityLayer {
 
       // Scale: 64px texture → ~1 tile.  Base scale 0.018, range varies by life stage
       const baseScale = 0.018;
-      const energyFactor = 0.8 + (a.energy / 200) * 0.4;
+      const energy = Number.isFinite(a.energy) ? a.energy : 0;
+      const energyFactor = 0.8 + (energy / 200) * 0.4;
       const stageFactor = a.state === 9 ? 1.0
         : a.lifeStage === 0 ? 0.5
         : a.lifeStage === 1 ? 0.7
@@ -146,6 +147,8 @@ export class EntityLayer {
         finalScale *= 1.1;
       }
 
+      // Guard: clamp to valid range to prevent giant sprites from NaN/invalid data
+      if (!Number.isFinite(finalScale) || finalScale <= 0) finalScale = baseScale;
       sprite.scale.set(finalScale);
 
       // Alpha based on state

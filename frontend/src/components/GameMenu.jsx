@@ -138,7 +138,24 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                   onChange={e => set('seed', e.target.value)} />
               </div>
 
-              <h6 className="mt-3">🐾 Population</h6>
+              <div className="d-flex align-items-center mt-3 mb-1">
+                <h6 className="mb-0">🐾 Population</h6>
+                <button
+                  className="btn btn-sm btn-outline-secondary ms-2 py-0 px-1"
+                  title="Randomize all animal counts"
+                  onClick={() => {
+                    const counts = {};
+                    for (const [k, sp] of Object.entries(ANIMAL_SPECIES)) {
+                      const base = sp.initial_count;
+                      const lo = Math.round(base * 0.2);
+                      const hi = Math.round(base * 2.5);
+                      const max = SLIDER_MAX[sp.diet] || 100;
+                      counts[k] = Math.min(max, lo + Math.floor(Math.random() * (hi - lo + 1)));
+                    }
+                    setParams(p => ({ ...p, initial_animal_counts: counts }));
+                  }}
+                >🎲</button>
+              </div>
 
               {Object.entries(ANIMAL_SPECIES).map(([key, sp]) => (
                 <div className="gm-field" key={key}>

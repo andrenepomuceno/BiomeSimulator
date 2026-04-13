@@ -134,43 +134,44 @@ export function seedInitialPlants(world) {
     if (wp < 5) {
       // Near water: more berries, trees, tomatoes, coconut palms
       if (r < 0.08) ptype = P_GRASS;
-      else if (r < 0.15) ptype = P_STRAWBERRY;
-      else if (r < 0.22) ptype = P_BLUEBERRY;
-      else if (r < 0.32) ptype = P_APPLE_TREE;
-      else if (r < 0.42) ptype = P_MANGO_TREE;
-      else if (r < 0.47) ptype = P_CARROT;
-      else if (r < 0.54) ptype = P_SUNFLOWER;
-      else if (r < 0.64) ptype = P_TOMATO;
-      else if (r < 0.69) ptype = P_MUSHROOM;
-      else if (r < 0.79) ptype = P_OAK_TREE;
-      else if (r < 0.82) ptype = P_CACTUS;
-      else ptype = P_COCONUT_PALM;
+      else if (r < 0.16) ptype = P_STRAWBERRY;
+      else if (r < 0.24) ptype = P_BLUEBERRY;
+      else if (r < 0.34) ptype = P_APPLE_TREE;
+      else if (r < 0.44) ptype = P_MANGO_TREE;
+      else if (r < 0.49) ptype = P_CARROT;
+      else if (r < 0.56) ptype = P_SUNFLOWER;
+      else if (r < 0.66) ptype = P_TOMATO;
+      else if (r < 0.72) ptype = P_MUSHROOM;
+      else if (r < 0.82) ptype = P_OAK_TREE;
+      else if (r < 0.86) ptype = P_CACTUS;
+      else if (r < 0.94) ptype = P_COCONUT_PALM;
+      else ptype = P_GRASS;
     } else if (wp < 15) {
       // Medium distance: balanced
-      if (r < 0.16) ptype = P_GRASS;
-      else if (r < 0.23) ptype = P_STRAWBERRY;
-      else if (r < 0.30) ptype = P_BLUEBERRY;
-      else if (r < 0.39) ptype = P_APPLE_TREE;
-      else if (r < 0.46) ptype = P_MANGO_TREE;
-      else if (r < 0.53) ptype = P_CARROT;
-      else if (r < 0.62) ptype = P_SUNFLOWER;
-      else if (r < 0.69) ptype = P_TOMATO;
-      else if (r < 0.78) ptype = P_MUSHROOM;
-      else if (r < 0.86) ptype = P_OAK_TREE;
-      else if (r < 0.93) ptype = P_CACTUS;
+      if (r < 0.17) ptype = P_GRASS;
+      else if (r < 0.24) ptype = P_STRAWBERRY;
+      else if (r < 0.31) ptype = P_BLUEBERRY;
+      else if (r < 0.40) ptype = P_APPLE_TREE;
+      else if (r < 0.47) ptype = P_MANGO_TREE;
+      else if (r < 0.55) ptype = P_CARROT;
+      else if (r < 0.64) ptype = P_SUNFLOWER;
+      else if (r < 0.72) ptype = P_TOMATO;
+      else if (r < 0.81) ptype = P_MUSHROOM;
+      else if (r < 0.90) ptype = P_OAK_TREE;
+      else if (r < 0.95) ptype = P_CACTUS;
       else ptype = P_COCONUT_PALM;
     } else {
       // Far from water: more grass, carrots, sunflowers, mushrooms, cactus
-      if (r < 0.18) ptype = P_GRASS;
-      else if (r < 0.23) ptype = P_STRAWBERRY;
-      else if (r < 0.28) ptype = P_BLUEBERRY;
-      else if (r < 0.33) ptype = P_APPLE_TREE;
-      else if (r < 0.38) ptype = P_MANGO_TREE;
-      else if (r < 0.47) ptype = P_CARROT;
-      else if (r < 0.57) ptype = P_SUNFLOWER;
-      else if (r < 0.63) ptype = P_TOMATO;
-      else if (r < 0.75) ptype = P_MUSHROOM;
-      else if (r < 0.82) ptype = P_OAK_TREE;
+      if (r < 0.20) ptype = P_GRASS;
+      else if (r < 0.25) ptype = P_STRAWBERRY;
+      else if (r < 0.30) ptype = P_BLUEBERRY;
+      else if (r < 0.35) ptype = P_APPLE_TREE;
+      else if (r < 0.39) ptype = P_MANGO_TREE;
+      else if (r < 0.48) ptype = P_CARROT;
+      else if (r < 0.58) ptype = P_SUNFLOWER;
+      else if (r < 0.64) ptype = P_TOMATO;
+      else if (r < 0.76) ptype = P_MUSHROOM;
+      else if (r < 0.85) ptype = P_OAK_TREE;
       else if (r < 0.93) ptype = P_CACTUS;
       else ptype = P_COCONUT_PALM;
     }

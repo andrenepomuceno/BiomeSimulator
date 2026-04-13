@@ -18,6 +18,7 @@ import {
   buildLowPlantTypes,
   buildDesertPlantTypes,
   buildSpawnWeightMap,
+  PLANT_IDS,
 } from './plantSpecies.js';
 import { benchmarkAdd, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
 
@@ -226,18 +227,7 @@ export function seedInitialPlants(world) {
     [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
   }
 
-  for (let n = 0; n < nPlants && n < eligible.length; n++) {
-    const idx = eligible[n];
-    const wp = world.waterProximity[idx];
-
-    const ptype = _pickPlantTypeByWaterProximity(wp, world);
-
-    // Terrain restrictions: no trees on rock/mountain; only low plants on mountain
-    const terrain = world.terrain[idx];
-    if (_isTree(ptype) && (terrain === ROCK || terrain === MOUNTAIN)) continue;
-    if (terrain === MOUNTAIN && !_isLowPlant(ptype)) continue;
-
-    // Random initial stage
+  const seedPlantAt = (idx, ptype) => {
     const ages = STAGE_AGES[ptype];
     const { stage, age } = _pickInitialStageAndAge(ages, world);
 
@@ -247,6 +237,92 @@ export function seedInitialPlants(world) {
     world.activePlantTiles.add(idx);
     world.clearPlantLog(idx);
     world.logPlantEvent(idx, 'PLANTED', { stage });
+  };
+
+  const configuredCounts = world.config.initial_plant_counts || null;
+  const hasConfiguredPlantCounts = configuredCounts && Object.values(configuredCounts).some(v => (v || 0) > 0);
+
+  if (hasConfiguredPlantCounts && nPlants > 0) {
+    const validEntries = Object.entries(configuredCounts)
+      .map(([id, count]) => [PLANT_IDS[id], Math.max(0, Math.round(Number(count) || 0))])
+      .filter(([ptype, count]) => ptype != null && count > 0);
+
+    if (validEntries.length > 0) {
+      const requestedTotal = validEntries.reduce((sum, [, count]) => sum + count, 0);
+      const scale = requestedTotal > nPlants ? (nPlants / requestedTotal) : 1;
+
+      const normalized = validEntries.map(([ptype, count]) => {
+        const scaled = count * scale;
+        return { ptype, floor: Math.floor(scaled), frac: scaled - Math.floor(scaled) };
+      });
+
+      let assigned = normalized.reduce((sum, entry) => sum + entry.floor, 0);
+      const slotsLeft = Math.max(0, nPlants - assigned);
+      normalized.sort((a, b) => b.frac - a.frac);
+      for (let i = 0; i < slotsLeft && i < normalized.length; i++) {
+        normalized[i].floor += 1;
+      }
+
+      const terrainBuckets = {};
+      for (const idx of eligible) {
+        const terrain = world.terrain[idx];
+        for (const entry of normalized) {
+          if (_canPlantGrow(terrain, entry.ptype)) {
+            if (!terrainBuckets[entry.ptype]) terrainBuckets[entry.ptype] = [];
+            terrainBuckets[entry.ptype].push(idx);
+          }
+        }
+      }
+
+      for (const ptypeKey of Object.keys(terrainBuckets)) {
+        const bucket = terrainBuckets[ptypeKey];
+        for (let i = bucket.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [bucket[i], bucket[j]] = [bucket[j], bucket[i]];
+        }
+      }
+
+      const used = new Set();
+      let seeded = 0;
+      for (const entry of normalized) {
+        const bucket = terrainBuckets[entry.ptype] || [];
+        let placedForType = 0;
+        while (placedForType < entry.floor && bucket.length > 0 && seeded < nPlants) {
+          const idx = bucket.pop();
+          if (used.has(idx)) continue;
+          used.add(idx);
+          seedPlantAt(idx, entry.ptype);
+          placedForType += 1;
+          seeded += 1;
+        }
+      }
+
+      // Backfill remaining slots with water-proximity weighted species selection.
+      for (const idx of eligible) {
+        if (seeded >= nPlants) break;
+        if (used.has(idx)) continue;
+
+        const wp = world.waterProximity[idx];
+        const ptype = _pickPlantTypeByWaterProximity(wp, world);
+        if (!_canPlantGrow(world.terrain[idx], ptype)) continue;
+
+        used.add(idx);
+        seedPlantAt(idx, ptype);
+        seeded += 1;
+      }
+
+      return;
+    }
+  }
+
+  for (let n = 0; n < nPlants && n < eligible.length; n++) {
+    const idx = eligible[n];
+    const wp = world.waterProximity[idx];
+
+    const ptype = _pickPlantTypeByWaterProximity(wp, world);
+
+    if (!_canPlantGrow(world.terrain[idx], ptype)) continue;
+    seedPlantAt(idx, ptype);
   }
 }
 

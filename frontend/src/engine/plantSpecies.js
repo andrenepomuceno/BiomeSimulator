@@ -412,6 +412,15 @@ const SPAWN_WEIGHTS = {
   OLIVE_TREE: { near: 5, mid: 2, far: 1 },
 };
 
+const PLANT_POPULATION_MAX_FACTOR = 4;
+
+function _basePlantPopulationWeight(spawnWeights) {
+  const near = spawnWeights?.near ?? 0;
+  const mid = spawnWeights?.mid ?? 0;
+  const far = spawnWeights?.far ?? 0;
+  return near + mid + far;
+}
+
 /** Lookup by typeId → species object */
 export function getPlantByTypeId(typeId) {
   return Object.values(PLANT_SPECIES).find(p => p.typeId === typeId) || null;
@@ -600,6 +609,32 @@ export function buildSpawnWeightMap() {
     };
   }
   return map;
+}
+
+/**
+ * Build `initial_plant_counts` used by world generation.
+ * Values are relative seed targets and are normalized against map capacity.
+ */
+export function buildInitialPlantCounts() {
+  const counts = {};
+  for (const [id, sp] of Object.entries(PLANT_SPECIES)) {
+    const weight = _basePlantPopulationWeight(SPAWN_WEIGHTS[id]);
+    counts[id] = sp.initial_count ?? Math.max(20, Math.round(weight * 12));
+  }
+  return counts;
+}
+
+/**
+ * Build per-species maximum sliders for plant customization UI.
+ */
+export function buildPlantMaxCounts() {
+  const max = {};
+  const initial = buildInitialPlantCounts();
+  for (const [id, value] of Object.entries(initial)) {
+    const speciesMax = PLANT_SPECIES[id]?.max_population;
+    max[id] = speciesMax ?? Math.max(80, Math.round(value * PLANT_POPULATION_MAX_FACTOR));
+  }
+  return max;
 }
 
 export default PLANT_SPECIES;

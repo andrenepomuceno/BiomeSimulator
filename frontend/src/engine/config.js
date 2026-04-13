@@ -2,6 +2,7 @@
  * Default simulation configuration.
  */
 import { buildAnimalSpeciesConfig, buildInitialAnimalCounts } from './animalSpecies.js';
+import { buildInitialPlantCounts } from './plantSpecies.js';
 
 // Sex types
 export const SEX_MALE = 'MALE';
@@ -36,6 +37,7 @@ export const DEFAULT_CONFIG = {
 
   // Flora
   initial_plant_density: 0.10,
+  initial_plant_counts: buildInitialPlantCounts(),
   water_proximity_threshold: 10,
   plant_spawn_water_thresholds: { near: 5, mid: 15 },
   initial_plant_stage_distribution: [0.25, 0.25, 0.25, 0.25],

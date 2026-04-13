@@ -4,8 +4,95 @@
 import React, { useState, useRef } from 'react';
 import useSimStore from '../store/simulationStore';
 import ANIMAL_SPECIES, { buildInitialAnimalCounts } from '../engine/animalSpecies';
+import PLANT_SPECIES, { ALL_PLANT_IDS, buildInitialPlantCounts, buildPlantMaxCounts } from '../engine/plantSpecies';
 
-const SLIDER_MAX = { HERBIVORE: 500, CARNIVORE: 500 };
+const DEFAULT_ANIMAL_COUNTS = buildInitialAnimalCounts();
+const DEFAULT_PLANT_COUNTS = buildInitialPlantCounts();
+const PLANT_MAX_COUNTS = buildPlantMaxCounts();
+
+const FAUNA_PRESETS = {
+  balanced: { herbivore: 1.0, carnivore: 1.0, omnivore: 1.0 },
+  predators: { herbivore: 0.7, carnivore: 1.35, omnivore: 1.2 },
+  herbivores: { herbivore: 1.35, carnivore: 0.65, omnivore: 0.95 },
+};
+
+const FLORA_PRESETS = {
+  balanced: 1.0,
+  predators: 0.85,
+  herbivores: 1.2,
+};
+
+function scaleCountsToBudget(counts, budget) {
+  if (!budget || budget <= 0) return counts;
+  const total = Object.values(counts).reduce((sum, n) => sum + (n || 0), 0);
+  if (total <= budget) return counts;
+
+  const scaled = {};
+  const fractions = [];
+  let assigned = 0;
+  for (const [key, value] of Object.entries(counts)) {
+    const raw = (value * budget) / total;
+    const floor = Math.floor(raw);
+    scaled[key] = floor;
+    fractions.push([key, raw - floor]);
+    assigned += floor;
+  }
+
+  fractions.sort((a, b) => b[1] - a[1]);
+  for (let i = 0; i < budget - assigned && i < fractions.length; i++) {
+    const [key] = fractions[i];
+    scaled[key] += 1;
+  }
+
+  return scaled;
+}
+
+function randomizeAnimalCounts(maxAnimalPopulation) {
+  const counts = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    const max = Math.max(1, Math.round(sp.max_population || sp.initial_count || 100));
+    const lo = Math.max(0, Math.round(max * 0.18));
+    const hi = Math.max(lo, Math.round(max * 0.7));
+    counts[key] = lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+  return scaleCountsToBudget(counts, maxAnimalPopulation);
+}
+
+function randomizePlantCounts() {
+  const counts = {};
+  for (const id of ALL_PLANT_IDS) {
+    const max = Math.max(20, Math.round(PLANT_MAX_COUNTS[id] || 120));
+    const lo = Math.max(5, Math.round(max * 0.15));
+    const hi = Math.max(lo, Math.round(max * 0.7));
+    counts[id] = lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+  return counts;
+}
+
+function applyPresetToAnimals(presetKey, maxAnimalPopulation) {
+  const preset = FAUNA_PRESETS[presetKey] || FAUNA_PRESETS.balanced;
+  const counts = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    const multiplier = sp.diet === 'HERBIVORE'
+      ? preset.herbivore
+      : sp.diet === 'CARNIVORE'
+        ? preset.carnivore
+        : preset.omnivore;
+    const target = Math.round((sp.initial_count || 0) * multiplier);
+    counts[key] = Math.min(sp.max_population || target, Math.max(0, target));
+  }
+  return scaleCountsToBudget(counts, maxAnimalPopulation);
+}
+
+function applyPresetToPlants(presetKey) {
+  const multiplier = FLORA_PRESETS[presetKey] || 1;
+  const counts = {};
+  for (const [id, value] of Object.entries(DEFAULT_PLANT_COUNTS)) {
+    const max = PLANT_MAX_COUNTS[id] || Math.max(50, value * 4);
+    counts[id] = Math.min(max, Math.max(0, Math.round(value * multiplier)));
+  }
+  return counts;
+}
 
 const defaultParams = {
   map_width: 500,
@@ -14,8 +101,9 @@ const defaultParams = {
   island_count: 5,
   island_size_factor: 0.3,
   seed: '',
-  initial_animal_counts: buildInitialAnimalCounts(),
+  initial_animal_counts: DEFAULT_ANIMAL_COUNTS,
   initial_plant_density: 0.1,
+  initial_plant_counts: DEFAULT_PLANT_COUNTS,
   max_animal_population: 10000,
 };
 
@@ -167,21 +255,42 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                     </div>
                   </div>
 
-                  <div className="d-flex align-items-center mb-2 mt-3">
+                  <div className="d-flex align-items-center flex-wrap mb-2 mt-3" style={{ gap: 4 }}>
                     <span style={{ fontSize: '0.75rem', color: '#999' }}>Set initial population for each species</span>
+                    <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="Fauna presets">
+                      <button
+                        className="btn btn-outline-secondary py-0 px-1"
+                        title="Balanced fauna"
+                        onClick={() => setParams(p => ({
+                          ...p,
+                          initial_animal_counts: applyPresetToAnimals('balanced', p.max_animal_population),
+                        }))}
+                      >Balanced</button>
+                      <button
+                        className="btn btn-outline-secondary py-0 px-1"
+                        title="Predator-heavy fauna"
+                        onClick={() => setParams(p => ({
+                          ...p,
+                          initial_animal_counts: applyPresetToAnimals('predators', p.max_animal_population),
+                        }))}
+                      >Predators</button>
+                      <button
+                        className="btn btn-outline-secondary py-0 px-1"
+                        title="Herbivore-heavy fauna"
+                        onClick={() => setParams(p => ({
+                          ...p,
+                          initial_animal_counts: applyPresetToAnimals('herbivores', p.max_animal_population),
+                        }))}
+                      >Herbivores</button>
+                    </div>
                     <button
-                      className="btn btn-sm btn-outline-secondary ms-auto py-0 px-1"
+                      className="btn btn-sm btn-outline-secondary ms-1 py-0 px-1"
                       title="Randomize all animal counts"
                       onClick={() => {
-                        const counts = {};
-                        for (const [k, sp] of Object.entries(ANIMAL_SPECIES)) {
-                          const base = sp.initial_count;
-                          const lo = Math.round(base * 0.75);
-                          const hi = Math.round(base * 3.0);
-                          const max = SLIDER_MAX[sp.diet] || 100;
-                          counts[k] = Math.min(max, lo + Math.floor(Math.random() * (hi - lo + 1)));
-                        }
-                        setParams(p => ({ ...p, initial_animal_counts: counts }));
+                        setParams(p => ({
+                          ...p,
+                          initial_animal_counts: randomizeAnimalCounts(p.max_animal_population),
+                        }));
                       }}
                     >🎲</button>
                     <button
@@ -199,8 +308,8 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                         <h6 className="mt-2">{diet === 'HERBIVORE' ? '🌿 Herbivores' : diet === 'CARNIVORE' ? '🥩 Carnivores' : '🍽️ Omnivores'}</h6>
                         {species.map(([key, sp]) => (
                           <div className="gm-field" key={key}>
-                            <label>{sp.emoji} {sp.name}: {params.initial_animal_counts[key]}</label>
-                            <input type="range" min={0} max={SLIDER_MAX[sp.diet] || 100}
+                            <label>{sp.emoji} {sp.name}: {params.initial_animal_counts[key]} / {sp.max_population}</label>
+                            <input type="range" min={0} max={sp.max_population || 100}
                               value={params.initial_animal_counts[key]}
                               onChange={e => setParams(p => ({ ...p, initial_animal_counts: { ...p.initial_animal_counts, [key]: +e.target.value } }))} />
                           </div>
@@ -220,9 +329,62 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                       value={params.initial_plant_density}
                       onChange={e => set('initial_plant_density', +e.target.value)} />
                   </div>
+                  <div className="d-flex align-items-center flex-wrap mb-2 mt-2" style={{ gap: 4 }}>
+                    <span style={{ fontSize: '0.75rem', color: '#999' }}>Set initial seed targets by plant species</span>
+                    <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="Flora presets">
+                      <button
+                        className="btn btn-outline-secondary py-0 px-1"
+                        title="Balanced flora"
+                        onClick={() => setParams(p => ({ ...p, initial_plant_counts: applyPresetToPlants('balanced') }))}
+                      >Balanced</button>
+                      <button
+                        className="btn btn-outline-secondary py-0 px-1"
+                        title="Lower flora pressure"
+                        onClick={() => setParams(p => ({ ...p, initial_plant_counts: applyPresetToPlants('predators') }))}
+                      >Sparse</button>
+                      <button
+                        className="btn btn-outline-secondary py-0 px-1"
+                        title="Higher flora pressure"
+                        onClick={() => setParams(p => ({ ...p, initial_plant_counts: applyPresetToPlants('herbivores') }))}
+                      >Rich</button>
+                    </div>
+                    <button
+                      className="btn btn-sm btn-outline-secondary ms-1 py-0 px-1"
+                      title="Randomize all plant counts"
+                      onClick={() => setParams(p => ({ ...p, initial_plant_counts: randomizePlantCounts() }))}
+                    >🎲</button>
+                    <button
+                      className="btn btn-sm btn-outline-secondary ms-1 py-0 px-1"
+                      title="Reset plant defaults"
+                      onClick={() => setParams(p => ({ ...p, initial_plant_counts: buildInitialPlantCounts() }))}
+                    >↺</button>
+                  </div>
+                  {ALL_PLANT_IDS.map(id => {
+                    const sp = PLANT_SPECIES[id];
+                    if (!sp) return null;
+                    const max = PLANT_MAX_COUNTS[id] || Math.max(80, (DEFAULT_PLANT_COUNTS[id] || 20) * 4);
+                    return (
+                      <div className="gm-field" key={id}>
+                        <label>{sp.fruitEmoji || sp.emoji?.adult || '🌿'} {sp.name}: {params.initial_plant_counts[id] ?? 0} / {max}</label>
+                        <input
+                          type="range"
+                          min={0}
+                          max={max}
+                          value={params.initial_plant_counts[id] ?? 0}
+                          onChange={e => setParams(p => ({
+                            ...p,
+                            initial_plant_counts: {
+                              ...p.initial_plant_counts,
+                              [id]: +e.target.value,
+                            },
+                          }))}
+                        />
+                      </div>
+                    );
+                  })}
                   <p style={{ fontSize: '0.75rem', color: '#999', marginTop: 8 }}>
                     Controls the percentage of eligible land tiles that will be seeded with plants on world generation.
-                    Plant species are distributed based on terrain type and distance to water.
+                    Species sliders define target seed counts and are normalized to the map capacity from density.
                   </p>
                 </div>
               )}

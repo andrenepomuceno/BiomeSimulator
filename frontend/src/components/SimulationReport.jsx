@@ -76,7 +76,6 @@ const PLANT_EMOJIS = {
 
 const TABS = [
   { id: 'population', label: '🐾 Population' },
-  { id: 'ecosystem',  label: '⚖ Ecosystem' },
   { id: 'flora',      label: '🌿 Flora' },
   { id: 'summary',    label: '📊 Summary' },
 ];
@@ -329,9 +328,7 @@ export default function SimulationReport({ open, onClose }) {
     );
   }
 
-  function renderEcosystemTab() {
-    if (noData) return <p className="report-empty">No history data yet.</p>;
-
+  function renderEcosystemSection() {
     const diversityChart = {
       labels: data.tickLabels,
       datasets: [{
@@ -354,9 +351,9 @@ export default function SimulationReport({ open, onClose }) {
             <Line data={diversityChart} options={CHART_BASE} />
           </div>
         </div>
-        {data.extinctions.length > 0 && (
-          <div className="report-chart-section">
-            <h6>Extinction Events</h6>
+        <div className="report-chart-section">
+          <h6>Extinction Events</h6>
+          {data.extinctions.length > 0 ? (
             <div className="report-events">
               {data.extinctions.map((ev, i) => (
                 <div key={i} className="report-event">
@@ -366,8 +363,10 @@ export default function SimulationReport({ open, onClose }) {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="report-empty" style={{ padding: '12px 0 0', textAlign: 'left' }}>No extinctions recorded.</p>
+          )}
+        </div>
       </>
     );
   }
@@ -521,6 +520,7 @@ export default function SimulationReport({ open, onClose }) {
             <div className="report-card-sub">Food sources</div>
           </div>
         </div>
+        {renderEcosystemSection()}
       </div>
     );
   }
@@ -570,7 +570,6 @@ export default function SimulationReport({ open, onClose }) {
         </div>
         <div className="report-body">
           {tab === 'population' && renderPopulationTab()}
-          {tab === 'ecosystem' && renderEcosystemTab()}
           {tab === 'flora' && renderFloraTab()}
           {tab === 'summary' && renderSummaryTab()}
         </div>

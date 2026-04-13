@@ -347,7 +347,8 @@ function _seekPrey(animal, world, spatialHash, vision) {
   if (_tryScavenge(animal, world, spatialHash, vision)) return;
 
   // No prey — carnivores eat fruit as fallback when desperate
-  if (animal.hunger > 50) {
+  // Only if they have explicit edible_plants (empty list = strictly carnivorous)
+  if (animal.hunger > 50 && animal._ediblePlants.size > 0) {
     const idx = world.idx(animal.x, animal.y);
     if (world.plantStage[idx] === S_FRUIT && _canEatPlant(animal, world.plantType[idx])) {
       world.plantType[idx] = P_NONE;

@@ -164,7 +164,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                       onClick={() => {
                         const counts = {};
                         for (const [k, sp] of Object.entries(ANIMAL_SPECIES)) {
-                          const base = sp.initial_count;
+                          const base = 50;
                           const lo = Math.round(base * 0.2);
                           const hi = Math.round(base * 2.5);
                           const max = SLIDER_MAX[sp.diet] || 100;

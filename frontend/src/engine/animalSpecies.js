@@ -10,7 +10,7 @@
 import { TERRAIN_IDS } from './world.js';
 import { PLANT_IDS } from './plantSpecies.js';
 
-const MAX_POPULATION = 5000; // Absolute cap on population for any species (for performance)
+const MAX_POPULATION = 3000; // Absolute cap on population for any species (for performance)
 
 const ANIMAL_SPECIES = {
   RABBIT: {

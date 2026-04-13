@@ -51,6 +51,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'BLUEBERRY'],
     prey_species: [],
+    can_scavenge: false,
   },
 
   SQUIRREL: {
@@ -84,6 +85,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'OAK_TREE', 'COCONUT_PALM'],
     prey_species: [],
+    can_scavenge: false,
   },
 
   BEETLE: {
@@ -117,6 +119,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['GRASS', 'MUSHROOM', 'CARROT'],
     prey_species: [],
+    can_scavenge: true,
   },
 
   GOAT: {
@@ -150,6 +153,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
     edible_plants: ['GRASS', 'CARROT', 'SUNFLOWER', 'CACTUS'],
     prey_species: [],
+    can_scavenge: false,
   },
 
   DEER: {
@@ -183,6 +187,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['GRASS', 'STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'CARROT'],
     prey_species: [],
+    can_scavenge: false,
   },
 
   FOX: {
@@ -217,6 +222,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['STRAWBERRY', 'BLUEBERRY'],
     prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'CROW', 'MOSQUITO', 'CATERPILLAR'],
+    can_scavenge: true,
   },
 
   WOLF: {
@@ -250,6 +256,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['BLUEBERRY'],
     prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'RACCOON', 'BOAR', 'FOX', 'SNAKE', 'HAWK'],
+    can_scavenge: true,
   },
 
   BOAR: {
@@ -283,6 +290,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'MUSHROOM', 'OAK_TREE', 'CACTUS', 'COCONUT_PALM'],
     prey_species: ['BEETLE', 'CATERPILLAR', 'SNAKE'],
+    can_scavenge: true,
   },
 
   BEAR: {
@@ -317,6 +325,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
     edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'COCONUT_PALM'],
     prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'FOX', 'WOLF', 'SNAKE', 'HAWK', 'CROCODILE'],
+    can_scavenge: true,
   },
 
   RACCOON: {
@@ -351,6 +360,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'CARROT', 'TOMATO', 'COCONUT_PALM'],
     prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO'],
+    can_scavenge: true,
   },
 
   CROW: {
@@ -385,6 +395,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
     edible_plants: ['SUNFLOWER', 'TOMATO', 'CARROT', 'COCONUT_PALM'],
     prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO'],
+    can_scavenge: true,
   },
 
   MOSQUITO: {
@@ -418,6 +429,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['SUNFLOWER', 'STRAWBERRY', 'BLUEBERRY'],
     prey_species: [],
+    can_scavenge: false,
   },
 
   CATERPILLAR: {
@@ -451,6 +463,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'TOMATO', 'SUNFLOWER', 'OAK_TREE', 'APPLE_TREE'],
     prey_species: [],
+    can_scavenge: false,
   },
 
   SNAKE: {
@@ -484,6 +497,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],
     edible_plants: [],
     prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'MOSQUITO', 'CATERPILLAR', 'CROW'],
+    can_scavenge: false,
   },
 
   HAWK: {
@@ -517,6 +531,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
     edible_plants: [],
     prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'MOSQUITO', 'CATERPILLAR', 'SNAKE', 'CROW'],
+    can_scavenge: false,
   },
 
   CROCODILE: {
@@ -550,6 +565,7 @@ const ANIMAL_SPECIES = {
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: [],
     prey_species: ['RABBIT', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'SNAKE'],
+    can_scavenge: true,
   },
 };
 

@@ -373,8 +373,8 @@ function _seekPrey(animal, world, spatialHash, vision) {
     return;
   }
 
-  // No live prey — try scavenging recent corpses
-  if (_tryScavenge(animal, world, spatialHash, vision)) return;
+  // No live prey — try scavenging recent corpses (if species allows)
+  if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
 
   // No prey — carnivores eat fruit as fallback when desperate
   // Only if they have explicit edible_plants (empty list = strictly carnivorous)
@@ -432,8 +432,8 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
       return;
     }
 
-    // No live prey — try scavenging recent corpses
-    if (_tryScavenge(animal, world, spatialHash, vision)) return;
+    // No live prey — try scavenging recent corpses (if species allows)
+    if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
   }
 
   // Fallback: seek plants in vision range

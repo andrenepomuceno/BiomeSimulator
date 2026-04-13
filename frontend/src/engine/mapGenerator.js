@@ -89,6 +89,10 @@ export function generateTerrain(config) {
     else if ((t === SOIL || t === DIRT) && wp >= 2 && wp <= 6 && detail2[i] > 0.1) {
       terrain[i] = FERTILE_SOIL;
     }
+    // Fertile soil patches mixed into regular soil (inland)
+    else if (t === SOIL && wp > 6 && detail2[i] > 0.15) {
+      terrain[i] = FERTILE_SOIL;
+    }
   }
 
   return { terrain, waterProximity, seed };

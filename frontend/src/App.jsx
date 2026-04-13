@@ -14,6 +14,18 @@ import StatsPanel from './components/StatsPanel';
 import Minimap from './components/Minimap';
 import SimulationReport from './components/SimulationReport';
 
+// Simple debounce implementation for speed slider
+function createDebounce(callback, delayMs) {
+  let timeoutId = null;
+  return function debounced(...args) {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      callback.apply(this, args);
+      timeoutId = null;
+    }, delayMs);
+  };
+}
+
 export default function App() {
   const canvasContainerRef = useRef(null);
   const rendererRef = useRef(null);
@@ -21,6 +33,7 @@ export default function App() {
   const { handleTileClick } = useEditor(rendererRef);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const debouncedSpeedChangeRef = useRef(null);
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
@@ -127,9 +140,18 @@ export default function App() {
     useSimStore.getState().setSimState({ running: false, paused: true });
   }
 
+  // Initialize debounced speed handler on first render
+  if (!debouncedSpeedChangeRef.current) {
+    debouncedSpeedChangeRef.current = createDebounce((tps) => {
+      postCmd('setSpeed', { tps });
+    }, 250);
+  }
+
   function _handleSpeedChange(tps) {
+    // Update UI immediately for snappy feedback
     useSimStore.getState().setSimState({ tps });
-    postCmd('setSpeed', { tps });
+    // Send to worker with 250ms debounce to avoid interval recreation spam
+    debouncedSpeedChangeRef.current(tps);
   }
 
   // Keyboard shortcuts

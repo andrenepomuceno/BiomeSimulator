@@ -32,6 +32,7 @@ let paused = true;
 let tps = 10;
 let intervalId = null;
 let profilingEnabled = false;
+let pendingPause = false; // Flag to pause after current tick completes
 
 function startLoop() {
   stopLoop();
@@ -53,6 +54,13 @@ function doTick() {
   engine.tick();
   const tickMs = performance.now() - t0;
   postTickState(tickMs);
+  
+  // After tick completes, check if pause was requested while tick was running
+  if (pendingPause) {
+    pendingPause = false;
+    paused = true;
+    stopLoop();
+  }
 }
 
 function postTickState(tickMs = 0) {
@@ -155,12 +163,20 @@ self.onmessage = function (e) {
     }
 
     case 'pause':
-      paused = true;
-      stopLoop();
+      // If already paused or not running, stop immediately
+      if (paused || !running) {
+        paused = true;
+        stopLoop();
+      } else {
+        // Otherwise, set flag to pause after current tick completes
+        // This prevents interrupting a heavy tick mid-execution
+        pendingPause = true;
+      }
       break;
 
     case 'resume':
       if (!engine) break;
+      pendingPause = false;  // Clear any pending pause
       paused = false;
       startLoop();
       break;
@@ -172,6 +188,9 @@ self.onmessage = function (e) {
 
     case 'setSpeed':
       tps = Math.max(1, Math.min(120, e.data.tps));
+      // Apply speed change regardless of paused state
+      // If running, restart interval with new speed immediately
+      // If paused, speed will take effect on next resume/start
       if (running && !paused) {
         stopLoop();
         intervalId = setInterval(doTick, 1000 / tps);

@@ -138,6 +138,8 @@ minimum damage = 1
 | 🍅 Tomato | `P_TOMATO = 8` | Fruit | Medium water affinity |
 | 🍄 Mushroom | `P_MUSHROOM = 9` | Seed | Fastest lifecycle |
 | 🌳 Oak Tree | `P_OAK_TREE = 10` | Seed | Longest-lived, slow growth |
+| 🌵 Cactus | `P_CACTUS = 11` | Seed | Desert plant, thrives on sand/rock |
+| 🌴 Coconut Palm | `P_COCONUT_PALM = 12` | Fruit | Coastal tree, grows on sand |
 
 ### Growth Stages
 
@@ -159,6 +161,8 @@ Each stage transition is governed by age thresholds (in ticks) defined in `plant
 | Tomato | 10 | 45 | 120 | 450 |
 | Mushroom | 6 | 22 | 50 | 220 |
 | Oak Tree | 50 | 220 | 500 | 2500 |
+| Cactus | 20 | 80 | 200 | 1200 |
+| Coconut Palm | 45 | 200 | 450 | 2000 |
 
 ### Water Proximity Bonus
 
@@ -166,10 +170,19 @@ Plants within `water_proximity_threshold` (10) tiles of water grow **30% faster*
 
 ### Terrain Growth Modifiers
 
-| Terrain | Multiplier | Effect |
-|---------|-----------|--------|
-| Grass | 1.2× | 20% faster growth |
-| Dirt | 0.7× | 30% slower growth |
+Each plant species defines a per-terrain growth multiplier in `terrainGrowth`. Growth rate is multiplied by the terrain factor each tick. A value of `0.0` means the plant cannot grow on that terrain at all.
+
+Example multipliers (varies by species — see `plantSpecies.js` for full data):
+
+| Terrain | Typical Range | Notes |
+|---------|--------------|-------|
+| SOIL | 0.4–1.2× | Default growing terrain for most plants |
+| FERTILE_SOIL | 0.3–1.3× | Best for most non-desert plants |
+| DIRT | 0.3–0.8× | Generally slower growth |
+| SAND | 0.0–1.5× | Only desert plants (Cactus, Coconut Palm) thrive here |
+| ROCK | 0.0–1.2× | Most plants cannot grow; Cactus tolerates it |
+| MOUNTAIN | 0.0–0.8× | Very few plants survive |
+| MUD | 0.0–0.8× | Swampy terrain, variable growth |
 
 Plants on **dirt terrain** also have a per-tick chance of premature death:
 
@@ -188,17 +201,18 @@ Each tick during the plant phase:
 2. Dynamic processing cap: 800 base, reduced to 400 if coverage > 40%, 200 if > 60%
 3. Each fruiting plant has a species-specific **production chance** to spread
 4. Seed lands 1–3 tiles away in a random direction (8-way)
-5. Target tile must be empty (no plant) and GRASS or DIRT terrain
+5. Target tile must be empty (no plant) and SOIL, DIRT, FERTILE_SOIL, or SAND terrain
 6. On DIRT terrain, seeding has only a 60% success rate
+7. Desert plants (Cactus, Coconut Palm) can seed on SAND tiles
 
 ### Initial Seeding
 
 On world generation:
-1. Collect eligible tiles (GRASS or DIRT)
+1. Collect eligible tiles (SOIL, DIRT, FERTILE_SOIL, or SAND)
 2. Shuffle; place `density × eligibleCount` plants
 3. Type selection weighted by water proximity:
-   - **Near water** → more berries and trees
-   - **Far from water** → more grass and carrots
+   - **Near water** → more berries, trees, and coconut palms
+   - **Far from water** → more grass, carrots, and cacti
 4. Random initial stage: 33% seed, 33% sprout, 33% mature
 
 ---
@@ -257,7 +271,10 @@ Each species defines `life_stage_ages: [baby→young, young→young_adult, young
 | 🐗 Boar | 55 | 110 | 180 |
 | 🐻 Bear | 75 | 150 | 250 |
 | 🦝 Raccoon | 30 | 60 | 100 |
-| 🐦‍⬛ Crow | 25 | 50 | 80 |
+| 🐦‍⬛ Crow | 18 | 38 | 60 |
+| 🦟 Mosquito | 8 | 18 | 30 |
+| 🐛 Caterpillar | 10 | 25 | 40 |
+| 🐍 Snake | 30 | 60 | 100 |
 
 ### Gameplay Effects
 

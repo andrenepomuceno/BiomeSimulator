@@ -10,7 +10,7 @@ The engine layer (`frontend/src/engine/`) contains all simulation logic. It is c
 |------|---------|
 | `config.js` | Default simulation parameters, sex/reproduction constants |
 | `animalSpecies.js` | Canonical animal species registry (single source of truth) |
-| `plantSpecies.js` | Canonical plant species registry (10 species, single source of truth) |
+| `plantSpecies.js` | Canonical plant species registry (12 species, single source of truth) |
 | `simulation.js` | Tick orchestration, world generation, entity management |
 | `world.js` | World model: terrain grid, plant arrays, animal list, clock |
 | `entities.js` | Animal class with state machine, energy, needs |
@@ -95,16 +95,19 @@ This file is the **single source of truth** for all animal data. `config.js` der
 | Species | Diet | Speed | Vision | Max Energy | Max Age | Attack | Defense | Initial Count |
 |---------|------|-------|--------|-----------|---------|--------|---------|---------------|
 | 🐰 Rabbit | Herbivore | 1 | 10 | 100 | 1400 | 1 | 2 | 100 |
-| 🐿️ Squirrel | Herbivore | 1 | 11 | 80 | 1300 | 1 | 1 | 60 |
-| 🪲 Beetle | Herbivore | 1 | 7 | 60 | 1000 | 1 | 4 | 80 |
-| 🐐 Goat | Herbivore | 1 | 12 | 140 | 2200 | 3 | 5 | 35 |
-| 🦌 Deer | Herbivore | 2 | 14 | 130 | 2000 | 2 | 3 | 35 |
-| 🦊 Fox | Carnivore | 2 | 14 | 120 | 1600 | 6 | 4 | 28 |
-| 🐺 Wolf | Carnivore | 2 | 16 | 150 | 1800 | 9 | 6 | 20 |
-| 🐗 Boar | Omnivore | 1 | 12 | 140 | 1800 | 5 | 5 | 30 |
-| 🐻 Bear | Omnivore | 1 | 14 | 180 | 2500 | 10 | 8 | 12 |
-| 🦝 Raccoon | Omnivore | 1 | 11 | 90 | 1400 | 3 | 3 | 25 |
-| 🐦‍⬛ Crow | Omnivore | 2 | 16 | 70 | 1200 | 2 | 1 | 35 |
+| 🐿️ Squirrel | Herbivore | 1 | 11 | 90 | 1300 | 1 | 1 | 60 |
+| 🪲 Beetle | Herbivore | 1 | 7 | 70 | 1000 | 1 | 4 | 80 |
+| 🐐 Goat | Herbivore | 1 | 12 | 150 | 2200 | 3 | 5 | 35 |
+| 🦌 Deer | Herbivore | 2 | 14 | 140 | 2000 | 2 | 3 | 35 |
+| 🦟 Mosquito | Herbivore | 2 | 8 | 40 | 600 | 1 | 0 | 60 |
+| 🐛 Caterpillar | Herbivore | 1 | 5 | 50 | 800 | 0 | 1 | 70 |
+| 🦊 Fox | Carnivore | 2 | 14 | 130 | 1600 | 6 | 4 | 28 |
+| 🐺 Wolf | Carnivore | 2 | 16 | 160 | 1800 | 9 | 6 | 20 |
+| 🐍 Snake | Carnivore | 1 | 12 | 120 | 1600 | 5 | 3 | 20 |
+| 🐗 Boar | Omnivore | 1 | 12 | 150 | 1800 | 5 | 5 | 30 |
+| 🐻 Bear | Omnivore | 1 | 14 | 200 | 2500 | 10 | 8 | 12 |
+| 🦝 Raccoon | Omnivore | 1 | 11 | 100 | 1400 | 3 | 3 | 25 |
+| 🐦‍⬛ Crow | Omnivore | 2 | 16 | 80 | 1200 | 2 | 1 | 35 |
 
 ### Species Data Fields
 
@@ -122,12 +125,15 @@ This file is the **single source of truth** for all animal data. `config.js` der
   max_hunger: 100,        // hunger cap
   max_thirst: 100,        // thirst cap
   max_age: 1400,          // ticks until death from old age
-  max_pop: 2000,          // population cap per species
+  max_population: 5000,   // population cap per species
   mature_age: 80,         // ticks before eligible to mate
   life_stage_ages: [30, 60, 80], // [baby→young, young→young_adult, young_adult→adult] (optional)
-  decision_interval: 3,   // ticks between AI decisions
+  decision_interval: 2,   // ticks between AI decisions
   attack_power: 1,        // damage dealt in combat
   defense: 2,             // reduces incoming damage
+  walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'], // terrain names (resolved to IDs at build time)
+  edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT'],   // plant names (resolved to IDs at build time)
+  prey_species: [],       // species IDs this animal can hunt
   energy_costs: {         // energy per tick by action
     IDLE: 0.02, WALK: 0.1, RUN: 0.35,
     EAT: 0.05, DRINK: 0.05, SLEEP: -4.0,
@@ -144,9 +150,9 @@ This file is the **single source of truth** for all animal data. `config.js` der
 | Export | Type | Description |
 |--------|------|-------------|
 | `default` (ANIMAL_SPECIES) | Object | Full registry keyed by species ID |
-| `ALL_ANIMAL_IDS` | Array | All 11 species keys |
-| `HERBIVORE_IDS` | Array | 5 herbivore species keys |
-| `CARNIVORE_IDS` | Array | 2 carnivore species keys |
+| `ALL_ANIMAL_IDS` | Array | All 14 species keys |
+| `HERBIVORE_IDS` | Array | 7 herbivore species keys |
+| `CARNIVORE_IDS` | Array | 3 carnivore species keys |
 | `OMNIVORE_IDS` | Array | 4 omnivore species keys |
 | `buildAnimalSpeciesConfig()` | Function | Returns sim-only params (strips display fields) |
 | `buildInitialAnimalCounts()` | Function | Returns `{RABBIT: 100, ...}` from registry |
@@ -172,13 +178,15 @@ This file is the **single source of truth** for all plant data. `flora.js` deriv
 | 🍅 Tomato | 8 | Fruit | medium | 10, 45, 120, 450 |
 | 🍄 Mushroom | 9 | Seed | low | 6, 22, 50, 220 |
 | 🌳 Oak Tree | 10 | Seed | high | 50, 220, 500, 2500 |
+| 🌵 Cactus | 11 | Seed | low | 20, 80, 200, 1200 |
+| 🌴 Coconut Palm | 12 | Fruit | medium | 45, 200, 450, 2000 |
 
 ### Exports
 
 | Export | Type | Description |
 |--------|------|-------------|
 | `PLANT_SPECIES` | Object | Full registry keyed by species ID |
-| `ALL_PLANT_IDS` | Array | All 10 plant species keys |
+| `ALL_PLANT_IDS` | Array | All 12 plant species keys |
 | `getPlantByTypeId(typeId)` | Function | Lookup plant data by numeric typeId |
 | `buildStageAges()` | Function | Returns `{1: [5,18,35,180], ...}` per typeId |
 | `buildFruitSpoilAges()` | Function | Returns fruit decay thresholds per typeId |
@@ -198,8 +206,12 @@ This file is the **single source of truth** for all plant data. `flora.js` deriv
 | `WATER` | 0 | No |
 | `SAND` | 1 | Yes |
 | `DIRT` | 2 | Yes |
-| `GRASS` | 3 | Yes |
-| `ROCK` | 4 | No |
+| `SOIL` | 3 | Yes |
+| `ROCK` | 4 | Varies (per species) |
+| `FERTILE_SOIL` | 5 | Yes |
+| `DEEP_WATER` | 6 | No |
+| `MOUNTAIN` | 7 | Varies (per species) |
+| `MUD` | 8 | Yes |
 
 ### `Clock` Class
 
@@ -222,9 +234,9 @@ Holds the entire world state using flat TypedArrays for memory efficiency.
 
 | Array | Type | Description |
 |-------|------|-------------|
-| `terrain` | `Uint8Array` | Terrain type per tile (0–4) |
+| `terrain` | `Uint8Array` | Terrain type per tile (0–8) |
 | `waterProximity` | `Uint8Array` | BFS distance to nearest water (capped 255) |
-| `plantType` | `Uint8Array` | Plant type per tile (0 = none, 1–10) |
+| `plantType` | `Uint8Array` | Plant type per tile (0 = none, 1–12) |
 | `plantStage` | `Uint8Array` | Growth stage (0–6) |
 | `plantAge` | `Uint16Array` | Ticks since planted |
 | `plantFruit` | `Uint8Array` | Boolean (0 or 1) |

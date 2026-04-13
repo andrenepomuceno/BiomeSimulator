@@ -74,7 +74,7 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 40,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'OAK_TREE'],
+    edible_plants: ['BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'OAK_TREE', 'COCONUT_PALM'],
     prey_species: [],
   },
 
@@ -140,7 +140,7 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 80,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
-    edible_plants: ['GRASS', 'CARROT', 'SUNFLOWER'],
+    edible_plants: ['GRASS', 'CARROT', 'SUNFLOWER', 'CACTUS'],
     prey_species: [],
   },
 
@@ -208,7 +208,7 @@ const ANIMAL_SPECIES = {
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['STRAWBERRY', 'BLUEBERRY'],
-    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'CROW'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'CROW', 'MOSQUITO', 'CATERPILLAR'],
   },
 
   WOLF: {
@@ -241,7 +241,7 @@ const ANIMAL_SPECIES = {
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],
     edible_plants: ['BLUEBERRY'],
-    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'RACCOON', 'BOAR', 'FOX'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'RACCOON', 'BOAR', 'FOX', 'SNAKE'],
   },
 
   BOAR: {
@@ -273,8 +273,8 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 65,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'MUSHROOM', 'OAK_TREE'],
-    prey_species: ['BEETLE'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'MUSHROOM', 'OAK_TREE', 'CACTUS', 'COCONUT_PALM'],
+    prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO', 'SNAKE'],
   },
 
   BEAR: {
@@ -307,8 +307,8 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 90,
     decision_interval: 3,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
-    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE'],
-    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'FOX', 'WOLF'],
+    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'COCONUT_PALM'],
+    prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'FOX', 'WOLF', 'SNAKE'],
   },
 
   RACCOON: {
@@ -341,8 +341,8 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 50,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'CARROT', 'TOMATO'],
-    prey_species: ['BEETLE'],
+    edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'CARROT', 'TOMATO', 'COCONUT_PALM'],
+    prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO'],
   },
 
   CROW: {
@@ -375,8 +375,8 @@ const ANIMAL_SPECIES = {
     mate_cooldown: 45,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MOUNTAIN', 'MUD'],
-    edible_plants: ['SUNFLOWER', 'TOMATO', 'CARROT'],
-    prey_species: ['BEETLE'],
+    edible_plants: ['SUNFLOWER', 'TOMATO', 'CARROT', 'COCONUT_PALM'],
+    prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO'],
   },
 
   MOSQUITO: {
@@ -404,11 +404,11 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.08,
     thirst_rate: 0.09,
     initial_count: 60,
-    max_population: 3000,
+    max_population: MAX_POPULATION,
     mate_cooldown: 20,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'SUNFLOWER', 'TOMATO'],
+    edible_plants: ['SUNFLOWER', 'STRAWBERRY', 'BLUEBERRY'],
     prey_species: [],
   },
 
@@ -437,11 +437,11 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.07,
     thirst_rate: 0.06,
     initial_count: 70,
-    max_population: 2500,
+    max_population: MAX_POPULATION,
     mate_cooldown: 25,
     decision_interval: 3,
     walkable_terrain: ['DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
-    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'TOMATO', 'SUNFLOWER'],
+    edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'TOMATO', 'SUNFLOWER', 'OAK_TREE', 'APPLE_TREE'],
     prey_species: [],
   },
 
@@ -470,7 +470,7 @@ const ANIMAL_SPECIES = {
     hunger_rate: 0.04,
     thirst_rate: 0.035,
     initial_count: 20,
-    max_population: 1000,
+    max_population: MAX_POPULATION,
     mate_cooldown: 70,
     decision_interval: 2,
     walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'ROCK', 'FERTILE_SOIL', 'MUD'],

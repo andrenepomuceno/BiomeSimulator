@@ -41,6 +41,36 @@ const useSimStore = create((set, get) => ({
   setStats: (s) => set({ stats: s }),
   setStatsHistory: (h) => set({ statsHistory: h }),
 
+  // Profiling (engine + renderer)
+  profilingEnabled: false,
+  profiling: {
+    engine: {
+      tick: 0,
+      tickMs: 0,
+      phases: {
+        plantsMs: 0,
+        behaviorMs: 0,
+        cleanupMs: 0,
+        statsMs: 0,
+      },
+      counts: {
+        animalsTotal: 0,
+        animalsAlive: 0,
+        activePlants: 0,
+      },
+    },
+    renderer: {
+      fps: 0,
+      frameMs: 0,
+      entityUpdateMs: 0,
+      plantUpdateMs: 0,
+      lastTickAt: 0,
+    },
+  },
+  setProfilingEnabled: (enabled) => set({ profilingEnabled: !!enabled }),
+  setEngineProfile: (engine) => set(state => ({ profiling: { ...state.profiling, engine } })),
+  setRendererProfile: (renderer) => set(state => ({ profiling: { ...state.profiling, renderer } })),
+
   // Selected entity / tile
   selectedEntity: null,
   selectedTile: null,

@@ -65,7 +65,7 @@ export default function App() {
     if (rendererRef.current && animals.length >= 0) {
       const app = rendererRef.current.app;
       const zoom = rendererRef.current.camera.zoom;
-      rendererRef.current.entityLayer.update(animals, app.renderer, clock.tick, zoom);
+      rendererRef.current.updateEntities(animals, app.renderer, clock.tick, zoom);
     }
   }, [animals]);
 

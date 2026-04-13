@@ -58,6 +58,9 @@ export function useSimulation() {
           if (msg.fruitChanges) store.setFruitChanges(msg.fruitChanges);
           if (msg.stats) store.setStats(msg.stats);
           if (msg.statsHistory) store.setStatsHistory(msg.statsHistory);
+          if (msg.profiling && msg.profiling.engine) {
+            store.setEngineProfile(msg.profiling.engine);
+          }
           // Refresh selected tile info each tick so plant data stays current
           {
             const tile = store.selectedTile;

@@ -27,6 +27,16 @@ export class SimulationEngine {
     this.config = config;
     this.world = null;
     this.spatialHash = new SpatialHash(16);
+    this.profilingEnabled = false;
+    this._latestProfile = null;
+  }
+
+  setProfilingEnabled(enabled) {
+    this.profilingEnabled = !!enabled;
+  }
+
+  getLatestProfile() {
+    return this._latestProfile;
   }
 
   /**
@@ -109,14 +119,22 @@ export class SimulationEngine {
   tick() {
     const w = this.world;
     w.plantChanges = [];
+    const profiling = this.profilingEnabled;
+    const tickStart = profiling ? performance.now() : 0;
+    const phases = profiling
+      ? { plantsMs: 0, behaviorMs: 0, cleanupMs: 0, statsMs: 0 }
+      : null;
 
     // Advance clock
     w.clock.advance();
 
     // Process flora
+    const plantsStart = profiling ? performance.now() : 0;
     processPlants(w);
+    if (profiling) phases.plantsMs = performance.now() - plantsStart;
 
     // Process fauna
+    const behaviorStart = profiling ? performance.now() : 0;
     const deadThisTick = [];
     for (const animal of w.animals) {
       if (animal.alive) {
@@ -129,8 +147,10 @@ export class SimulationEngine {
         }
       }
     }
+    if (profiling) phases.behaviorMs = performance.now() - behaviorStart;
 
     // Remove dead animals from spatial hash and occupancy grid
+    const cleanupStart = profiling ? performance.now() : 0;
     for (const dead of deadThisTick) {
       this.spatialHash.remove(dead);
       w.vacateAnimal(dead.x, dead.y);
@@ -145,8 +165,10 @@ export class SimulationEngine {
         a.alive || (!a.consumed && a._deathTick != null && tick - a._deathTick < 300)
       );
     }
+    if (profiling) phases.cleanupMs = performance.now() - cleanupStart;
 
     // Record stats every 10 ticks
+    const statsStart = profiling ? performance.now() : 0;
     if (w.clock.tick % 10 === 0) {
       const stats = w.getStats();
       stats.tick = w.clock.tick;
@@ -156,6 +178,23 @@ export class SimulationEngine {
       if (w.statsHistory.length > 1000) {
         w.statsHistory = w.statsHistory.slice(-1000);
       }
+    }
+    if (profiling) {
+      phases.statsMs = performance.now() - statsStart;
+      let animalsAlive = 0;
+      for (const a of w.animals) {
+        if (a.alive) animalsAlive++;
+      }
+      this._latestProfile = {
+        tick: w.clock.tick,
+        tickMs: performance.now() - tickStart,
+        phases,
+        counts: {
+          animalsTotal: w.animals.length,
+          animalsAlive,
+          activePlants: w.activePlantTiles.size,
+        },
+      };
     }
   }
 

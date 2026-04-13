@@ -57,6 +57,8 @@ export class GameRenderer {
 
     this.mapWidth = 0;
     this.mapHeight = 0;
+    this._frameLastAt = performance.now();
+    this._frameWindow = { frames: 0, startedAt: this._frameLastAt };
 
     // Input handling
     this.app.view.addEventListener('wheel', (e) => this.camera.onWheel(e), { passive: false });
@@ -67,6 +69,26 @@ export class GameRenderer {
     this._selectedTile = null;
     this._waterTick = 0;
     this.app.ticker.add(() => {
+      const frameNow = performance.now();
+      const frameDelta = frameNow - this._frameLastAt;
+      this._frameLastAt = frameNow;
+      this._frameWindow.frames++;
+      if (frameNow - this._frameWindow.startedAt >= 1000) {
+        const elapsed = frameNow - this._frameWindow.startedAt;
+        const fps = elapsed > 0 ? (this._frameWindow.frames * 1000) / elapsed : 0;
+        const store = useSimStore.getState();
+        if (store.profilingEnabled) {
+          store.setRendererProfile({
+            ...store.profiling.renderer,
+            fps,
+            frameMs: frameDelta,
+            lastTickAt: Date.now(),
+          });
+        }
+        this._frameWindow.frames = 0;
+        this._frameWindow.startedAt = frameNow;
+      }
+
       this.entityLayer._updateSelectionMarker();
       this._updateTileSelectionMarker();
 
@@ -104,6 +126,10 @@ export class GameRenderer {
   }
 
   updatePlants(plantChanges) {
+    const store = useSimStore.getState();
+    const profiling = store.profilingEnabled;
+    const t0 = profiling ? performance.now() : 0;
+
     this.plantLayer.applyChanges(plantChanges);
     this._updatePlantEmojis();
 
@@ -118,10 +144,30 @@ export class GameRenderer {
         if (++fruitCount >= 30) break; // Cap per tick
       }
     }
+
+    if (profiling) {
+      store.setRendererProfile({
+        ...store.profiling.renderer,
+        plantUpdateMs: performance.now() - t0,
+        lastTickAt: Date.now(),
+      });
+    }
   }
 
-  updateEntities(animals) {
-    this.entityLayer.update(animals);
+  updateEntities(animals, renderer, tick, zoom) {
+    const store = useSimStore.getState();
+    const profiling = store.profilingEnabled;
+    const t0 = profiling ? performance.now() : 0;
+
+    this.entityLayer.update(animals, renderer, tick, zoom);
+
+    if (profiling) {
+      store.setRendererProfile({
+        ...store.profiling.renderer,
+        entityUpdateMs: performance.now() - t0,
+        lastTickAt: Date.now(),
+      });
+    }
   }
 
   setSelectedEntity(id) {

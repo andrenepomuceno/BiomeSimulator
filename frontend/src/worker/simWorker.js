@@ -31,6 +31,7 @@ let running = false;
 let paused = true;
 let tps = 10;
 let intervalId = null;
+let profilingEnabled = false;
 
 function startLoop() {
   stopLoop();
@@ -68,6 +69,18 @@ function postTickState(tickMs = 0) {
     plantChanges: w.plantChanges.slice(0, 5000),
   };
 
+  if (profilingEnabled) {
+    const profile = engine.getLatestProfile ? engine.getLatestProfile() : null;
+    if (profile) {
+      msg.profiling = {
+        engine: {
+          ...profile,
+          tickMs,
+        },
+      };
+    }
+  }
+
   // Include full stats every 10 ticks
   if (w.clock.tick % 10 === 0) {
     msg.stats = w.getStats();
@@ -88,6 +101,7 @@ self.onmessage = function (e) {
     case 'generate': {
       const config = { ...DEFAULT_CONFIG, ...e.data.config };
       engine = new SimulationEngine(config);
+      engine.setProfilingEnabled(profilingEnabled);
       const seed = engine.generateWorld();
       const w = engine.world;
       tps = config.ticks_per_second || 10;
@@ -248,6 +262,7 @@ self.onmessage = function (e) {
       if (!d) break;
       const loadConfig = d.config || DEFAULT_CONFIG;
       engine = new SimulationEngine(loadConfig);
+      engine.setProfilingEnabled(profilingEnabled);
 
       const lw = new World(loadConfig);
       lw.width = d.width;
@@ -301,6 +316,14 @@ self.onmessage = function (e) {
         animals: lw.animals.filter(a => a.alive).map(a => a.toDict()),
         clock: lw.clock.toDict(),
       });
+      break;
+    }
+
+    case 'setProfiling': {
+      profilingEnabled = !!e.data.enabled;
+      if (engine && engine.setProfilingEnabled) {
+        engine.setProfilingEnabled(profilingEnabled);
+      }
       break;
     }
   }

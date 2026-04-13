@@ -32,7 +32,15 @@ const SPECIES_CHART_COLORS = {
 };
 
 export default function StatsPanel() {
-  const { stats, clock, hungerMultiplier, thirstMultiplier, worker } = useSimStore();
+  const {
+    stats,
+    clock,
+    hungerMultiplier,
+    thirstMultiplier,
+    worker,
+    profilingEnabled,
+    profiling,
+  } = useSimStore();
   const speciesKeys = Object.keys(SPECIES_INFO);
   const [history, setHistory] = useState(() => {
     const h = { ticks: [] };
@@ -178,6 +186,48 @@ export default function StatsPanel() {
           />
           <span className="stat-value" style={{ minWidth: 32, textAlign: 'right' }}>{thirstMultiplier.toFixed(1)}x</span>
         </div>
+      </div>
+
+      <h6 style={{ marginTop: 12 }}>Performance</h6>
+      <div className="stat-row" style={{ marginBottom: 6 }}>
+        <span className="stat-label">Profiling</span>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#aaa', fontSize: '0.82rem' }}>
+          <input
+            type="checkbox"
+            checked={profilingEnabled}
+            onChange={(e) => {
+              const enabled = e.target.checked;
+              useSimStore.getState().setProfilingEnabled(enabled);
+              if (worker) worker.postMessage({ cmd: 'setProfiling', enabled });
+            }}
+          />
+          High-res
+        </label>
+      </div>
+
+      <div className="stat-row">
+        <span className="stat-label">Engine Tick</span>
+        <span className="stat-value" style={{ color: '#7fc8ff' }}>
+          {(profiling?.engine?.tickMs || stats.tickMs || 0).toFixed(2)}ms
+        </span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">Plants / AI / Cleanup</span>
+        <span className="stat-value" style={{ color: '#9ccf6a', fontSize: '0.75rem' }}>
+          {(profiling?.engine?.phases?.plantsMs || 0).toFixed(1)} / {(profiling?.engine?.phases?.behaviorMs || 0).toFixed(1)} / {(profiling?.engine?.phases?.cleanupMs || 0).toFixed(1)}
+        </span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">FPS / Frame</span>
+        <span className="stat-value" style={{ color: '#f6cc6a' }}>
+          {(profiling?.renderer?.fps || 0).toFixed(0)} / {(profiling?.renderer?.frameMs || 0).toFixed(1)}ms
+        </span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">Render Entity / Plant</span>
+        <span className="stat-value" style={{ color: '#d6a8ff', fontSize: '0.75rem' }}>
+          {(profiling?.renderer?.entityUpdateMs || 0).toFixed(1)} / {(profiling?.renderer?.plantUpdateMs || 0).toFixed(1)}
+        </span>
       </div>
     </div>
   );

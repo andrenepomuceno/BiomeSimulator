@@ -173,17 +173,20 @@ const FRAG_SRC = `
     float n = valueNoise(p * 5.0);
     float crack = abs(n - 0.5);
     crack = 1.0 - smoothstep(0.0, 0.06, crack);
-    // Surface roughness
-    float rough = fbm(p * 4.0, 3);
+    // Surface roughness (2 octaves instead of 3 for perf)
+    float rough = fbm(p * 4.0, 2);
     return strata * 0.35 + rough * 0.45 + (1.0 - crack) * 0.2;
   }
 
   // Mountain pattern: layered rock + snow patches
   float mountainPattern(vec2 p, float height) {
-    float rock = rockPattern(p);
-    // Snow-like patches at high frequency
-    float snow = smoothstep(0.55, 0.75, fbm(p * 3.0 + vec2(17.0, 31.0), 3));
-    return mix(rock, 1.0, snow * 0.3);
+    // Simplified: strata + noise-based snow (no nested rockPattern call)
+    float strata = sin(p.y * 5.0 + valueNoise(p * 1.5) * 3.5) * 0.5 + 0.5;
+    float rough = valueNoise(p * 3.0);
+    float base = strata * 0.5 + rough * 0.5;
+    // Snow-like patches
+    float snow = smoothstep(0.52, 0.72, valueNoise(p * 2.5 + vec2(17.0, 31.0)));
+    return mix(base, 1.0, snow * 0.35);
   }
 
   // Mud pattern: wet splotches
@@ -320,6 +323,7 @@ const FRAG_SRC = `
     vec2 tileCoord = v_uv * u_worldSize;
     vec2 tileFloor = floor(tileCoord);
     vec2 subTile = fract(tileCoord);
+    vec2 worldPos = tileCoord;
 
     // Bounds check
     if (tileFloor.x < 0.0 || tileFloor.y < 0.0 ||
@@ -328,97 +332,110 @@ const FRAG_SRC = `
       return;
     }
 
-    // Sample center terrain
+    // Sample center terrain — full expensive pattern only here
     int tCenter = sampleTerrain(tileCoord);
     vec3 centerColor = terrainPattern(tCenter, tileCoord, subTile);
 
-    // --- Smooth border blending ---
-    // Sample 4 cardinal neighbors for edge blending
+    // --- Noise-distorted organic border blending ---
+    // Use cheap base color for neighbors (no terrainPattern calls).
+    // Distort the blend boundary with noise so edges are wavy, not grid-aligned.
+
+    // Noise displacement: shifts the effective tile boundary by ±0.35 tiles
+    // Uses low-freq noise seeded from world position so borders are continuous.
+    float edgeNoise = (valueNoise(worldPos * 2.7 + vec2(13.7, 7.3)) - 0.5) * 0.7;
+    float edgeNoiseY = (valueNoise(worldPos * 2.7 + vec2(51.2, 23.1)) - 0.5) * 0.7;
+
+    // Distorted sub-tile coordinates for blending
+    float dsx = subTile.x + edgeNoise;
+    float dsy = subTile.y + edgeNoiseY;
+
     vec3 finalColor = centerColor;
     float blendTotal = 0.0;
     vec3 blendAccum = vec3(0.0);
-
-    // Blend radius in sub-tile space: blend in a 0.35-wide strip near edges
-    float blendWidth = 0.35;
+    float blendWidth = 0.48;
 
     // Left neighbor
-    if (subTile.x < blendWidth && tileFloor.x > 0.0) {
+    if (dsx < blendWidth && tileFloor.x > 0.0) {
       int tN = sampleTerrain(tileCoord + vec2(-1.0, 0.0));
       if (tN != tCenter) {
-        float w = smoothstep(blendWidth, 0.0, subTile.x);
-        blendAccum += terrainPattern(tN, tileCoord + vec2(-1.0, 0.0), subTile) * w;
+        float w = smoothstep(blendWidth, -0.05, dsx);
+        blendAccum += getTerrainColor(tN) * w;
         blendTotal += w;
       }
     }
     // Right neighbor
-    if (subTile.x > (1.0 - blendWidth) && tileFloor.x < u_worldSize.x - 1.0) {
+    if (dsx > (1.0 - blendWidth) && tileFloor.x < u_worldSize.x - 1.0) {
       int tN = sampleTerrain(tileCoord + vec2(1.0, 0.0));
       if (tN != tCenter) {
-        float w = smoothstep(1.0 - blendWidth, 1.0, subTile.x);
-        blendAccum += terrainPattern(tN, tileCoord + vec2(1.0, 0.0), subTile) * w;
+        float w = smoothstep(1.0 - blendWidth, 1.05, dsx);
+        blendAccum += getTerrainColor(tN) * w;
         blendTotal += w;
       }
     }
     // Top neighbor
-    if (subTile.y < blendWidth && tileFloor.y > 0.0) {
+    if (dsy < blendWidth && tileFloor.y > 0.0) {
       int tN = sampleTerrain(tileCoord + vec2(0.0, -1.0));
       if (tN != tCenter) {
-        float w = smoothstep(blendWidth, 0.0, subTile.y);
-        blendAccum += terrainPattern(tN, tileCoord + vec2(0.0, -1.0), subTile) * w;
+        float w = smoothstep(blendWidth, -0.05, dsy);
+        blendAccum += getTerrainColor(tN) * w;
         blendTotal += w;
       }
     }
     // Bottom neighbor
-    if (subTile.y > (1.0 - blendWidth) && tileFloor.y < u_worldSize.y - 1.0) {
+    if (dsy > (1.0 - blendWidth) && tileFloor.y < u_worldSize.y - 1.0) {
       int tN = sampleTerrain(tileCoord + vec2(0.0, 1.0));
       if (tN != tCenter) {
-        float w = smoothstep(1.0 - blendWidth, 1.0, subTile.y);
-        blendAccum += terrainPattern(tN, tileCoord + vec2(0.0, 1.0), subTile) * w;
+        float w = smoothstep(1.0 - blendWidth, 1.05, dsy);
+        blendAccum += getTerrainColor(tN) * w;
         blendTotal += w;
       }
     }
 
-    // Diagonal corners (reduced weight)
-    float diagThresh = 0.30;
+    // Diagonal corners (cheap: use radial distance with same noise distortion)
+    float diagDist;
     // Top-left
-    if (subTile.x < diagThresh && subTile.y < diagThresh && tileFloor.x > 0.0 && tileFloor.y > 0.0) {
+    diagDist = max(dsx, dsy);
+    if (diagDist < 0.35 && tileFloor.x > 0.0 && tileFloor.y > 0.0) {
       int tN = sampleTerrain(tileCoord + vec2(-1.0, -1.0));
       if (tN != tCenter) {
-        float w = smoothstep(diagThresh, 0.0, max(subTile.x, subTile.y)) * 0.5;
-        blendAccum += terrainPattern(tN, tileCoord + vec2(-1.0, -1.0), subTile) * w;
+        float w = smoothstep(0.35, -0.05, diagDist) * 0.45;
+        blendAccum += getTerrainColor(tN) * w;
         blendTotal += w;
       }
     }
     // Top-right
-    if (subTile.x > (1.0 - diagThresh) && subTile.y < diagThresh && tileFloor.x < u_worldSize.x - 1.0 && tileFloor.y > 0.0) {
+    diagDist = max(1.0 - dsx, dsy);
+    if (diagDist < 0.35 && tileFloor.x < u_worldSize.x - 1.0 && tileFloor.y > 0.0) {
       int tN = sampleTerrain(tileCoord + vec2(1.0, -1.0));
       if (tN != tCenter) {
-        float w = smoothstep(1.0 - diagThresh, 1.0, subTile.x) * smoothstep(diagThresh, 0.0, subTile.y) * 0.5;
-        blendAccum += terrainPattern(tN, tileCoord + vec2(1.0, -1.0), subTile) * w;
+        float w = smoothstep(0.35, -0.05, diagDist) * 0.45;
+        blendAccum += getTerrainColor(tN) * w;
         blendTotal += w;
       }
     }
     // Bottom-left
-    if (subTile.x < diagThresh && subTile.y > (1.0 - diagThresh) && tileFloor.x > 0.0 && tileFloor.y < u_worldSize.y - 1.0) {
+    diagDist = max(dsx, 1.0 - dsy);
+    if (diagDist < 0.35 && tileFloor.x > 0.0 && tileFloor.y < u_worldSize.y - 1.0) {
       int tN = sampleTerrain(tileCoord + vec2(-1.0, 1.0));
       if (tN != tCenter) {
-        float w = smoothstep(diagThresh, 0.0, subTile.x) * smoothstep(1.0 - diagThresh, 1.0, subTile.y) * 0.5;
-        blendAccum += terrainPattern(tN, tileCoord + vec2(-1.0, 1.0), subTile) * w;
+        float w = smoothstep(0.35, -0.05, diagDist) * 0.45;
+        blendAccum += getTerrainColor(tN) * w;
         blendTotal += w;
       }
     }
     // Bottom-right
-    if (subTile.x > (1.0 - diagThresh) && subTile.y > (1.0 - diagThresh) && tileFloor.x < u_worldSize.x - 1.0 && tileFloor.y < u_worldSize.y - 1.0) {
+    diagDist = max(1.0 - dsx, 1.0 - dsy);
+    if (diagDist < 0.35 && tileFloor.x < u_worldSize.x - 1.0 && tileFloor.y < u_worldSize.y - 1.0) {
       int tN = sampleTerrain(tileCoord + vec2(1.0, 1.0));
       if (tN != tCenter) {
-        float w = smoothstep(1.0 - diagThresh, 1.0, subTile.x) * smoothstep(1.0 - diagThresh, 1.0, subTile.y) * 0.5;
-        blendAccum += terrainPattern(tN, tileCoord + vec2(1.0, 1.0), subTile) * w;
+        float w = smoothstep(0.35, -0.05, diagDist) * 0.45;
+        blendAccum += getTerrainColor(tN) * w;
         blendTotal += w;
       }
     }
 
     if (blendTotal > 0.0) {
-      float blendF = min(blendTotal, 0.6);
+      float blendF = min(blendTotal, 0.65);
       finalColor = mix(centerColor, blendAccum / blendTotal, blendF);
     }
 

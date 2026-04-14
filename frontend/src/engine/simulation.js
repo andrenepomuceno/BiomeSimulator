@@ -281,13 +281,20 @@ export class SimulationEngine {
       }
     }
 
-    // Add births — reassign proper IDs from the main world counter
+    // Add births — reassign proper IDs from the main world counter (with pop cap)
     for (const r of results) {
       if (!r.births) continue;
       for (const bd of r.births) {
         const sc = w.config.animal_species[bd.species];
         if (!sc) continue;
         if (w.isTileOccupied(bd.x, bd.y)) continue;
+        // Enforce population cap at merge time
+        const bMax = sc.max_population;
+        if (bMax) {
+          const gMax = w.config.max_animal_population;
+          const eMax = gMax > 0 ? Math.max(2, Math.round(bMax * gMax / BASE_POP_TOTAL)) : bMax;
+          if (w.getAliveSpeciesCount(bd.species) >= eMax) continue;
+        }
         const baby = new Animal(w.nextId(), bd.x, bd.y, bd.species, sc);
         baby.energy = bd.energy;
         baby.sex = bd.sex;
@@ -303,13 +310,22 @@ export class SimulationEngine {
       }
     }
 
-    // Merge egg births from sub-workers
+    // Merge egg births from sub-workers (with pop cap including pending eggs)
     if (!w.eggs) w.eggs = [];
     for (const r of results) {
       if (!r.eggBirths) continue;
       for (const ed of r.eggBirths) {
         const sc = w.config.animal_species[ed.species];
         if (!sc) continue;
+        // Check pop cap (alive + pending eggs)
+        const bMax = sc.max_population;
+        if (bMax) {
+          const gMax = w.config.max_animal_population;
+          const eMax = gMax > 0 ? Math.max(2, Math.round(bMax * gMax / BASE_POP_TOTAL)) : bMax;
+          const alive = w.getAliveSpeciesCount(ed.species);
+          const pending = w.eggs.filter(e => e.alive && e.species === ed.species).length;
+          if ((alive + pending) >= eMax) continue;
+        }
         const egg = new Egg(w.nextId(), ed.x, ed.y, ed.species, sc);
         egg.parentA = ed.parentA;
         egg.parentB = ed.parentB;
@@ -344,14 +360,22 @@ export class SimulationEngine {
         const walkableSet = new Set(speciesConfig.walkable_terrain || [1, 2, 3, 5, 8]);
         const baseTx = egg.x | 0;
         const baseTy = egg.y | 0;
-        // Population cap check
+        // Population cap check (with soft cap like behaviors.js)
         const baseMax = speciesConfig.max_population;
         const globalMax = w.config.max_animal_population;
         const effectiveMax = (baseMax && globalMax > 0)
           ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
           : (baseMax || Infinity);
         const count = w.getAliveSpeciesCount(egg.species);
-        if (count < effectiveMax) {
+        let capBlocked = count >= effectiveMax;
+        if (!capBlocked && effectiveMax > 0) {
+          const ratio = count / effectiveMax;
+          if (ratio > 0.6) {
+            const chance = 1 - ((ratio - 0.6) / 0.4);
+            if (Math.random() > chance) capBlocked = true;
+          }
+        }
+        if (!capBlocked) {
           // Find a walkable tile for the baby (prefer the egg's own tile)
           let bx = egg.x, by = egg.y;
           let placed = false;

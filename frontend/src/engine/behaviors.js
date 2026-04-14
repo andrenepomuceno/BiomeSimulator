@@ -1107,6 +1107,28 @@ function _checkPopulationCap(animal, world) {
   return false;
 }
 
+/** Like _checkPopulationCap but also counts pending eggs toward the population. */
+function _checkPopulationCapWithEggs(animal, world) {
+  const baseMax = animal._config.max_population;
+  if (!baseMax) return false;
+  const globalMax = world.config.max_animal_population;
+  const effectiveMax = globalMax > 0
+    ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
+    : baseMax;
+  const aliveCount = world.getAliveSpeciesCount(animal.species);
+  const eggCount = world.eggs
+    ? world.eggs.filter(e => e.alive && e.species === animal.species).length
+    : 0;
+  const count = aliveCount + eggCount;
+  if (count >= effectiveMax) return true;
+  const ratio = count / effectiveMax;
+  if (ratio > 0.5) {
+    const chance = 1 - ((ratio - 0.5) / 0.5);
+    if (Math.random() > chance) return true;
+  }
+  return false;
+}
+
 /** Lay eggs on adjacent walkable tiles. */
 function _layEggs(animal, mate, world, clutchSize) {
   const baseTx = animal.x | 0;
@@ -1117,6 +1139,8 @@ function _layEggs(animal, mate, world, clutchSize) {
   let placed = 0;
   for (const [ddx, ddy] of offsets) {
     if (placed >= clutchSize) break;
+    // Re-check pop cap per egg (count pending eggs toward the cap)
+    if (_checkPopulationCapWithEggs(animal, world)) break;
     const ntx = baseTx + ddx, nty = baseTy + ddy;
     if (world.isWalkableFor(ntx, nty, animal._walkableSet)) {
       const egg = new Egg(world.nextId(), ntx + 0.5, nty + 0.5, animal.species, speciesConfig);

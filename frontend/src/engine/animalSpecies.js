@@ -11,14 +11,14 @@ import { TERRAIN_IDS } from './world.js';
 import { PLANT_IDS } from './plantSpecies.js';
 
 // Population caps by trophic level (food pyramid: prey > mid-predator > apex)
-// Tuned for default global cap of 5000 — sum of all species maxes ≈ 5600
-const POP_INSECT = 800;       // Numerous small invertebrates (Beetle, Mosquito, Caterpillar, Cricket)
-const POP_SMALL_HERB = 500;   // Fast-breeding small herbivores (Rabbit, Squirrel)
-const POP_LARGE_HERB = 300;   // Slower large herbivores (Deer, Goat)
-const POP_MID_PRED = 150;     // Mid-level predators (Fox, Snake, Hawk)
-const POP_APEX = 80;          // Apex predators (Wolf, Crocodile)
-const POP_OMNI_LARGE = 80;    // Large omnivores (Bear)
-const POP_OMNI_MED = 300;     // Medium omnivores (Boar, Raccoon, Crow, Lizard)
+// Tuned for default global cap of 5000
+const POP_INSECT = 400;       // Numerous small invertebrates (Beetle, Mosquito, Caterpillar, Cricket)
+const POP_SMALL_HERB = 350;   // Fast-breeding small herbivores (Rabbit, Squirrel)
+const POP_LARGE_HERB = 200;   // Slower large herbivores (Deer, Goat)
+const POP_MID_PRED = 120;     // Mid-level predators (Fox, Snake, Hawk)
+const POP_APEX = 60;          // Apex predators (Wolf, Crocodile)
+const POP_OMNI_LARGE = 50;    // Large omnivores (Bear)
+const POP_OMNI_MED = 200;     // Medium omnivores (Boar, Raccoon, Crow, Lizard)
 
 const DEFAULT_DECISION_THRESHOLDS = {
   drink_opportunistic: 18,

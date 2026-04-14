@@ -100,7 +100,7 @@ export const DEFAULT_CONFIG = {
   season_death_multiplier: [0.8, 1.0, 1.2, 2.0],
 
   // Fauna — global population budget distributed proportionally per species (0 = use base caps)
-  max_animal_population: 10000,
+  max_animal_population: 5000,
   hunger_multiplier: 1.6,
   thirst_multiplier: 1.6,
 

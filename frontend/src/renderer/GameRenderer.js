@@ -308,6 +308,11 @@ export class GameRenderer {
       this.onViewportChange(vp);
     }
     this._updatePlantEmojis();
+    // Re-render entities with current zoom (pixel overlay / sprite toggle)
+    const el = this.entityLayer;
+    if (el._lastAnimals) {
+      el.update(el._lastAnimals, el._lastRenderer, el._lastTick, this.camera.zoom);
+    }
   }
 
   _updatePlantEmojis() {

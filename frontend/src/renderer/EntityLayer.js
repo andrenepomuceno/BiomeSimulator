@@ -182,6 +182,11 @@ export class EntityLayer {
    * @param {number} zoom - current camera zoom level
    */
   update(animals, renderer, currentTick = 0, zoom = 1) {
+    // Cache for zoom-triggered refreshes
+    this._lastAnimals = animals;
+    this._lastRenderer = renderer;
+    this._lastTick = currentTick;
+
     this._ensureTextures();
 
     // Lazy-load lookup tables

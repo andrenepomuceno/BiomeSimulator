@@ -101,7 +101,7 @@ function buildFaunaAtlasCanvas() {
   const cell = document.createElement('canvas');
   cell.width = FRAME_SIZE;
   cell.height = FRAME_SIZE;
-  const cellCtx = cell.getContext('2d');
+  const cellCtx = cell.getContext('2d', { willReadFrequently: true });
   cellCtx.imageSmoothingEnabled = false;
 
   // Draw walk frames for each species
@@ -142,7 +142,7 @@ function buildFloraAtlasCanvas() {
   const cell = document.createElement('canvas');
   cell.width = FRAME_SIZE;
   cell.height = FRAME_SIZE;
-  const cellCtx = cell.getContext('2d');
+  const cellCtx = cell.getContext('2d', { willReadFrequently: true });
   cellCtx.imageSmoothingEnabled = false;
 
   for (const key of keys) {

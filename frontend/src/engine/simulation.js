@@ -208,9 +208,10 @@ export class SimulationEngine {
     w.animalGrid.fill(0);
 
     // Place unchanged animals first (those not in any delta)
+    // Skip egg-stage animals — they don't occupy tiles
     const deltaIds = new Set(allDeltas.map(d => d.id));
     for (const a of w.animals) {
-      if (a.alive && !deltaIds.has(a.id)) {
+      if (a.alive && !deltaIds.has(a.id) && a.lifeStage !== -1) {
         w.placeAnimal(a.x, a.y);
       }
     }
@@ -262,7 +263,8 @@ export class SimulationEngine {
       animal._dirty = true;
 
       if (animal.alive) {
-        w.placeAnimal(animal.x, animal.y);
+        // Skip egg-stage animals — they don't occupy tiles
+        if (animal.lifeStage !== -1) w.placeAnimal(animal.x, animal.y);
       } else {
         this._deadThisTick.push(animal);
       }

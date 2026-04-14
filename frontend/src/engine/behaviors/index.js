@@ -23,6 +23,10 @@ export function decideAndAct(animal, world, spatialHash) {
     animal.tickNeeds(world.hungerMultiplier, world.thirstMultiplier);
     if (animal.lifeStage !== previousLifeStage) {
       animal.logAction(world.clock.tick, 'LIFE_STAGE', { from: previousLifeStage, to: animal.lifeStage });
+      // Egg just hatched — place the baby on the tile grid
+      if (previousLifeStage === LifeStage.EGG) {
+        world.placeAnimal(animal.x, animal.y);
+      }
     }
 
     if (animal.pregnant && animal.gestationTimer <= 0) {

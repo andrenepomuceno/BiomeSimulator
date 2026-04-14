@@ -192,7 +192,7 @@ export class World {
   rebuildAnimalGrid() {
     this.animalGrid.fill(0);
     for (const animal of this.animals) {
-      if (animal.alive) this.placeAnimal(animal.x, animal.y);
+      if (animal.alive && animal.lifeStage !== -1) this.placeAnimal(animal.x, animal.y);
     }
   }
 

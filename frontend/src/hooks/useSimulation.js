@@ -54,10 +54,11 @@ export function useSimulation() {
               store.setAnimals(msg.animals);
             }
             // Update selected entity with fresh data if one is inspected
-            const sel = store.selectedEntity;
+            // Re-read state after the update to avoid a stale snapshot
+            const freshState = useSimStore.getState();
+            const sel = freshState.selectedEntity;
             if (sel) {
-              const animals = store.animals;
-              const updated = animals.find(a => a.id === sel.id);
+              const updated = freshState.animals.find(a => a.id === sel.id);
               if (updated) store.setSelectedEntity(updated);
               else store.clearSelection(); // entity died / removed
             }
@@ -107,12 +108,16 @@ export function useSimulation() {
       }
     };
 
+    worker.onerror = (e) => {
+      console.error('[SimWorker] Uncaught worker error:', e.message, e);
+    };
+
     return () => {
       worker.terminate();
       workerRef.current = null;
       useSimStore.getState().setWorker(null);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const postCmd = useCallback((cmd, data = {}) => {
     if (workerRef.current) {

@@ -37,10 +37,14 @@ export function useEditor(rendererRef) {
         break;
 
       case 'ERASE': {
-        const animals = state.animals;
-        const animal = animals.find(a => (a.x | 0) === x && (a.y | 0) === y);
-        if (animal) {
-          worker.postMessage({ cmd: 'removeEntity', entityId: animal.id });
+        const { animals, selectedEntity } = state;
+        // Prefer the selected entity if it's alive and on the clicked tile
+        const target =
+          (selectedEntity && selectedEntity.alive && selectedEntity.x === x && selectedEntity.y === y)
+            ? selectedEntity
+            : animals.find(a => a.alive && a.x === x && a.y === y);
+        if (target) {
+          worker.postMessage({ cmd: 'removeEntity', entityId: target.id });
         }
         break;
       }

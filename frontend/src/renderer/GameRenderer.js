@@ -61,14 +61,15 @@ export class GameRenderer {
     this._frameWindow = { frames: 0, startedAt: this._frameLastAt };
 
     // Input handling
-    this.app.view.addEventListener('wheel', (e) => this.camera.onWheel(e), { passive: false });
+    this._wheelHandler = (e) => this.camera.onWheel(e);
+    this.app.view.addEventListener('wheel', this._wheelHandler, { passive: false });
     this._setupDrag();
     this._setupClick();
 
     // Continuous selection marker update (works even when simulation is paused)
     this._selectedTile = null;
     this._waterTick = 0;
-    this.app.ticker.add(() => {
+    this._tickerCb = () => {
       const frameNow = performance.now();
       const frameDelta = frameNow - this._frameLastAt;
       this._frameLastAt = frameNow;
@@ -105,7 +106,8 @@ export class GameRenderer {
       if (this._waterTick % 4 === 0 && this.camera.zoom >= 6) {
         this._updatePlantEmojis();
       }
-    });
+    };
+    this.app.ticker.add(this._tickerCb);
 
     // Resize handling
     this._resizeObserver = new ResizeObserver(() => {
@@ -301,18 +303,20 @@ export class GameRenderer {
       }
     });
 
-    window.addEventListener('pointermove', (e) => {
+    this._onPointerMove = (e) => {
       if (!dragging) return;
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
       lastX = e.clientX;
       lastY = e.clientY;
       this.camera.pan(dx, dy);
-    });
+    };
+    window.addEventListener('pointermove', this._onPointerMove);
 
-    window.addEventListener('pointerup', () => {
+    this._onPointerUp = () => {
       dragging = false;
-    });
+    };
+    window.addEventListener('pointerup', this._onPointerUp);
   }
 
   _setupClick() {
@@ -349,6 +353,14 @@ export class GameRenderer {
 
   destroy() {
     this._resizeObserver.disconnect();
+    window.removeEventListener('pointermove', this._onPointerMove);
+    window.removeEventListener('pointerup', this._onPointerUp);
+    if (this._wheelHandler) {
+      this.app.view.removeEventListener('wheel', this._wheelHandler);
+    }
+    if (this._tickerCb) {
+      this.app.ticker.remove(this._tickerCb);
+    }
     this.app.destroy(true, { children: true });
   }
 }

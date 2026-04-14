@@ -56,11 +56,15 @@ const useSimStore = create((set, get) => ({
         map.set(id, { ...existing, alive: false, state: 9 });
       }
     }
-    // Remove fully dead (not alive and state === 9 for display purposes is kept)
-    // Filter to only alive + recently dead for renderer
+    // Keep alive animals; include state-9 corpses for one render pass then evict
     const animals = [];
     for (const a of map.values()) {
-      if (a.alive || a.state === 9) animals.push(a);
+      if (a.alive) {
+        animals.push(a);
+      } else if (a.state === 9) {
+        animals.push(a);
+        map.delete(a.id); // evict so _animalsById doesn't grow without bound
+      }
     }
     set({ animals, _animalsById: map });
   },

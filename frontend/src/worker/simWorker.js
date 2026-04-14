@@ -185,9 +185,15 @@ function initFaunaWorkers(config, terrain, waterProximity, heightmap) {
       new URL('./faunaWorker.js', import.meta.url),
       { type: 'module' }
     );
-    const readyPromise = new Promise(resolve => {
-      const handler = (e) => {
+    const readyPromise = new Promise((resolve, reject) => {
+      let handler;
+      const timeoutId = setTimeout(() => {
+        worker.removeEventListener('message', handler);
+        reject(new Error('Fauna worker init timeout'));
+      }, 5000);
+      handler = (e) => {
         if (e.data.cmd === 'ready') {
+          clearTimeout(timeoutId);
           worker.removeEventListener('message', handler);
           resolve();
         }
@@ -204,7 +210,12 @@ function initFaunaWorkers(config, terrain, waterProximity, heightmap) {
     faunaWorkers.push(worker);
     readyPromises.push(readyPromise);
   }
-  return Promise.all(readyPromises).then(() => { faunaWorkersReady = true; });
+  return Promise.all(readyPromises)
+    .then(() => { faunaWorkersReady = true; })
+    .catch((err) => {
+      console.warn('[SimWorker] Fauna worker init failed, falling back to serial processing:', err);
+      disposeFaunaWorkers();
+    });
 }
 
 function disposeFaunaWorkers() {

@@ -13,6 +13,7 @@ import EntityInspector from './components/EntityInspector';
 import StatsPanel from './components/StatsPanel';
 import Minimap from './components/Minimap';
 import SimulationReport from './components/SimulationReport';
+import EntitySummaryWindow from './components/EntitySummaryWindow';
 
 // Simple debounce implementation for speed slider
 function createDebounce(callback, delayMs) {
@@ -29,10 +30,11 @@ function createDebounce(callback, delayMs) {
 export default function App() {
   const canvasContainerRef = useRef(null);
   const rendererRef = useRef(null);
-  const { postCmd } = useSimulation();
+  const { postCmd, requestTileInfo } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [entitySummaryOpen, setEntitySummaryOpen] = useState(false);
   const debouncedSpeedChangeRef = useRef(null);
 
   const {
@@ -193,9 +195,25 @@ export default function App() {
   }
 
   function _handleFocusEntity(entity) {
-    if (!entity || !rendererRef.current) return;
+    if (!entity) return;
     if (!Number.isFinite(entity.x) || !Number.isFinite(entity.y)) return;
-    rendererRef.current.centerOn(entity.x, entity.y);
+    if (rendererRef.current) {
+      rendererRef.current.centerOn(entity.x, entity.y);
+    }
+  }
+
+  function _handleInspectFromSummary(item) {
+    if (!item) return;
+    if (Number.isFinite(item.x) && Number.isFinite(item.y) && rendererRef.current) {
+      rendererRef.current.centerOn(item.x, item.y);
+    }
+    if (item.entityType === 'animal' && item.raw) {
+      useSimStore.getState().setSelectedEntity(item.raw);
+      return;
+    }
+    if (item.entityType === 'plant' && Number.isFinite(item.x) && Number.isFinite(item.y)) {
+      requestTileInfo(item.x, item.y);
+    }
   }
 
   function _handleSave(callback) {
@@ -218,6 +236,11 @@ export default function App() {
         onLoad={_handleLoad}
       />
       <SimulationReport open={reportOpen} onClose={() => setReportOpen(false)} />
+      <EntitySummaryWindow
+        open={entitySummaryOpen}
+        onClose={() => setEntitySummaryOpen(false)}
+        onInspect={_handleInspectFromSummary}
+      />
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Toolbar
           onStart={_handleStart}
@@ -228,6 +251,7 @@ export default function App() {
           onSpeedChange={_handleSpeedChange}
           onMenuToggle={() => setMenuOpen(true)}
           onReportToggle={() => setReportOpen(true)}
+          onEntitiesToggle={() => setEntitySummaryOpen(true)}
         />
         <div className="main-area">
           <div className="sidebar sidebar-left">

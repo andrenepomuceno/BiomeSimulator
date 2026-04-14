@@ -140,5 +140,11 @@ export function useSimulation() {
     }
   }, []);
 
-  return { postCmd };
+  const requestTileInfo = useCallback((x, y) => {
+    if (!workerRef.current) return;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    workerRef.current.postMessage({ cmd: 'getTileInfo', x, y });
+  }, []);
+
+  return { postCmd, requestTileInfo };
 }

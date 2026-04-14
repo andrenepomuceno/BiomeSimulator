@@ -17,6 +17,7 @@ const useSimStore = create((set, get) => ({
   mapWidth: 0,
   mapHeight: 0,
   terrainData: null, // Uint8Array
+  worldReady: null,
   setTerrain: (data, w, h) => set({ terrainData: data, mapWidth: w, mapHeight: h }),
 
   // Simulation state

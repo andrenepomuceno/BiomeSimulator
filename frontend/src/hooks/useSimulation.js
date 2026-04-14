@@ -129,13 +129,13 @@ export function useSimulation() {
                 store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
               }
             } else {
-              // Fresh click: auto-select lone animal; otherwise show tile view
-              const aliveAnimals = msg.info.animals ? msg.info.animals.filter(a => a.alive) : [];
-              if (aliveAnimals.length === 1) {
-                store.setSelectedEntity(aliveAnimals[0]);
+              // Fresh click: auto-select lone animal (alive or corpse); otherwise show tile view
+              const tileAnimals = msg.info.animals || [];
+              if (tileAnimals.length === 1) {
+                store.setSelectedEntity(tileAnimals[0]);
                 // Also request detailed info (actionHistory, nav context)
                 if (workerRef.current) {
-                  workerRef.current.postMessage({ cmd: 'getAnimalDetail', id: aliveAnimals[0].id });
+                  workerRef.current.postMessage({ cmd: 'getAnimalDetail', id: tileAnimals[0].id });
                 }
               } else {
                 store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });

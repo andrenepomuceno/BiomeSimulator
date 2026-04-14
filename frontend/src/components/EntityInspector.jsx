@@ -503,11 +503,23 @@ function TileOccupants({ animals, onSelectAnimal }) {
           </div>
         );
       })}
-      {corpses.length > 0 && (
-        <div style={{ fontSize: '0.62rem', color: '#666', marginTop: 2 }}>
-          💀 {corpses.length} corpse{corpses.length > 1 ? 's' : ''}
-        </div>
-      )}
+      {corpses.map(a => {
+        const info = SPECIES_INFO[a.species] || { emoji: '❓', name: a.species };
+        return (
+          <div
+            key={a.id}
+            className="d-flex align-items-center gap-1 mb-1"
+            style={{ cursor: 'pointer', padding: '2px 4px', borderRadius: 4, background: 'rgba(255,255,255,0.02)', opacity: 0.6 }}
+            onClick={() => onSelectAnimal(a)}
+          >
+            <span style={{ fontSize: '0.8rem' }}>💀</span>
+            <span style={{ flex: 1, fontSize: '0.68rem' }}>
+              {info.name} <span style={{ color: '#666' }}>#{a.id}</span>
+            </span>
+            <AnimalStatusBadge state={a.state} alive={a.alive} />
+          </div>
+        );
+      })}
     </CollapsibleSection>
   );
 }

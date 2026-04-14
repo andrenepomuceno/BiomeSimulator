@@ -153,6 +153,8 @@ export function decideAndAct(animal, world, spatialHash) {
     return;
   }
 
+  _maybeGiveBirth(animal, world);
+
   // Zero energy — force sleep (cannot do anything else)
   // Animals cannot sleep on water — keep them idle so they attempt to move to land
   if (animal.energy <= 0) {
@@ -266,7 +268,12 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 5. Mating opportunity (promoted — breed before moderate hunger/thirst)
-  if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && animal.energy > (_decisionThresholds(animal).mate_energy_min ?? 50)) {
+  if (
+    animal.lifeStage === LifeStage.ADULT
+    && animal.mateCooldown <= 0
+    && animal.gestationTicksRemaining <= 0
+    && animal.energy > (_decisionThresholds(animal).mate_energy_min ?? 50)
+  ) {
     const mate = _findMate(animal, spatialHash, Math.max(vision, _decisionThresholds(animal).mate_search_radius_min ?? 10));
     if (mate) {
       const dist = Math.abs(mate.x - animal.x) + Math.abs(mate.y - animal.y);
@@ -860,7 +867,12 @@ function _findMate(animal, spatialHash, searchRadius) {
   let bestDist = Infinity;
   for (const entity of nearby) {
     if (entity.species !== animal.species || !entity.alive || entity.id === animal.id) continue;
-    if (entity.lifeStage !== LifeStage.ADULT || entity.mateCooldown > 0 || entity.energy <= (_decisionThresholds(entity).mate_energy_min ?? 50)) continue;
+    if (
+      entity.lifeStage !== LifeStage.ADULT
+      || entity.mateCooldown > 0
+      || entity.gestationTicksRemaining > 0
+      || entity.energy <= (_decisionThresholds(entity).mate_energy_min ?? 50)
+    ) continue;
     if (repro === REPRO_SEXUAL) {
       if (animal.sex === SEX_MALE && entity.sex !== SEX_FEMALE) continue;
       if (animal.sex === SEX_FEMALE && entity.sex !== SEX_MALE) continue;
@@ -874,6 +886,58 @@ function _findMate(animal, spatialHash, searchRadius) {
   return target;
   } finally {
     benchmarkEnd(collector, 'findMate', startedAt);
+  }
+}
+
+function _selectPregnancyCarrier(animal, mate) {
+  const repro = animal._config.reproduction || REPRO_SEXUAL;
+  if (repro === REPRO_SEXUAL) {
+    if (animal.sex === SEX_FEMALE) return animal;
+    if (mate.sex === SEX_FEMALE) return mate;
+  }
+  return animal.id <= mate.id ? animal : mate;
+}
+
+function _spawnOffspringNear(carrier, partner, world) {
+  let bx = carrier.x;
+  let by = carrier.y;
+  let babyPlaced = false;
+  for (const [ddx, ddy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+    const nx = carrier.x + ddx;
+    const ny = carrier.y + ddy;
+    if (world.isWalkableFor(nx, ny, carrier._walkableSet) && !world.isTileOccupied(nx, ny)) {
+      bx = nx;
+      by = ny;
+      babyPlaced = true;
+      break;
+    }
+  }
+  if (!babyPlaced) return false;
+
+  const speciesConfig = world.config.animal_species[carrier.species];
+  const baby = new Animal(world.nextId(), bx, by, carrier.species, speciesConfig);
+  baby.energy = speciesConfig.max_energy * 0.4;
+  baby.age = 0;
+  baby.logAction(world.clock.tick, 'BORN', { parentA: carrier.id, parentB: partner.id });
+  carrier.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
+  partner.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
+  world.animals.push(baby);
+  world.placeAnimal(bx, by);
+  return true;
+}
+
+function _maybeGiveBirth(animal, world) {
+  if (animal.gestationTicksRemaining > 0 || animal.gestationPartnerId == null || !animal.alive) return;
+  const partner = world.animals.find(a => a.id === animal.gestationPartnerId && a.alive && a.species === animal.species);
+  if (!partner) {
+    animal.gestationPartnerId = null;
+    return;
+  }
+  if (_spawnOffspringNear(animal, partner, world)) {
+    animal.logAction(world.clock.tick, 'GAVE_BIRTH', { partnerId: partner.id });
+    partner.logAction(world.clock.tick, 'OFFSPRING_BORN', { carrierId: animal.id });
+    animal.gestationPartnerId = null;
+    animal.gestationTicksRemaining = 0;
   }
 }
 
@@ -905,26 +969,14 @@ function _doMate(animal, mate, world) {
     }
   }
 
-  // Spawn baby nearby
-  let bx = animal.x, by = animal.y;
-  let babyPlaced = false;
-  for (const [ddx, ddy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-    const nx = animal.x + ddx, ny = animal.y + ddy;
-    if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
-      bx = nx; by = ny; babyPlaced = true; break;
-    }
-  }
-  if (!babyPlaced) return; // No free tile for baby
-
-  const speciesConfig = world.config.animal_species[animal.species];
-  const baby = new Animal(world.nextId(), bx, by, animal.species, speciesConfig);
-  baby.energy = speciesConfig.max_energy * 0.4;
-  baby.age = 0;
-  baby.logAction(world.clock.tick, 'BORN', { parentA: animal.id, parentB: mate.id });
-  animal.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
-  mate.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
-  world.animals.push(baby);
-  world.placeAnimal(bx, by);
+  const carrier = _selectPregnancyCarrier(animal, mate);
+  const gestationTicks = carrier._config.gestation_ticks || 40;
+  carrier.gestationTicksRemaining = gestationTicks;
+  carrier.gestationPartnerId = carrier.id === animal.id ? mate.id : animal.id;
+  carrier.logAction(world.clock.tick, 'PREGNANT', {
+    partnerId: carrier.gestationPartnerId,
+    gestationTicks,
+  });
 }
 
 // ---- Movement helpers ----

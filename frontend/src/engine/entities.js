@@ -70,6 +70,8 @@ export class Animal {
     this._nextThreatCheckTick = 0;
 
     this.mateCooldown = 0;
+    this.gestationTicksRemaining = 0;
+    this.gestationPartnerId = null;
     this.attackCooldown = 0;
     this._deathTick = null;
     this.consumed = false;
@@ -184,6 +186,7 @@ export class Animal {
 
     this.age++;
     if (this.mateCooldown > 0) this.mateCooldown--;
+    if (this.gestationTicksRemaining > 0) this.gestationTicksRemaining--;
     if (this.attackCooldown > 0) this.attackCooldown--;
     this._dirty = true;
   }
@@ -206,6 +209,7 @@ export class Animal {
       alive: this.alive,
       lifeStage: this.lifeStage,
       mateCooldown: this.mateCooldown,
+      gestationTicksRemaining: this.gestationTicksRemaining,
       attackCooldown: this.attackCooldown,
       targetX: this.targetX,
       targetY: this.targetY,
@@ -228,6 +232,8 @@ export class Animal {
       age: this.age,
       alive: this.alive,
       lifeStage: this.lifeStage,
+      mateCooldown: this.mateCooldown,
+      gestationTicksRemaining: this.gestationTicksRemaining,
       targetX: this.targetX,
       targetY: this.targetY,
       _deathTick: this._deathTick,
@@ -251,6 +257,8 @@ export class Animal {
       age: this.age,
       alive: this.alive,
       mateCooldown: this.mateCooldown,
+      gestationTicksRemaining: this.gestationTicksRemaining,
+      gestationPartnerId: this.gestationPartnerId,
       attackCooldown: this.attackCooldown,
       path: this.path,
       pathIndex: this.pathIndex,

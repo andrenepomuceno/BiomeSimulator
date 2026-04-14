@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { shouldMutePositionalSfx } from '../audio/soundMath.js';
+import { buildAudioLogExportText, formatAudioLogEntryLabel, formatAudioLogEntryMeta } from '../utils/audioLogExport.js';
 
 const TABS = {
   SETTINGS: 'settings',
@@ -21,38 +22,6 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
 
   const worldSfxMutedByZoom = shouldMutePositionalSfx(viewport);
 
-  const formatEntryLabel = (entry) => {
-    if (entry.type === 'uiClick') return 'UI click';
-    if (entry.type === 'ambience') return entry.mode === 'night' ? 'Night ambience' : 'Day ambience';
-    return entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
-  };
-
-  const formatEntryMeta = (entry) => {
-    if (entry.type === 'ambience') {
-      return `Tick ${entry.tick}`;
-    }
-
-    const parts = [`Tick ${entry.tick}`];
-    if (entry.type === 'uiClick') {
-      parts.push('Interface');
-      return parts.join(' · ');
-    }
-
-    if (entry.pan != null) {
-      if (entry.pan <= -0.25) parts.push('Left');
-      else if (entry.pan >= 0.25) parts.push('Right');
-      else parts.push('Center');
-    }
-
-    if (entry.distance != null) {
-      if (entry.distance < 18) parts.push('Near');
-      else if (entry.distance < 42) parts.push('Mid');
-      else parts.push('Far');
-    }
-
-    return parts.join(' · ');
-  };
-
   const setSlider = (key) => (e) => {
     setAudioSettings({ [key]: Number(e.target.value) / 100 });
   };
@@ -62,24 +31,18 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
   };
 
   const handleExportLog = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      audioSettings: {
-        muted: audioSettings.muted,
-        masterVolume: audioSettings.masterVolume,
-        sfxVolume: audioSettings.sfxVolume,
-        ambienceVolume: audioSettings.ambienceVolume,
-        sfxEnabled: audioSettings.sfxEnabled,
-        ambienceEnabled: audioSettings.ambienceEnabled,
-      },
+    const exportedAt = new Date();
+    const text = buildAudioLogExportText({
+      exportedAt,
+      audioSettings,
       viewport,
       entries: audioLog,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    });
+    const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `ecogame-audio-log-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    anchor.download = `ecogame-audio-log-${exportedAt.toISOString().replace(/[:.]/g, '-')}.txt`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -205,10 +168,10 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
                     {audioLog.map((entry) => (
                       <div key={`${entry.at}-${entry.type}-${entry.tick}`} className="audio-log-item">
                         <div className="audio-log-top">
-                          <span className="audio-log-type">{formatEntryLabel(entry)}</span>
+                          <span className="audio-log-type">{formatAudioLogEntryLabel(entry)}</span>
                           <span className="audio-log-time">{new Date(entry.at).toLocaleTimeString()}</span>
                         </div>
-                        <div className="audio-log-meta">{formatEntryMeta(entry)}</div>
+                        <div className="audio-log-meta">{formatAudioLogEntryMeta(entry, ' · ')}</div>
                       </div>
                     ))}
                   </div>

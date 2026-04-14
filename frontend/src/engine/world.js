@@ -83,9 +83,6 @@ export class World {
     // Animals
     this.animals = [];
 
-    // Eggs (oviparous / metamorphosis species)
-    this.eggs = [];
-
     // Entity ID counter
     this._nextId = 1;
 
@@ -253,12 +250,14 @@ export class World {
       }
     }
 
+    // Count egg-stage animals
     let eggCount = 0;
     const eggSpeciesCounts = {};
-    for (const egg of this.eggs) {
-      if (!egg.alive) continue;
-      eggCount++;
-      eggSpeciesCounts[egg.species] = (eggSpeciesCounts[egg.species] || 0) + 1;
+    for (const a of this.animals) {
+      if (a.alive && a._isEggStage && a.lifeStage === -1) {
+        eggCount++;
+        eggSpeciesCounts[a.species] = (eggSpeciesCounts[a.species] || 0) + 1;
+      }
     }
 
     return {

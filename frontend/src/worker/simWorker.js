@@ -84,7 +84,6 @@ async function doTick() {
       await doParallelFauna();
       engine._phases.behaviorMs = performance.now() - behaviorStart;
       engine._phases.spatialMs = 0;
-      engine.tickEggs();
       engine.tickCleanup();
     } else {
       engine.tick();
@@ -118,7 +117,6 @@ async function doParallelFauna() {
 
   const allAnimalStates = alive.map(a => a.toWorkerState());
   const activePlantIndices = Array.from(w.activePlantTiles);
-  const eggDicts = (w.eggs || []).filter(e => e.alive).map(e => e.toDict());
 
   const resultPromises = chunks.map((chunkIds, i) => {
     return new Promise(resolve => {
@@ -166,7 +164,6 @@ async function doParallelFauna() {
         thirstMultiplier: w.thirstMultiplier,
         activePlantIndices,
         allAnimals: allAnimalStates,
-        eggs: eggDicts,
         chunkIds,
         nextIdBase: 900000 + i * 100000,
       }, [ptCopy.buffer, psCopy.buffer, paCopy.buffer, agCopy.buffer]);
@@ -262,7 +259,6 @@ function postTickState(tickMs = 0) {
     type: 'tick',
     clock: w.clock.toDict(),
     animals,
-    eggs: (w.eggs || []).filter(e => e.alive).map(e => e.toDict()),
     plantChanges: plantChangesOverflow ? [] : w.plantChanges,
     incremental: !isFullSync,
   };
@@ -441,7 +437,7 @@ self.onmessage = function (e) {
 
     case 'removeEntity': {
       if (!engine) break;
-      const ok = engine.removeEntity(e.data.entityId, !!e.data.isEgg);
+      const ok = engine.removeEntity(e.data.entityId);
       self.postMessage({ type: 'entityRemoved', entityId: e.data.entityId, ok });
       break;
     }
@@ -470,15 +466,6 @@ self.onmessage = function (e) {
       for (const a of w.animals) {
         if ((a.alive || a.state === 9) && (a.x | 0) === x && (a.y | 0) === y) {
           info.animals.push(a.toDict());
-        }
-      }
-      // Find eggs on this tile
-      info.eggs = [];
-      if (w.eggs) {
-        for (const egg of w.eggs) {
-          if (egg.alive && (egg.x | 0) === x && (egg.y | 0) === y) {
-            info.eggs.push(egg.toDict());
-          }
         }
       }
       self.postMessage({ type: 'tileInfo', x, y, info, refreshOnly: !!e.data.refreshOnly });

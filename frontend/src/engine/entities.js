@@ -18,6 +18,7 @@ export const AnimalState = {
 };
 
 export const LifeStage = {
+  EGG: -1,
   BABY: 0,
   YOUNG: 1,
   YOUNG_ADULT: 2,
@@ -88,6 +89,13 @@ export class Animal {
     this.gestationTimer = 0;
     this._gestationLitterSize = 0;
 
+    // Egg-stage properties (oviparous / metamorphosis species)
+    this._isEggStage = false; // set true for animals born as eggs
+    this._incubationPeriod = 0; // ticks until hatching
+    this._eggMaxHp = 0; // egg HP cap (separate from species maxHp)
+    this.parentA = null;
+    this.parentB = null;
+
     // Terrain / diet sets for fast O(1) lookups
     this._walkableSet = new Set(config.walkable_terrain || [1, 2, 3, 5, 8]);
     this._ediblePlants = new Set(config.edible_plants || []);
@@ -154,21 +162,28 @@ export class Animal {
   get matureAge() { return this._config.mature_age; }
 
   get lifeStage() {
+    // Egg stage: incubating animal (oviparous / metamorphosis)
+    if (this._isEggStage && this.age < this._incubationPeriod) {
+      return LifeStage.EGG;
+    }
+    // After incubation, compute age offset (effective age starts at 0 when hatched)
+    const effectiveAge = this._isEggStage ? this.age - this._incubationPeriod : this.age;
+
     // Metamorphosis species: BABY → YOUNG → PUPA → ADULT
     const pupaAge = this._config.pupa_age;
     if (pupaAge != null) {
       const pupaDuration = this._config.pupa_duration || 60;
       const ages = this._config.life_stage_ages;
-      if (ages && this.age < ages[0]) return LifeStage.BABY;
-      if (this.age < pupaAge) return LifeStage.YOUNG;
-      if (this.age < pupaAge + pupaDuration) return LifeStage.PUPA;
+      if (ages && effectiveAge < ages[0]) return LifeStage.BABY;
+      if (effectiveAge < pupaAge) return LifeStage.YOUNG;
+      if (effectiveAge < pupaAge + pupaDuration) return LifeStage.PUPA;
       return LifeStage.ADULT;
     }
     const ages = this._config.life_stage_ages;
-    if (!ages) return this.age >= this.matureAge ? LifeStage.ADULT : LifeStage.YOUNG;
-    if (this.age < ages[0]) return LifeStage.BABY;
-    if (this.age < ages[1]) return LifeStage.YOUNG;
-    if (this.age < ages[2]) return LifeStage.YOUNG_ADULT;
+    if (!ages) return effectiveAge >= this.matureAge ? LifeStage.ADULT : LifeStage.YOUNG;
+    if (effectiveAge < ages[0]) return LifeStage.BABY;
+    if (effectiveAge < ages[1]) return LifeStage.YOUNG;
+    if (effectiveAge < ages[2]) return LifeStage.YOUNG_ADULT;
     return LifeStage.ADULT;
   }
 
@@ -184,6 +199,13 @@ export class Animal {
 
   tickNeeds(hungerMult, thirstMult) {
     const stage = this.lifeStage;
+
+    // EGG: suspended animation — only age advances, no metabolism
+    if (stage === LifeStage.EGG) {
+      this.age++;
+      this._dirty = true;
+      return;
+    }
 
     // PUPA: suspended animation — only age advances, minimal metabolism
     if (stage === LifeStage.PUPA) {
@@ -254,6 +276,11 @@ export class Animal {
       pregnant: this.pregnant,
       gestationTimer: this.gestationTimer,
       _gestationLitterSize: this._gestationLitterSize,
+      _isEggStage: this._isEggStage,
+      _incubationPeriod: this._incubationPeriod,
+      _eggMaxHp: this._eggMaxHp,
+      parentA: this.parentA,
+      parentB: this.parentB,
       actionHistory: this.actionHistory,
     };
   }
@@ -278,6 +305,11 @@ export class Animal {
       pregnant: this.pregnant,
       gestationTimer: this.gestationTimer,
       _gestationLitterSize: this._gestationLitterSize,
+      _isEggStage: this._isEggStage,
+      _incubationPeriod: this._incubationPeriod,
+      _eggMaxHp: this._eggMaxHp,
+      parentA: this.parentA,
+      parentB: this.parentB,
     };
   }
 
@@ -314,6 +346,11 @@ export class Animal {
       pregnant: this.pregnant,
       gestationTimer: this.gestationTimer,
       _gestationLitterSize: this._gestationLitterSize,
+      _isEggStage: this._isEggStage,
+      _incubationPeriod: this._incubationPeriod,
+      _eggMaxHp: this._eggMaxHp,
+      parentA: this.parentA,
+      parentB: this.parentB,
       actionHistory: this.actionHistory,
     };
   }
@@ -321,64 +358,5 @@ export class Animal {
   /** Clear dirty flag after serialization. */
   clearDirty() {
     this._dirty = false;
-  }
-}
-
-/**
- * Egg entity — immobile, has HP, incubates over time, can be eaten by predators.
- * Created by oviparous/metamorphosis species during mating.
- */
-export class Egg {
-  constructor(id, x, y, species, config) {
-    this.id = id;
-    this.x = x;
-    this.y = y;
-    this.species = species;
-    this.isEgg = true;
-    this._config = config;
-    this.hp = config.egg_hp || 10;
-    this.maxHp = this.hp;
-    this.age = 0;
-    this.incubationPeriod = config.incubation_period || 30;
-    this.hatchCount = 1; // how many babies this egg produces (usually 1)
-    this.alive = true;
-    this.parentA = null;
-    this.parentB = null;
-    this._birthTick = 0;
-  }
-
-  tick() {
-    if (!this.alive) return;
-    this.age++;
-  }
-
-  get ready() {
-    return this.alive && this.age >= this.incubationPeriod;
-  }
-
-  takeDamage(dmg) {
-    if (!this.alive) return;
-    this.hp = Math.max(0, this.hp - dmg);
-    if (this.hp <= 0) {
-      this.alive = false;
-    }
-  }
-
-  toDict() {
-    return {
-      id: this.id,
-      x: this.x,
-      y: this.y,
-      species: this.species,
-      isEgg: true,
-      hp: Math.round(this.hp * 10) / 10,
-      maxHp: this.maxHp,
-      age: this.age,
-      incubationPeriod: this.incubationPeriod,
-      hatchCount: this.hatchCount,
-      alive: this.alive,
-      parentA: this.parentA,
-      parentB: this.parentB,
-    };
   }
 }

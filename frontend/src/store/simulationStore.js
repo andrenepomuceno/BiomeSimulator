@@ -83,10 +83,6 @@ const useSimStore = create((set, get) => ({
   plantSnapshot: null,
   setPlantSnapshot: (snapshot) => set({ plantSnapshot: snapshot }),
 
-  // Eggs (oviparous species)
-  eggs: [],
-  setEggs: (eggs) => set({ eggs }),
-
   // Stats
   stats: { herbivores: 0, carnivores: 0, plants_total: 0, fruits: 0 },
   statsHistory: [],

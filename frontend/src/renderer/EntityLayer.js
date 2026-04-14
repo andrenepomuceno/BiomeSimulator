@@ -82,7 +82,7 @@ export class EntityLayer {
    * Get the texture key for an animal based on its state and species.
    */
   _getTexKey(a) {
-    if (a.isEgg) return 'EGG';
+    if (a.lifeStage === -1) return 'EGG'; // LifeStage.EGG = -1
     if (a.state === 9) return 'DEAD';
     if (a.state === 5) return 'SLEEPING';
     if (a.lifeStage === 4) return 'PUPA';
@@ -95,25 +95,21 @@ export class EntityLayer {
    * @param {PIXI.Renderer} renderer - (unused, kept for API compat)
    * @param {number} currentTick
    * @param {number} zoom - current camera zoom level
-   * @param {Array} eggs - [{id, x, y, species, hp, maxHp, ...}, ...]
    */
-  update(animals, renderer, currentTick = 0, zoom = 1, eggs = []) {
+  update(animals, renderer, currentTick = 0, zoom = 1) {
     this._ensureTextures();
 
     const seen = new Set();
     const showBars = zoom >= ENTITY_BARS_MIN_ZOOM;
 
-    // Combine animals and eggs into one pass
-    const entities = eggs.length > 0 ? animals.concat(eggs) : animals;
-
     // Clear energy bars (redrawn each frame)
     const barGfx = this._barGfx;
     barGfx.clear();
 
-    for (const a of entities) {
+    for (const a of animals) {
       seen.add(a.id);
       let sprite = this._sprites.get(a.id);
-      const isEgg = !!a.isEgg;
+      const isEgg = a.lifeStage === -1; // LifeStage.EGG
 
       const texKey = this._getTexKey(a);
       const tex = this._textures[texKey] || this._textures[a.species];

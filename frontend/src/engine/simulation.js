@@ -3,7 +3,7 @@
  * No threading — designed to be called from a Web Worker.
  */
 import { World } from './world.js';
-import { Animal, Egg } from './entities.js';
+import { Animal } from './entities.js';
 import { SpatialHash } from './spatialHash.js';
 import { generateTerrain, computeWaterProximity } from './mapGenerator.js';
 import {
@@ -91,7 +91,6 @@ export class SimulationEngine {
 
     // Reset animals
     w.animals = [];
-    w.eggs = [];
     w._nextId = 1;
     w.animalGrid.fill(0);
 
@@ -141,7 +140,6 @@ export class SimulationEngine {
   tick() {
     this.tickFlora();
     this.tickFaunaSequential();
-    this.tickEggs();
     this.tickCleanup();
   }
 
@@ -256,6 +254,11 @@ export class SimulationEngine {
       animal.gestationTimer = delta.gestationTimer || 0;
       animal._gestationLitterSize = delta._gestationLitterSize || 0;
       if (delta.actionHistory) animal.actionHistory = delta.actionHistory;
+      animal._isEggStage = delta._isEggStage || false;
+      animal._incubationPeriod = delta._incubationPeriod || 0;
+      animal._eggMaxHp = delta._eggMaxHp || 0;
+      animal.parentA = delta.parentA ?? null;
+      animal.parentB = delta.parentB ?? null;
       animal._dirty = true;
 
       if (animal.alive) {
@@ -287,7 +290,7 @@ export class SimulationEngine {
       for (const bd of r.births) {
         const sc = w.config.animal_species[bd.species];
         if (!sc) continue;
-        if (w.isTileOccupied(bd.x, bd.y)) continue;
+        if (w.isTileOccupied(bd.x, bd.y) && !bd._isEggStage) continue;
         // Enforce population cap at merge time
         const bMax = sc.max_population;
         if (bMax) {
@@ -302,46 +305,19 @@ export class SimulationEngine {
         baby.pregnant = bd.pregnant || false;
         baby.gestationTimer = bd.gestationTimer || 0;
         baby._gestationLitterSize = bd._gestationLitterSize || 0;
+        baby._isEggStage = bd._isEggStage || false;
+        baby._incubationPeriod = bd._incubationPeriod || 0;
+        baby._eggMaxHp = bd._eggMaxHp || 0;
+        baby.parentA = bd.parentA ?? null;
+        baby.parentB = bd.parentB ?? null;
+        if (baby._isEggStage) {
+          baby.hp = baby._eggMaxHp;
+        }
         baby._dirty = true;
         baby._birthTick = w.clock.tick;
         baby.actionHistory = bd.actionHistory || [];
         w.animals.push(baby);
-        w.placeAnimal(bd.x, bd.y);
-      }
-    }
-
-    // Merge egg births from sub-workers (with pop cap including pending eggs)
-    if (!w.eggs) w.eggs = [];
-    // Remove eggs eaten by sub-worker animals
-    const eatenEggIds = new Set();
-    for (const r of results) {
-      if (!r.eatenEggIds) continue;
-      for (const id of r.eatenEggIds) eatenEggIds.add(id);
-    }
-    if (eatenEggIds.size > 0) {
-      for (const egg of w.eggs) {
-        if (eatenEggIds.has(egg.id)) egg.alive = false;
-      }
-    }
-    for (const r of results) {
-      if (!r.eggBirths) continue;
-      for (const ed of r.eggBirths) {
-        const sc = w.config.animal_species[ed.species];
-        if (!sc) continue;
-        // Check pop cap (alive + pending eggs)
-        const bMax = sc.max_population;
-        if (bMax) {
-          const gMax = w.config.max_animal_population;
-          const eMax = gMax > 0 ? Math.max(2, Math.round(bMax * gMax / BASE_POP_TOTAL)) : bMax;
-          const alive = w.getAliveSpeciesCount(ed.species);
-          const pending = w.eggs.filter(e => e.alive && e.species === ed.species).length;
-          if ((alive + pending) >= eMax) continue;
-        }
-        const egg = new Egg(w.nextId(), ed.x, ed.y, ed.species, sc);
-        egg.parentA = ed.parentA;
-        egg.parentB = ed.parentB;
-        egg._birthTick = w.clock.tick;
-        w.eggs.push(egg);
+        if (!bd._isEggStage) w.placeAnimal(bd.x, bd.y);
       }
     }
 
@@ -351,76 +327,6 @@ export class SimulationEngine {
     // Dead animals are already excluded from animalGrid and spatialHash above,
     // so clear _deadThisTick to prevent tickCleanup from double-removing them.
     this._deadThisTick = [];
-  }
-
-  /**
-   * Process egg incubation, hatching, and cleanup.
-   */
-  tickEggs() {
-    const w = this.world;
-    if (!w.eggs || w.eggs.length === 0) return;
-
-    const hatched = [];
-    for (const egg of w.eggs) {
-      if (!egg.alive) continue;
-      egg.tick();
-      if (egg.ready) {
-        // Hatch: spawn baby animals
-        const speciesConfig = w.config.animal_species[egg.species];
-        if (!speciesConfig) continue;
-        const walkableSet = new Set(speciesConfig.walkable_terrain || [1, 2, 3, 5, 8]);
-        const baseTx = egg.x | 0;
-        const baseTy = egg.y | 0;
-        // Population cap check (with soft cap like behaviors.js)
-        const baseMax = speciesConfig.max_population;
-        const globalMax = w.config.max_animal_population;
-        const effectiveMax = (baseMax && globalMax > 0)
-          ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
-          : (baseMax || Infinity);
-        const count = w.getAliveSpeciesCount(egg.species);
-        let capBlocked = count >= effectiveMax;
-        if (!capBlocked && effectiveMax > 0) {
-          const ratio = count / effectiveMax;
-          if (ratio > 0.6) {
-            const chance = 1 - ((ratio - 0.6) / 0.4);
-            if (Math.random() > chance) capBlocked = true;
-          }
-        }
-        if (!capBlocked) {
-          // Find a walkable tile for the baby (prefer the egg's own tile)
-          let bx = egg.x, by = egg.y;
-          let placed = false;
-          if (w.isWalkableFor(baseTx, baseTy, walkableSet) && !w.isTileOccupied(baseTx, baseTy)) {
-            placed = true;
-          } else {
-            for (const [ddx, ddy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-              const ntx = baseTx + ddx, nty = baseTy + ddy;
-              if (w.isWalkableFor(ntx, nty, walkableSet) && !w.isTileOccupied(ntx, nty)) {
-                bx = ntx + 0.5; by = nty + 0.5; placed = true; break;
-              }
-            }
-          }
-          if (placed) {
-            const baby = new Animal(w.nextId(), bx, by, egg.species, speciesConfig);
-            baby.energy = speciesConfig.max_energy * 0.4;
-            baby.age = 0;
-            baby._birthTick = w.clock.tick;
-            baby._dirty = true;
-            baby.logAction(w.clock.tick, 'HATCHED', { eggId: egg.id, parentA: egg.parentA, parentB: egg.parentB });
-            w.animals.push(baby);
-            w.placeAnimal(bx, by);
-            this.spatialHash.insert(baby);
-            hatched.push(egg);
-          }
-          // If not placed (no walkable tile), egg stays and retries next tick
-        }
-        // If cap-blocked, egg stays and retries next tick
-      }
-    }
-    // Remove hatched and destroyed eggs
-    if (hatched.length > 0 || w.eggs.some(e => !e.alive)) {
-      w.eggs = w.eggs.filter(e => e.alive && !hatched.includes(e));
-    }
   }
 
   /**
@@ -505,17 +411,9 @@ export class SimulationEngine {
       }
     }
 
-    const eggsData = [];
-    for (const egg of (w.eggs || [])) {
-      if (egg.alive && egg.x >= x1 && egg.x < x2 && egg.y >= y1 && egg.y < y2) {
-        eggsData.push(egg.toDict());
-      }
-    }
-
     return {
       clock: w.clock.toDict(),
       animals: animalsData,
-      eggs: eggsData,
       plantChanges: w.plantChanges.slice(0, 5000),
     };
   }
@@ -530,7 +428,6 @@ export class SimulationEngine {
     return {
       clock: w.clock.toDict(),
       animals: w.animals.filter(a => a.alive).map(a => a.toDict()),
-      eggs: (w.eggs || []).filter(e => e.alive).map(e => e.toDict()),
       stats: w.getStats(),
     };
   }
@@ -591,17 +488,8 @@ export class SimulationEngine {
   /**
    * Remove an entity by ID.
    */
-  removeEntity(entityId, isEgg = false) {
+  removeEntity(entityId) {
     const w = this.world;
-    if (isEgg && w.eggs) {
-      for (const egg of w.eggs) {
-        if (egg.id === entityId) {
-          egg.alive = false;
-          return true;
-        }
-      }
-      return false;
-    }
     for (const a of w.animals) {
       if (a.id === entityId) {
         a.alive = false;

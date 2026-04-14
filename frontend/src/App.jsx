@@ -40,7 +40,6 @@ export default function App() {
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
     clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile,
-    eggs,
   } = useSimStore();
 
   // Initialize renderer
@@ -81,9 +80,9 @@ export default function App() {
     if (rendererRef.current) {
       const app = rendererRef.current.app;
       const zoom = rendererRef.current.camera.zoom;
-      rendererRef.current.updateEntities(animals, app.renderer, clock.tick, zoom, eggs);
+      rendererRef.current.updateEntities(animals, app.renderer, clock.tick, zoom);
     }
-  }, [animals, eggs]);
+  }, [animals]);
 
   // Update plant changes
   useEffect(() => {

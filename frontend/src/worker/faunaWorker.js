@@ -17,7 +17,7 @@
  */
 
 import { World } from '../engine/world.js';
-import { Animal, Egg } from '../engine/entities.js';
+import { Animal } from '../engine/entities.js';
 import { SpatialHash } from '../engine/spatialHash.js';
 import { decideAndAct } from '../engine/behaviors.js';
 
@@ -56,6 +56,14 @@ function reconstructAnimal(ad, speciesConfig) {
   a.pregnant = ad.pregnant || false;
   a.gestationTimer = ad.gestationTimer || 0;
   a._gestationLitterSize = ad._gestationLitterSize || 0;
+  a._isEggStage = ad._isEggStage || false;
+  a._incubationPeriod = ad._incubationPeriod || 0;
+  a._eggMaxHp = ad._eggMaxHp || 0;
+  a.parentA = ad.parentA ?? null;
+  a.parentB = ad.parentB ?? null;
+  if (a._isEggStage && a._eggMaxHp > 0) {
+    a.hp = ad.hp ?? a._eggMaxHp;
+  }
   a.actionHistory = ad.actionHistory || [];
   return a;
 }
@@ -109,23 +117,6 @@ self.onmessage = function (e) {
       }
       world.animals = allAnimals;
 
-      // Reconstruct existing eggs so _tryEatEgg works in parallel mode
-      world.eggs = [];
-      if (e.data.eggs) {
-        for (const ed of e.data.eggs) {
-          const sc = speciesConfigs[ed.species];
-          if (!sc) continue;
-          const egg = new Egg(ed.id, ed.x, ed.y, ed.species, sc);
-          egg.hp = ed.hp;
-          egg.maxHp = ed.maxHp;
-          egg.age = ed.age;
-          egg.alive = ed.alive;
-          egg.parentA = ed.parentA;
-          egg.parentB = ed.parentB;
-          world.eggs.push(egg);
-        }
-      }
-
       // Build spatial hash from all alive animals
       spatialHash.rebuild(allAnimals.filter(a => a.alive));
 
@@ -167,6 +158,11 @@ self.onmessage = function (e) {
           pregnant: animal.pregnant,
           gestationTimer: animal.gestationTimer,
           _gestationLitterSize: animal._gestationLitterSize,
+          _isEggStage: animal._isEggStage,
+          _incubationPeriod: animal._incubationPeriod,
+          _eggMaxHp: animal._eggMaxHp,
+          parentA: animal.parentA,
+          parentB: animal.parentB,
           actionHistory: animal.actionHistory,
         });
       }
@@ -180,28 +176,10 @@ self.onmessage = function (e) {
         }
       }
 
-      // Collect egg births from oviparous/metamorphosis species mating
-      // and track eaten/destroyed eggs
-      const eggBirths = [];
-      const eatenEggIds = [];
-      if (world.eggs) {
-        for (const egg of world.eggs) {
-          if (!egg.alive && e.data.eggs && e.data.eggs.some(ed => ed.id === egg.id)) {
-            // Existing egg was eaten by a predator in this chunk
-            eatenEggIds.push(egg.id);
-          } else if (egg.alive && !(e.data.eggs && e.data.eggs.some(ed => ed.id === egg.id))) {
-            // Newly created egg (from mating this tick)
-            eggBirths.push(egg.toDict());
-          }
-        }
-      }
-
       self.postMessage({
         cmd: 'tickResult',
         deltas,
         births,
-        eggBirths,
-        eatenEggIds,
         plantChanges: world.plantChanges,
         deadIds,
       });

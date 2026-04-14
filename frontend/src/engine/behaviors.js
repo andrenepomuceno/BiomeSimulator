@@ -1,7 +1,7 @@
 /**
  * Animal AI — state machine and decision logic.
  */
-import { Animal, Egg, AnimalState, LifeStage, ReproductionType } from './entities.js';
+import { Animal, AnimalState, LifeStage, ReproductionType } from './entities.js';
 import { WATER, DEEP_WATER, SAND, MUD, MOUNTAIN, ROCK } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SUB_CELL_STEP, SUB_CELL_DIVISOR, SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
@@ -179,8 +179,8 @@ export function decideAndAct(animal, world, spatialHash) {
     giveBirth(animal, world);
   }
 
-  // PUPA stage: immobile, no actions (still takes damage and can die)
-  if (animal.lifeStage === LifeStage.PUPA) {
+  // PUPA / EGG stage: immobile, no actions (still takes damage and can die)
+  if (animal.lifeStage === LifeStage.PUPA || animal.lifeStage === LifeStage.EGG) {
     animal.state = AnimalState.IDLE;
     return;
   }
@@ -664,7 +664,7 @@ function _seekPrey(animal, world, spatialHash, vision) {
   if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
 
   // No live prey — try eating nearby eggs
-  if (_tryEatEgg(animal, world, vision)) return;
+  if (_tryEatEgg(animal, world, spatialHash, vision)) return;
 
   // No prey — carnivores eat fruit as fallback when desperate
   // Only if they have explicit edible_plants (empty list = strictly carnivorous)
@@ -754,7 +754,7 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
     if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
 
     // No live prey — try eating nearby eggs
-    if (_tryEatEgg(animal, world, vision)) return;
+    if (_tryEatEgg(animal, world, spatialHash, vision)) return;
   }
 
   // Fallback: seek plants in vision range
@@ -806,29 +806,31 @@ function _tryScavenge(animal, world, spatialHash, vision) {
   return false;
 }
 
-/** Try to eat a nearby egg (carnivores/omnivores). Returns true if action was taken. */
-function _tryEatEgg(animal, world, vision) {
-  if (!world.eggs || world.eggs.length === 0) return false;
+/** Try to eat a nearby egg-stage animal (carnivores/omnivores). Returns true if action was taken. */
+function _tryEatEgg(animal, world, spatialHash, vision) {
   // Only carnivores and omnivores eat eggs
   if (animal.diet === 'HERBIVORE') return false;
+  const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
   let target = null;
   let bestDist = Infinity;
-  for (const egg of world.eggs) {
-    if (!egg.alive) continue;
+  for (const entity of nearby) {
+    if (!entity.alive || entity.lifeStage !== LifeStage.EGG) continue;
     // Don't eat own species' eggs
-    if (egg.species === animal.species) continue;
-    const dist = Math.abs(egg.x - animal.x) + Math.abs(egg.y - animal.y);
-    if (dist > vision) continue;
+    if (entity.species === animal.species) continue;
+    const dist = Math.abs(entity.x - animal.x) + Math.abs(entity.y - animal.y);
     if (dist < bestDist) {
       bestDist = dist;
-      target = egg;
+      target = entity;
     }
   }
   if (!target) return false;
 
   if (bestDist <= 1.5) {
-    // Eat the egg
-    target.takeDamage(target.maxHp); // destroy in one bite
+    // Eat the egg — kill it in one bite
+    target.hp = 0;
+    target.alive = false;
+    target.state = AnimalState.DEAD;
+    target._deathTick = world.clock.tick;
     animal.hunger = Math.max(0, animal.hunger - 20);
     animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
     animal.state = AnimalState.EATING;
@@ -1107,7 +1109,7 @@ function _checkPopulationCap(animal, world) {
   return false;
 }
 
-/** Like _checkPopulationCap but also counts pending eggs toward the population. */
+/** Like _checkPopulationCap but also counts pending egg-stage animals toward the population. */
 function _checkPopulationCapWithEggs(animal, world) {
   const baseMax = animal._config.max_population;
   if (!baseMax) return false;
@@ -1115,11 +1117,8 @@ function _checkPopulationCapWithEggs(animal, world) {
   const effectiveMax = globalMax > 0
     ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
     : baseMax;
-  const aliveCount = world.getAliveSpeciesCount(animal.species);
-  const eggCount = world.eggs
-    ? world.eggs.filter(e => e.alive && e.species === animal.species).length
-    : 0;
-  const count = aliveCount + eggCount;
+  // Count alive animals of this species (including egg-stage ones, since they're in world.animals)
+  const count = world.getAliveSpeciesCount(animal.species);
   if (count >= effectiveMax) return true;
   const ratio = count / effectiveMax;
   if (ratio > 0.5) {
@@ -1129,12 +1128,11 @@ function _checkPopulationCapWithEggs(animal, world) {
   return false;
 }
 
-/** Lay eggs on adjacent walkable tiles. */
+/** Lay eggs as EGG-stage Animal instances on adjacent walkable tiles. */
 function _layEggs(animal, mate, world, clutchSize) {
   const baseTx = animal.x | 0;
   const baseTy = animal.y | 0;
   const speciesConfig = world.config.animal_species[animal.species];
-  if (!world.eggs) world.eggs = [];
   // Eggs must be placed on land — exclude water tiles even if the species can walk on them
   const landWalkable = new Set([...animal._walkableSet].filter(t => t !== 0 && t !== 6));
   if (landWalkable.size === 0) return; // species can only walk on water — cannot lay eggs
@@ -1142,15 +1140,24 @@ function _layEggs(animal, mate, world, clutchSize) {
   let placed = 0;
   for (const [ddx, ddy] of offsets) {
     if (placed >= clutchSize) break;
-    // Re-check pop cap per egg (count pending eggs toward the cap)
+    // Re-check pop cap per egg (egg-stage animals counted toward the cap)
     if (_checkPopulationCapWithEggs(animal, world)) break;
     const ntx = baseTx + ddx, nty = baseTy + ddy;
     if (world.isWalkableFor(ntx, nty, landWalkable)) {
-      const egg = new Egg(world.nextId(), ntx + 0.5, nty + 0.5, animal.species, speciesConfig);
+      const bx = ntx + 0.5, by = nty + 0.5;
+      const egg = new Animal(world.nextId(), bx, by, animal.species, speciesConfig);
+      egg._isEggStage = true;
+      egg._incubationPeriod = speciesConfig.incubation_period || 30;
+      egg._eggMaxHp = speciesConfig.egg_hp || 10;
+      egg.hp = egg._eggMaxHp;
+      egg.energy = speciesConfig.max_energy * 0.4;
+      egg.age = 0;
       egg.parentA = animal.id;
       egg.parentB = mate.id;
       egg._birthTick = world.clock.tick;
-      world.eggs.push(egg);
+      egg.logAction(world.clock.tick, 'LAID', { parentA: animal.id, parentB: mate.id });
+      world.animals.push(egg);
+      // Egg-stage animals don't occupy the tile (they're immobile but small)
       placed++;
     }
   }

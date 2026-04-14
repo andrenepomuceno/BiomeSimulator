@@ -389,70 +389,31 @@ export default function EntityInspector({ onFocusEntity }) {
   if (selectedEntity) {
     const e = selectedEntity;
 
-    // Egg inspection panel
-    if (e.isEgg) {
-      const info = SPECIES_INFO[e.species] || { emoji: '❓', name: e.species };
-      const hatchPct = Math.min(100, (e.age / (e.incubationPeriod || 1)) * 100);
-      const isGone = !!e._gone;
-      const goneLabel = hatchPct >= 100 ? '🐣 Hatched!' : '💀 Destroyed';
-      return (
-        <div className="sidebar-section entity-info" style={isGone ? { opacity: 0.6 } : undefined}>
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <h6 className="mb-0">
-              🥚 {info.name} Egg <span style={{ color: '#666', fontWeight: 'normal' }}>#{e.id}</span>
-            </h6>
-            <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
-          </div>
-          {isGone && (
-            <div className="mb-2">
-              <span className="inspector-badge" style={{ background: hatchPct >= 100 ? '#88cc44' : '#ff4444' }}>
-                {goneLabel}
-              </span>
-            </div>
-          )}
-          <CollapsibleSection title="Egg Info" icon="🥚" defaultOpen={true}>
-            <div className="stat-row"><span className="stat-label">Species</span><span className="stat-value">{info.emoji} {info.name}</span></div>
-            <div className="stat-row"><span className="stat-label">Position</span><span className="stat-value">({Math.floor(e.x)}, {Math.floor(e.y)})</span></div>
-            <div className="stat-row"><span className="stat-label">Hatch Count</span><span className="stat-value">{e.hatchCount}</span></div>
-            {e.parentA != null && (
-              <div className="stat-row"><span className="stat-label">Parents</span><span className="stat-value">#{e.parentA}, #{e.parentB}</span></div>
-            )}
-            <Bar icon="❤️" label="HP" value={e.hp} max={e.maxHp} color="#ff4757" />
-            <div className="mt-1">
-              <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
-                <span className="text-muted">🕐 Incubation</span>
-                <span>{e.age} / {e.incubationPeriod} ticks</span>
-              </div>
-              <div className="entity-bar">
-                <div className="entity-bar-fill" style={{ width: `${hatchPct}%`, background: hatchPct >= 100 ? '#88cc44' : '#ffaa33' }} />
-              </div>
-            </div>
-          </CollapsibleSection>
-        </div>
-      );
-    }
-
     const info = SPECIES_INFO[e.species] || { emoji: '❓', name: e.species, diet: e.diet || '?' };
     const sp = ANIMAL_SPECIES_CONFIG[e.species];
     const maxHunger = sp?.max_hunger || 100;
     const maxThirst = sp?.max_thirst || 100;
     const maxEnergy = sp?.max_energy || 100;
-    const maxHp = sp?.max_hp || 100;
+    const maxHp = e._isEggStage && e.lifeStage === -1 ? (e._eggMaxHp || sp?.egg_hp || maxHp) : (sp?.max_hp || 100);
     const maxAge = sp?.max_age || 1;
     const agePct = Math.min(100, (e.age / maxAge) * 100);
+    const isEggStage = e.lifeStage === -1; // LifeStage.EGG
 
     return (
       <div className="sidebar-section entity-info">
         <div className="d-flex justify-content-between align-items-center mb-2">
           <h6 className="mb-0">
-            {info.emoji} {info.name} <span style={{ color: '#666', fontWeight: 'normal' }}>#{e.id}</span>
+            {isEggStage ? '🥚' : info.emoji} {info.name} {isEggStage ? 'Egg' : ''} <span style={{ color: '#666', fontWeight: 'normal' }}>#{e.id}</span>
           </h6>
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
         </div>
 
         {/* Status badge */}
         <div className="mb-2">
-          <AnimalStatusBadge state={e.state} alive={e.alive} />
+          {isEggStage
+            ? <span className="inspector-badge" style={{ background: '#ffaa33' }}>🥚 Incubating</span>
+            : <AnimalStatusBadge state={e.state} alive={e.alive} />
+          }
         </div>
 
         {/* Identity */}
@@ -495,9 +456,23 @@ export default function EntityInspector({ onFocusEntity }) {
         {/* Vital signs */}
         <CollapsibleSection title="Vitals" icon="❤️" defaultOpen={true}>
           <Bar icon="❤️" label="HP" value={e.hp} max={maxHp} color="#ff4757" />
-          <Bar icon="⚡" label="Energy" value={e.energy} max={maxEnergy} color="#4ecdc4" />
-          <Bar icon="🍖" label="Hunger" value={e.hunger} max={maxHunger} color="#ff6b6b" />
-          <Bar icon="💧" label="Thirst" value={e.thirst} max={maxThirst} color="#4d96ff" />
+          {isEggStage && e._incubationPeriod > 0 && (
+            <div className="mt-1">
+              <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
+                <span className="text-muted">🕐 Incubation</span>
+                <span>{e.age} / {e._incubationPeriod} ticks</span>
+              </div>
+              <div className="entity-bar">
+                <div className="entity-bar-fill" style={{ width: `${Math.min(100, (e.age / e._incubationPeriod) * 100)}%`, background: e.age >= e._incubationPeriod ? '#88cc44' : '#ffaa33' }} />
+              </div>
+            </div>
+          )}
+          {isEggStage && e.parentA != null && (
+            <div className="stat-row"><span className="stat-label">Parents</span><span className="stat-value">#{e.parentA}, #{e.parentB}</span></div>
+          )}
+          {!isEggStage && <Bar icon="⚡" label="Energy" value={e.energy} max={maxEnergy} color="#4ecdc4" />}
+          {!isEggStage && <Bar icon="🍖" label="Hunger" value={e.hunger} max={maxHunger} color="#ff6b6b" />}
+          {!isEggStage && <Bar icon="💧" label="Thirst" value={e.thirst} max={maxThirst} color="#4d96ff" />}
           <div className="mt-1">
             <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
               <span className="text-muted">⏳ Age</span>

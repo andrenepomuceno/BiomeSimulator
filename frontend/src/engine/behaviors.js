@@ -695,12 +695,40 @@ function _attack(attacker, defender, world) {
   attacker.applyEnergyCost('ATTACK');
   attacker.attackCooldown = combat.attack_cooldown ?? 3;
 
-  let damage = attacker._config.attack_power - defender._config.defense * (combat.defense_factor ?? 0.5);
+  // Dodge chance — based on defender speed relative to attacker speed
+  const dodgeBase = combat.dodge_base ?? 0.05;
+  const dodgePerSpeed = combat.dodge_per_speed ?? 0.04;
+  const speedDiff = (defender._config.speed ?? 1) - (attacker._config.speed ?? 1);
+  const dodgeChance = Math.max(0, Math.min(0.45, dodgeBase + speedDiff * dodgePerSpeed));
+  if (Math.random() < dodgeChance) {
+    attacker.logAction(world.clock.tick, 'ATTACK_MISS', { target: defender.species, targetId: defender.id });
+    defender.logAction(world.clock.tick, 'DODGED', { attacker: attacker.species, attackerId: attacker.id });
+    return;
+  }
+
+  // Base damage with defense reduction
+  let baseDamage = attacker._config.attack_power - defender._config.defense * (combat.defense_factor ?? 0.5);
+  if (baseDamage < (combat.min_damage ?? 1)) baseDamage = combat.min_damage ?? 1;
+
+  // Damage randomness — ±30% variance
+  const variance = combat.damage_variance ?? 0.3;
+  const roll = 1 - variance + Math.random() * variance * 2;
+  let damage = baseDamage * roll;
+
+  // Critical hit chance
+  let isCrit = false;
+  const critChance = combat.crit_chance ?? 0.10;
+  const critMultiplier = combat.crit_multiplier ?? 2.0;
+  if (Math.random() < critChance) {
+    damage *= critMultiplier;
+    isCrit = true;
+  }
+
   if (damage < (combat.min_damage ?? 1)) damage = combat.min_damage ?? 1;
   defender.hp -= damage;
 
-  attacker.logAction(world.clock.tick, 'ATTACK', { target: defender.species, targetId: defender.id, damage: Math.round(damage * 10) / 10 });
-  defender.logAction(world.clock.tick, 'DEFENDED', { attacker: attacker.species, attackerId: attacker.id, damage: Math.round(damage * 10) / 10 });
+  attacker.logAction(world.clock.tick, 'ATTACK', { target: defender.species, targetId: defender.id, damage: Math.round(damage * 10) / 10, crit: isCrit });
+  defender.logAction(world.clock.tick, 'DEFENDED', { attacker: attacker.species, attackerId: attacker.id, damage: Math.round(damage * 10) / 10, crit: isCrit });
 
   if (defender.hp <= 0) {
     defender.alive = false;

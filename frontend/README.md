@@ -18,6 +18,16 @@ Vite dev server starts on **http://localhost:3000**.
 
 ---
 
+## In-App Help
+
+The player-facing guide is rendered by `src/components/HelpModal.jsx`.
+
+UI-ready guide content lives in `src/constants/helpContent.js`. Keep that file focused on short, player-facing explanations, and treat the repository documentation under `../docs/` as the canonical technical source rather than a runtime dependency.
+
+For UI-only help changes, pair `npm run build` with a quick manual smoke test of modal open/close behavior, keyboard shortcuts, and narrow-width layout.
+
+---
+
 ## Scripts
 
 | Command | Description |

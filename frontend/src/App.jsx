@@ -1,7 +1,7 @@
 /**
  * App — main layout wiring canvas, sidebar, toolbar, and all hooks together.
  */
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import useSimStore from './store/simulationStore';
 import { useSimulation } from './hooks/useSimulation';
 import { useEditor } from './hooks/useEditor';
@@ -14,6 +14,14 @@ import StatsPanel from './components/StatsPanel';
 import Minimap from './components/Minimap';
 import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
+import HelpModal from './components/HelpModal';
+
+const MODALS = {
+  MENU: 'menu',
+  GUIDE: 'guide',
+  REPORT: 'report',
+  ENTITIES: 'entities',
+};
 
 // Simple debounce implementation for speed slider
 function createDebounce(callback, delayMs) {
@@ -32,9 +40,7 @@ export default function App() {
   const rendererRef = useRef(null);
   const { postCmd, requestTileInfo } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
-  const [entitySummaryOpen, setEntitySummaryOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState(null);
   const debouncedSpeedChangeRef = useRef(null);
 
   const {
@@ -181,7 +187,7 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
-        setMenuOpen(prev => !prev);
+        setActiveModal(current => (current ? null : MODALS.MENU));
       }
     }
     window.addEventListener('keydown', onKeyDown);
@@ -226,19 +232,28 @@ export default function App() {
     useSimStore.getState().setSimState({ running: false, paused: true });
   }
 
+  function _openModal(modalId) {
+    setActiveModal(modalId);
+  }
+
+  function _closeModal() {
+    setActiveModal(null);
+  }
+
   return (
     <div className="app-container">
       <GameMenu
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
+        open={activeModal === MODALS.MENU}
+        onClose={_closeModal}
         onNewGame={(p) => _handleNewGame(p)}
         onSave={_handleSave}
         onLoad={_handleLoad}
       />
-      <SimulationReport open={reportOpen} onClose={() => setReportOpen(false)} />
+      <HelpModal open={activeModal === MODALS.GUIDE} onClose={_closeModal} />
+      <SimulationReport open={activeModal === MODALS.REPORT} onClose={_closeModal} />
       <EntitySummaryWindow
-        open={entitySummaryOpen}
-        onClose={() => setEntitySummaryOpen(false)}
+        open={activeModal === MODALS.ENTITIES}
+        onClose={_closeModal}
         onInspect={_handleInspectFromSummary}
       />
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
@@ -249,9 +264,10 @@ export default function App() {
           onStep={_handleStep}
           onReset={() => _handleReset()}
           onSpeedChange={_handleSpeedChange}
-          onMenuToggle={() => setMenuOpen(true)}
-          onReportToggle={() => setReportOpen(true)}
-          onEntitiesToggle={() => setEntitySummaryOpen(true)}
+          onMenuToggle={() => _openModal(MODALS.MENU)}
+          onGuideToggle={() => _openModal(MODALS.GUIDE)}
+          onReportToggle={() => _openModal(MODALS.REPORT)}
+          onEntitiesToggle={() => _openModal(MODALS.ENTITIES)}
         />
         <div className="main-area">
           <div className="sidebar sidebar-left">

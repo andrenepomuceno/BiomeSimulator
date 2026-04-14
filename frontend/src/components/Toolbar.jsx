@@ -12,7 +12,7 @@ const TOOLS = [
   { id: 'ERASE', label: '🗑️ Erase' },
 ];
 
-export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onReportToggle, onEntitiesToggle }) {
+export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onReportToggle, onEntitiesToggle }) {
   const { paused, running, tps, clock, tool, setTool } = useSimStore();
 
   return (
@@ -74,6 +74,9 @@ export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, o
 
       <button className="btn btn-sim btn-sm" onClick={onReportToggle} title="Simulation Report">
         📈 Report
+      </button>
+      <button className="btn btn-sim btn-sm" onClick={onGuideToggle} title="In-Game Guide">
+        ❓ Guide
       </button>
       <button className="btn btn-sim btn-sm" onClick={onEntitiesToggle} title="Entity Summary">
         📋 Entities

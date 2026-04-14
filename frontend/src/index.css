@@ -967,6 +967,97 @@ html, body, #root {
   gap: 8px;
 }
 
+.entity-summary-group {
+  background: rgba(12, 20, 38, 0.52);
+  border: 1px solid rgba(15, 52, 96, 0.55);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.entity-summary-group.has-active {
+  border-color: rgba(83, 168, 182, 0.8);
+  box-shadow: 0 0 0 1px rgba(83, 168, 182, 0.25);
+}
+
+.entity-summary-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(26, 35, 62, 0.95), rgba(18, 26, 49, 0.95));
+  color: #dceef4;
+  border: none;
+  text-align: left;
+}
+
+.entity-summary-group-header:hover {
+  background: linear-gradient(180deg, rgba(31, 43, 76, 0.95), rgba(20, 30, 56, 0.95));
+}
+
+.entity-summary-group-header.expanded {
+  box-shadow: inset 0 -1px 0 rgba(15, 52, 96, 0.65);
+}
+
+.entity-summary-group-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.entity-summary-group-chevron {
+  color: #53a8b6;
+  font-size: 0.8rem;
+}
+
+.entity-summary-group-emoji {
+  font-size: 1rem;
+}
+
+.entity-summary-group-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entity-summary-group-label {
+  color: #f0fafc;
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entity-summary-group-meta {
+  color: #8fb2c2;
+  font-size: 0.68rem;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.entity-summary-group-badge {
+  flex-shrink: 0;
+  min-width: 32px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(83, 168, 182, 0.14);
+  border: 1px solid rgba(83, 168, 182, 0.22);
+  color: #a9d8e3;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.entity-summary-group-body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .entity-summary-item {
   text-align: left;
   background: #1a1a3e;
@@ -1038,5 +1129,33 @@ html, body, #root {
 
   .help-tabs {
     grid-template-columns: 1fr;
+  }
+
+  .entity-summary-modal {
+    width: min(94vw, 680px);
+  }
+
+  .entity-summary-controls,
+  .entity-summary-header,
+  .entity-summary-list {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .entity-summary-filter-row {
+    flex-wrap: wrap;
+  }
+
+  .entity-summary-counter {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .entity-summary-group-header {
+    align-items: flex-start;
+  }
+
+  .entity-summary-group-label {
+    white-space: normal;
   }
 }

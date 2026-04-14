@@ -1,76 +1,99 @@
 /**
- * Special state drawing functions: sleeping, dead, egg, pupa.
+ * Special state drawing functions: sleeping, dead, egg, pupa — 32×32 design grid.
  */
 import { px, rect } from '../helpers.js';
 
 export function drawSleeping(ctx) {
-  rect(ctx, 5, 8, 6, 3, '#9090aa');
-  rect(ctx, 6, 7, 4, 1, '#9090aa');
-  rect(ctx, 6, 11, 4, 1, '#7878aa');
-  rect(ctx, 6, 8, 4, 1, '#a0a0bb');
-  rect(ctx, 5, 10, 6, 1, '#7878aa');
-  rect(ctx, 4, 8, 2, 2, '#9090aa');
-  px(ctx, 4, 8, '#a0a0bb');
-  px(ctx, 4, 9, '#444466');
-  px(ctx, 11, 9, '#8888aa');
-  px(ctx, 12, 8, '#8888aa');
-  px(ctx, 10, 5, '#88bbff');
-  rect(ctx, 11, 3, 2, 2, '#88bbff');
-  px(ctx, 11, 3, '#aaddff');
-  rect(ctx, 13, 1, 3, 2, '#88bbff');
-  px(ctx, 13, 1, '#aaddff');
-  px(ctx, 14, 1, '#aaddff');
+  // Body lump
+  rect(ctx, 10, 16, 12, 6, '#9090aa');
+  rect(ctx, 12, 14, 8, 2, '#9090aa');
+  rect(ctx, 12, 22, 8, 2, '#7878aa');
+  // Highlight on top
+  rect(ctx, 12, 16, 8, 2, '#a0a0bb');
+  // Shadow on bottom
+  rect(ctx, 10, 20, 12, 2, '#7878aa');
+  // Nose/face
+  rect(ctx, 8, 16, 4, 4, '#9090aa');
+  rect(ctx, 8, 16, 2, 2, '#a0a0bb');
+  rect(ctx, 8, 18, 2, 2, '#444466');
+  // Tail
+  rect(ctx, 22, 18, 2, 2, '#8888aa');
+  rect(ctx, 24, 16, 2, 2, '#8888aa');
+  // Zzz
+  rect(ctx, 20, 10, 2, 2, '#88bbff');
+  rect(ctx, 22, 6, 4, 4, '#88bbff');
+  rect(ctx, 22, 6, 2, 2, '#aaddff');
+  rect(ctx, 26, 2, 6, 4, '#88bbff');
+  rect(ctx, 26, 2, 2, 2, '#aaddff');
+  rect(ctx, 28, 2, 2, 2, '#aaddff');
 }
 
 export function drawDead(ctx) {
-  rect(ctx, 4, 9, 7, 3, '#888888');
-  rect(ctx, 5, 8, 3, 1, '#999999');
-  rect(ctx, 4, 12, 7, 1, '#777777');
-  px(ctx, 5, 9, '#999999');
-  px(ctx, 5, 8, '#dd3333');
-  px(ctx, 7, 8, '#dd3333');
-  px(ctx, 8, 9, '#dd6666');
-  px(ctx, 4, 12, '#888888');
-  px(ctx, 5, 13, '#888888');
-  px(ctx, 9, 12, '#888888');
-  px(ctx, 10, 13, '#888888');
-  px(ctx, 7, 5, 'rgba(200,200,255,0.4)');
-  px(ctx, 8, 4, 'rgba(200,200,255,0.3)');
-  px(ctx, 6, 4, 'rgba(200,200,255,0.3)');
+  // Body on side
+  rect(ctx, 8, 18, 14, 6, '#888888');
+  rect(ctx, 10, 16, 6, 2, '#999999');
+  rect(ctx, 8, 24, 14, 2, '#777777');
+  // Eye highlight
+  rect(ctx, 10, 18, 2, 2, '#999999');
+  // X eyes
+  rect(ctx, 10, 16, 2, 2, '#dd3333');
+  rect(ctx, 14, 16, 2, 2, '#dd3333');
+  rect(ctx, 16, 18, 2, 2, '#dd6666');
+  // Legs sticking up
+  rect(ctx, 8, 24, 2, 2, '#888888');
+  rect(ctx, 10, 26, 2, 2, '#888888');
+  rect(ctx, 18, 24, 2, 2, '#888888');
+  rect(ctx, 20, 26, 2, 2, '#888888');
+  // Ghost wisps
+  rect(ctx, 14, 10, 2, 2, 'rgba(200,200,255,0.4)');
+  rect(ctx, 16, 8, 2, 2, 'rgba(200,200,255,0.3)');
+  rect(ctx, 12, 8, 2, 2, 'rgba(200,200,255,0.3)');
 }
 
 export function drawEgg(ctx) {
-  rect(ctx, 7, 4, 2, 1, '#f5f0e5');
-  rect(ctx, 6, 5, 4, 2, '#f5f0e5');
-  rect(ctx, 5, 7, 6, 3, '#f5f0e5');
-  rect(ctx, 6, 10, 4, 2, '#f5f0e5');
-  rect(ctx, 7, 12, 2, 1, '#e8e0d0');
-  px(ctx, 7, 5, '#fffff0');
-  px(ctx, 8, 5, '#fffff0');
-  px(ctx, 6, 7, '#fffff0');
-  rect(ctx, 6, 10, 4, 1, '#e0d8c8');
-  rect(ctx, 7, 11, 2, 1, '#d8d0c0');
-  px(ctx, 7, 7, '#c8b890');
-  px(ctx, 9, 8, '#c8b890');
-  px(ctx, 6, 9, '#c8b890');
-  px(ctx, 8, 10, '#d0c0a0');
+  // Top cap
+  rect(ctx, 14, 8, 4, 2, '#f5f0e5');
+  rect(ctx, 12, 10, 8, 4, '#f5f0e5');
+  // Main body
+  rect(ctx, 10, 14, 12, 6, '#f5f0e5');
+  rect(ctx, 12, 20, 8, 4, '#f5f0e5');
+  // Bottom
+  rect(ctx, 14, 24, 4, 2, '#e8e0d0');
+  // Highlight
+  rect(ctx, 14, 10, 4, 2, '#fffff0');
+  rect(ctx, 12, 14, 2, 2, '#fffff0');
+  // Shadow on bottom half
+  rect(ctx, 12, 20, 8, 2, '#e0d8c8');
+  rect(ctx, 14, 22, 4, 2, '#d8d0c0');
+  // Speckles
+  rect(ctx, 14, 14, 2, 2, '#c8b890');
+  rect(ctx, 18, 16, 2, 2, '#c8b890');
+  rect(ctx, 12, 18, 2, 2, '#c8b890');
+  rect(ctx, 16, 20, 2, 2, '#d0c0a0');
 }
 
 export function drawPupa(ctx) {
-  rect(ctx, 7, 3, 2, 1, '#706030');
-  rect(ctx, 6, 4, 4, 2, '#8a6a3a');
-  rect(ctx, 5, 6, 6, 4, '#8a6a3a');
-  rect(ctx, 6, 10, 4, 2, '#8a6a3a');
-  rect(ctx, 7, 12, 2, 1, '#706030');
-  px(ctx, 6, 6, '#a08050');
-  px(ctx, 7, 5, '#a08050');
-  rect(ctx, 5, 7, 6, 1, '#705528');
-  rect(ctx, 5, 9, 6, 1, '#705528');
-  px(ctx, 7, 6, '#b0a068');
-  px(ctx, 9, 8, '#90b070');
-  px(ctx, 6, 9, '#7090b0');
-  px(ctx, 7, 2, '#c0b090');
-  px(ctx, 8, 2, '#c0b090');
-  px(ctx, 7, 1, '#d0c0a0');
-  px(ctx, 8, 1, '#d0c0a0');
+  // Top cap
+  rect(ctx, 14, 6, 4, 2, '#706030');
+  rect(ctx, 12, 8, 8, 4, '#8a6a3a');
+  // Main body
+  rect(ctx, 10, 12, 12, 8, '#8a6a3a');
+  rect(ctx, 12, 20, 8, 4, '#8a6a3a');
+  // Bottom
+  rect(ctx, 14, 24, 4, 2, '#706030');
+  // Highlight
+  rect(ctx, 12, 12, 2, 2, '#a08050');
+  rect(ctx, 14, 10, 2, 2, '#a08050');
+  // Segment bands
+  rect(ctx, 10, 14, 12, 2, '#705528');
+  rect(ctx, 10, 18, 12, 2, '#705528');
+  // Color shimmer
+  rect(ctx, 14, 12, 2, 2, '#b0a068');
+  rect(ctx, 18, 16, 2, 2, '#90b070');
+  rect(ctx, 12, 18, 2, 2, '#7090b0');
+  // Hook on top
+  rect(ctx, 14, 4, 2, 2, '#c0b090');
+  rect(ctx, 16, 4, 2, 2, '#c0b090');
+  rect(ctx, 14, 2, 2, 2, '#d0c0a0');
+  rect(ctx, 16, 2, 2, 2, '#d0c0a0');
 }

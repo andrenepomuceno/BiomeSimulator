@@ -1,5 +1,5 @@
 /**
- * Quadruped drawing template.
+ * Quadruped drawing template — 32×32 design grid.
  * Used by: rabbit, squirrel, fox, wolf, raccoon, goat, deer, boar, bear.
  */
 import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../helpers.js';
@@ -9,266 +9,312 @@ export function drawQuadruped(ctx, params, dir, frame) {
   const shadow = darken(body, 0.15);
   const highlight = lighten(body, 0.1);
   const outline = darken(body, 0.35);
-  const cx = 8;
-  const cy = 9;
-  const legShift = frame === 0 ? -1 : frame === 2 ? 1 : 0;
+  const cx = 16;
+  const cy = 18;
+  const legShift = frame === 0 ? -2 : frame === 2 ? 2 : 0;
 
   if (dir === DOWN) {
     const bx = cx - Math.floor(w / 2);
     const by = cy - Math.floor(h / 2);
 
     // Back legs
-    px(ctx, bx, by + h + legShift, shadow);
-    px(ctx, bx, by + h + 1 + legShift, outline);
-    px(ctx, bx + w - 1, by + h - legShift, shadow);
-    px(ctx, bx + w - 1, by + h + 1 - legShift, outline);
+    rect(ctx, bx, by + h + legShift, 2, 2, shadow);
+    rect(ctx, bx, by + h + 2 + legShift, 2, 2, outline);
+    rect(ctx, bx + w - 2, by + h - legShift, 2, 2, shadow);
+    rect(ctx, bx + w - 2, by + h + 2 - legShift, 2, 2, outline);
 
     // Body — rounded
-    rect(ctx, bx + 1, by, w - 2, 1, highlight);
-    rect(ctx, bx, by + 1, w, h - 2, body);
-    rect(ctx, bx + 1, by + h - 1, w - 2, 1, shadow);
-    for (let r = 1; r < h - 1; r++) px(ctx, bx, by + r, shadow);
-    rect(ctx, bx + 2, by + 1, Math.max(1, w - 4), 1, highlight);
-    // Belly
-    rect(ctx, bx + 1, by + h - 2, w - 2, 1, accent);
+    rect(ctx, bx + 2, by, w - 4, 2, highlight);
+    rect(ctx, bx, by + 2, w, h - 4, body);
+    rect(ctx, bx + 2, by + h - 2, w - 4, 2, shadow);
+    // Left edge shadow
+    for (let r = 2; r < h - 2; r++) px(ctx, bx, by + r, shadow);
+    for (let r = 2; r < h - 2; r++) px(ctx, bx + 1, by + r, shadow);
+    // Top highlight stripe
+    rect(ctx, bx + 4, by + 2, Math.max(2, w - 8), 2, highlight);
+    // Belly accent
+    rect(ctx, bx + 2, by + h - 4, w - 4, 2, accent);
 
     // Head
-    const headW = Math.max(3, w - 1);
+    const headW = Math.max(6, w - 2);
     const hx = cx - Math.floor(headW / 2);
-    const hy = by - 2;
-    rect(ctx, hx, hy + 1, headW, 1, body);
-    rect(ctx, hx + 1, hy, headW - 2, 1, body);
-    px(ctx, hx, hy + 1, shadow);
+    const hy = by - 4;
+    // Head shape: rounded
+    rect(ctx, hx, hy + 2, headW, 2, body);
+    rect(ctx, hx + 2, hy, headW - 4, 2, body);
+    rect(ctx, hx + 1, hy + 1, headW - 2, 1, body);
+    px(ctx, hx, hy + 2, shadow);
+    px(ctx, hx + 1, hy + 2, shadow);
+    // Cheeks
     if (params.cheeks) {
-      px(ctx, hx, hy + 1, params.cheeks);
-      px(ctx, hx + headW - 1, hy + 1, params.cheeks);
+      rect(ctx, hx, hy + 2, 2, 2, params.cheeks);
+      rect(ctx, hx + headW - 2, hy + 2, 2, 2, params.cheeks);
     }
-    // Eyes
-    px(ctx, hx + 1, hy + 1, eye);
-    px(ctx, hx + headW - 2, hy + 1, eye);
-    if (params.noseColor) px(ctx, cx, hy + 2 > by ? by : hy + 2, params.noseColor);
+    // Eyes with pupils
+    rect(ctx, hx + 2, hy + 2, 2, 2, eye);
+    rect(ctx, hx + headW - 4, hy + 2, 2, 2, eye);
+    // Eye highlights
+    px(ctx, hx + 2, hy + 2, '#ffffff');
+    px(ctx, hx + headW - 4, hy + 2, '#ffffff');
+    // Nose
+    if (params.noseColor) rect(ctx, cx - 1, by > hy + 4 ? by - 1 : hy + 4, 2, 2, params.noseColor);
 
     // Ears
     if (params.earH) {
       for (let e = 0; e < params.earH; e++) {
         px(ctx, hx, hy - e, body);
+        px(ctx, hx + 1, hy - e, body);
         px(ctx, hx + headW - 1, hy - e, body);
+        px(ctx, hx + headW - 2, hy - e, body);
       }
-      if (params.earInner && params.earH >= 2) {
-        px(ctx, hx, hy - 1, params.earInner);
-        px(ctx, hx + headW - 1, hy - 1, params.earInner);
+      if (params.earInner && params.earH >= 4) {
+        for (let e = 1; e < params.earH - 1; e++) {
+          px(ctx, hx + 1, hy - e, params.earInner);
+          px(ctx, hx + headW - 2, hy - e, params.earInner);
+        }
       }
     }
+    // Horns
     if (params.horns) {
-      px(ctx, hx - 1, hy - 1, '#d0d0d0');
-      px(ctx, hx + headW, hy - 1, '#d0d0d0');
-      px(ctx, hx - 1, hy - 2, '#e0e0e0');
-      px(ctx, hx + headW, hy - 2, '#e0e0e0');
+      rect(ctx, hx - 2, hy - 2, 2, 2, '#d0d0d0');
+      rect(ctx, hx + headW, hy - 2, 2, 2, '#d0d0d0');
+      rect(ctx, hx - 2, hy - 4, 2, 2, '#e0e0e0');
+      rect(ctx, hx + headW, hy - 4, 2, 2, '#e0e0e0');
     }
+    // Antlers
     if (params.antlers) {
       const ac = '#b08050', al = '#c09868';
-      px(ctx, hx - 1, hy - 1, ac); px(ctx, hx + headW, hy - 1, ac);
-      px(ctx, hx - 1, hy - 2, ac); px(ctx, hx + headW, hy - 2, ac);
-      px(ctx, hx - 2, hy - 2, al); px(ctx, hx + headW + 1, hy - 2, al);
-      px(ctx, hx - 2, hy - 3, al); px(ctx, hx + headW + 1, hy - 3, al);
+      rect(ctx, hx - 2, hy - 2, 2, 2, ac); rect(ctx, hx + headW, hy - 2, 2, 2, ac);
+      rect(ctx, hx - 2, hy - 4, 2, 2, ac); rect(ctx, hx + headW, hy - 4, 2, 2, ac);
+      rect(ctx, hx - 4, hy - 4, 2, 2, al); rect(ctx, hx + headW + 2, hy - 4, 2, 2, al);
+      rect(ctx, hx - 4, hy - 6, 2, 2, al); rect(ctx, hx + headW + 2, hy - 6, 2, 2, al);
     }
+    // Tusks
     if (params.tusks) {
-      px(ctx, hx, by, '#f0f0e0');
-      px(ctx, hx + headW - 1, by, '#f0f0e0');
+      rect(ctx, hx, by, 2, 2, '#f0f0e0');
+      rect(ctx, hx + headW - 2, by, 2, 2, '#f0f0e0');
     }
+    // Mask (raccoon)
     if (params.mask) {
-      px(ctx, hx + 1, hy, '#111111'); px(ctx, hx + headW - 2, hy, '#111111');
-      px(ctx, hx + 1, hy + 1, '#111111'); px(ctx, hx + headW - 2, hy + 1, '#111111');
+      rect(ctx, hx + 2, hy, 2, 2, '#111111'); rect(ctx, hx + headW - 4, hy, 2, 2, '#111111');
+      rect(ctx, hx + 2, hy + 2, 2, 2, '#111111'); rect(ctx, hx + headW - 4, hy + 2, 2, 2, '#111111');
     }
+    // Beard (goat)
     if (params.beard) {
-      px(ctx, cx, by, accent); px(ctx, cx, by + 1, accent);
+      rect(ctx, cx - 1, by, 2, 2, accent); rect(ctx, cx - 1, by + 2, 2, 2, accent);
     }
+    // Muzzle (bear)
     if (params.muzzle) {
-      px(ctx, cx, hy + 1, params.muzzle);
-      px(ctx, cx - 1, by, params.muzzle);
-      px(ctx, cx + 1, by, params.muzzle);
+      rect(ctx, cx - 1, hy + 2, 2, 2, params.muzzle);
+      rect(ctx, cx - 2, by, 4, 2, params.muzzle);
     }
+    // Spots (deer)
     if (params.spots) {
-      px(ctx, bx + 2, by + 2, accent);
-      px(ctx, bx + w - 3, by + 1, accent);
+      rect(ctx, bx + 4, by + 4, 2, 2, accent);
+      rect(ctx, bx + w - 6, by + 2, 2, 2, accent);
     }
 
     // Front legs
     const legY = by + h;
-    px(ctx, bx + 1, legY - legShift, body);
-    px(ctx, bx + 1, legY + 1 - legShift, outline);
-    px(ctx, bx + w - 2, legY + legShift, body);
-    px(ctx, bx + w - 2, legY + 1 + legShift, outline);
+    rect(ctx, bx + 2, legY - legShift, 2, 2, body);
+    rect(ctx, bx + 2, legY + 2 - legShift, 2, 2, outline);
+    rect(ctx, bx + w - 4, legY + legShift, 2, 2, body);
+    rect(ctx, bx + w - 4, legY + 2 + legShift, 2, 2, outline);
 
     // Tail
     if (params.tail) {
       if (params.bushyTail) {
-        px(ctx, cx, by + h - 1, accent);
-        px(ctx, cx + 1, by + h, accent);
-        px(ctx, cx, by + h, lighten(accent, 0.08));
+        rect(ctx, cx, by + h - 2, 2, 2, accent);
+        rect(ctx, cx + 2, by + h, 2, 2, accent);
+        rect(ctx, cx, by + h, 2, 2, lighten(accent, 0.08));
       } else if (params.tailStripes) {
-        px(ctx, cx, by + h, body);
-        px(ctx, cx, by + h + 1, '#333333');
+        rect(ctx, cx, by + h, 2, 2, body);
+        rect(ctx, cx, by + h + 2, 2, 2, '#333333');
       } else {
-        px(ctx, cx, by + h, shadow);
+        rect(ctx, cx, by + h, 2, 2, shadow);
       }
     }
     if (params.bristles) {
-      px(ctx, bx + 2, by, darken(body, 0.1));
-      px(ctx, bx + w - 3, by, darken(body, 0.1));
+      rect(ctx, bx + 4, by, 2, 2, darken(body, 0.1));
+      rect(ctx, bx + w - 6, by, 2, 2, darken(body, 0.1));
     }
 
   } else if (dir === UP) {
     const bx = cx - Math.floor(w / 2);
     const by = cy - Math.floor(h / 2);
 
-    px(ctx, bx, by + h + legShift, shadow);
-    px(ctx, bx, by + h + 1 + legShift, outline);
-    px(ctx, bx + w - 1, by + h - legShift, shadow);
-    px(ctx, bx + w - 1, by + h + 1 - legShift, outline);
+    // Back legs
+    rect(ctx, bx, by + h + legShift, 2, 2, shadow);
+    rect(ctx, bx, by + h + 2 + legShift, 2, 2, outline);
+    rect(ctx, bx + w - 2, by + h - legShift, 2, 2, shadow);
+    rect(ctx, bx + w - 2, by + h + 2 - legShift, 2, 2, outline);
 
-    rect(ctx, bx + 1, by, w - 2, 1, body);
-    rect(ctx, bx, by + 1, w, h - 2, body);
-    rect(ctx, bx + 1, by + h - 1, w - 2, 1, shadow);
-    for (let r = 1; r < h - 1; r++) px(ctx, bx, by + r, shadow);
-    rect(ctx, bx + 2, by + 1, Math.max(1, w - 4), 1, highlight);
+    // Body
+    rect(ctx, bx + 2, by, w - 4, 2, body);
+    rect(ctx, bx, by + 2, w, h - 4, body);
+    rect(ctx, bx + 2, by + h - 2, w - 4, 2, shadow);
+    for (let r = 2; r < h - 2; r++) px(ctx, bx, by + r, shadow);
+    for (let r = 2; r < h - 2; r++) px(ctx, bx + 1, by + r, shadow);
+    rect(ctx, bx + 4, by + 2, Math.max(2, w - 8), 2, highlight);
     if (params.spots) {
-      px(ctx, bx + 2, by + 2, accent);
-      px(ctx, bx + w - 3, by + 3, accent);
+      rect(ctx, bx + 4, by + 4, 2, 2, accent);
+      rect(ctx, bx + w - 6, by + 6, 2, 2, accent);
     }
 
-    const headW = Math.max(3, w - 1);
+    // Head (back view, no eyes)
+    const headW = Math.max(6, w - 2);
     const hx = cx - Math.floor(headW / 2);
-    const hy = by - 2;
-    rect(ctx, hx + 1, hy, headW - 2, 1, body);
-    rect(ctx, hx, hy + 1, headW, 1, body);
+    const hy = by - 4;
+    rect(ctx, hx + 2, hy, headW - 4, 2, body);
+    rect(ctx, hx, hy + 2, headW, 2, body);
+    // Ears
     if (params.earH) {
       for (let e = 0; e < params.earH; e++) {
-        px(ctx, hx, hy - e, body);
-        px(ctx, hx + headW - 1, hy - e, body);
+        px(ctx, hx, hy - e, body); px(ctx, hx + 1, hy - e, body);
+        px(ctx, hx + headW - 1, hy - e, body); px(ctx, hx + headW - 2, hy - e, body);
       }
     }
     if (params.horns) {
-      px(ctx, hx - 1, hy - 1, '#d0d0d0'); px(ctx, hx + headW, hy - 1, '#d0d0d0');
-      px(ctx, hx - 1, hy - 2, '#e0e0e0'); px(ctx, hx + headW, hy - 2, '#e0e0e0');
+      rect(ctx, hx - 2, hy - 2, 2, 2, '#d0d0d0'); rect(ctx, hx + headW, hy - 2, 2, 2, '#d0d0d0');
+      rect(ctx, hx - 2, hy - 4, 2, 2, '#e0e0e0'); rect(ctx, hx + headW, hy - 4, 2, 2, '#e0e0e0');
     }
     if (params.antlers) {
       const ac = '#b08050', al = '#c09868';
-      px(ctx, hx - 1, hy - 1, ac); px(ctx, hx + headW, hy - 1, ac);
-      px(ctx, hx - 1, hy - 2, ac); px(ctx, hx + headW, hy - 2, ac);
-      px(ctx, hx - 2, hy - 2, al); px(ctx, hx + headW + 1, hy - 2, al);
-      px(ctx, hx - 2, hy - 3, al); px(ctx, hx + headW + 1, hy - 3, al);
+      rect(ctx, hx - 2, hy - 2, 2, 2, ac); rect(ctx, hx + headW, hy - 2, 2, 2, ac);
+      rect(ctx, hx - 2, hy - 4, 2, 2, ac); rect(ctx, hx + headW, hy - 4, 2, 2, ac);
+      rect(ctx, hx - 4, hy - 4, 2, 2, al); rect(ctx, hx + headW + 2, hy - 4, 2, 2, al);
+      rect(ctx, hx - 4, hy - 6, 2, 2, al); rect(ctx, hx + headW + 2, hy - 6, 2, 2, al);
     }
 
+    // Front legs
     const legY = by + h;
-    px(ctx, bx + 1, legY - legShift, body);
-    px(ctx, bx + 1, legY + 1 - legShift, outline);
-    px(ctx, bx + w - 2, legY + legShift, body);
-    px(ctx, bx + w - 2, legY + 1 + legShift, outline);
+    rect(ctx, bx + 2, legY - legShift, 2, 2, body);
+    rect(ctx, bx + 2, legY + 2 - legShift, 2, 2, outline);
+    rect(ctx, bx + w - 4, legY + legShift, 2, 2, body);
+    rect(ctx, bx + w - 4, legY + 2 + legShift, 2, 2, outline);
 
+    // Tail (visible from back)
     if (params.tail) {
       if (params.bushyTail) {
-        px(ctx, cx, hy, accent);
-        px(ctx, cx - 1, hy, lighten(accent, 0.05));
+        rect(ctx, cx, hy, 2, 2, accent);
+        rect(ctx, cx - 2, hy, 2, 2, lighten(accent, 0.05));
       } else if (params.tailStripes) {
-        px(ctx, cx, hy, body);
-        px(ctx, cx, hy - 1, '#333333');
+        rect(ctx, cx, hy, 2, 2, body);
+        rect(ctx, cx, hy - 2, 2, 2, '#333333');
       } else {
-        px(ctx, cx, hy + 1, shadow);
+        rect(ctx, cx, hy + 2, 2, 2, shadow);
       }
     }
 
   } else {
     // LEFT / RIGHT
     const flip = dir === LEFT;
-    const f = flip ? (x) => 15 - x : (x) => x;
+    const f = flip ? (x) => 31 - x : (x) => x;
     const bx = cx - Math.floor(w / 2);
     const by = cy - Math.floor(h / 2);
 
     // Back legs
-    px(ctx, f(bx), by + h, shadow);
-    px(ctx, f(bx), by + h + 1 - legShift, outline);
-    px(ctx, f(bx + 1), by + h, shadow);
+    rect(ctx, f(bx), by + h, 2, 2, shadow);
+    px(ctx, f(bx), by + h + 2 - legShift, outline);
+    px(ctx, f(bx + 1), by + h + 2 - legShift, outline);
+    rect(ctx, f(bx + 2), by + h, 2, 2, shadow);
     // Front legs
-    px(ctx, f(bx + w - 2), by + h, body);
-    px(ctx, f(bx + w - 2), by + h + 1 + legShift, outline);
-    px(ctx, f(bx + w - 1), by + h, body);
+    rect(ctx, f(bx + w - 4), by + h, 2, 2, body);
+    px(ctx, f(bx + w - 4), by + h + 2 + legShift, outline);
+    px(ctx, f(bx + w - 3), by + h + 2 + legShift, outline);
+    rect(ctx, f(bx + w - 2), by + h, 2, 2, body);
 
     // Body
-    for (let r = 1; r < h - 1; r++) for (let c = 0; c < w; c++) px(ctx, f(bx + c), by + r, body);
-    for (let i = 1; i < w - 1; i++) {
-      px(ctx, f(bx + i), by, body);
-      px(ctx, f(bx + i), by + h - 1, shadow);
+    for (let r = 2; r < h - 2; r++) for (let c = 0; c < w; c++) px(ctx, f(bx + c), by + r, body);
+    for (let i = 2; i < w - 2; i++) {
+      px(ctx, f(bx + i), by, body); px(ctx, f(bx + i), by + 1, body);
+      px(ctx, f(bx + i), by + h - 2, shadow); px(ctx, f(bx + i), by + h - 1, shadow);
     }
-    for (let i = 1; i < w - 1; i++) px(ctx, f(bx + i), by + 1, highlight);
-    for (let i = 1; i < w - 1; i++) px(ctx, f(bx + i), by + h - 2, accent);
+    // Highlight along back
+    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + 2, highlight); px(ctx, f(bx + i), by + 3, highlight); }
+    // Belly
+    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + h - 4, accent); px(ctx, f(bx + i), by + h - 3, accent); }
     if (params.spots) {
-      px(ctx, f(bx + 2), by + 2, accent);
-      px(ctx, f(bx + w - 3), by + 1, accent);
+      rect(ctx, f(bx + 4), by + 4, 2, 2, accent);
+      rect(ctx, f(bx + w - 6), by + 2, 2, 2, accent);
     }
 
-    // Head
-    const headH = Math.max(3, h - 1);
-    const headW = 3;
+    // Head (extends from front of body)
+    const headH = Math.max(6, h - 2);
+    const headW = 6;
     const headX = bx + w;
-    const headY = by - 1;
+    const headY = by - 2;
     for (let hy = 0; hy < headH; hy++) for (let hxo = 0; hxo < headW; hxo++) px(ctx, f(headX + hxo), headY + hy, body);
-    px(ctx, f(headX), headY, body);
-    px(ctx, f(headX + headW - 1), headY, body);
+    // Round the head
+    px(ctx, f(headX), headY, body); px(ctx, f(headX + 1), headY, body);
+    px(ctx, f(headX + headW - 1), headY, body); px(ctx, f(headX + headW - 2), headY, body);
 
     // Eye
-    px(ctx, f(headX + headW - 1), headY + 1, eye);
+    rect(ctx, f(headX + headW - 3), headY + 2, 2, 2, eye);
+    px(ctx, f(headX + headW - 3), headY + 2, '#ffffff');
     // Nose
-    if (params.noseColor) px(ctx, f(headX + headW - 1), headY + headH - 1, params.noseColor);
-    if (params.cheeks) px(ctx, f(headX), headY + 2, params.cheeks);
+    if (params.noseColor) rect(ctx, f(headX + headW - 2), headY + headH - 2, 2, 2, params.noseColor);
+    // Cheeks
+    if (params.cheeks) rect(ctx, f(headX), headY + 4, 2, 2, params.cheeks);
+    // Muzzle (bear)
     if (params.muzzle) {
-      px(ctx, f(headX + 1), headY + headH - 1, params.muzzle);
-      px(ctx, f(headX + 2), headY + headH - 1, params.muzzle);
+      rect(ctx, f(headX + 2), headY + headH - 2, 4, 2, params.muzzle);
     }
 
     // Ear
     if (params.earH) {
-      const earX = headX + 1;
-      for (let e = 0; e < params.earH; e++) px(ctx, f(earX), headY - 1 - e, body);
-      if (params.earInner && params.earH >= 2) px(ctx, f(earX), headY - 1, params.earInner);
+      const earX = headX + 2;
+      for (let e = 0; e < params.earH; e++) {
+        px(ctx, f(earX), headY - 2 - e, body);
+        px(ctx, f(earX + 1), headY - 2 - e, body);
+      }
+      if (params.earInner && params.earH >= 4) {
+        for (let e = 1; e < params.earH - 1; e++) px(ctx, f(earX + 1), headY - 2 - e, params.earInner);
+      }
     }
+    // Horns (side)
     if (params.horns) {
-      px(ctx, f(headX + 1), headY - 1, '#d0d0d0');
-      px(ctx, f(headX + 1), headY - 2, '#e0e0e0');
+      rect(ctx, f(headX + 2), headY - 2, 2, 2, '#d0d0d0');
+      rect(ctx, f(headX + 2), headY - 4, 2, 2, '#e0e0e0');
     }
+    // Antlers (side — branching)
     if (params.antlers) {
       const ac = '#b08050', al = '#c09868';
-      px(ctx, f(headX + 1), headY - 1, ac);
-      px(ctx, f(headX + 1), headY - 2, ac);
-      px(ctx, f(headX), headY - 2, al);
-      px(ctx, f(headX + 2), headY - 3, al);
+      rect(ctx, f(headX + 2), headY - 2, 2, 2, ac);
+      rect(ctx, f(headX + 2), headY - 4, 2, 2, ac);
+      rect(ctx, f(headX), headY - 4, 2, 2, al);
+      rect(ctx, f(headX + 4), headY - 6, 2, 2, al);
     }
-    if (params.tusks) px(ctx, f(headX + headW - 1), headY + headH, '#f0f0e0');
+    // Tusks (side)
+    if (params.tusks) rect(ctx, f(headX + headW - 2), headY + headH, 2, 2, '#f0f0e0');
+    // Mask (raccoon side)
     if (params.mask) {
-      px(ctx, f(headX + headW - 1), headY, '#111111');
-      px(ctx, f(headX + headW - 1), headY + 2, '#111111');
+      rect(ctx, f(headX + headW - 3), headY, 2, 2, '#111111');
+      rect(ctx, f(headX + headW - 3), headY + 4, 2, 2, '#111111');
     }
-    if (params.beard) px(ctx, f(headX + 1), headY + headH, accent);
+    // Beard (goat side)
+    if (params.beard) rect(ctx, f(headX + 2), headY + headH, 2, 2, accent);
+    // Bristles (boar side)
     if (params.bristles) {
-      px(ctx, f(bx + 2), by, darken(body, 0.1));
-      px(ctx, f(bx + 4), by, darken(body, 0.1));
+      rect(ctx, f(bx + 4), by, 2, 2, darken(body, 0.1));
+      rect(ctx, f(bx + 8), by, 2, 2, darken(body, 0.1));
     }
 
     // Tail
     if (params.tail) {
-      const tailX = bx - 1;
-      const tailY = by + 1;
+      const tailX = bx - 2;
+      const tailY = by + 2;
       if (params.bushyTail) {
-        px(ctx, f(tailX), tailY, accent);
-        px(ctx, f(tailX - 1), tailY, lighten(accent, 0.08));
-        px(ctx, f(tailX - 1), tailY - 1, accent);
+        rect(ctx, f(tailX), tailY, 2, 2, accent);
+        rect(ctx, f(tailX - 2), tailY, 2, 2, lighten(accent, 0.08));
+        rect(ctx, f(tailX - 2), tailY - 2, 2, 2, accent);
       } else if (params.tailStripes) {
-        px(ctx, f(tailX), tailY, body);
-        px(ctx, f(tailX - 1), tailY, '#333333');
-        px(ctx, f(tailX), tailY + 1, '#333333');
+        rect(ctx, f(tailX), tailY, 2, 2, body);
+        rect(ctx, f(tailX - 2), tailY, 2, 2, '#333333');
+        rect(ctx, f(tailX), tailY + 2, 2, 2, '#333333');
       } else {
-        px(ctx, f(tailX), tailY, shadow);
-        px(ctx, f(tailX), tailY + 1, shadow);
+        rect(ctx, f(tailX), tailY, 2, 2, shadow);
+        rect(ctx, f(tailX), tailY + 2, 2, 2, shadow);
       }
     }
   }

@@ -1,9 +1,9 @@
 /**
  * Shared pixel-art drawing helpers for the sprite generator.
- * Design grid: 16×16, upscaled 4× to 64×64.
+ * Design grid: 32×32, upscaled 4× to 128×128.
  */
 
-export const DESIGN = 16;
+export const DESIGN = 32;
 export const SCALE = 4;
 
 export const DOWN = 0;

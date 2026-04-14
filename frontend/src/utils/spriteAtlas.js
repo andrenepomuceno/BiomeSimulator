@@ -18,7 +18,7 @@ import { buildPlantEmojiMap } from '../engine/plantSpecies.js';
 import { drawSpeciesFrame, DIR_NAMES } from './spriteGenerator.js';
 
 // ── Atlas geometry ──────────────────────────────────────────────────
-export const FRAME_SIZE = 64;            // px per frame in the atlas
+export const FRAME_SIZE = 128;           // px per frame in the atlas
 const FAUNA_COLS = 12;                    // 4 dirs × 3 frames per species row
 const FLORA_COLS = 10;                    // grid width for flora atlas
 

@@ -1,8 +1,10 @@
-import { getSoundEventConfig } from './soundEvents.js';
+import { getSoundEventConfig, SOUND_EVENTS } from './soundEvents.js';
 import { clamp, computePositionalMix, shouldMutePositionalSfx } from './soundMath.js';
 
 const MAX_ACTIVE_VOICES = 24;
 const ZERO_GAIN = 0.0001;
+const PLAYBACK_RATE_MIN = 0.9;
+const PLAYBACK_RATE_MAX = 1.1;
 const BUS_RAMP_SECONDS = 0.05;
 const AMBIENCE_FADE_SECONDS = 1.2;
 
@@ -57,6 +59,11 @@ export class SoundManager {
     this._dayLayer = null;
     this._nightLayer = null;
     this._logger = null;
+
+    /** @type {Map<string, AudioBuffer>} URL → decoded AudioBuffer cache */
+    this._sampleBuffers = new Map();
+    /** @type {Map<string, 'loading'|'ready'|'error'>} */
+    this._sampleLoadState = new Map();
   }
 
   setLogger(logger) {
@@ -114,6 +121,41 @@ export class SoundManager {
     this._syncBuses();
     this._syncAmbienceMix();
     return this.settings.unlocked;
+  }
+
+  async preloadSamples() {
+    const context = this._ensureContext();
+    if (!context) return;
+
+    const urls = [];
+    for (const cfg of Object.values(SOUND_EVENTS)) {
+      if (Array.isArray(cfg.samples)) {
+        for (const url of cfg.samples) urls.push(url);
+      }
+    }
+
+    await Promise.allSettled(urls.map((url) => this._loadSample(url)));
+  }
+
+  async _loadSample(url) {
+    if (this._sampleLoadState.has(url)) return this._sampleBuffers.get(url) || null;
+
+    const context = this._ensureContext();
+    if (!context) return null;
+
+    this._sampleLoadState.set(url, 'loading');
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const arrayBuf = await response.arrayBuffer();
+      const audioBuffer = await context.decodeAudioData(arrayBuf);
+      this._sampleBuffers.set(url, audioBuffer);
+      this._sampleLoadState.set(url, 'ready');
+      return audioBuffer;
+    } catch {
+      this._sampleLoadState.set(url, 'error');
+      return null;
+    }
   }
 
   play(eventOrType, overrides = {}) {
@@ -210,6 +252,8 @@ export class SoundManager {
     this.sfxGain = null;
     this.ambienceGain = null;
     this._noiseBuffer = null;
+    this._sampleBuffers.clear();
+    this._sampleLoadState.clear();
     this._activeVoices = 0;
     this._logger = null;
   }
@@ -405,7 +449,67 @@ export class SoundManager {
     return { sources: [osc], nodes: [gainNode] };
   }
 
+  _getSampleBuffer(preset) {
+    const config = Object.values(SOUND_EVENTS).find((c) => c.preset === preset);
+    if (!config?.samples?.length) return null;
+    const urls = config.samples.filter((u) => this._sampleLoadState.get(u) === 'ready');
+    if (urls.length === 0) return null;
+    const url = urls[Math.floor(Math.random() * urls.length)];
+    return this._sampleBuffers.get(url) || null;
+  }
+
+  _playSample(buffer, gain, pan) {
+    const context = this.context;
+    const now = context.currentTime;
+    const rate = PLAYBACK_RATE_MIN + Math.random() * (PLAYBACK_RATE_MAX - PLAYBACK_RATE_MIN);
+    const duration = buffer.duration / rate;
+
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.playbackRate.value = rate;
+
+    const voiceGain = context.createGain();
+    voiceGain.gain.setValueAtTime(ZERO_GAIN, now);
+    voiceGain.gain.linearRampToValueAtTime(Math.max(ZERO_GAIN, gain), now + 0.004);
+    voiceGain.gain.setValueAtTime(Math.max(ZERO_GAIN, gain), now + duration * 0.65);
+    voiceGain.gain.exponentialRampToValueAtTime(ZERO_GAIN, now + duration);
+
+    const panner = typeof context.createStereoPanner === 'function'
+      ? context.createStereoPanner()
+      : null;
+
+    if (panner) {
+      panner.pan.value = clamp(pan, -1, 1);
+      voiceGain.connect(panner);
+      panner.connect(this.sfxGain);
+    } else {
+      voiceGain.connect(this.sfxGain);
+    }
+
+    source.connect(voiceGain);
+    source.start(now);
+    source.stop(now + duration + 0.02);
+
+    this._activeVoices += 1;
+    const nodes = [voiceGain, panner].filter(Boolean);
+    const cleanupTimer = setTimeout(() => {
+      this._cleanupTimers.delete(cleanupTimer);
+      safeDisconnect(source);
+      for (const node of nodes) safeDisconnect(node);
+      this._activeVoices = Math.max(0, this._activeVoices - 1);
+    }, Math.ceil((duration + 0.12) * 1000));
+    this._cleanupTimers.add(cleanupTimer);
+
+    return true;
+  }
+
   _playPreset(preset, gain, pan) {
+    // Try sample-based playback first; fall back to procedural synthesis
+    const sampleBuf = this._getSampleBuffer(preset);
+    if (sampleBuf) {
+      return this._playSample(sampleBuf, gain, pan);
+    }
+
     const context = this.context;
     const now = context.currentTime;
     let duration = 0.12;

@@ -13,6 +13,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 90,
     baseGain: 0.22,
     audibleRadiusTiles: 24,
+    samples: ['/audio/attack-1.wav', '/audio/attack-2.wav', '/audio/attack-3.wav'],
   },
   death: {
     category: 'sfx',
@@ -21,6 +22,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 180,
     baseGain: 0.28,
     audibleRadiusTiles: 28,
+    samples: ['/audio/death-1.wav', '/audio/death-2.wav', '/audio/death-3.wav'],
   },
   eat: {
     category: 'sfx',
@@ -29,6 +31,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 100,
     baseGain: 0.14,
     audibleRadiusTiles: 18,
+    samples: ['/audio/eat-1.wav', '/audio/eat-2.wav', '/audio/eat-3.wav'],
   },
   fruit: {
     category: 'sfx',
@@ -37,6 +40,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 140,
     baseGain: 0.18,
     audibleRadiusTiles: 20,
+    samples: ['/audio/fruit-1.wav', '/audio/fruit-2.wav', '/audio/fruit-3.wav'],
   },
 };
 

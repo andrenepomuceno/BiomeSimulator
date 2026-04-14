@@ -49,6 +49,9 @@ export function useAudio() {
     if (store.audioSettings.unlocked !== unlocked) {
       store.setAudioSettings({ unlocked });
     }
+    if (unlocked) {
+      manager.preloadSamples();
+    }
     return unlocked;
   }, []);
 

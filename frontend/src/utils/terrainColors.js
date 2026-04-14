@@ -49,7 +49,7 @@ export const TERRAIN_NAMES = {
 };
 
 // Plant stage colors — built from plantSpecies.js canonical registry
-import { buildPlantColors } from '../engine/plantSpecies';
+import { buildPlantColors } from '../engine/plantSpecies.js';
 export const PLANT_COLORS = buildPlantColors();
 
 // Plant type names (keys match flora.js constants)

@@ -2,7 +2,7 @@
  * useEditor hook — handles terrain painting, entity placement, and tile inspection.
  */
 import { useCallback } from 'react';
-import useSimStore from '../store/simulationStore';
+import useSimStore from '../store/simulationStore.js';
 
 export function useEditor(rendererRef) {
   const handleTileClick = useCallback((x, y) => {

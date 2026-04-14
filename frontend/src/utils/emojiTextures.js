@@ -3,8 +3,8 @@
  * converts to PixiJS textures for animal and plant sprites.
  */
 import * as PIXI from 'pixi.js';
-import { SPECIES_INFO } from './terrainColors';
-import { buildPlantEmojiMap } from '../engine/plantSpecies';
+import { SPECIES_INFO } from './terrainColors.js';
+import { buildPlantEmojiMap } from '../engine/plantSpecies.js';
 
 const TEX_SIZE = 96;
 const FONT_SIZE = 72;

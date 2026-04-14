@@ -1,4 +1,4 @@
-import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation';
+import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 
 export function resolveTicksPerDay(ticksPerDay) {
   return Number.isFinite(ticksPerDay) && ticksPerDay > 0

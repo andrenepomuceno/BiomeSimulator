@@ -2,7 +2,7 @@
  * Simulation state store — zustand.
  */
 import { create } from 'zustand';
-import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation';
+import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 
 const useSimStore = create((set, get) => ({
   // Worker reference (set once by useSimulation)

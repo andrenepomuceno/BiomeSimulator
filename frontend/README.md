@@ -25,10 +25,38 @@ Vite dev server starts on **http://localhost:3000**.
 | `npm run dev` | Start development server |
 | `npm run build` | Build for production (`dist/`) |
 | `npm run preview` | Preview production build locally |
+| `npm run test` | Run Vitest in watch mode |
+| `npm run test:run` | Run the local engine/store regression suite once |
+| `npm run test:perf:small` | Run the small headless performance gate |
+| `npm run test:perf:medium` | Run the medium headless performance gate |
 | `npm run profile:headless` | Run headless profiling scenarios and save JSON report |
 | `npm run profile:headless:ci` | Run headless profiling in CI mode (fails on threshold regression) |
 | `npm run profile:cpu:analyze -- --input perf-reports/<file>.cpuprofile --top 20` | Analyze a saved V8 CPU profile |
 | `npm run profile:phase2` | Run dense benchmark matrix (500/1000 maps with 10k/20k animals) |
+
+---
+
+## Local Regression Workflow
+
+Use the test runner for deterministic engine/store checks:
+
+```bash
+npm run test:run
+```
+
+For simulation changes, pair that with the small performance gate:
+
+```bash
+npm run test:perf:small
+```
+
+Before a release or a larger refactor, run the medium performance scenario as well:
+
+```bash
+npm run test:perf:medium
+```
+
+The initial suite is intentionally Node-only. It covers engine algorithms and store merge behavior without depending on React DOM or Pixi rendering.
 
 ---
 

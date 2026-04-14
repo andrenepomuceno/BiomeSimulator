@@ -2,12 +2,12 @@
  * GameRenderer — PixiJS Application init and layer management.
  */
 import * as PIXI from 'pixi.js';
-import { Camera } from './Camera';
-import { TerrainLayer } from './TerrainLayer';
-import { PlantLayer } from './PlantLayer';
-import { EntityLayer } from './EntityLayer';
-import { AnimationLayer } from './AnimationLayer';
-import useSimStore from '../store/simulationStore';
+import { Camera } from './Camera.js';
+import { TerrainLayer } from './TerrainLayer.js';
+import { PlantLayer } from './PlantLayer.js';
+import { EntityLayer } from './EntityLayer.js';
+import { AnimationLayer } from './AnimationLayer.js';
+import useSimStore from '../store/simulationStore.js';
 
 export class GameRenderer {
   constructor(container, onViewportChange, onTileClick) {

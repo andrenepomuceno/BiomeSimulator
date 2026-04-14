@@ -2,7 +2,7 @@
  * useSimulation hook — manages Web Worker and sim state syncing.
  */
 import { useEffect, useRef, useCallback } from 'react';
-import useSimStore from '../store/simulationStore';
+import useSimStore from '../store/simulationStore.js';
 
 const TILE_INFO_REFRESH_INTERVAL = 10;
 

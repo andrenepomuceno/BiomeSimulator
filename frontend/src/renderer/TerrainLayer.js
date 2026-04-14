@@ -4,7 +4,7 @@
  * and elevation shadows.
  */
 import * as PIXI from 'pixi.js';
-import { TERRAIN_COLORS, tileHash } from '../utils/terrainColors';
+import { TERRAIN_COLORS, tileHash } from '../utils/terrainColors.js';
 
 // Per-terrain hash variation amplitude (max ± per RGB channel)
 const TERRAIN_VAR = [

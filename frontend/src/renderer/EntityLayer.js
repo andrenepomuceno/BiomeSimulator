@@ -3,9 +3,9 @@
  * with energy bars, direction flipping, and zoom-gated detail levels.
  */
 import * as PIXI from 'pixi.js';
-import { generateEmojiTextures } from '../utils/emojiTextures';
-import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation';
-import { MAX_ANIMAL_ENERGY } from '../engine/animalSpecies';
+import { generateEmojiTextures } from '../utils/emojiTextures.js';
+import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
+import { MAX_ANIMAL_ENERGY } from '../engine/animalSpecies.js';
 
 const ATTACK_JUMP_DURATION = 12;
 const ATTACK_JUMP_HEIGHT = 0.22;

@@ -5,9 +5,9 @@
  * Emoji sprites: shown when zoom >= EMOJI_ZOOM_THRESHOLD for tiles in viewport.
  */
 import * as PIXI from 'pixi.js';
-import { PLANT_COLORS } from '../utils/terrainColors';
-import { generatePlantEmojiTextures } from '../utils/emojiTextures';
-import { buildSwayStages } from '../engine/plantSpecies';
+import { PLANT_COLORS } from '../utils/terrainColors.js';
+import { generatePlantEmojiTextures } from '../utils/emojiTextures.js';
+import { buildSwayStages } from '../engine/plantSpecies.js';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const MAX_EMOJI_SPRITES = 8000;

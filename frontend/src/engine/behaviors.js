@@ -168,7 +168,11 @@ export function decideAndAct(animal, world, spatialHash) {
   benchmarkAddKeyed(collector, 'speciesDecisions', animal.species, 1);
   if (!animal.alive) return;
 
+  const _prevLifeStage = animal.lifeStage;
   animal.tickNeeds(world.hungerMultiplier, world.thirstMultiplier);
+  if (animal.lifeStage !== _prevLifeStage) {
+    animal.logAction(world.clock.tick, 'LIFE_STAGE', { from: _prevLifeStage, to: animal.lifeStage });
+  }
 
   // Die of old age or zero HP
   if (animal.age > animal.maxAge || animal.hp <= 0) {
@@ -186,8 +190,11 @@ export function decideAndAct(animal, world, spatialHash) {
   if (animal.energy <= 0) {
     const t = world.terrain[world.idx(animal.x, animal.y)];
     if (t !== WATER && t !== DEEP_WATER) {
+      if (animal.state !== AnimalState.SLEEPING) {
+        animal.logAction(world.clock.tick, 'FELL_ASLEEP', { energy: Math.round(animal.energy), cause: 'exhausted' });
+      }
       animal.state = AnimalState.SLEEPING;
-      _doSleep(animal);
+      _doSleep(animal, world);
       return;
     }
   }
@@ -196,7 +203,7 @@ export function decideAndAct(animal, world, spatialHash) {
   if (animal.state === AnimalState.SLEEPING) {
     const t = world.terrain[world.idx(animal.x, animal.y)];
     if (t === WATER || t === DEEP_WATER) { animal.state = AnimalState.IDLE; }
-    else { _doSleep(animal); return; }
+    else { _doSleep(animal, world); return; }
   }
   if (animal.state === AnimalState.EATING)   { _doEat(animal, world); return; }
   if (animal.state === AnimalState.DRINKING) { _doDrink(animal, world); return; }
@@ -288,6 +295,7 @@ export function decideAndAct(animal, world, spatialHash) {
   if (animal.energy < _calculateEffectiveSleepThreshold(animal, isNight, world.config)) {
     const t = world.terrain[world.idx(animal.x, animal.y)];
     if (t !== WATER && t !== DEEP_WATER) {
+      animal.logAction(world.clock.tick, 'FELL_ASLEEP', { energy: Math.round(animal.energy) });
       animal.state = AnimalState.SLEEPING;
       return;
     }
@@ -345,11 +353,14 @@ export function decideAndAct(animal, world, spatialHash) {
 
 // ---- Ongoing action handlers ----
 
-function _doSleep(animal) {
+function _doSleep(animal, world) {
   const recovery = _recoveryConfig(animal);
   animal.applyEnergyCost('SLEEP'); // negative cost = recovery
   animal.hp = Math.min(animal.maxHp, animal.hp + (recovery.sleep_hp ?? 0.8));
-  if (animal.energy >= (recovery.sleep_exit_energy ?? 70)) animal.state = AnimalState.IDLE;
+  if (animal.energy >= (recovery.sleep_exit_energy ?? 70)) {
+    animal.state = AnimalState.IDLE;
+    animal.logAction(world.clock.tick, 'WOKE_UP', { energy: Math.round(animal.energy) });
+  }
 }
 
 function _doEat(animal /*, world */) {
@@ -361,11 +372,13 @@ function _doEat(animal /*, world */) {
   animal.state = AnimalState.IDLE;
 }
 
-function _doDrink(animal /*, world */) {
+function _doDrink(animal, world) {
   const recovery = _recoveryConfig(animal);
+  const thirstBefore = animal.thirst;
   animal.thirst = Math.max(0, animal.thirst - (recovery.drink_thirst ?? 55));
   animal.applyEnergyCost('DRINK');
   animal.state = AnimalState.IDLE;
+  animal.logAction(world.clock.tick, 'DRANK', { thirstReduced: Math.round(thirstBefore - animal.thirst) });
 }
 
 // ---- Seek behaviors ----
@@ -800,6 +813,7 @@ function _attack(attacker, defender, world) {
     defender._deathTick = world.clock.tick;
     defender.logAction(world.clock.tick, 'KILLED_BY', { attacker: attacker.species, attackerId: attacker.id });
     attacker.logAction(world.clock.tick, 'KILLED', { target: defender.species, targetId: defender.id });
+    attacker.logAction(world.clock.tick, 'EAT_PREY', { prey: defender.species, preyId: defender.id });
     attacker.hunger = Math.max(0, attacker.hunger - 80);
     attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + 25);
     attacker.hp = Math.min(attacker.maxHp, attacker.hp + 15);

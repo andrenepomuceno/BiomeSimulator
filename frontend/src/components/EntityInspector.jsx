@@ -292,14 +292,18 @@ function AnimalStatusBadge({ state, alive }) {
 }
 
 const ACTION_ICONS = {
-  ATTACK: '⚔️', DEFENDED: '🛡️', KILLED: '💀', KILLED_BY: '☠️',
+  ATTACK: '⚔️', DEFENDED: '🛡️', KILLED: '💥', KILLED_BY: '☠️',
   MATED: '💕', OFFSPRING: '🍼', BORN: '🐣',
-  EAT_PLANT: '🌿', SCAVENGED: '🦴', FLED: '🏃', DIED: '💀',
+  EAT_PLANT: '🌿', EAT_PREY: '🥩', SCAVENGED: '🦴', FLED: '🏃', DIED: '💀',
+  FELL_ASLEEP: '💤', WOKE_UP: '☀️', DRANK: '💧', LIFE_STAGE: '⭐',
+  ATTACK_MISS: '💨', DODGED: '🌀',
 };
 const ACTION_COLORS = {
   ATTACK: '#ff4444', DEFENDED: '#ffaa33', KILLED: '#ff2222', KILLED_BY: '#cc0000',
   MATED: '#ff66aa', OFFSPRING: '#ff99cc', BORN: '#88dd66',
-  EAT_PLANT: '#66cc66', SCAVENGED: '#cc8844', FLED: '#ff8833', DIED: '#888',
+  EAT_PLANT: '#66cc66', EAT_PREY: '#ff6633', SCAVENGED: '#cc8844', FLED: '#ff8833', DIED: '#888',
+  FELL_ASLEEP: '#6688bb', WOKE_UP: '#88ccff', DRANK: '#44aaff', LIFE_STAGE: '#ffdd44',
+  ATTACK_MISS: '#ffaa66', DODGED: '#aaccff',
 };
 
 function ActionLogEntry({ event, ticksPerDay }) {
@@ -307,17 +311,24 @@ function ActionLogEntry({ event, ticksPerDay }) {
   const icon = ACTION_ICONS[action] || '❓';
   const color = ACTION_COLORS[action] || '#aaa';
   let text = action;
-  if (action === 'ATTACK')     text = `Attacked ${detail.target} #${detail.targetId} (${detail.damage} dmg)`;
-  else if (action === 'DEFENDED')  text = `Hit by ${detail.attacker} #${detail.attackerId} (${detail.damage} dmg)`;
+  if (action === 'ATTACK')         text = `Attacked ${detail.target} #${detail.targetId} (${detail.damage} dmg${detail.crit ? ' CRIT' : ''})`;
+  else if (action === 'DEFENDED')  text = `Hit by ${detail.attacker} #${detail.attackerId} (${detail.damage} dmg${detail.crit ? ' CRIT' : ''})`;
   else if (action === 'KILLED')    text = `Killed ${detail.target} #${detail.targetId}`;
   else if (action === 'KILLED_BY') text = `Killed by ${detail.attacker} #${detail.attackerId}`;
   else if (action === 'MATED')     text = `Mated with #${detail.partnerId}`;
   else if (action === 'OFFSPRING') text = `Baby #${detail.babyId} born at (${detail.x},${detail.y})`;
   else if (action === 'BORN')      text = `Born (parents #${detail.parentA}, #${detail.parentB})`;
   else if (action === 'EAT_PLANT') text = `Ate ${detail.stage} (type ${detail.plantType})`;
+  else if (action === 'EAT_PREY')  text = `Ate ${detail.prey} #${detail.preyId}`;
   else if (action === 'SCAVENGED') text = `Scavenged ${detail.corpse} #${detail.corpseId}`;
   else if (action === 'FLED')      text = `Fled from ${detail.from} #${detail.threatId}`;
   else if (action === 'DIED')      text = `Died (${detail.cause})`;
+  else if (action === 'FELL_ASLEEP') text = detail.cause === 'exhausted' ? `Fell asleep (exhausted, energy ${detail.energy})` : `Fell asleep (energy ${detail.energy})`;
+  else if (action === 'WOKE_UP')   text = `Woke up (energy ${detail.energy})`;
+  else if (action === 'DRANK')     text = `Drank water (thirst −${detail.thirstReduced})`;
+  else if (action === 'LIFE_STAGE') text = `Grew up: ${LIFE_STAGE_NAMES[detail.from] || detail.from} → ${LIFE_STAGE_NAMES[detail.to] || detail.to}`;
+  else if (action === 'ATTACK_MISS') text = `Attack missed ${detail.target} #${detail.targetId}`;
+  else if (action === 'DODGED')    text = `Dodged attack from ${detail.attacker} #${detail.attackerId}`;
   const ts = formatTickTimestamp(tick, ticksPerDay);
   return (
     <div className="d-flex align-items-start gap-1" style={{ padding: '1px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>

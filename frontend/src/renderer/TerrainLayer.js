@@ -62,23 +62,81 @@ const BLEND_FRAG_SRC = `
   void main() {
     vec2 tc = v_uv * u_worldSize;
 
-    // Sharp (unwarped) sample — preserves per-tile detail and crispness
+    // Sharp (unwarped) sample — preserves per-tile detail
     vec4 sharp = texture2D(u_rawTerrain, v_uv);
 
-    // Domain warp: noise displaces lookup for organic borders.
-    // Moderate amplitude keeps transitions smooth without over-blurring.
-    float wx = (valueNoise(tc * 0.35 + vec2(13.7, 7.3)) - 0.5) * 1.2
-             + (valueNoise(tc * 0.85 + vec2(87.1, 42.5)) - 0.5) * 0.35;
-    float wy = (valueNoise(tc * 0.35 + vec2(51.2, 23.1)) - 0.5) * 1.2
-             + (valueNoise(tc * 0.85 + vec2(29.4, 73.8)) - 0.5) * 0.35;
+    // Distance to nearest tile boundary (0.0 at edge, 0.5 at center)
+    vec2 tileFrac = fract(tc);
+    float distToBorder = min(
+      min(tileFrac.x, 1.0 - tileFrac.x),
+      min(tileFrac.y, 1.0 - tileFrac.y)
+    );
+    // borderFactor: 1.0 at tile edges, 0.0 at tile centers
+    float borderFactor = 1.0 - smoothstep(0.0, 0.35, distToBorder);
 
-    // Warped sample — LINEAR filtering gives smooth bilinear gradients
+    // Domain warp: adaptive amplitude — strong near borders, mild in interiors
+    float warpStr = mix(0.4, 1.8, borderFactor);
+    float detailStr = mix(0.1, 0.45, borderFactor);
+
+    float wx = (valueNoise(tc * 0.35 + vec2(13.7, 7.3)) - 0.5) * warpStr
+             + (valueNoise(tc * 0.85 + vec2(87.1, 42.5)) - 0.5) * detailStr;
+    float wy = (valueNoise(tc * 0.35 + vec2(51.2, 23.1)) - 0.5) * warpStr
+             + (valueNoise(tc * 0.85 + vec2(29.4, 73.8)) - 0.5) * detailStr;
+
     vec2 warpedUV = v_uv + vec2(wx, wy) / u_worldSize;
     warpedUV = clamp(warpedUV, vec2(0.0), vec2(1.0));
     vec4 smooth = texture2D(u_rawTerrain, warpedUV);
 
-    // Blend: 70% sharp + 30% smooth → crisp detail with soft borders
-    gl_FragColor = mix(sharp, smooth, 0.30);
+    // Adaptive blend: crisp interiors (85% sharp), soft borders (40% sharp)
+    float blendRatio = mix(0.15, 0.60, borderFactor);
+    gl_FragColor = mix(sharp, smooth, blendRatio);
+  }
+`;
+
+// ---------------------------------------------------------------------------
+// Edge-aware anti-aliasing shader (pass 3):
+// Detects color discontinuities at terrain borders and applies a
+// cross-shaped Gaussian blur only at edge pixels, leaving flat regions
+// untouched.  Bilinear-optimized sampling at half-texel offsets gives
+// an effective ~4-texel radius with only 9 texture reads.
+// ---------------------------------------------------------------------------
+const EDGE_SMOOTH_FRAG_SRC = `
+  precision highp float;
+  varying vec2 v_uv;
+  uniform sampler2D u_input;
+  uniform vec2 u_texelSize;
+
+  void main() {
+    vec4 center = texture2D(u_input, v_uv);
+    vec2 ts = u_texelSize;
+
+    // Inner ring: bilinear samples at ±1.5 texels (covers texels 1-2)
+    vec4 h1p = texture2D(u_input, v_uv + vec2( 1.5 * ts.x, 0.0));
+    vec4 h1n = texture2D(u_input, v_uv + vec2(-1.5 * ts.x, 0.0));
+    vec4 v1p = texture2D(u_input, v_uv + vec2(0.0,  1.5 * ts.y));
+    vec4 v1n = texture2D(u_input, v_uv + vec2(0.0, -1.5 * ts.y));
+
+    // Outer ring: bilinear samples at ±3.5 texels (covers texels 3-4)
+    vec4 h2p = texture2D(u_input, v_uv + vec2( 3.5 * ts.x, 0.0));
+    vec4 h2n = texture2D(u_input, v_uv + vec2(-3.5 * ts.x, 0.0));
+    vec4 v2p = texture2D(u_input, v_uv + vec2(0.0,  3.5 * ts.y));
+    vec4 v2n = texture2D(u_input, v_uv + vec2(0.0, -3.5 * ts.y));
+
+    // Edge detection: color distance between center and inner samples
+    float dH = max(length(h1p.rgb - center.rgb), length(h1n.rgb - center.rgb));
+    float dV = max(length(v1p.rgb - center.rgb), length(v1n.rgb - center.rgb));
+    float edge = max(dH, dV);
+
+    // Edge mask: 0 for uniform terrain, 1 at biome borders
+    float mask = smoothstep(0.03, 0.12, edge);
+
+    // Gaussian-weighted cross blur (effective radius ~4 texels)
+    // Weights: 0.25 + 4*0.10 + 4*0.0875 = 1.0
+    vec4 blurred = center * 0.25
+                 + (h1p + h1n + v1p + v1n) * 0.10
+                 + (h2p + h2n + v2p + v2n) * 0.0875;
+
+    gl_FragColor = mix(center, blurred, mask * 0.85);
   }
 `;
 
@@ -605,7 +663,7 @@ export class TerrainLayer {
     this._renderer.render(this._mesh, { renderTexture: this._rawCacheRT });
     this._mesh.scale.set(1);
 
-    // --- Pass 2: post-process blend → smooth Npx/tile output ---
+    // --- Pass 2: adaptive domain-warp blend → organic borders ---
 
     // Create / update blend mesh
     if (!this._blendMesh) {
@@ -623,7 +681,36 @@ export class TerrainLayer {
       this._blendShader.uniforms.u_worldSize = [w, h];
     }
 
-    // Create / update smooth output RT
+    // Intermediate RT for blend output (input for Pass 3)
+    if (!this._blendedRT || this._blendedRT.width !== outW || this._blendedRT.height !== outH) {
+      if (this._blendedRT) this._blendedRT.destroy(true);
+      this._blendedRT = PIXI.RenderTexture.create({
+        width: outW,
+        height: outH,
+        scaleMode: PIXI.SCALE_MODES.LINEAR,
+        resolution: 1,
+      });
+    }
+    this._renderer.render(this._blendMesh, { renderTexture: this._blendedRT });
+
+    // --- Pass 3: edge-aware anti-aliasing → soft biome borders ---
+
+    if (!this._edgeMesh) {
+      this._edgeShader = PIXI.Shader.from(BLEND_VERT_SRC, EDGE_SMOOTH_FRAG_SRC, {
+        u_input: this._blendedRT,
+        u_texelSize: [1.0 / outW, 1.0 / outH],
+      });
+      const geo = new PIXI.Geometry()
+        .addAttribute('aVertexPosition', [0, 0, outW, 0, outW, outH, 0, outH], 2)
+        .addAttribute('aTextureCoord', [0, 0, 1, 0, 1, 1, 0, 1], 2)
+        .addIndex([0, 1, 2, 0, 2, 3]);
+      this._edgeMesh = new PIXI.Mesh(geo, this._edgeShader);
+    } else {
+      this._edgeShader.uniforms.u_input = this._blendedRT;
+      this._edgeShader.uniforms.u_texelSize = [1.0 / outW, 1.0 / outH];
+    }
+
+    // Final output RT
     if (!this._cachedRT || this._cachedRT.width !== outW || this._cachedRT.height !== outH) {
       if (this._cachedRT) this._cachedRT.destroy(true);
       this._cachedRT = PIXI.RenderTexture.create({
@@ -633,7 +720,7 @@ export class TerrainLayer {
         resolution: 1,
       });
     }
-    this._renderer.render(this._blendMesh, { renderTexture: this._cachedRT });
+    this._renderer.render(this._edgeMesh, { renderTexture: this._cachedRT });
 
     // Display sprite — scale from Npx/tile back to 1 tile per world unit
     if (!this._cachedSprite) {
@@ -693,7 +780,10 @@ export class TerrainLayer {
   destroy() {
     if (this._cachedSprite) { this._cachedSprite.destroy(); this._cachedSprite = null; }
     if (this._cachedRT) { this._cachedRT.destroy(true); this._cachedRT = null; }
+    if (this._blendedRT) { this._blendedRT.destroy(true); this._blendedRT = null; }
     if (this._rawCacheRT) { this._rawCacheRT.destroy(true); this._rawCacheRT = null; }
+    if (this._edgeMesh) { this._edgeMesh.destroy(true); this._edgeMesh = null; }
+    this._edgeShader = null;
     if (this._blendMesh) { this._blendMesh.destroy(true); this._blendMesh = null; }
     this._blendShader = null;
     if (this.sprite) { this.sprite.destroy(true); this.sprite = null; }

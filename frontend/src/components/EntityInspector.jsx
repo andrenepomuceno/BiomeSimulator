@@ -359,7 +359,7 @@ function PlantLogEntry({ event, ticksPerDay }) {
   );
 }
 
-export default function EntityInspector() {
+export default function EntityInspector({ onFocusEntity }) {
   const { selectedEntity, selectedTile, clearSelection, clock, gameConfig } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
 
@@ -390,6 +390,15 @@ export default function EntityInspector() {
 
         {/* Identity */}
         <CollapsibleSection title="Identity" icon="🪪" defaultOpen={true}>
+          <div className="d-flex justify-content-end mb-1">
+            <button
+              className="btn btn-sm btn-outline-info py-0 px-2"
+              onClick={() => onFocusEntity?.(e)}
+              disabled={!Number.isFinite(e.x) || !Number.isFinite(e.y)}
+            >
+              Olhar para
+            </button>
+          </div>
           <div className="stat-row">
             <span className="stat-label">Diet</span>
             <span className="stat-value" style={{ color: DIET_COLORS[info.diet] || DIET_COLORS.Herbivore }}>

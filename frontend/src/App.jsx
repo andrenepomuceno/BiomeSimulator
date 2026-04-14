@@ -182,6 +182,12 @@ export default function App() {
     }
   }
 
+  function _handleFocusEntity(entity) {
+    if (!entity || !rendererRef.current) return;
+    if (!Number.isFinite(entity.x) || !Number.isFinite(entity.y)) return;
+    rendererRef.current.centerOn(entity.x, entity.y);
+  }
+
   function _handleSave(callback) {
     useSimStore.getState().setSaveCallback(callback);
     postCmd('saveState');
@@ -220,7 +226,7 @@ export default function App() {
           </div>
           <div className="canvas-area" ref={canvasContainerRef} />
           <div className="sidebar sidebar-right">
-            <EntityInspector />
+            <EntityInspector onFocusEntity={_handleFocusEntity} />
             <TerrainEditor />
           </div>
         </div>

@@ -360,6 +360,51 @@ export class SoundManager {
     return buffer;
   }
 
+  /**
+   * Short filtered-noise transient (scratch, thud, click textures).
+   * Returns created AudioNodes so the caller can register them for cleanup.
+   */
+  _addNoiseBurst(destination, filterType, freq, Q, level, dur, now) {
+    const context = this.context;
+    const source = context.createBufferSource();
+    source.buffer = this._getNoiseBuffer();
+    const filter = context.createBiquadFilter();
+    filter.type = filterType;
+    filter.frequency.value = freq;
+    filter.Q.value = Q;
+    const gainNode = context.createGain();
+    gainNode.gain.setValueAtTime(ZERO_GAIN, now);
+    gainNode.gain.linearRampToValueAtTime(Math.max(ZERO_GAIN, level), now + 0.004);
+    gainNode.gain.exponentialRampToValueAtTime(ZERO_GAIN, now + dur);
+    source.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(destination);
+    source.start(now);
+    source.stop(now + dur + 0.02);
+    return { sources: [source], nodes: [filter, gainNode] };
+  }
+
+  /**
+   * Low-frequency impact with steep pitch drop and two-stage envelope.
+   */
+  _addImpact(destination, freq, level, dur, now) {
+    const context = this.context;
+    const osc = context.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq * 0.15), now + dur);
+    const gainNode = context.createGain();
+    gainNode.gain.setValueAtTime(ZERO_GAIN, now);
+    gainNode.gain.linearRampToValueAtTime(Math.max(ZERO_GAIN, level), now + 0.005);
+    gainNode.gain.exponentialRampToValueAtTime(Math.max(ZERO_GAIN, level * 0.3), now + dur * 0.4);
+    gainNode.gain.exponentialRampToValueAtTime(ZERO_GAIN, now + dur);
+    osc.connect(gainNode);
+    gainNode.connect(destination);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+    return { sources: [osc], nodes: [gainNode] };
+  }
+
   _playPreset(preset, gain, pan) {
     const context = this.context;
     const now = context.currentTime;
@@ -383,12 +428,12 @@ export class SoundManager {
     const sources = [];
     const nodes = [voiceGain, panner].filter(Boolean);
 
-    const addOscillator = (type, startFrequency, endFrequency, level, detune = 0) => {
+    const addOscillator = (type, startFrequency, endFrequency, level, dur, detune = 0) => {
       const oscillator = context.createOscillator();
       const gainNode = context.createGain();
       oscillator.type = type;
       oscillator.frequency.setValueAtTime(startFrequency, now);
-      oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, endFrequency), now + duration);
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, endFrequency), now + dur);
       oscillator.detune.value = detune;
       gainNode.gain.value = level;
       oscillator.connect(gainNode);
@@ -397,40 +442,51 @@ export class SoundManager {
       nodes.push(gainNode);
     };
 
+    const collectBurst = (burst) => {
+      sources.push(...burst.sources);
+      nodes.push(...burst.nodes);
+    };
+
     switch (preset) {
       case 'attack':
-        duration = 0.12;
-        addOscillator('square', 760, 170, 0.7, -8);
-        addOscillator('triangle', 980, 240, 0.35, 5);
+        // Scratch/cut: filtered noise burst + short square transient
+        duration = 0.11;
+        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 2200, 1.8, 0.6, 0.07, now));
+        addOscillator('square', 520, 180, 0.35, 0.05);
         break;
       case 'death':
-        duration = 0.26;
-        addOscillator('sine', 260, 70, 0.85, -5);
-        addOscillator('triangle', 180, 55, 0.45, 8);
+        // Fall/thud: steep pitch-drop impact + muffled noise + sub layer
+        duration = 0.30;
+        collectBurst(this._addImpact(voiceGain, 180, 0.7, 0.30, now));
+        collectBurst(this._addNoiseBurst(voiceGain, 'lowpass', 400, 0.6, 0.35, 0.12, now));
+        addOscillator('triangle', 120, 40, 0.2, 0.30, -10);
         break;
       case 'eat':
-        duration = 0.1;
-        addOscillator('sine', 420, 210, 0.8, 0);
-        addOscillator('triangle', 300, 150, 0.3, -12);
+        // Bite/peck: sharp dry noise snap + minimal tonal body
+        duration = 0.07;
+        collectBurst(this._addNoiseBurst(voiceGain, 'highpass', 3000, 2.0, 0.5, 0.04, now));
+        addOscillator('sine', 380, 250, 0.4, 0.07);
         break;
       case 'fruit':
-        duration = 0.16;
-        addOscillator('sine', 720, 1240, 0.65, 0);
-        addOscillator('triangle', 1080, 1520, 0.3, 5);
+        // Organic sparkle: ascending tones + short bright noise
+        duration = 0.18;
+        addOscillator('sine', 680, 1100, 0.5, 0.18, 3);
+        addOscillator('triangle', 1020, 1400, 0.2, 0.18);
+        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 4500, 3.0, 0.15, 0.06, now));
         break;
       case 'uiClick':
       default:
         duration = 0.08;
-        addOscillator('triangle', 620, 410, 0.8, 0);
-        addOscillator('sine', 860, 620, 0.2, 7);
+        addOscillator('triangle', 620, 410, 0.8, 0.08);
+        addOscillator('sine', 860, 620, 0.2, 0.08, 7);
         break;
     }
 
     setEnvelope(voiceGain.gain, now, gain, duration);
 
     for (const source of sources) {
-      source.start(now);
-      source.stop(now + duration + 0.02);
+      try { source.start(now); } catch { /* already started by helper */ }
+      try { source.stop(now + duration + 0.02); } catch { /* already scheduled */ }
     }
 
     this._activeVoices += 1;

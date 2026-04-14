@@ -319,6 +319,8 @@ self.onmessage = function (e) {
         plantStage: new Uint8Array(w.plantStage).buffer,
         animals: w.animals.filter(a => a.alive).map(a => a.toDict()),
         clock: w.clock.toDict(),
+        hungerMultiplier: w.hungerMultiplier,
+        thirstMultiplier: w.thirstMultiplier,
         max_animal_population: config.max_animal_population || 0,
       });
       break;
@@ -352,6 +354,8 @@ self.onmessage = function (e) {
         plantStage: new Uint8Array(rw.plantStage).buffer,
         animals: rw.animals.filter(a => a.alive).map(a => a.toDict()),
         clock: rw.clock.toDict(),
+        hungerMultiplier: rw.hungerMultiplier,
+        thirstMultiplier: rw.thirstMultiplier,
         max_animal_population: rw.config.max_animal_population || 0,
       });
       break;
@@ -529,6 +533,8 @@ self.onmessage = function (e) {
         plantStage: new Uint8Array(lw.plantStage).buffer,
         animals: lw.animals.filter(a => a.alive).map(a => a.toDict()),
         clock: lw.clock.toDict(),
+        hungerMultiplier: lw.hungerMultiplier,
+        thirstMultiplier: lw.thirstMultiplier,
       });
       break;
     }

@@ -29,6 +29,8 @@ export function useSimulation() {
           store.setTerrain(terrain, msg.width, msg.height);
           store.setAnimals(msg.animals || []);
           store.setClock(msg.clock);
+          if (msg.hungerMultiplier != null) store.setHungerMultiplier(msg.hungerMultiplier);
+          if (msg.thirstMultiplier != null) store.setThirstMultiplier(msg.thirstMultiplier);
           if (msg.max_animal_population != null) {
             store.setGameConfig({ max_animal_population: msg.max_animal_population });
           }

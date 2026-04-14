@@ -2,6 +2,7 @@
  * App — main layout wiring canvas, sidebar, toolbar, and all hooks together.
  */
 import React, { useRef, useEffect, useState } from 'react';
+import packageJson from '../package.json';
 import useSimStore from './store/simulationStore';
 import { useSimulation } from './hooks/useSimulation';
 import { useEditor } from './hooks/useEditor';
@@ -41,6 +42,7 @@ function createDebounce(callback, delayMs) {
 }
 
 export default function App() {
+  const appVersion = packageJson?.version ?? 'dev';
   const canvasContainerRef = useRef(null);
   const rendererRef = useRef(null);
   const { postCmd, requestTileInfo, requestAnimalDetail } = useSimulation();
@@ -335,6 +337,7 @@ export default function App() {
       />
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Toolbar
+          appVersion={appVersion}
           onStart={_handleStart}
           onPause={_handlePause}
           onResume={_handleResume}

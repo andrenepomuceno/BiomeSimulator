@@ -77,6 +77,18 @@ html, body, #root {
   font-size: 0.8rem;
 }
 
+.toolbar-version {
+  margin-left: 10px;
+  padding: 2px 8px;
+  border: 1px solid #2a4f78;
+  border-radius: 10px;
+  background: #113056;
+  color: #9ec5e2;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .btn-sim {
   background: #53a8b6;
   border: none;

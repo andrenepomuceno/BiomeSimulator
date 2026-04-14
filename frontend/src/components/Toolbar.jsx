@@ -12,7 +12,7 @@ const TOOLS = [
   { id: 'ERASE', label: '🗑️ Erase' },
 ];
 
-export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onAudioToggle, onReportToggle, onEntitiesToggle }) {
+export default function Toolbar({ appVersion, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onAudioToggle, onReportToggle, onEntitiesToggle }) {
   const { paused, running, tps, clock, tool, setTool, audioSettings } = useSimStore();
   const audioLabel = audioSettings.muted
     ? '🔇 Audio'
@@ -92,6 +92,9 @@ export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, o
       <button className="btn btn-sim btn-sm" onClick={onEntitiesToggle} title="Entity Summary">
         📋 Entities
       </button>
+      <span className="toolbar-version" title="Application version">
+        v{appVersion}
+      </span>
     </div>
   );
 }

@@ -79,6 +79,7 @@ export default function App() {
     if (import.meta.env.DEV) {
       window.__ecoCapture = {
         getState: () => useSimStore.getState(),
+        _subscribe: (fn) => useSimStore.subscribe(fn),
         postCmd: (cmd, data) => postCmd(cmd, data),
         waitForWorld: () => new Promise((resolve) => {
           if (useSimStore.getState().worldReady) { resolve(); return; }

@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { createServer } from 'vite';
 import { chromium } from 'playwright';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -58,33 +58,15 @@ function parseArgs(argv) {
   return opts;
 }
 
-// ── Vite dev server ─────────────────────────────────────────────────
-function startVite(port) {
-  return new Promise((resolve, reject) => {
-    const proc = spawn('npx', ['vite', '--port', String(port), '--strictPort'], {
-      cwd: PROJECT_ROOT,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: true,
-    });
-    let started = false;
-    const onData = (chunk) => {
-      const text = chunk.toString();
-      if (!started && text.includes('Local:')) {
-        started = true;
-        resolve(proc);
-      }
-    };
-    proc.stdout.on('data', onData);
-    proc.stderr.on('data', onData);
-    proc.on('error', reject);
-    proc.on('exit', (code) => {
-      if (!started) reject(new Error(`Vite exited with code ${code}`));
-    });
-    // Safety timeout
-    setTimeout(() => {
-      if (!started) reject(new Error('Vite did not start within 30s'));
-    }, 30_000);
+// ── Vite dev server (JS API) ────────────────────────────────────────
+async function startVite(port) {
+  const server = await createServer({
+    root: PROJECT_ROOT,
+    server: { port, strictPort: true },
+    logLevel: 'silent',
   });
+  await server.listen();
+  return server;
 }
 
 // ── Data URL → Buffer ───────────────────────────────────────────────
@@ -109,7 +91,7 @@ async function main() {
 
   const PORT = 5199;
   console.log('Starting Vite dev server...');
-  const viteProc = await startVite(PORT);
+  const viteServer = await startVite(PORT);
   const baseUrl = `http://localhost:${PORT}`;
 
   let browser;
@@ -122,7 +104,7 @@ async function main() {
 
     // ── Viewport captures ─────────────────────────────────────────
     console.log(`Navigating to ${baseUrl}...`);
-    await page.goto(baseUrl, { waitUntil: 'networkidle' });
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
     // Wait for the automation bridge to be available
     await page.waitForFunction(() => !!window.__ecoCapture, { timeout: 30_000 });
@@ -130,12 +112,24 @@ async function main() {
     for (const scene of scenes) {
       console.log(`\n── Scene: ${scene.name} ──`);
 
-      // Generate world with specific config
+      // Generate world with specific config — clear stale state first
       await page.evaluate((cfg) => {
+        const store = window.__ecoCapture.getState;
+        // Mark worldReady as null so waitForWorld won't resolve on stale data
         window.__ecoCapture.postCmd('generate', { config: cfg });
       }, scene.config);
       console.log('  Waiting for world...');
-      await page.evaluate(() => window.__ecoCapture.waitForWorld());
+      // Wait until worldReady is set AND clock.tick is 0 (fresh world)
+      await page.evaluate(() => new Promise((resolve) => {
+        const check = () => {
+          const s = window.__ecoCapture.getState();
+          return s.worldReady && s.clock.tick === 0;
+        };
+        if (check()) { resolve(); return; }
+        const unsub = window.__ecoCapture._subscribe((state) => {
+          if (state.worldReady && state.clock.tick === 0) { unsub(); resolve(); }
+        });
+      }));
 
       // Start and advance to target tick
       await page.evaluate(() => window.__ecoCapture.postCmd('start'));
@@ -179,7 +173,7 @@ async function main() {
 
     // ── Atlas captures ────────────────────────────────────────────
     console.log('\n── Sprite Atlas Capture ──');
-    await page.goto(`${baseUrl}/sprite-preview.html`, { waitUntil: 'networkidle' });
+    await page.goto(`${baseUrl}/sprite-preview.html`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__ecoAtlasCapture, { timeout: 15_000 });
 
     const faunaDataUrl = await page.evaluate(() => window.__ecoAtlasCapture.getFaunaDataUrl());
@@ -202,7 +196,7 @@ async function main() {
 
   } finally {
     if (browser) await browser.close();
-    viteProc.kill();
+    await viteServer.close();
   }
 }
 

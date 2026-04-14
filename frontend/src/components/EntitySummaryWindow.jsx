@@ -5,7 +5,7 @@ import { getPlantByTypeId } from '../engine/plantSpecies';
 import {
   buildEntitySummaryGroups,
   matchesActiveSelection,
-  reconcileCollapsedGroups,
+  reconcileExpandedGroups,
 } from './entitySummaryGroups';
 
 const TYPE_FILTERS = [
@@ -63,7 +63,7 @@ function buildPlantEntry(typeId, stage, x, y) {
 export default function EntitySummaryWindow({ open, onClose, onInspect }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [expandedGroups, setExpandedGroups] = useState({});
   const deferredSearch = useDeferredValue(searchTerm.trim().toLowerCase());
 
   const { animals, worldReady, plantSnapshot, mapWidth, mapHeight, selectedEntity, selectedTile } = useSimStore();
@@ -108,26 +108,23 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
     [filteredEntries, selectedEntity, selectedTile]
   );
 
-  const activeGroupKey = useMemo(
-    () => groupedEntries.find(group => group.hasActive)?.key ?? null,
-    [groupedEntries]
-  );
+  const hasSearch = deferredSearch.length > 0;
 
   useEffect(() => {
     if (open) {
-      setCollapsedGroups({});
+      setExpandedGroups({});
     }
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    setCollapsedGroups(current => reconcileCollapsedGroups(current, groupedEntries, activeGroupKey));
-  }, [open, groupedEntries, activeGroupKey]);
+    setExpandedGroups(current => reconcileExpandedGroups(current, groupedEntries));
+  }, [open, groupedEntries]);
 
   const totalEntries = animalEntries.length + plantEntries.length;
 
   const toggleGroup = (groupKey) => {
-    setCollapsedGroups(current => {
+    setExpandedGroups(current => {
       const next = { ...current };
       if (next[groupKey]) {
         delete next[groupKey];
@@ -173,7 +170,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
 
         <div className="entity-summary-list" role="list">
           {groupedEntries.map(group => {
-            const expanded = !collapsedGroups[group.key] || group.hasActive;
+            const expanded = hasSearch || !!expandedGroups[group.key] || group.hasActive;
             return (
               <section
                 key={group.key}

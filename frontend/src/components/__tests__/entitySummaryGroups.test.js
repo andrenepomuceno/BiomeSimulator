@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEntitySummaryGroups,
   matchesActiveSelection,
-  reconcileCollapsedGroups,
+  reconcileExpandedGroups,
 } from '../entitySummaryGroups.js';
 
 function createAnimalEntry(overrides = {}) {
@@ -84,7 +84,7 @@ describe('entitySummaryGroups', () => {
     expect(matchesActiveSelection(plantEntry, null, { x: 7, y: 4, plant: { type: 0 } })).toBe(false);
   });
 
-  it('drops stale collapsed groups and reopens the active group', () => {
+  it('drops stale expanded groups while preserving current ones', () => {
     const current = {
       'animal:RABBIT': true,
       'animal:FOX': true,
@@ -95,7 +95,7 @@ describe('entitySummaryGroups', () => {
       { key: 'plant:1' },
     ];
 
-    expect(reconcileCollapsedGroups(current, groups, 'animal:RABBIT')).toEqual({});
-    expect(reconcileCollapsedGroups({ 'plant:1': true }, groups, null)).toEqual({ 'plant:1': true });
+    expect(reconcileExpandedGroups(current, groups)).toEqual({ 'animal:RABBIT': true });
+    expect(reconcileExpandedGroups({ 'plant:1': true }, groups)).toEqual({ 'plant:1': true });
   });
 });

@@ -121,35 +121,39 @@ export class World {
   }
 
   idx(x, y) {
-    return y * this.width + x;
+    return (y | 0) * this.width + (x | 0);
   }
 
   isInBounds(x, y) {
-    return x >= 0 && y >= 0 && x < this.width && y < this.height;
+    const ix = x | 0, iy = y | 0;
+    return ix >= 0 && iy >= 0 && ix < this.width && iy < this.height;
   }
 
   isWalkable(x, y) {
-    if (!this.isInBounds(x, y)) return false;
-    const t = this.terrain[this.idx(x, y)];
+    const ix = x | 0, iy = y | 0;
+    if (ix < 0 || iy < 0 || ix >= this.width || iy >= this.height) return false;
+    const t = this.terrain[iy * this.width + ix];
     return t !== WATER && t !== DEEP_WATER && t !== MOUNTAIN;
   }
 
   isWalkableFor(x, y, walkableSet) {
-    if (!this.isInBounds(x, y)) return false;
-    return walkableSet.has(this.terrain[this.idx(x, y)]);
+    const ix = x | 0, iy = y | 0;
+    if (ix < 0 || iy < 0 || ix >= this.width || iy >= this.height) return false;
+    return walkableSet.has(this.terrain[iy * this.width + ix]);
   }
 
   isTileOccupied(x, y) {
-    if (!this.isInBounds(x, y)) return true;
-    return this.animalGrid[this.idx(x, y)] > 0;
+    const ix = x | 0, iy = y | 0;
+    if (ix < 0 || iy < 0 || ix >= this.width || iy >= this.height) return true;
+    return this.animalGrid[iy * this.width + ix] > 0;
   }
 
   placeAnimal(x, y) {
-    this.animalGrid[this.idx(x, y)]++;
+    this.animalGrid[(y | 0) * this.width + (x | 0)]++;
   }
 
   vacateAnimal(x, y) {
-    const i = this.idx(x, y);
+    const i = (y | 0) * this.width + (x | 0);
     if (this.animalGrid[i] > 0) this.animalGrid[i]--;
   }
 
@@ -186,15 +190,16 @@ export class World {
   }
 
   isWaterAdjacent(x, y) {
+    const ix = x | 0, iy = y | 0;
     // Standing on water counts (flying animals over water)
-    const selfTerrain = this.terrain[this.idx(x, y)];
+    const selfTerrain = this.terrain[iy * this.width + ix];
     if (selfTerrain === WATER || selfTerrain === DEEP_WATER) return true;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         if (dx === 0 && dy === 0) continue;
-        const nx = x + dx, ny = y + dy;
-        if (this.isInBounds(nx, ny)) {
-          const t = this.terrain[this.idx(nx, ny)];
+        const nx = ix + dx, ny = iy + dy;
+        if (nx >= 0 && ny >= 0 && nx < this.width && ny < this.height) {
+          const t = this.terrain[ny * this.width + nx];
           if (t === WATER || t === DEEP_WATER) return true;
         }
       }

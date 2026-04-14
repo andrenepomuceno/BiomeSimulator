@@ -136,8 +136,8 @@ export class AnimationLayer {
    * Spawn attack slash effect at position.
    */
   spawnAttack(x, y) {
-    const cx = x + 0.5;
-    const cy = y + 0.5;
+    const cx = x;
+    const cy = y;
     for (let i = 0; i < 5; i++) {
       const p = this._acquire('star');
       if (!p) break;
@@ -165,8 +165,8 @@ export class AnimationLayer {
    * Spawn pop-in effect for a new animal birth.
    */
   spawnBirth(x, y) {
-    const cx = x + 0.5;
-    const cy = y + 0.5;
+    const cx = x;
+    const cy = y;
     // Expanding ring of circles
     for (let i = 0; i < 6; i++) {
       const p = this._acquire('circle');
@@ -194,8 +194,8 @@ export class AnimationLayer {
    * Spawn death burst.
    */
   spawnDeath(x, y) {
-    const cx = x + 0.5;
-    const cy = y + 0.5;
+    const cx = x;
+    const cy = y;
     for (let i = 0; i < 8; i++) {
       const p = this._acquire('circle');
       if (!p) break;
@@ -223,8 +223,8 @@ export class AnimationLayer {
    * Fruit sparkle effect.
    */
   spawnFruit(x, y) {
-    const cx = x + 0.5;
-    const cy = y + 0.5;
+    const cx = x;
+    const cy = y;
     for (let i = 0; i < 3; i++) {
       const p = this._acquire('sparkle');
       if (!p) break;
@@ -249,8 +249,8 @@ export class AnimationLayer {
    * Mating heart particles.
    */
   spawnMate(x, y) {
-    const cx = x + 0.5;
-    const cy = y + 0.5;
+    const cx = x;
+    const cy = y;
     for (let i = 0; i < 3; i++) {
       const p = this._acquire('heart');
       if (!p) break;
@@ -275,8 +275,8 @@ export class AnimationLayer {
    * Eating crumb particles.
    */
   spawnEat(x, y) {
-    const cx = x + 0.5;
-    const cy = y + 0.5;
+    const cx = x;
+    const cy = y;
     for (let i = 0; i < 3; i++) {
       const p = this._acquire('circle');
       if (!p) break;

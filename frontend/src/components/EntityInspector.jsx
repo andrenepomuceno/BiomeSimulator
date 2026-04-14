@@ -415,7 +415,7 @@ export default function EntityInspector({ onFocusEntity }) {
           </div>
           <div className="stat-row">
             <span className="stat-label">Position</span>
-            <span className="stat-value">({e.x}, {e.y})</span>
+            <span className="stat-value">({Math.floor(e.x)}, {Math.floor(e.y)})</span>
           </div>
           {e.targetX != null && e.targetY != null && e.state !== 0 && e.state !== 5 && (
             <div className="stat-row">

@@ -158,9 +158,9 @@ export class EntityLayer {
         sprite._texKey = texKey;
       }
 
-      // Position (center of tile)
-      let spriteX = a.x + 0.5;
-      let spriteY = a.y + 0.5;
+      // Position (already at sub-cell position including tile center)
+      let spriteX = a.x;
+      let spriteY = a.y;
       sprite.rotation = 0;
 
       // Direction flip: track horizontal movement
@@ -247,8 +247,8 @@ export class EntityLayer {
       if (showBars && a.state !== 9 && a.alive !== false) {
         const barW = 0.6;
         const barH = 0.06;
-        const barX = a.x + 0.5 - barW / 2;
-        const barY = a.y - 0.02;
+        const barX = a.x - barW / 2;
+        const barY = a.y - 0.52;
 
         const hpMax = a.maxHp || 1;
         const hpRatio = Math.max(0, Math.min(1, (a.hp ?? hpMax) / hpMax));

@@ -140,7 +140,7 @@ export class GameRenderer {
     let fruitCount = 0;
     for (const change of plantChanges) {
       if (change[3] === 5 && change[0] >= x1 && change[0] <= x2 && change[1] >= y1 && change[1] <= y2) {
-        this.animationLayer.spawnFruit(change[0], change[1]);
+        this.animationLayer.spawnFruit(change[0] + 0.5, change[1] + 0.5);
         if (++fruitCount >= 30) break; // Cap per tick
       }
     }

@@ -15,6 +15,10 @@ export const REPRO_SEXUAL = 'SEXUAL';         // requires male + female
 export const REPRO_ASEXUAL = 'ASEXUAL';       // reproduces alone
 export const REPRO_HERMAPHRODITE = 'HERMAPHRODITE'; // any two can mate
 
+// Sub-cell movement: animals move in 1/4-tile increments
+export const SUB_CELL_DIVISOR = 4;
+export const SUB_CELL_STEP = 1 / SUB_CELL_DIVISOR;  // 0.25
+
 export const DEFAULT_CONFIG = {
   // Map generation
   map_width: 500,

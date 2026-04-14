@@ -4,12 +4,12 @@
 import { Animal, AnimalState, LifeStage } from './entities.js';
 import { WATER, DEEP_WATER } from './world.js';
 import { aStar } from './pathfinding.js';
-import { SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
+import { SUB_CELL_STEP, SUB_CELL_DIVISOR, SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
 import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_SEED, S_NONE, P_NONE, SEASONS, getSeason } from './flora.js';
 import { buildDecisionIntervals, BASE_POP_TOTAL } from './animalSpecies.js';
 import { buildEdibleStagesMap } from './plantSpecies.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
-import { idxToXY, shuffleInPlace } from './helpers.js';
+import { idxToXY, shuffleInPlace, tileOf } from './helpers.js';
 
 // Decision interval per species (ticks between full AI evaluations)
 const DECISION_INTERVALS = buildDecisionIntervals();
@@ -275,7 +275,7 @@ export function decideAndAct(animal, world, spatialHash) {
       } else {
         // Walk toward mate
         _computePath(animal, world, mate.x, mate.y, 40, 'mate');
-        if (animal.path.length) _followPath(animal, world);
+        if (animal.path.length) _walkPath(animal, world);
         else _randomWalk(animal, world);
       }
       return;
@@ -302,7 +302,7 @@ export function decideAndAct(animal, world, spatialHash) {
 
   // 8. Idle or wander
   if (animal.path.length && animal.pathIndex < animal.path.length) {
-    _followPath(animal, world);
+    _walkPath(animal, world);
   } else if (Math.random() < (animal._config.random_walk_chance ?? 0.3)) {
     _randomWalk(animal, world);
   } else {
@@ -368,7 +368,7 @@ function _reusePathIfValid(animal, world, reason) {
   benchmarkAddKeyed(collector, valid ? 'speciesPathCacheHits' : 'speciesPathCacheMisses', animal.species, 1);
   if (!valid) return false;
   benchmarkAddKeyed(collector, 'pathReuseReasons', reason, 1);
-  _followPath(animal, world);
+  _walkPath(animal, world);
   return true;
 }
 
@@ -377,7 +377,11 @@ function _computePath(animal, world, targetX, targetY, maxDist, reason) {
   benchmarkAdd(collector, 'pathRequests', 1);
   benchmarkAddKeyed(collector, 'speciesPathRequests', animal.species, 1);
   benchmarkAddKeyed(collector, 'pathRequestReasons', reason, 1);
-  const path = aStar(animal.x, animal.y, targetX, targetY, world, maxDist, animal._walkableSet);
+  const sx = animal.x | 0;
+  const sy = animal.y | 0;
+  const gx = targetX | 0;
+  const gy = targetY | 0;
+  const path = aStar(sx, sy, gx, gy, world, maxDist, animal._walkableSet);
   _setPath(animal, path, world.clock.tick);
   if (path.length > 0) {
     benchmarkAdd(collector, 'pathSuccesses', 1);
@@ -448,7 +452,7 @@ function _seekWater(animal, world, vision) {
   }
 
   if (animal.path.length) {
-    _followPath(animal, world);
+    _walkPath(animal, world);
   } else {
     // Wander toward center of map (likely has water near islands)
     _randomWalk(animal, world);
@@ -518,7 +522,7 @@ function _seekPlantFood(animal, world, vision) {
   if (target) {
     const pathLimit = target === bestFruit ? 40 : 60;
     _computePath(animal, world, target[0], target[1], pathLimit, target === bestFruit ? 'fruit' : 'plant');
-    if (animal.path.length) { _followPath(animal, world); return; }
+    if (animal.path.length) { _walkPath(animal, world); return; }
   }
 
   _randomWalk(animal, world);
@@ -681,7 +685,7 @@ function _tryScavenge(animal, world, spatialHash, vision) {
   // Walk toward corpse
   _computePath(animal, world, target.x, target.y, 30, 'scavenge');
   if (animal.path.length) {
-    _followPath(animal, world);
+    _walkPath(animal, world);
     return true;
   }
   return false;
@@ -798,7 +802,9 @@ function _findNearestThreat(animal, world, spatialHash, vision) {
 function _fleeFrom(animal, threat, world) {
   // Flying animals get an extra burst step when fleeing
   const fly = _canFly(animal);
-  const bursts = fly ? animal.speed + 1 : animal.speed;
+  // Use tile-level speed (original pre-×4 value) for flee bursts since each burst jumps tiles
+  const effectiveSpeed = Math.max(1, Math.ceil(animal.speed / SUB_CELL_DIVISOR));
+  const bursts = fly ? effectiveSpeed + 1 : effectiveSpeed;
   const ws = animal._walkableSet;
 
   for (let burst = 0; burst < bursts; burst++) {
@@ -807,15 +813,20 @@ function _fleeFrom(animal, threat, world) {
     const cd = Math.max(1, Math.abs(cx) + Math.abs(cy));
     let moved = false;
 
-    // 1. Try direct flee vector at step sizes 3→1
+    const baseTx = animal.x | 0;
+    const baseTy = animal.y | 0;
+
+    // 1. Try direct flee vector at step sizes 3→1 (tile-level jumps)
     for (let step = 3; step >= 1; step--) {
-      let fx = animal.x + Math.round(cx / cd * step);
-      let fy = animal.y + Math.round(cy / cd * step);
-      fx = Math.max(0, Math.min(world.width - 1, fx));
-      fy = Math.max(0, Math.min(world.height - 1, fy));
+      const ftx = baseTx + Math.round(cx / cd * step);
+      const fty = baseTy + Math.round(cy / cd * step);
+      const fx = Math.max(0, Math.min(world.width - 1, ftx)) + 0.5;
+      const fy = Math.max(0, Math.min(world.height - 1, fty)) + 0.5;
+      const tileFx = fx | 0;
+      const tileFy = fy | 0;
       // Skip if clamping brought us back to the same tile (edge/corner)
-      if (fx === animal.x && fy === animal.y) continue;
-      if (world.isWalkableFor(fx, fy, ws) && !world.isTileOccupied(fx, fy)) {
+      if (tileFx === baseTx && tileFy === baseTy) continue;
+      if (world.isWalkableFor(tileFx, tileFy, ws) && !world.isTileOccupied(tileFx, tileFy)) {
         _moveAnimal(animal, fx, fy, world);
         moved = true;
         break;
@@ -829,8 +840,11 @@ function _fleeFrom(animal, threat, world) {
       for (let ndx = -1; ndx <= 1; ndx++) {
         for (let ndy = -1; ndy <= 1; ndy++) {
           if (ndx === 0 && ndy === 0) continue;
-          const nx = animal.x + ndx, ny = animal.y + ndy;
-          if (!world.isWalkableFor(nx, ny, ws) || world.isTileOccupied(nx, ny)) continue;
+          const ntx = baseTx + ndx;
+          const nty = baseTy + ndy;
+          if (!world.isWalkableFor(ntx, nty, ws) || world.isTileOccupied(ntx, nty)) continue;
+          const nx = ntx + 0.5;
+          const ny = nty + 0.5;
           const gain = (Math.abs(nx - threat.x) + Math.abs(ny - threat.y)) - curDist;
           if (gain > bestGain) { bestGain = gain; bestNx = nx; bestNy = ny; }
         }
@@ -905,13 +919,15 @@ function _doMate(animal, mate, world) {
     }
   }
 
-  // Spawn baby nearby
+  // Spawn baby nearby — search adjacent tiles from parent's tile
+  const baseTx = animal.x | 0;
+  const baseTy = animal.y | 0;
   let bx = animal.x, by = animal.y;
   let babyPlaced = false;
   for (const [ddx, ddy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-    const nx = animal.x + ddx, ny = animal.y + ddy;
-    if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
-      bx = nx; by = ny; babyPlaced = true; break;
+    const ntx = baseTx + ddx, nty = baseTy + ddy;
+    if (world.isWalkableFor(ntx, nty, animal._walkableSet) && !world.isTileOccupied(ntx, nty)) {
+      bx = ntx + 0.5; by = nty + 0.5; babyPlaced = true; break;
     }
   }
   if (!babyPlaced) return; // No free tile for baby
@@ -929,12 +945,18 @@ function _doMate(animal, mate, world) {
 
 // ---- Movement helpers ----
 
-/** Move animal and update occupancy grid. */
+/** Move animal to sub-cell position and update tile occupancy only on tile boundary crossing. */
 function _moveAnimal(animal, nx, ny, world) {
-  world.vacateAnimal(animal.x, animal.y);
+  const oldTx = animal.x | 0;
+  const oldTy = animal.y | 0;
+  const newTx = nx | 0;
+  const newTy = ny | 0;
+  if (oldTx !== newTx || oldTy !== newTy) {
+    world.vacateAnimal(oldTx, oldTy);
+    world.placeAnimal(newTx, newTy);
+  }
   animal.x = nx;
   animal.y = ny;
-  world.placeAnimal(nx, ny);
 }
 
 function _followPath(animal, world) {
@@ -944,17 +966,63 @@ function _followPath(animal, world) {
     return;
   }
 
-  const [nx, ny] = animal.path[animal.pathIndex];
-  if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
-    _moveAnimal(animal, nx, ny, world);
-  }
-  animal.pathIndex++;
-  animal.state = AnimalState.WALKING;
-  animal.applyEnergyCost('WALK');
+  const [wx, wy] = animal.path[animal.pathIndex];
+  const tx = wx + 0.5;
+  const ty = wy + 0.5;
 
-  if (animal.pathIndex >= animal.path.length) {
-    animal.path = [];
-    animal.pathIndex = 0;
+  const dx = tx - animal.x;
+  const dy = ty - animal.y;
+
+  // Reached waypoint center — advance to next waypoint
+  if (Math.abs(dx) < 0.125 && Math.abs(dy) < 0.125) {
+    animal.pathIndex++;
+    if (animal.pathIndex >= animal.path.length) {
+      animal.path = [];
+      animal.pathIndex = 0;
+    }
+    return;
+  }
+
+  // Move one sub-cell step toward the waypoint along dominant axis
+  let nx, ny;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    nx = animal.x + Math.sign(dx) * Math.min(SUB_CELL_STEP, Math.abs(dx));
+    ny = animal.y;
+  } else {
+    nx = animal.x;
+    ny = animal.y + Math.sign(dy) * Math.min(SUB_CELL_STEP, Math.abs(dy));
+  }
+
+  const oldTx = animal.x | 0;
+  const oldTy = animal.y | 0;
+  const newTx = nx | 0;
+  const newTy = ny | 0;
+  const crossedTile = newTx !== oldTx || newTy !== oldTy;
+
+  if (crossedTile) {
+    if (!world.isWalkableFor(newTx, newTy, animal._walkableSet) || world.isTileOccupied(newTx, newTy)) {
+      // Blocked — skip this waypoint
+      animal.pathIndex++;
+      if (animal.pathIndex >= animal.path.length) {
+        animal.path = [];
+        animal.pathIndex = 0;
+      }
+      return;
+    }
+  }
+
+  _moveAnimal(animal, nx, ny, world);
+  animal.state = AnimalState.WALKING;
+  if (crossedTile) {
+    animal.applyEnergyCost('WALK');
+  }
+}
+
+/** Walk along path for animal.speed sub-steps (covers ~1 tile for normalized speeds). */
+function _walkPath(animal, world) {
+  for (let s = 0; s < animal.speed; s++) {
+    if (!animal.path.length || animal.pathIndex >= animal.path.length) break;
+    _followPath(animal, world);
   }
 }
 
@@ -962,35 +1030,61 @@ function _randomWalk(animal, world) {
   const collector = world._benchmarkCollector;
   const startedAt = benchmarkStart(collector);
   try {
-    const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+    let moved = false;
 
-    // Home bias: when far from home, prefer direction toward home (60% chance)
-    const homeDist = Math.abs(animal.x - animal.homeX) + Math.abs(animal.y - animal.homeY);
-    if (homeDist > 15 && Math.random() < 0.6) {
-      const hdx = Math.sign(animal.homeX - animal.x);
-      const hdy = Math.sign(animal.homeY - animal.y);
-      dirs.sort((a, b) => {
-        const sa = (a[0] === hdx ? -1 : 0) + (a[1] === hdy ? -1 : 0);
-        const sb = (b[0] === hdx ? -1 : 0) + (b[1] === hdy ? -1 : 0);
-        return sa - sb;
-      });
-    } else {
-      shuffleInPlace(dirs);
-    }
+    for (let s = 0; s < animal.speed; s++) {
+      const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
-    for (const [dx, dy] of dirs) {
-      const nx = animal.x + dx, ny = animal.y + dy;
-      if (world.isWalkableFor(nx, ny, animal._walkableSet) && !world.isTileOccupied(nx, ny)) {
-        _moveAnimal(animal, nx, ny, world);
-        animal.state = AnimalState.WALKING;
-        _applyEnergyCostWithModifier(animal, 'WALK', world.clock.isNight, world.config);
-        return;
+      // Home bias: when far from home, prefer direction toward home (60% chance)
+      const homeDist = Math.abs(animal.x - animal.homeX) + Math.abs(animal.y - animal.homeY);
+      if (homeDist > 15 && Math.random() < 0.6) {
+        const hdx = Math.sign(animal.homeX - animal.x);
+        const hdy = Math.sign(animal.homeY - animal.y);
+        dirs.sort((a, b) => {
+          const sa = (a[0] === hdx ? -1 : 0) + (a[1] === hdy ? -1 : 0);
+          const sb = (b[0] === hdx ? -1 : 0) + (b[1] === hdy ? -1 : 0);
+          return sa - sb;
+        });
+      } else {
+        shuffleInPlace(dirs);
       }
+
+      let stepMoved = false;
+      for (const [ddx, ddy] of dirs) {
+        const nx = animal.x + ddx * SUB_CELL_STEP;
+        const ny = animal.y + ddy * SUB_CELL_STEP;
+
+        if (nx < 0 || ny < 0 || nx >= world.width || ny >= world.height) continue;
+
+        const oldTx = animal.x | 0;
+        const oldTy = animal.y | 0;
+        const newTx = nx | 0;
+        const newTy = ny | 0;
+        const crossedTile = newTx !== oldTx || newTy !== oldTy;
+
+        if (crossedTile) {
+          if (!world.isWalkableFor(newTx, newTy, animal._walkableSet) || world.isTileOccupied(newTx, newTy)) {
+            continue;
+          }
+        }
+
+        _moveAnimal(animal, nx, ny, world);
+        moved = true;
+        stepMoved = true;
+        break;
+      }
+
+      if (!stepMoved) break;
     }
 
-    animal.state = AnimalState.IDLE;
-    animal.applyEnergyCost('IDLE');
-    _idleRecover(animal);
+    if (moved) {
+      animal.state = AnimalState.WALKING;
+      _applyEnergyCostWithModifier(animal, 'WALK', world.clock.isNight, world.config);
+    } else {
+      animal.state = AnimalState.IDLE;
+      animal.applyEnergyCost('IDLE');
+      _idleRecover(animal);
+    }
   } finally {
     benchmarkEnd(collector, 'randomWalk', startedAt);
   }

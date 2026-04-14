@@ -122,7 +122,7 @@ export class SimulationEngine {
         const x = Math.floor(Math.random() * w.width);
         const y = Math.floor(Math.random() * w.height);
         if (w.isWalkableFor(x, y, walkableSet) && !w.isTileOccupied(x, y)) {
-          const animal = new Animal(w.nextId(), x, y, species, speciesConfig);
+          const animal = new Animal(w.nextId(), x + 0.5, y + 0.5, species, speciesConfig);
           animal.age = Math.floor(Math.random() * maxInitAge);
           w.animals.push(animal);
           w.placeAnimal(x, y);
@@ -430,7 +430,7 @@ export class SimulationEngine {
     // Animal placement
     const speciesConfig = w.config.animal_species[entityType];
     if (speciesConfig) {
-      const animal = new Animal(w.nextId(), x, y, entityType, speciesConfig);
+      const animal = new Animal(w.nextId(), x + 0.5, y + 0.5, entityType, speciesConfig);
       w.animals.push(animal);
       this.spatialHash.insert(animal);
       return animal.toDict();

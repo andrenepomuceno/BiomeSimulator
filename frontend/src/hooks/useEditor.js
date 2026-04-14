@@ -38,7 +38,7 @@ export function useEditor(rendererRef) {
 
       case 'ERASE': {
         const animals = state.animals;
-        const animal = animals.find(a => a.x === x && a.y === y);
+        const animal = animals.find(a => (a.x | 0) === x && (a.y | 0) === y);
         if (animal) {
           worker.postMessage({ cmd: 'removeEntity', entityId: animal.id });
         }

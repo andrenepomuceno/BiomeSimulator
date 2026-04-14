@@ -440,7 +440,7 @@ self.onmessage = function (e) {
       // Find animals on this tile
       info.animals = [];
       for (const a of w.animals) {
-        if (a.alive && a.x === x && a.y === y) {
+        if (a.alive && (a.x | 0) === x && (a.y | 0) === y) {
           info.animals.push(a.toDict());
         }
       }

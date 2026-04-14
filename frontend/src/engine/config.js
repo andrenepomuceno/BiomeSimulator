@@ -1,7 +1,7 @@
 /**
  * Default simulation configuration.
  */
-import { buildAnimalSpeciesConfig, buildInitialAnimalCounts } from './animalSpecies.js';
+import { buildAnimalSpeciesConfig, buildProportionalAnimalCounts, normalizeAnimalCountsToBudget } from './animalSpecies.js';
 import { buildInitialPlantCounts } from './plantSpecies.js';
 
 // Sex types
@@ -100,7 +100,8 @@ export const DEFAULT_CONFIG = {
   season_death_multiplier: [0.8, 1.0, 1.2, 2.0],
 
   // Fauna — global population budget distributed proportionally per species (0 = use base caps)
-  max_animal_population: 5000,
+  max_animal_population: 10000,
+  initial_population_fraction: 0.1,
   hunger_multiplier: 1.6,
   thirst_multiplier: 1.6,
   supervisor_enabled: true,
@@ -109,6 +110,9 @@ export const DEFAULT_CONFIG = {
   supervisor_log_cooldown_ticks: 120,
 
   // Fauna — derived from animalSpecies.js
-  initial_animal_counts: buildInitialAnimalCounts(),
+  initial_animal_counts: normalizeAnimalCountsToBudget(
+    buildProportionalAnimalCounts(0.1 * 10000, 10000),
+    10000,
+  ),
   animal_species: buildAnimalSpeciesConfig(),
 };

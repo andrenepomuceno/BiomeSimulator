@@ -821,6 +821,10 @@ const ANIMAL_SPECIES = {
 export const BASE_POP_TOTAL = Object.values(ANIMAL_SPECIES)
   .reduce((sum, sp) => sum + (sp.max_population || 0), 0);
 
+/** Sum of all species' base initial_count (used as proportion weights) */
+export const BASE_INITIAL_TOTAL = Object.values(ANIMAL_SPECIES)
+  .reduce((sum, sp) => sum + (sp.initial_count || 0), 0);
+
 function normalizeCountValue(value) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.round(value));
@@ -962,6 +966,25 @@ export function buildInitialAnimalCounts() {
     counts[key] = sp.initial_count;
   }
   return counts;
+}
+
+/**
+ * Build proportional animal counts for a given total population.
+ * Each species gets `totalPopulation * (sp.initial_count / BASE_INITIAL_TOTAL)`,
+ * clamped to its effective cap under `globalBudget`.
+ */
+export function buildProportionalAnimalCounts(totalPopulation, globalBudget = 0) {
+  if (!(totalPopulation > 0)) {
+    return Object.fromEntries(ALL_ANIMAL_IDS.map(id => [id, 0]));
+  }
+  const counts = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    const weight = sp.initial_count || 0;
+    const raw = Math.round(totalPopulation * weight / BASE_INITIAL_TOTAL);
+    const cap = getEffectiveAnimalPopulationCap(key, globalBudget);
+    counts[key] = cap > 0 ? Math.min(raw, cap) : raw;
+  }
+  return normalizeAnimalCountsToBudget(counts, globalBudget);
 }
 
 /** Build a species-name → hex-color lookup for pixel-overlay rendering. */

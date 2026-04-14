@@ -8,17 +8,17 @@ import ANIMAL_SPECIES, {
   CARNIVORE_IDS,
   HERBIVORE_IDS,
   OMNIVORE_IDS,
-  buildInitialAnimalCounts,
+  buildProportionalAnimalCounts,
   getEffectiveAnimalPopulationCap,
   normalizeAnimalCountsToBudget,
 } from '../engine/animalSpecies';
 import PLANT_SPECIES, { ALL_PLANT_IDS, buildInitialPlantCounts, buildPlantMaxCounts } from '../engine/plantSpecies';
 
 const NUMBER_FORMATTER = new Intl.NumberFormat('en-US');
-const DEFAULT_ANIMAL_COUNTS = buildInitialAnimalCounts();
 const DEFAULT_PLANT_COUNTS = buildInitialPlantCounts();
 const PLANT_MAX_COUNTS = buildPlantMaxCounts();
 const DEFAULT_MAX_ANIMAL_POPULATION = 10000;
+const DEFAULT_POPULATION_FRACTION = 0.1;
 
 const MAP_PRESETS = [
   {
@@ -75,6 +75,7 @@ function getDisplayedAnimalBudget(globalBudget) {
 }
 
 function buildDefaultParams() {
+  const n0 = Math.round(DEFAULT_POPULATION_FRACTION * DEFAULT_MAX_ANIMAL_POPULATION);
   return {
     map_width: 500,
     map_height: 500,
@@ -82,23 +83,20 @@ function buildDefaultParams() {
     island_count: 5,
     island_size_factor: 0.3,
     seed: '',
-    initial_animal_counts: normalizeAnimalCountsToBudget(DEFAULT_ANIMAL_COUNTS, DEFAULT_MAX_ANIMAL_POPULATION),
+    initial_population_fraction: DEFAULT_POPULATION_FRACTION,
+    initial_animal_counts: buildProportionalAnimalCounts(n0, DEFAULT_MAX_ANIMAL_POPULATION),
     initial_plant_density: 0.1,
     initial_plant_counts: { ...DEFAULT_PLANT_COUNTS },
     max_animal_population: DEFAULT_MAX_ANIMAL_POPULATION,
   };
 }
 
-function randomizeAnimalCounts(maxAnimalPopulation) {
-  const counts = {};
-  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
-    const effectiveCap = getEffectiveAnimalPopulationCap(key, maxAnimalPopulation);
-    const max = Math.max(1, Math.round(effectiveCap || sp.max_population || sp.initial_count || 100));
-    const lo = Math.max(0, Math.round(max * 0.18));
-    const hi = Math.max(lo, Math.round(max * 0.7));
-    counts[key] = lo + Math.floor(Math.random() * (hi - lo + 1));
-  }
-  return normalizeAnimalCountsToBudget(counts, maxAnimalPopulation);
+function randomizeAnimalCounts(maxAnimalPopulation, fraction) {
+  const n0 = Math.round(fraction * maxAnimalPopulation);
+  const lo = Math.round(0.9 * n0);
+  const hi = Math.round(1.1 * n0);
+  const randomTotal = lo + Math.floor(Math.random() * (hi - lo + 1));
+  return buildProportionalAnimalCounts(randomTotal, maxAnimalPopulation);
 }
 
 function randomizePlantCounts() {
@@ -112,8 +110,10 @@ function randomizePlantCounts() {
   return counts;
 }
 
-function applyPresetToAnimals(presetKey, maxAnimalPopulation) {
+function applyPresetToAnimals(presetKey, maxAnimalPopulation, fraction) {
   const preset = FAUNA_PRESETS[presetKey] || FAUNA_PRESETS.balanced;
+  const n0 = Math.round(fraction * maxAnimalPopulation);
+  const base = buildProportionalAnimalCounts(n0, maxAnimalPopulation);
   const counts = {};
   for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
     const multiplier = sp.diet === 'HERBIVORE'
@@ -122,8 +122,8 @@ function applyPresetToAnimals(presetKey, maxAnimalPopulation) {
         ? preset.carnivore
         : preset.omnivore;
     const effectiveCap = getEffectiveAnimalPopulationCap(key, maxAnimalPopulation);
-    const target = Math.round((sp.initial_count || 0) * multiplier);
-    counts[key] = Math.min(effectiveCap || sp.max_population || target, Math.max(0, target));
+    const target = Math.round((base[key] || 0) * multiplier);
+    counts[key] = Math.min(effectiveCap || target, Math.max(0, target));
   }
   return normalizeAnimalCountsToBudget(counts, maxAnimalPopulation);
 }
@@ -181,11 +181,27 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   };
 
   const handleBudgetChange = (nextBudget) => {
-    setParams(current => ({
-      ...current,
-      max_animal_population: nextBudget,
-      initial_animal_counts: normalizeAnimalCountsToBudget(current.initial_animal_counts, nextBudget),
-    }));
+    setParams(current => {
+      const n0 = Math.round(current.initial_population_fraction * nextBudget);
+      return {
+        ...current,
+        max_animal_population: nextBudget,
+        initial_animal_counts: buildProportionalAnimalCounts(n0, nextBudget),
+      };
+    });
+    setFaunaProfileLabel('Balanced baseline');
+  };
+
+  const handleFractionChange = (nextFraction) => {
+    setParams(current => {
+      const n0 = Math.round(nextFraction * current.max_animal_population);
+      return {
+        ...current,
+        initial_population_fraction: nextFraction,
+        initial_animal_counts: buildProportionalAnimalCounts(n0, current.max_animal_population),
+      };
+    });
+    setFaunaProfileLabel('Balanced baseline');
   };
 
   const handleAnimalSliderChange = (speciesId, nextValue) => {
@@ -295,7 +311,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
             <div className="gm-stack">
               <div className="gm-compact-summary">
                 <span>Map {formatNumber(params.map_width)} x {formatNumber(params.map_height)}</span>
-                <span>Fauna {formatNumber(totalAnimals)} / {formatNumber(displayedAnimalBudget)}</span>
+                <span>Fauna {formatNumber(totalAnimals)} / {formatNumber(displayedAnimalBudget)} ({(params.initial_population_fraction * 100).toFixed(0)}%)</span>
                 <span>Flora {formatNumber(totalPlants)}</span>
                 <span>{seedLabel}</span>
               </div>
@@ -395,8 +411,8 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                         <div className="gm-budget-value">{formatNumber(totalAnimals)} / {formatNumber(displayedAnimalBudget)}</div>
                       </div>
                       <div>
-                        <div className="gm-budget-label">Budget mode</div>
-                        <div className="gm-budget-value">{params.max_animal_population > 0 ? 'Global budget' : 'Per-species defaults'}</div>
+                        <div className="gm-budget-label">Initial population</div>
+                        <div className="gm-budget-value">{(params.initial_population_fraction * 100).toFixed(0)}% of max</div>
                       </div>
                     </div>
 
@@ -404,10 +420,16 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                       <div className="gm-progress-fill" style={{ width: `${budgetUsage * 100}%` }} />
                     </div>
 
-                    <div className="gm-field" style={{ marginBottom: 0 }}>
-                      <label>Maximum Animal Population</label>
+                    <div className="gm-field">
+                      <label>Maximum Animal Population (Nmax)</label>
                       <div className="gm-field-value">{params.max_animal_population > 0 ? formatNumber(params.max_animal_population) : 'Per-species defaults'}</div>
                       <input type="range" min={0} max={50000} step={500} value={params.max_animal_population} onChange={e => handleBudgetChange(+e.target.value)} />
+                    </div>
+
+                    <div className="gm-field" style={{ marginBottom: 0 }}>
+                      <label>Initial Population %</label>
+                      <div className="gm-field-value">{(params.initial_population_fraction * 100).toFixed(0)}% — {formatNumber(Math.round(params.initial_population_fraction * params.max_animal_population))} animals</div>
+                      <input type="range" min={0.01} max={1} step={0.01} value={params.initial_population_fraction} onChange={e => handleFractionChange(+e.target.value)} />
                     </div>
                   </div>
 
@@ -415,11 +437,11 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                     <div className="gm-panel-header gm-panel-header-inline gm-panel-header-tight">
                       <h6>Profiles</h6>
                       <div className="gm-actions-inline">
-                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('balanced', params.max_animal_population), 'Balanced baseline')}>Balanced</button>
-                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('predators', params.max_animal_population), 'Predator pressure')}>Predators</button>
-                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('herbivores', params.max_animal_population), 'Herbivore bloom')}>Herbivores</button>
-                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(randomizeAnimalCounts(params.max_animal_population), 'Randomized ecosystem')}>Randomize</button>
-                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(DEFAULT_ANIMAL_COUNTS, 'Balanced baseline')}>Reset</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('balanced', params.max_animal_population, params.initial_population_fraction), 'Balanced baseline')}>Balanced</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('predators', params.max_animal_population, params.initial_population_fraction), 'Predator pressure')}>Predators</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('herbivores', params.max_animal_population, params.initial_population_fraction), 'Herbivore bloom')}>Herbivores</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(randomizeAnimalCounts(params.max_animal_population, params.initial_population_fraction), 'Randomized ecosystem')}>Randomize</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => { handleFractionChange(params.initial_population_fraction); setFaunaProfileLabel('Balanced baseline'); }}>Reset</button>
                       </div>
                     </div>
                   </div>

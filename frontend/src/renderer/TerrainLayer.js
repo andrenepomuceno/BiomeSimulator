@@ -14,6 +14,7 @@ import {
   tileHash,
 } from '../utils/terrainColors.js';
 import { TerrainShader } from './TerrainShader.js';
+import { RENDERER_CONFIG } from '../engine/config.js';
 
 function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
 
@@ -250,6 +251,20 @@ export class TerrainLayer {
     this._waterIndices = null;
     this._waterBaseColors = null;
     this.useGPU = false;      // Phase 2 flag
+    // RTT cache state
+    this._cachedRT = null;      // PIXI.RenderTexture (offscreen)
+    this._cachedSprite = null;  // Sprite displaying the cached texture
+    this._cacheEnabled = false; // Set by enableCache()
+    this._cacheDirty = false;   // Set when terrain changes
+    this._renderer = null;      // PIXI.Renderer ref (set via setRenderer)
+  }
+
+  /**
+   * Provide reference to the PIXI renderer for RTT.
+   * Must be called before setTerrain() if cache is enabled.
+   */
+  setRenderer(renderer) {
+    this._renderer = renderer;
   }
 
   setTerrain(terrainData, width, height, heightmap, waterProximity) {
@@ -427,6 +442,7 @@ export class TerrainLayer {
    */
   enableGPU() {
     this.useGPU = true;
+    this._cacheEnabled = RENDERER_CONFIG.cacheStaticTerrain;
     if (!this._shader) {
       this._shaderWrapper = new TerrainShader();
     }
@@ -455,7 +471,12 @@ export class TerrainLayer {
       ], 2)
       .addIndex([0, 1, 2, 0, 2, 3]);
 
-    // Remove old sprite/mesh
+    // Remove old sprite/mesh/cache
+    if (this._cachedSprite) {
+      this.container.removeChild(this._cachedSprite);
+      this._cachedSprite.destroy();
+      this._cachedSprite = null;
+    }
     if (this.sprite) {
       this.container.removeChild(this.sprite);
       this.sprite.destroy(true);
@@ -467,7 +488,56 @@ export class TerrainLayer {
     }
 
     this._mesh = new PIXI.Mesh(geometry, shader);
-    this.container.addChild(this._mesh);
+
+    // RTT cache: render the mesh once to a RenderTexture, display via Sprite
+    if (this._cacheEnabled && this._renderer) {
+      // Mesh is not added to stage — only used as RTT source
+      this._renderToCache();
+    } else {
+      // No cache: display mesh directly (per-frame shader)
+      this.container.addChild(this._mesh);
+    }
+  }
+
+  /**
+   * Render the GPU mesh to an offscreen RenderTexture and display
+   * the result as a lightweight Sprite.
+   */
+  _renderToCache() {
+    if (!this._mesh || !this._renderer) return;
+
+    // Create (or recreate) the RenderTexture at 1px/tile resolution
+    if (this._cachedRT) {
+      this._cachedRT.destroy(true);
+    }
+    this._cachedRT = PIXI.RenderTexture.create({
+      width: this.width,
+      height: this.height,
+      scaleMode: PIXI.SCALE_MODES.NEAREST,
+      resolution: 1,
+    });
+
+    // Render the mesh into the offscreen texture
+    this._renderer.render(this._mesh, { renderTexture: this._cachedRT });
+
+    // Create/update the display sprite
+    if (!this._cachedSprite) {
+      this._cachedSprite = new PIXI.Sprite(this._cachedRT);
+      this.container.addChild(this._cachedSprite);
+    } else {
+      this._cachedSprite.texture = this._cachedRT;
+    }
+
+    this._cacheDirty = false;
+  }
+
+  /**
+   * Re-render the cache after terrain edits or water animation updates.
+   * Cheap for occasional calls; avoid calling every frame.
+   */
+  refreshCache() {
+    if (!this._cacheEnabled || !this._mesh || !this._renderer) return;
+    this._renderToCache();
   }
 
   _updateTilesGPU(changes) {
@@ -479,6 +549,13 @@ export class TerrainLayer {
       }
     }
     this._shaderWrapper.updateTiles(changes, this._terrainData, this._heightmap);
+
+    // Mark cache dirty so next refreshCache() re-renders
+    if (this._cacheEnabled) {
+      this._cacheDirty = true;
+      // Immediately refresh for interactive terrain editing responsiveness
+      this.refreshCache();
+    }
   }
 
   /**
@@ -489,12 +566,22 @@ export class TerrainLayer {
     if (this._shader) this._shader.uniforms.u_time = tick;
   }
 
+  /**
+   * Whether the terrain cache is active (RTT mode).
+   */
+  get isCached() {
+    return this._cacheEnabled && this._cachedRT != null;
+  }
+
   destroy() {
+    if (this._cachedSprite) { this._cachedSprite.destroy(); this._cachedSprite = null; }
+    if (this._cachedRT) { this._cachedRT.destroy(true); this._cachedRT = null; }
     if (this.sprite) { this.sprite.destroy(true); this.sprite = null; }
     if (this._mesh) { this._mesh.destroy(true); this._mesh = null; }
     this._shader = null;
     this._pixels = null;
     this._waterIndices = null;
     this._waterBaseColors = null;
+    this._renderer = null;
   }
 }

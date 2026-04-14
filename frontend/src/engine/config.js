@@ -124,4 +124,13 @@ export const RENDERER_CONFIG = {
   // Set to true to use GPU-shader terrain rendering (Phase 2).
   // Falls back to CPU pixel buffer when false or when WebGL2 is unavailable.
   useGPUTerrain: true,
+  // When true, the GPU terrain shader is rendered once to an offscreen texture
+  // and displayed as a static sprite.  This eliminates per-frame shader cost
+  // for large worlds.  Water animation uses periodic re-renders instead of
+  // per-frame shader updates.  Set to false if terrain changes frequently.
+  cacheStaticTerrain: true,
+  // Interval (in render frames) between water-animation re-renders when
+  // cacheStaticTerrain is active.  Lower = smoother water, higher = cheaper.
+  // Only used when cacheStaticTerrain is true.  0 = disable water animation.
+  cachedWaterAnimInterval: 30,
 };

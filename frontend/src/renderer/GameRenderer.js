@@ -49,6 +49,8 @@ export class GameRenderer {
     // Enable GPU terrain rendering if configured
     if (RENDERER_CONFIG.useGPUTerrain) {
       this.terrainLayer.enableGPU();
+      // Provide renderer ref for RTT cache (must be after app creation)
+      this.terrainLayer.setRenderer(this.app.renderer);
     }
     this.plantLayer = new PlantLayer(this._depthContainer, this._shadowContainer);
     this.animationLayer = new AnimationLayer();
@@ -125,6 +127,12 @@ export class GameRenderer {
       if (++this._waterTick % 6 === 0) {
         if (this.terrainLayer.useGPU && this.terrainLayer._mesh) {
           this.terrainLayer.updateShaderTime(this._waterTick);
+          // When RTT cache is active, periodically re-render for water animation
+          if (this.terrainLayer.isCached
+            && RENDERER_CONFIG.cachedWaterAnimInterval > 0
+            && this._waterTick % RENDERER_CONFIG.cachedWaterAnimInterval === 0) {
+            this.terrainLayer.refreshCache();
+          }
         } else {
           this.terrainLayer.animateWater(this._waterTick);
         }

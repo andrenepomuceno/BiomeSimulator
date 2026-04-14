@@ -42,7 +42,7 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `ecogame-audio-log-${exportedAt.toISOString().replace(/[:.]/g, '-')}.txt`;
+    anchor.download = `biome-simulator-audio-log-${exportedAt.toISOString().replace(/[:.]/g, '-')}.txt`;
     anchor.click();
     URL.revokeObjectURL(url);
   };

@@ -3,9 +3,9 @@ description: "Use when writing or modifying code or technical docs in this ecosy
 applyTo: "**"
 ---
 
-# Ecogame Project Instructions
+# BiomeSimulator Project Instructions
 
-Ecogame is a browser-based 2D ecosystem simulation. Most implementation work lives in the frontend, where React UI, a Pixi.js renderer, and a simulation engine run client-side with Web Workers. When editing docs, keep terminology and boundaries aligned with that architecture.
+BiomeSimulator is a browser-based 2D ecosystem simulation. Most implementation work lives in the frontend, where React UI, a Pixi.js renderer, and a simulation engine run client-side with Web Workers. When editing docs, keep terminology and boundaries aligned with that architecture.
 
 ## Tech Stack
 

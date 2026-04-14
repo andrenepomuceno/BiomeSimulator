@@ -229,7 +229,7 @@ export const HELP_TABS = [
     id: 'getting-started',
     label: '🚀 Getting Started',
     title: 'Learn the island in one run',
-    intro: 'EcoGame is easiest to read when you alternate between letting the world run and pausing to inspect what changed.',
+    intro: 'BiomeSimulator is easiest to read when you alternate between letting the world run and pausing to inspect what changed.',
     chips: ['Generate a world', 'Run one day', 'Inspect a herbivore', 'Open the report'],
     callout: {
       title: 'Best first session',

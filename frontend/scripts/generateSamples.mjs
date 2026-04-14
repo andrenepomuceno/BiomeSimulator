@@ -1,5 +1,5 @@
 /**
- * Generate short WAV sound effect samples for the ecogame audio system.
+ * Generate short WAV sound effect samples for the BiomeSimulator audio system.
  * Run: node scripts/generateSamples.mjs
  * Output: public/audio/*.wav
  */

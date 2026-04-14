@@ -88,7 +88,7 @@ describe('audioLogExport', () => {
     });
 
     const lines = text.split('\n');
-    expect(lines[0]).toBe('=== ECOGAME AUDIO LOG ===');
+    expect(lines[0]).toBe('=== BIOMESIMULATOR AUDIO LOG ===');
     expect(lines[1]).toBe('Exported: 2026-04-14 09:30:45');
     expect(lines[2]).toBe('Entries: 2');
     // Summary block appears

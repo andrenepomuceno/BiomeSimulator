@@ -1,6 +1,6 @@
-# EcoGame Frontend
+# BiomeSimulator Frontend
 
-React + Pixi.js frontend for EcoGame. The simulation engine runs in a Web Worker.
+React + Pixi.js frontend for BiomeSimulator. The simulation engine runs in a Web Worker.
 
 For architecture and engine internals, see [../docs/README.md](../docs/README.md).
 

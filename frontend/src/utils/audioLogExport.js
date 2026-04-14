@@ -331,7 +331,7 @@ function buildSummaryBlock(entries) {
 export function buildAudioLogExportText({ audioSettings = {}, viewport = {}, entries = [], exportedAt = new Date() } = {}) {
   const lines = [];
 
-  lines.push('=== ECOGAME AUDIO LOG ===');
+  lines.push('=== BIOMESIMULATOR AUDIO LOG ===');
   lines.push(`Exported: ${formatAudioLogExportTimestamp(exportedAt)}`);
   lines.push(`Entries: ${entries.length}`);
   lines.push('Order: newest first');

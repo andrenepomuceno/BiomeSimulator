@@ -1,9 +1,9 @@
-# EcoGame Documentation
+# BiomeSimulator Documentation
 
 Navigation: [Documentation Home](README.md) | [Architecture](architecture.md) | [Engine](engine/) | [Simulation](simulation/) | [Renderer](renderer/) | [API](api/)
 Return to [Documentation Home](README.md).
 
-Technical documentation for the EcoGame ecosystem simulation. For the project overview and quick start, see [../README.md](../README.md).
+Technical documentation for the BiomeSimulator ecosystem simulation. For the project overview and quick start, see [../README.md](../README.md).
 
 ---
 

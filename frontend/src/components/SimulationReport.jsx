@@ -373,7 +373,7 @@ export default function SimulationReport({ open, onClose }) {
     a.href = url;
     const lastTick = data.ticks[data.ticks.length - 1] || 0;
     const days = ticksToDay(lastTick, ticksPerDay);
-    a.download = `ecogame-report-day${days}.txt`;
+    a.download = `biome-simulator-report-day${days}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }

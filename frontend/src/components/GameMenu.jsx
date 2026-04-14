@@ -256,7 +256,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `ecogame-save-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `biome-simulator-save-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       setSaving(false);
@@ -280,7 +280,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
         onLoad(data);
         onClose();
       } catch {
-        setLoadError('Failed to parse save file. Choose a valid Ecogame JSON export.');
+        setLoadError('Failed to parse save file. Choose a valid BiomeSimulator JSON export.');
       }
     };
     reader.readAsText(file);
@@ -290,7 +290,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
     <div className="game-menu-overlay" onClick={onClose}>
       <div className="game-menu-modal" onClick={e => e.stopPropagation()}>
         <div className="game-menu-header">
-          <h5>Ecosystem Simulator</h5>
+          <h5>BiomeSimulator</h5>
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose} aria-label="Close menu">✕</button>
         </div>
 

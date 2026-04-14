@@ -3,7 +3,7 @@
 Navigation: [Documentation Home](README.md) > [Architecture](architecture.md)
 Return to [Documentation Home](README.md).
 
-High-level overview of how EcoGame is structured and how data flows between layers.
+High-level overview of how BiomeSimulator is structured and how data flows between layers.
 
 Related documentation: [README](README.md), [Engine](engine/), [Renderer](renderer/), [API](api/).
 

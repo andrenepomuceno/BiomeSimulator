@@ -110,7 +110,7 @@ export function buildSimulationReportText(data, ticksPerDay, generatedAt = new D
   const currentFruits = data.fruits[data.fruits.length - 1] || 0;
 
   const lines = [];
-  lines.push('=== ECOGAME SIMULATION REPORT ===');
+  lines.push('=== BIOMESIMULATOR SIMULATION REPORT ===');
   lines.push(`Generated: ${generatedAt.toLocaleString()}`);
   lines.push('');
 

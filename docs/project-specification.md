@@ -1,8 +1,8 @@
-# EcoGame Project Specification
+# BiomeSimulator Project Specification
 
 ---
 
-This document defines the intended product behavior and technical shape of EcoGame. It is the master specification for stakeholders who need a single, navigable view of the project. It is intended to stand on its own without requiring companion documents for core understanding.
+This document defines the intended product behavior and technical shape of BiomeSimulator. It is the master specification for stakeholders who need a single, navigable view of the project. It is intended to stand on its own without requiring companion documents for core understanding.
 
 Implementation details may evolve, but the product behaviors, system boundaries, and acceptance criteria defined here are the expected baseline.
 
@@ -36,7 +36,7 @@ Implementation details may evolve, but the product behaviors, system boundaries,
 | Analysis surface | Live inspector, minimap, stats panel, entity summary, historical report, audio controls |
 | Primary users | Mixed product and engineering stakeholders, simulation tinkerers, and technical reviewers |
 
-EcoGame is a sandbox simulation rather than a mission-driven game. Its main value is making ecological cause and effect observable, reproducible, and editable. Users are expected to generate a world, let it evolve, pause to inspect specific outcomes, and then modify conditions to observe how the ecosystem responds.
+BiomeSimulator is a sandbox simulation rather than a mission-driven game. Its main value is making ecological cause and effect observable, reproducible, and editable. Users are expected to generate a world, let it evolve, pause to inspect specific outcomes, and then modify conditions to observe how the ecosystem responds.
 
 ## 2. Design Goals
 
@@ -120,7 +120,7 @@ Expected behavior:
 
 ### 4.1 World Grid
 
-EcoGame simulates a 2D tile world with the following rules:
+BiomeSimulator simulates a 2D tile world with the following rules:
 
 - The world has configurable `width x height` dimensions.
 - Terrain and plant state are tile-based.

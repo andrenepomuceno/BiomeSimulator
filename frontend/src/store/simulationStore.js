@@ -15,9 +15,9 @@ export const DEFAULT_AUDIO_SETTINGS = {
 };
 
 export const AUDIO_LOG_LIMIT = 300;
-export const AUDIO_SETTINGS_STORAGE_KEY = 'ecogame.audioSettings';
+export const AUDIO_SETTINGS_STORAGE_KEY = 'biomeSimulator.audioSettings';
 
-const PAUSE_ON_BG_STORAGE_KEY = 'ecogame.pauseOnBackground';
+const PAUSE_ON_BG_STORAGE_KEY = 'biomeSimulator.pauseOnBackground';
 
 function loadPauseOnBackground() {
   if (typeof window === 'undefined' || !window.localStorage) return true;

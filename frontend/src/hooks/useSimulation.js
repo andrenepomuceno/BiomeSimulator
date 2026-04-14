@@ -63,13 +63,23 @@ export function useSimulation() {
             // Re-read state after the update to avoid a stale snapshot
             const freshState = useSimStore.getState();
             const sel = freshState.selectedEntity;
-            if (sel) {
+            if (sel && !sel.isEgg) {
               const updated = freshState.animals.find(a => a.id === sel.id);
               if (updated) store.setSelectedEntity(updated);
               else store.clearSelection(); // entity died / removed
             }
           }
-          if (msg.eggs) store.setEggs(msg.eggs);
+          if (msg.eggs) {
+            store.setEggs(msg.eggs);
+            // Update selected egg with fresh data
+            const freshState2 = useSimStore.getState();
+            const sel2 = freshState2.selectedEntity;
+            if (sel2 && sel2.isEgg) {
+              const updatedEgg = msg.eggs.find(eg => eg.id === sel2.id);
+              if (updatedEgg) store.setSelectedEntity(updatedEgg);
+              else store.clearSelection(); // egg hatched / destroyed
+            }
+          }
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
           if (msg.fruitChanges) store.setFruitChanges(msg.fruitChanges);
           if (msg.plantsFullSync) {
@@ -100,6 +110,8 @@ export function useSimulation() {
           if (msg.info) {
             if (msg.info.animals && msg.info.animals.length > 0) {
               store.setSelectedEntity(msg.info.animals[0]);
+            } else if (msg.info.eggs && msg.info.eggs.length > 0) {
+              store.setSelectedEntity(msg.info.eggs[0]);
             } else {
               store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
             }

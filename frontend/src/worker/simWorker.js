@@ -470,6 +470,15 @@ self.onmessage = function (e) {
           info.animals.push(a.toDict());
         }
       }
+      // Find eggs on this tile
+      info.eggs = [];
+      if (w.eggs) {
+        for (const egg of w.eggs) {
+          if (egg.alive && (egg.x | 0) === x && (egg.y | 0) === y) {
+            info.eggs.push(egg.toDict());
+          }
+        }
+      }
       self.postMessage({ type: 'tileInfo', x, y, info });
       break;
     }

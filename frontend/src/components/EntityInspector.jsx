@@ -388,6 +388,41 @@ export default function EntityInspector({ onFocusEntity }) {
 
   if (selectedEntity) {
     const e = selectedEntity;
+
+    // Egg inspection panel
+    if (e.isEgg) {
+      const info = SPECIES_INFO[e.species] || { emoji: '❓', name: e.species };
+      const hatchPct = Math.min(100, (e.age / (e.incubationPeriod || 1)) * 100);
+      return (
+        <div className="sidebar-section entity-info">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <h6 className="mb-0">
+              🥚 {info.name} Egg <span style={{ color: '#666', fontWeight: 'normal' }}>#{e.id}</span>
+            </h6>
+            <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
+          </div>
+          <CollapsibleSection title="Egg Info" icon="🥚" defaultOpen={true}>
+            <div className="stat-row"><span className="stat-label">Species</span><span className="stat-value">{info.emoji} {info.name}</span></div>
+            <div className="stat-row"><span className="stat-label">Position</span><span className="stat-value">({Math.floor(e.x)}, {Math.floor(e.y)})</span></div>
+            <div className="stat-row"><span className="stat-label">Hatch Count</span><span className="stat-value">{e.hatchCount}</span></div>
+            {e.parentA != null && (
+              <div className="stat-row"><span className="stat-label">Parents</span><span className="stat-value">#{e.parentA}, #{e.parentB}</span></div>
+            )}
+            <Bar icon="❤️" label="HP" value={e.hp} max={e.maxHp} color="#ff4757" />
+            <div className="mt-1">
+              <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
+                <span className="text-muted">🕐 Incubation</span>
+                <span>{e.age} / {e.incubationPeriod} ticks</span>
+              </div>
+              <div className="entity-bar">
+                <div className="entity-bar-fill" style={{ width: `${hatchPct}%`, background: hatchPct >= 100 ? '#88cc44' : '#ffaa33' }} />
+              </div>
+            </div>
+          </CollapsibleSection>
+        </div>
+      );
+    }
+
     const info = SPECIES_INFO[e.species] || { emoji: '❓', name: e.species, diet: e.diet || '?' };
     const sp = ANIMAL_SPECIES_CONFIG[e.species];
     const maxHunger = sp?.max_hunger || 100;

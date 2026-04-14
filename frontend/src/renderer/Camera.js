@@ -62,6 +62,13 @@ export class Camera {
     this.onChanged();
   }
 
+  setZoom(z) {
+    this.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z));
+    this.wc.scale.set(this.zoom);
+    this._clamp();
+    this.onChanged();
+  }
+
   screenToTile(screenX, screenY) {
     const tileX = Math.floor((screenX - this.wc.x) / this.zoom);
     const tileY = Math.floor((screenY - this.wc.y) / this.zoom);

@@ -205,6 +205,12 @@
       link.href = floraAtlas.toDataURL('image/png');
       link.click();
     };
+
+    // Dev automation bridge for capture scripts
+    window.__ecoAtlasCapture = {
+      getFaunaDataUrl: () => faunaAtlas.toDataURL('image/png'),
+      getFloraDataUrl: () => floraAtlas.toDataURL('image/png'),
+    };
   </script>
 </body>
 </html>

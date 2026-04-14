@@ -361,6 +361,31 @@ export class GameRenderer {
     this.camera.centerOn(x, y);
   }
 
+  setZoom(z) {
+    this.camera.setZoom(z);
+  }
+
+  captureViewport() {
+    const canvas = this.app.renderer.extract.canvas(this.app.stage);
+    const dataUrl = canvas.toDataURL('image/png');
+    const { clock } = useSimStore.getState();
+    const viewport = this.getViewportTiles();
+    return {
+      dataUrl,
+      meta: {
+        width: canvas.width,
+        height: canvas.height,
+        zoom: this.camera.zoom,
+        mapWidth: this.mapWidth,
+        mapHeight: this.mapHeight,
+        tick: clock.tick,
+        day: clock.day,
+        isNight: clock.is_night,
+        viewport,
+      },
+    };
+  }
+
   destroy() {
     this._resizeObserver.disconnect();
     if (this._onDragPointerDown) {

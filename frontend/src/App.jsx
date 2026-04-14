@@ -75,10 +75,34 @@ export default function App() {
     );
     rendererRef.current = renderer;
 
+    // Dev-only automation bridge for capture scripts
+    if (import.meta.env.DEV) {
+      window.__ecoCapture = {
+        getState: () => useSimStore.getState(),
+        postCmd: (cmd, data) => postCmd(cmd, data),
+        waitForWorld: () => new Promise((resolve) => {
+          if (useSimStore.getState().worldReady) { resolve(); return; }
+          const unsub = useSimStore.subscribe((state) => {
+            if (state.worldReady) { unsub(); resolve(); }
+          });
+        }),
+        waitForTick: (n) => new Promise((resolve) => {
+          if (useSimStore.getState().clock.tick >= n) { resolve(); return; }
+          const unsub = useSimStore.subscribe((state) => {
+            if (state.clock.tick >= n) { unsub(); resolve(); }
+          });
+        }),
+        centerOn: (x, y) => rendererRef.current?.centerOn(x, y),
+        setZoom: (z) => rendererRef.current?.setZoom(z),
+        capture: () => rendererRef.current?.captureViewport(),
+      };
+    }
+
     // Generate initial map via worker
     postCmd('generate');
 
     return () => {
+      if (import.meta.env.DEV) delete window.__ecoCapture;
       renderer.destroy();
       rendererRef.current = null;
     };

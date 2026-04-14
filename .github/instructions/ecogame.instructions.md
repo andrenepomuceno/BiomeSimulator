@@ -42,7 +42,15 @@ Ecogame is a browser-based 2D ecosystem simulation. Most implementation work liv
 - Use event-driven callbacks for camera, viewport, tile editing, and other canvas interactions.
 - Preserve the worker boundary: engine and worker code should exchange plain serializable data, not class instances tied to DOM or Pixi objects.
 
+## Performance
+
+- Treat performance and large-scale simulation support as core requirements, not afterthoughts.
+- Optimize for worlds at or above `1000 x 1000` terrain and animal populations at or above `1000`, and avoid changes that make those scenarios materially worse.
+- In simulation and rendering hot paths, avoid full-world or full-entity scans each tick or frame when localized, incremental, partitioned, cached, or dirty-region approaches are feasible.
+- Be conservative with allocations in tight loops and high-frequency worker messages; prefer data layouts and update strategies that scale with active regions or active entities.
+
 ## Workflow
 
 - After a large or important modification, end the response with a concise suggested commit message that summarizes the change.
+- When a change touches simulation, pathfinding, renderer hot paths, or worker message volume, validate the impact with the existing headless profiling workflow when practical and call out performance implications in the response.
 - Update documentation whenever the change affects behavior, architecture, configuration, controls, worker messages, or other user-facing or developer-facing workflows.

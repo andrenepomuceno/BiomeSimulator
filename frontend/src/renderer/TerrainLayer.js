@@ -77,8 +77,8 @@ const BLEND_FRAG_SRC = `
     warpedUV = clamp(warpedUV, vec2(0.0), vec2(1.0));
     vec4 smooth = texture2D(u_rawTerrain, warpedUV);
 
-    // Blend: 55% sharp + 45% smooth → crisp detail with soft borders
-    gl_FragColor = mix(sharp, smooth, 0.45);
+    // Blend: 70% sharp + 30% smooth → crisp detail with soft borders
+    gl_FragColor = mix(sharp, smooth, 0.30);
   }
 `;
 
@@ -579,27 +579,33 @@ export class TerrainLayer {
     const w = this.width;
     const h = this.height;
 
-    // --- Pass 1: render terrain shader → raw 1px/tile (LINEAR) ---
-    if (!this._rawCacheRT || this._rawCacheRT.width !== w || this._rawCacheRT.height !== h) {
-      if (this._rawCacheRT) this._rawCacheRT.destroy(true);
-      this._rawCacheRT = PIXI.RenderTexture.create({
-        width: w,
-        height: h,
-        scaleMode: PIXI.SCALE_MODES.LINEAR,
-        resolution: 1,
-      });
-    }
-    this._renderer.render(this._mesh, { renderTexture: this._rawCacheRT });
-
-    // --- Pass 2: post-process blend → smooth Npx/tile output ---
+    // Compute output scale first — used by both passes
     const maxDim = 4096;
     const scale = Math.min(
-      RENDERER_CONFIG.cacheResolution || 4,
+      RENDERER_CONFIG.cacheResolution || 8,
       Math.max(1, Math.floor(maxDim / Math.max(w, h))),
     );
     this._cacheScale = scale;
     const outW = w * scale;
     const outH = h * scale;
+
+    // --- Pass 1: render terrain shader at Npx/tile (LINEAR) ---
+    // Rendering at full resolution lets sub-tile patterns (grass blades,
+    // sand ripples, rock cracks) produce real fragment variation.
+    if (!this._rawCacheRT || this._rawCacheRT.width !== outW || this._rawCacheRT.height !== outH) {
+      if (this._rawCacheRT) this._rawCacheRT.destroy(true);
+      this._rawCacheRT = PIXI.RenderTexture.create({
+        width: outW,
+        height: outH,
+        scaleMode: PIXI.SCALE_MODES.LINEAR,
+        resolution: 1,
+      });
+    }
+    this._mesh.scale.set(scale);
+    this._renderer.render(this._mesh, { renderTexture: this._rawCacheRT });
+    this._mesh.scale.set(1);
+
+    // --- Pass 2: post-process blend → smooth Npx/tile output ---
 
     // Create / update blend mesh
     if (!this._blendMesh) {

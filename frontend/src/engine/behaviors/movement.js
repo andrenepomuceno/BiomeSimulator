@@ -136,7 +136,7 @@ export function _followPath(animal, world) {
   const crossedTile = newTx !== oldTx || newTy !== oldTy;
 
   if (crossedTile) {
-    if (!world.isWalkableFor(newTx, newTy, animal._walkableSet) || world.isTileOccupied(newTx, newTy)) {
+    if (!world.isWalkableFor(newTx, newTy, animal._walkableSet) || world.isTileBlocked(newTx, newTy)) {
       animal.path = [];
       animal.pathIndex = 0;
       return;
@@ -221,7 +221,7 @@ export function _fleeFrom(animal, threat, world) {
       const tileFx = fx | 0;
       const tileFy = fy | 0;
       if (tileFx === baseTx && tileFy === baseTy) continue;
-      if (world.isWalkableFor(tileFx, tileFy, ws) && !world.isTileOccupied(tileFx, tileFy)) {
+      if (world.isWalkableFor(tileFx, tileFy, ws) && !world.isTileBlocked(tileFx, tileFy)) {
         _moveAnimal(animal, fx, fy, world);
         moved = true;
         break;
@@ -245,7 +245,7 @@ export function _fleeFrom(animal, threat, world) {
           const nx = ntx + 0.5;
           const ny = nty + 0.5;
           const gain = (Math.abs(nx - threat.x) + Math.abs(ny - threat.y)) - curDist;
-          if (!world.isTileOccupied(ntx, nty)) {
+          if (!world.isTileBlocked(ntx, nty)) {
             if (gain > bestGain) {
               bestGain = gain;
               bestNx = nx;
@@ -341,7 +341,7 @@ export function _randomWalk(animal, world) {
         const crossedTile = newTx !== oldTx || newTy !== oldTy;
 
         if (crossedTile) {
-          if (!world.isWalkableFor(newTx, newTy, animal._walkableSet) || world.isTileOccupied(newTx, newTy)) {
+          if (!world.isWalkableFor(newTx, newTy, animal._walkableSet) || world.isTileBlocked(newTx, newTy)) {
             continue;
           }
         }

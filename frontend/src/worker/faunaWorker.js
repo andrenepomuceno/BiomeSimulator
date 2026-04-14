@@ -17,7 +17,7 @@
  */
 
 import { World } from '../engine/world.js';
-import { Animal } from '../engine/entities.js';
+import { Animal, LifeStage } from '../engine/entities.js';
 import { SpatialHash } from '../engine/spatialHash.js';
 import { decideAndAct } from '../engine/behaviors.js';
 
@@ -101,6 +101,7 @@ self.onmessage = function (e) {
       world.clock.dayFraction = e.data.dayFraction;
       world.hungerMultiplier = e.data.hungerMultiplier;
       world.thirstMultiplier = e.data.thirstMultiplier;
+      world.resetDeathsThisTick();
       world.plantChanges = [];
       world.resetPlantEvents();
       world.activePlantTiles = new Set(e.data.activePlantIndices);
@@ -117,6 +118,12 @@ self.onmessage = function (e) {
         allAnimals.push(reconstructAnimal(ad, sc));
       }
       world.animals = allAnimals;
+      world.eggGrid.fill(0);
+      for (const animal of allAnimals) {
+        if (animal.alive && animal.lifeStage === LifeStage.EGG) {
+          world.placeEgg(animal.x, animal.y);
+        }
+      }
 
       // Build spatial hash from all alive animals
       spatialHash.rebuild(allAnimals.filter(a => a.alive));

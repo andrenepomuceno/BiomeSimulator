@@ -108,7 +108,7 @@ function _layEggs(animal, mate, world, clutchSize) {
     if (_checkPopulationCapWithEggs(animal, world)) break;
     const ntx = baseTx + ddx;
     const nty = baseTy + ddy;
-    if (world.isWalkableFor(ntx, nty, landWalkable)) {
+    if (world.isWalkableFor(ntx, nty, landWalkable) && !world.isTileBlocked(ntx, nty)) {
       const bx = ntx + 0.5;
       const by = nty + 0.5;
       const egg = new Animal(world.nextId(), bx, by, animal.species, speciesConfig);
@@ -123,6 +123,7 @@ function _layEggs(animal, mate, world, clutchSize) {
       egg._birthTick = world.clock.tick;
       egg.logAction(world.clock.tick, 'LAID', { parentA: animal.id, parentB: mate.id });
       world.animals.push(egg);
+      world.placeEgg(bx, by);
       placed++;
     }
   }
@@ -145,7 +146,7 @@ export function giveBirth(mother, world) {
     if (_checkPopulationCap(mother, world)) break;
     const ntx = baseTx + ddx;
     const nty = baseTy + ddy;
-    if (world.isWalkableFor(ntx, nty, mother._walkableSet) && !world.isTileOccupied(ntx, nty)) {
+    if (world.isWalkableFor(ntx, nty, mother._walkableSet) && !world.isTileBlocked(ntx, nty)) {
       const bx = ntx + 0.5;
       const by = nty + 0.5;
       const baby = new Animal(world.nextId(), bx, by, mother.species, speciesConfig);

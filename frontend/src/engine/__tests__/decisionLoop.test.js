@@ -124,6 +124,16 @@ function createWorld(overrides = {}) {
     },
     isWaterAdjacent: overrides.isWaterAdjacent ?? (() => false),
     isTileOccupied: overrides.isTileOccupied ?? ((x, y) => occupiedTiles.has(`${x | 0},${y | 0}`)),
+    isTileBlocked: overrides.isTileBlocked ?? ((x, y) => occupiedTiles.has(`${x | 0},${y | 0}`)),
+    placeAnimal: overrides.placeAnimal ?? vi.fn(),
+    placeEgg: overrides.placeEgg ?? vi.fn(),
+    vacateEgg: overrides.vacateEgg ?? vi.fn(),
+    markEntityDead: overrides.markEntityDead ?? function markEntityDead(entity) {
+      entity.alive = false;
+      entity.state = AnimalState.DEAD;
+      entity._deathTick = this.clock.tick;
+      return true;
+    },
   };
 }
 

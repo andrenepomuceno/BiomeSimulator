@@ -80,6 +80,9 @@ export class World {
     // Animal occupancy grid — count of living animals per tile
     this.animalGrid = new Uint8Array(size);
 
+    // Egg occupancy grid — count of egg-stage animals per tile
+    this.eggGrid = new Uint8Array(size);
+
     // Animals
     this.animals = [];
 
@@ -114,6 +117,9 @@ export class World {
 
     // Optional benchmark collector used by headless profiling.
     this._benchmarkCollector = null;
+
+    // Entities that died during the current fauna phase.
+    this._deathsThisTick = [];
   }
 
   nextId() {
@@ -148,6 +154,13 @@ export class World {
     return this.animalGrid[iy * this.width + ix] > 0;
   }
 
+  isTileBlocked(x, y) {
+    const ix = x | 0, iy = y | 0;
+    if (ix < 0 || iy < 0 || ix >= this.width || iy >= this.height) return true;
+    const idx = iy * this.width + ix;
+    return this.animalGrid[idx] > 0 || this.eggGrid[idx] > 0;
+  }
+
   placeAnimal(x, y) {
     this.animalGrid[(y | 0) * this.width + (x | 0)]++;
   }
@@ -155,6 +168,15 @@ export class World {
   vacateAnimal(x, y) {
     const i = (y | 0) * this.width + (x | 0);
     if (this.animalGrid[i] > 0) this.animalGrid[i]--;
+  }
+
+  placeEgg(x, y) {
+    this.eggGrid[(y | 0) * this.width + (x | 0)]++;
+  }
+
+  vacateEgg(x, y) {
+    const i = (y | 0) * this.width + (x | 0);
+    if (this.eggGrid[i] > 0) this.eggGrid[i]--;
   }
 
   getAliveSpeciesCount(species) {
@@ -173,6 +195,27 @@ export class World {
 
   resetPlantEvents() {
     this.plantEvents = { births: {}, deaths_terrain: {}, deaths_water: {}, deaths_age: {}, deaths_eaten: {}, matured: {} };
+  }
+
+  resetDeathsThisTick() {
+    this._deathsThisTick.length = 0;
+  }
+
+  consumeDeathsThisTick() {
+    const deaths = this._deathsThisTick;
+    this._deathsThisTick = [];
+    return deaths;
+  }
+
+  markEntityDead(entity) {
+    if (!entity || !entity.alive) return false;
+    entity.alive = false;
+    entity.state = 9;
+    entity._deathTick = this.clock.tick;
+    if (entity.lifeStage === -1) this.vacateEgg(entity.x, entity.y);
+    else this.vacateAnimal(entity.x, entity.y);
+    this._deathsThisTick.push(entity);
+    return true;
   }
 
   logPlantEvent(idx, event, detail) {
@@ -196,6 +239,13 @@ export class World {
     }
   }
 
+  rebuildEggGrid() {
+    this.eggGrid.fill(0);
+    for (const animal of this.animals) {
+      if (animal.alive && animal.lifeStage === -1) this.placeEgg(animal.x, animal.y);
+    }
+  }
+
   rebuildActivePlantTiles() {
     this.activePlantTiles.clear();
     for (let i = 0; i < this.plantType.length; i++) {
@@ -207,6 +257,7 @@ export class World {
 
   rebuildDerivedState() {
     this.rebuildAnimalGrid();
+    this.rebuildEggGrid();
     this.rebuildActivePlantTiles();
   }
 

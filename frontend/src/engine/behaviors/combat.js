@@ -51,9 +51,7 @@ export function _attack(attacker, defender, world) {
   });
 
   if (defender.hp <= 0) {
-    defender.alive = false;
-    defender.state = AnimalState.DEAD;
-    defender._deathTick = world.clock.tick;
+    world.markEntityDead(defender);
     defender.logAction(world.clock.tick, 'KILLED_BY', { attacker: attacker.species, attackerId: attacker.id });
     attacker.logAction(world.clock.tick, 'KILLED', { target: defender.species, targetId: defender.id });
     attacker.logAction(world.clock.tick, 'EAT_PREY', { prey: defender.species, preyId: defender.id });

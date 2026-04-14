@@ -58,7 +58,7 @@ export function _seekWater(animal, world, vision) {
     if (candidates.length) {
       const cutoff = bestDist + 4;
       const viable = candidates.filter(candidate => candidate[2] <= cutoff);
-      const unoccupied = viable.filter(candidate => !world.isTileOccupied(candidate[0], candidate[1]));
+      const unoccupied = viable.filter(candidate => !world.isTileBlocked(candidate[0], candidate[1]));
       const pool = unoccupied.length > 0 ? unoccupied : viable;
       const pick = pool[(Math.random() * pool.length) | 0];
       const pathLimit = desperate ? 80 : 50;

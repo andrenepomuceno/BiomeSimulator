@@ -40,6 +40,16 @@ function createWorld(overrides = {}) {
       ...overrides.config,
     },
     _benchmarkCollector: null,
+    isWalkableFor: overrides.isWalkableFor ?? (() => true),
+    isTileBlocked: overrides.isTileBlocked ?? (() => false),
+    vacateEgg: overrides.vacateEgg ?? vi.fn(),
+    markEntityDead: overrides.markEntityDead ?? function markEntityDead(entity) {
+      entity.alive = false;
+      entity.state = AnimalState.DEAD;
+      entity._deathTick = this.clock.tick;
+      this.vacateEgg(entity.x, entity.y);
+      return true;
+    },
   };
 }
 
@@ -132,5 +142,34 @@ describe('scavenge behaviors', () => {
     expect(animal.energy).toBe(46);
     expect(animal.state).toBe(AnimalState.EATING);
     expect(movementMocks.computePath).not.toHaveBeenCalled();
+    expect(world.vacateEgg).toHaveBeenCalledWith(egg.x, egg.y);
+  });
+
+  it('paths to an adjacent free tile instead of the egg tile itself', () => {
+    const animal = createAnimal({ x: 1.5, y: 1.5 });
+    const world = createWorld();
+    const egg = {
+      id: 8,
+      species: 'HERON',
+      x: 5.5,
+      y: 5.5,
+      alive: true,
+      hp: 10,
+      lifeStage: LifeStage.EGG,
+      state: AnimalState.IDLE,
+    };
+    const spatialHash = createSpatialHash([egg]);
+
+    movementMocks.computePath.mockImplementation((currentAnimal, currentWorld, tx, ty) => {
+      currentAnimal.path = [[tx | 0, ty | 0]];
+      currentAnimal.pathIndex = 0;
+    });
+
+    const ate = _tryEatEgg(animal, world, spatialHash, 10);
+
+    expect(ate).toBe(true);
+    const [, , targetX, targetY] = movementMocks.computePath.mock.calls[0];
+    expect((targetX | 0) === (egg.x | 0) && (targetY | 0) === (egg.y | 0)).toBe(false);
+    expect(Math.max(Math.abs((targetX | 0) - (egg.x | 0)), Math.abs((targetY | 0) - (egg.y | 0)))).toBe(1);
   });
 });

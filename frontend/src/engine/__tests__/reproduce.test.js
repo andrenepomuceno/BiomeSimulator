@@ -25,6 +25,10 @@ function createWorld(speciesConfigMap) {
     isWalkableFor() {
       return true;
     },
+    isTileBlocked() {
+      return false;
+    },
+    placeEgg() {},
   };
 }
 
@@ -65,5 +69,21 @@ describe('_doMate', () => {
     expect(world.animals).toHaveLength(0);
     expect(female.pregnant).toBe(true);
     expect(female._gestationLitterSize).toBe(1);
+  });
+
+  it('does not lay eggs onto blocked tiles', () => {
+    const speciesConfigMap = buildAnimalSpeciesConfig();
+    const world = createWorld(speciesConfigMap);
+    world.isTileBlocked = (x, y) => x === 5 && y === 6;
+    const female = new Animal(1, 5.5, 5.5, 'BEETLE', speciesConfigMap.BEETLE);
+    const male = new Animal(2, 5.5, 5.5, 'BEETLE', speciesConfigMap.BEETLE);
+    female.sex = SEX_FEMALE;
+    male.sex = SEX_MALE;
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.999);
+
+    _doMate(female, male, world);
+
+    expect(world.animals.some(egg => (egg.x | 0) === 5 && (egg.y | 0) === 6)).toBe(false);
   });
 });

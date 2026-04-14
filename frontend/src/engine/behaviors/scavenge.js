@@ -2,6 +2,27 @@ import { AnimalState, LifeStage } from '../entities.js';
 import { benchmarkAddKeyed } from '../benchmarkProfiler.js';
 import { _computePath, _walkPath } from './movement.js';
 
+function _findEggApproachTile(animal, target, world) {
+  const baseTx = target.x | 0;
+  const baseTy = target.y | 0;
+  let best = null;
+  let bestDist = Infinity;
+
+  for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+    const tx = baseTx + dx;
+    const ty = baseTy + dy;
+    if (!world.isWalkableFor(tx, ty, animal._walkableSet)) continue;
+    if (world.isTileBlocked(tx, ty)) continue;
+    const dist = Math.abs((tx + 0.5) - animal.x) + Math.abs((ty + 0.5) - animal.y);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = [tx, ty];
+    }
+  }
+
+  return best;
+}
+
 export function _tryScavenge(animal, world, spatialHash, vision) {
   const collector = world._benchmarkCollector;
   benchmarkAddKeyed(collector, 'speciesTryScavenge', animal.species, 1);
@@ -57,9 +78,7 @@ export function _tryEatEgg(animal, world, spatialHash, vision) {
 
   if (bestDist <= 1.5) {
     target.hp = 0;
-    target.alive = false;
-    target.state = AnimalState.DEAD;
-    target._deathTick = world.clock.tick;
+    world.markEntityDead(target);
     animal.hunger = Math.max(0, animal.hunger - 20);
     animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
     animal.state = AnimalState.EATING;
@@ -68,7 +87,10 @@ export function _tryEatEgg(animal, world, spatialHash, vision) {
     return true;
   }
 
-  _computePath(animal, world, target.x, target.y, 30, 'egg');
+  const approachTile = _findEggApproachTile(animal, target, world);
+  if (!approachTile) return false;
+
+  _computePath(animal, world, approachTile[0], approachTile[1], 30, 'egg');
   if (animal.path.length) {
     _walkPath(animal, world);
     return true;

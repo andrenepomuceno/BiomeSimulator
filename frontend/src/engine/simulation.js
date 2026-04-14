@@ -3,7 +3,7 @@
  * No threading — designed to be called from a Web Worker.
  */
 import { World } from './world.js';
-import { Animal } from './entities.js';
+import { Animal, LifeStage } from './entities.js';
 import { SpatialHash } from './spatialHash.js';
 import { createSimulationSupervisor } from './simulationSupervisor.js';
 import { generateTerrain, computeWaterProximity } from './mapGenerator.js';
@@ -31,6 +31,12 @@ import {
   benchmarkAdd,
   benchmarkStart,
 } from './benchmarkProfiler.js';
+
+function isEggStageSnapshot(snapshot) {
+  if (!snapshot) return false;
+  if (snapshot.lifeStage != null) return snapshot.lifeStage === LifeStage.EGG;
+  return !!snapshot._isEggStage && snapshot.age < (snapshot._incubationPeriod || 0);
+}
 
 export class SimulationEngine {
   constructor(config) {
@@ -100,6 +106,7 @@ export class SimulationEngine {
     w.animals = [];
     w._nextId = 1;
     w.animalGrid.fill(0);
+    w.eggGrid.fill(0);
 
     // Reset clock
     w.clock.tick = 0;
@@ -129,7 +136,7 @@ export class SimulationEngine {
       while (placed < count && attempts < count * 50) {
         const x = Math.floor(Math.random() * w.width);
         const y = Math.floor(Math.random() * w.height);
-        if (w.isWalkableFor(x, y, walkableSet) && !w.isTileOccupied(x, y)) {
+        if (w.isWalkableFor(x, y, walkableSet) && !w.isTileBlocked(x, y)) {
           const animal = new Animal(w.nextId(), x + 0.5, y + 0.5, species, speciesConfig);
           animal.age = Math.floor(Math.random() * maxInitAge);
           w.animals.push(animal);
@@ -173,17 +180,16 @@ export class SimulationEngine {
     const w = this.world;
 
     const behaviorStart = performance.now();
+    w.resetDeathsThisTick();
     this._deadThisTick = [];
     this._processedAnimals = 0;
     for (const animal of w.animals) {
       if (animal.alive) {
         this._processedAnimals++;
         decideAndAct(animal, w, this.spatialHash);
-        if (!animal.alive) {
-          this._deadThisTick.push(animal);
-        }
       }
     }
+    this._deadThisTick = w.consumeDeathsThisTick();
     this._phases.behaviorMs = performance.now() - behaviorStart;
 
     // Spatial hash update for moved/dead animals
@@ -210,16 +216,29 @@ export class SimulationEngine {
       for (const d of r.deltas) allDeltas.push(d);
     }
     allDeltas.sort((a, b) => a.id - b.id);
+    const deltaById = new Map(allDeltas.map(delta => [delta.id, delta]));
 
-    // Reset occupancy grid — we'll rebuild it
+    // Reset occupancy grids — we'll rebuild them
     w.animalGrid.fill(0);
+    w.eggGrid.fill(0);
+
+    // Pre-place all egg-stage occupants so movement conflict resolution respects egg tiles.
+    for (const a of w.animals) {
+      const delta = deltaById.get(a.id);
+      if (delta) {
+        if (delta.alive && isEggStageSnapshot(delta)) {
+          w.placeEgg(delta.x, delta.y);
+        }
+      } else if (a.alive && a.lifeStage === LifeStage.EGG) {
+        w.placeEgg(a.x, a.y);
+      }
+    }
 
     // Place unchanged animals first (those not in any delta)
-    // Skip egg-stage animals — they don't occupy tiles
     const deltaIds = new Set(allDeltas.map(d => d.id));
     for (const a of w.animals) {
-      if (a.alive && !deltaIds.has(a.id) && a.lifeStage !== -1) {
-        w.placeAnimal(a.x, a.y);
+      if (a.alive && !deltaIds.has(a.id)) {
+        if (a.lifeStage !== LifeStage.EGG) w.placeAnimal(a.x, a.y);
       }
     }
 
@@ -234,7 +253,7 @@ export class SimulationEngine {
       let finalX = delta.x, finalY = delta.y;
 
       // Movement conflict: if new tile is occupied, keep old position
-      if (moved && delta.alive && w.isTileOccupied(finalX, finalY)) {
+      if (moved && delta.alive && w.isTileBlocked(finalX, finalY)) {
         finalX = animal.x;
         finalY = animal.y;
       }
@@ -271,8 +290,7 @@ export class SimulationEngine {
       animal._dirty = true;
 
       if (animal.alive) {
-        // Skip egg-stage animals — they don't occupy tiles
-        if (animal.lifeStage !== -1) w.placeAnimal(animal.x, animal.y);
+        if (animal.lifeStage !== LifeStage.EGG) w.placeAnimal(animal.x, animal.y);
       } else {
         this._deadThisTick.push(animal);
       }
@@ -295,12 +313,14 @@ export class SimulationEngine {
     }
 
     // Add births — reassign proper IDs from the main world counter (with pop cap)
-    for (const r of results) {
-      if (!r.births) continue;
-      for (const bd of r.births) {
+    for (const wantsEggBirths of [true, false]) {
+      for (const r of results) {
+        if (!r.births) continue;
+        for (const bd of r.births) {
+          if (isEggStageSnapshot(bd) !== wantsEggBirths) continue;
         const sc = w.config.animal_species[bd.species];
         if (!sc) continue;
-        if (w.isTileOccupied(bd.x, bd.y) && !bd._isEggStage) continue;
+          if (w.isTileBlocked(bd.x, bd.y)) continue;
         // Enforce population cap at merge time
         const bMax = sc.max_population;
         if (bMax) {
@@ -327,7 +347,9 @@ export class SimulationEngine {
         baby._birthTick = w.clock.tick;
         baby.actionHistory = bd.actionHistory || [];
         w.animals.push(baby);
-        if (!bd._isEggStage) w.placeAnimal(bd.x, bd.y);
+          if (isEggStageSnapshot(bd)) w.placeEgg(bd.x, bd.y);
+          else w.placeAnimal(bd.x, bd.y);
+        }
       }
     }
 
@@ -350,7 +372,6 @@ export class SimulationEngine {
     const deadThisTick = this._deadThisTick || [];
     for (const dead of deadThisTick) {
       this.spatialHash.remove(dead);
-      w.vacateAnimal(dead.x, dead.y);
     }
 
     const tick = w.clock.tick;
@@ -482,7 +503,7 @@ export class SimulationEngine {
     // Animal placement
     const speciesConfig = w.config.animal_species[entityType];
     if (speciesConfig) {
-      if (w.isTileOccupied(x, y)) return null;
+      if (w.isTileBlocked(x, y)) return null;
       const animal = new Animal(w.nextId(), x + 0.5, y + 0.5, entityType, speciesConfig);
       w.animals.push(animal);
       w.placeAnimal(x, y);
@@ -517,9 +538,7 @@ export class SimulationEngine {
     const w = this.world;
     for (const a of w.animals) {
       if (a.id === entityId) {
-        a.alive = false;
-        a.state = 9; // DEAD
-        a._deathTick = this.world.clock.tick;
+        w.markEntityDead(a);
         this.spatialHash.remove(a);
         return true;
       }

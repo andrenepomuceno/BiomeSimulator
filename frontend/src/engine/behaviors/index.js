@@ -25,6 +25,7 @@ export function decideAndAct(animal, world, spatialHash) {
       animal.logAction(world.clock.tick, 'LIFE_STAGE', { from: previousLifeStage, to: animal.lifeStage });
       // Egg just hatched — place the baby on the tile grid
       if (previousLifeStage === LifeStage.EGG) {
+        world.vacateEgg(animal.x, animal.y);
         world.placeAnimal(animal.x, animal.y);
       }
     }
@@ -39,9 +40,7 @@ export function decideAndAct(animal, world, spatialHash) {
     }
 
     if (animal.age > animal.maxAge || animal.hp <= 0) {
-      animal.alive = false;
-      animal.state = AnimalState.DEAD;
-      animal._deathTick = world.clock.tick;
+      world.markEntityDead(animal);
       animal.logAction(world.clock.tick, 'DIED', {
         cause: animal.age > animal.maxAge ? 'old_age' : 'hp_depleted',
       });
@@ -203,7 +202,7 @@ export function decideAndAct(animal, world, spatialHash) {
       for (let ndx = -1; ndx <= 1; ndx++) {
         for (let ndy = -1; ndy <= 1; ndy++) {
           if (ndx === 0 && ndy === 0) continue;
-          if (world.isTileOccupied(tx + ndx, ty + ndy)) occupied++;
+          if (world.isTileBlocked(tx + ndx, ty + ndy)) occupied++;
         }
       }
       if (occupied >= 4) {

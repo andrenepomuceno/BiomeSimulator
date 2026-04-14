@@ -479,7 +479,7 @@ self.onmessage = function (e) {
           }
         }
       }
-      self.postMessage({ type: 'tileInfo', x, y, info });
+      self.postMessage({ type: 'tileInfo', x, y, info, refreshOnly: !!e.data.refreshOnly });
       break;
     }
 

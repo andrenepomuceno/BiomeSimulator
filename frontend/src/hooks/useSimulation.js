@@ -101,14 +101,17 @@ export function useSimulation() {
             const tile = store.selectedTile;
             const shouldRefreshTile = tile && workerRef.current && msg.clock && (msg.clock.tick % TILE_INFO_REFRESH_INTERVAL === 0);
             if (shouldRefreshTile) {
-              workerRef.current.postMessage({ cmd: 'getTileInfo', x: tile.x, y: tile.y });
+              workerRef.current.postMessage({ cmd: 'getTileInfo', x: tile.x, y: tile.y, refreshOnly: true });
             }
           }
           break;
 
         case 'tileInfo':
           if (msg.info) {
-            if (msg.info.animals && msg.info.animals.length > 0) {
+            if (msg.refreshOnly) {
+              // Automatic tile refresh — always keep tile selected, don't switch to animal/egg
+              store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
+            } else if (msg.info.animals && msg.info.animals.length > 0) {
               store.setSelectedEntity(msg.info.animals[0]);
             } else if (msg.info.eggs && msg.info.eggs.length > 0) {
               store.setSelectedEntity(msg.info.eggs[0]);

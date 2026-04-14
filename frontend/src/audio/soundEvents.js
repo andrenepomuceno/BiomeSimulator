@@ -31,6 +31,7 @@ export const SOUND_EVENTS = {
     positional: false,
     cooldownMs: 40,
     baseGain: 0.16,
+    priority: 0,
   },
   attack: {
     category: 'sfx',
@@ -39,6 +40,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 90,
     baseGain: 0.22,
     audibleRadiusTiles: 24,
+    priority: 2,
     samples: ['/audio/attack-1.wav', '/audio/attack-2.wav', '/audio/attack-3.wav'],
   },
   death: {
@@ -48,6 +50,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 180,
     baseGain: 0.28,
     audibleRadiusTiles: 28,
+    priority: 1,
     samples: ['/audio/death-1.wav', '/audio/death-2.wav', '/audio/death-3.wav'],
   },
   eat: {
@@ -57,6 +60,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 100,
     baseGain: 0.14,
     audibleRadiusTiles: 18,
+    priority: 3,
     samples: ['/audio/eat-1.wav', '/audio/eat-2.wav', '/audio/eat-3.wav'],
   },
   fruit: {
@@ -66,6 +70,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 140,
     baseGain: 0.18,
     audibleRadiusTiles: 20,
+    priority: 3,
     samples: ['/audio/fruit-1.wav', '/audio/fruit-2.wav', '/audio/fruit-3.wav'],
   },
   mate: {
@@ -75,6 +80,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 200,
     baseGain: 0.16,
     audibleRadiusTiles: 22,
+    priority: 2,
     samples: ['/audio/mate-1.wav', '/audio/mate-2.wav'],
   },
   drink: {
@@ -84,15 +90,17 @@ export const SOUND_EVENTS = {
     cooldownMs: 120,
     baseGain: 0.12,
     audibleRadiusTiles: 16,
+    priority: 3,
     samples: ['/audio/drink-1.wav', '/audio/drink-2.wav'],
   },
   flee: {
     category: 'sfx',
     preset: 'flee',
     positional: true,
-    cooldownMs: 80,
-    baseGain: 0.18,
+    cooldownMs: 250,
+    baseGain: 0.12,
     audibleRadiusTiles: 20,
+    priority: 3,
     samples: ['/audio/flee-1.wav', '/audio/flee-2.wav'],
   },
   extinctionWarning: {
@@ -101,6 +109,7 @@ export const SOUND_EVENTS = {
     positional: false,
     cooldownMs: 5000,
     baseGain: 0.25,
+    priority: 1,
     samples: ['/audio/extinction-warning.wav'],
   },
   populationBoom: {
@@ -109,6 +118,7 @@ export const SOUND_EVENTS = {
     positional: false,
     cooldownMs: 5000,
     baseGain: 0.20,
+    priority: 2,
     samples: ['/audio/population-boom.wav'],
   },
   ecosystemCollapse: {
@@ -117,6 +127,7 @@ export const SOUND_EVENTS = {
     positional: false,
     cooldownMs: 8000,
     baseGain: 0.28,
+    priority: 1,
     samples: ['/audio/ecosystem-collapse.wav'],
   },
 };

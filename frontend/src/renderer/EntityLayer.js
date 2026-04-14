@@ -35,6 +35,10 @@ export class EntityLayer {
     // Track previous state per animal to detect transitions
     this._prevStates = new Map(); // id → state
 
+    // Flee spatial deduplication: at most 1 flee per 8-tile bucket per tick
+    this._fleeBucketTick = -1;
+    this._fleeBuckets = new Set();
+
     // Sprite pool for recycling
     this._pool = [];
 
@@ -52,9 +56,9 @@ export class EntityLayer {
     this.container.addChild(this._selectionGfx);
   }
 
-  _emitEffectEvent(type, x, y, species) {
+  _emitEffectEvent(type, x, y, species, tick) {
     if (!this._onEffectEvent) return;
-    this._onEffectEvent({ type, x, y, species: species || null });
+    this._onEffectEvent({ type, x, y, species: species || null, tick: tick ?? null });
   }
 
   _ensureTextures() {
@@ -192,20 +196,29 @@ export class EntityLayer {
         if (a.state === 6) {
           sprite._attackTick = currentTick;
           if (this._animationLayer) this._animationLayer.spawnAttack(a.x, a.y);
-          this._emitEffectEvent('attack', a.x, a.y, a.species);
+          this._emitEffectEvent('attack', a.x, a.y, a.species, currentTick);
         } else if (this._animationLayer && a.state === 9) {
           this._animationLayer.spawnDeath(a.x, a.y);
-          this._emitEffectEvent('death', a.x, a.y, a.species);
+          this._emitEffectEvent('death', a.x, a.y, a.species, currentTick);
         } else if (a.state === 8) {
           if (this._animationLayer) this._animationLayer.spawnMate(a.x, a.y);
-          this._emitEffectEvent('mate', a.x, a.y, a.species);
+          this._emitEffectEvent('mate', a.x, a.y, a.species, currentTick);
         } else if (a.state === 3) {
           if (this._animationLayer) this._animationLayer.spawnEat(a.x, a.y);
-          this._emitEffectEvent('eat', a.x, a.y, a.species);
+          this._emitEffectEvent('eat', a.x, a.y, a.species, currentTick);
         } else if (a.state === 4) {
-          this._emitEffectEvent('drink', a.x, a.y, a.species);
+          this._emitEffectEvent('drink', a.x, a.y, a.species, currentTick);
         } else if (a.state === 7 && prevState !== 7) {
-          this._emitEffectEvent('flee', a.x, a.y, a.species);
+          // Flee spatial dedup: at most 1 per 8-tile bucket per tick
+          if (currentTick !== this._fleeBucketTick) {
+            this._fleeBucketTick = currentTick;
+            this._fleeBuckets.clear();
+          }
+          const bucketKey = (Math.floor(a.x / 8) << 16) | (Math.floor(a.y / 8) & 0xffff);
+          if (!this._fleeBuckets.has(bucketKey)) {
+            this._fleeBuckets.add(bucketKey);
+            this._emitEffectEvent('flee', a.x, a.y, a.species, currentTick);
+          }
         }
       }
       this._prevStates.set(a.id, a.state);

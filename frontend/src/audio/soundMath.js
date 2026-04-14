@@ -59,7 +59,7 @@ export function computePositionalMix(source, viewport, baseRadius = MIN_AUDIBLE_
   const distanceGain = normalizedDistance >= 1
     ? 0
     : Math.pow(1 - normalizedDistance, 1.6);
-  const panRange = Math.max((viewport.w || 0) * 0.55, 10);
+  const panRange = Math.max((viewport.w || 0) * 0.4, 8);
   const pan = clamp(dx / panRange, -1, 1);
 
   return {

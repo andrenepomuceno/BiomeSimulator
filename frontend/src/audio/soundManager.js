@@ -2,9 +2,11 @@ import { getSoundEventConfig, SOUND_EVENTS, SPECIES_AUDIO_SCALE, AMBIENCE_SAMPLE
 import { clamp, computePositionalMix, shouldMutePositionalSfx } from './soundMath.js';
 
 const MAX_ACTIVE_VOICES = 24;
+const MAX_SFX_PER_TICK = 4;
 const ZERO_GAIN = 0.0001;
 const PLAYBACK_RATE_MIN = 0.9;
 const PLAYBACK_RATE_MAX = 1.1;
+const PITCH_JITTER = 0.05;
 const BUS_RAMP_SECONDS = 0.05;
 const AMBIENCE_FADE_SECONDS = 1.2;
 
@@ -56,6 +58,11 @@ export class SoundManager {
     this._cleanupTimers = new Set();
     this._noiseBuffer = null;
     this._ambienceMode = 'day';
+
+    // Per-tick event budget tracking
+    this._currentTick = -1;
+    this._tickEventCount = 0;
+    this._tickBestPriority = Infinity;
     this._dayLayer = null;
     this._nightLayer = null;
     this._ambienceSampleLayers = null;   // { birds, insects, crickets, wind } loaded AudioBufferSourceNodes
@@ -189,6 +196,21 @@ export class SoundManager {
       return false;
     }
 
+    const priority = config.priority ?? 3;
+
+    // Per-tick event budget: cap positional SFX per simulation tick
+    const tick = Number.isFinite(event.tick) ? event.tick : -1;
+    if (config.positional && tick >= 0) {
+      if (tick !== this._currentTick) {
+        this._currentTick = tick;
+        this._tickEventCount = 0;
+        this._tickBestPriority = Infinity;
+      }
+      if (this._tickEventCount >= MAX_SFX_PER_TICK && priority >= this._tickBestPriority) {
+        return false;
+      }
+    }
+
     let gain = config.baseGain * (event.gainMultiplier || 1);
     let pan = 0;
     let mix = null;
@@ -207,11 +229,35 @@ export class SoundManager {
       if (!mix.audible) return false;
       gain *= mix.gain;
       pan = mix.pan;
+
+      // Distance-based probability culling
+      if (mix.gain < 0.25) {
+        // Far: 30% chance for low-priority, 60% for high-priority
+        const chance = priority <= 2 ? 0.6 : 0.3;
+        if (Math.random() > chance) return false;
+      } else if (mix.gain < 0.6) {
+        // Mid: 70% chance
+        if (Math.random() > 0.7) return false;
+      }
+
+      // Near-event gain boost for high-priority events
+      if (mix.gain > 0.7 && priority <= 2) {
+        gain *= 1.15;
+      }
     }
 
     if (gain <= ZERO_GAIN) return false;
 
     this._lastPlayedAt.set(event.type, nowMs);
+
+    // Update per-tick budget
+    if (config.positional && tick >= 0) {
+      this._tickEventCount += 1;
+      if (priority < this._tickBestPriority) {
+        this._tickBestPriority = priority;
+      }
+    }
+
     const played = this._playPreset(config.preset, gain, pan, speciesScale);
     if (played) {
       this._emitLog({
@@ -558,6 +604,8 @@ export class SoundManager {
       const speciesShift = 1.15 - 0.27 * speciesScale;
       rate *= speciesShift;
     }
+    // Random pitch jitter ±5% for variety
+    rate *= (1 - PITCH_JITTER) + Math.random() * (PITCH_JITTER * 2);
     const duration = buffer.duration / rate;
 
     const source = context.createBufferSource();

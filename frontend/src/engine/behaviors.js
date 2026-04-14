@@ -2,7 +2,7 @@
  * Animal AI — state machine and decision logic.
  */
 import { Animal, AnimalState, LifeStage } from './entities.js';
-import { WATER, DEEP_WATER } from './world.js';
+import { WATER, DEEP_WATER, SAND, MUD, MOUNTAIN, ROCK } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SUB_CELL_STEP, SUB_CELL_DIVISOR, SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
 import { S_FRUIT, S_ADULT, S_ADULT_SPROUT, S_SEED, S_NONE, P_NONE, SEASONS, getSeason } from './flora.js';
@@ -10,6 +10,34 @@ import { buildDecisionIntervals, BASE_POP_TOTAL } from './animalSpecies.js';
 import { buildEdibleStagesMap } from './plantSpecies.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from './benchmarkProfiler.js';
 import { idxToXY, shuffleInPlace, tileOf } from './helpers.js';
+
+// Terrain movement modifiers — fraction of speed retained on difficult terrain
+const TERRAIN_SPEED_FACTOR = new Float32Array(9);
+TERRAIN_SPEED_FACTOR[SAND] = 0.75;
+TERRAIN_SPEED_FACTOR[MUD] = 0.5;
+TERRAIN_SPEED_FACTOR[MOUNTAIN] = 0.5;
+TERRAIN_SPEED_FACTOR[ROCK] = 0.75;
+// All others (WATER=0, DIRT=2, SOIL=3, FERTILE_SOIL=5, DEEP_WATER=6) default to 0 → treated as 1.0
+
+// Terrain energy cost multiplier — extra cost on difficult terrain (applied on tile crossing)
+const TERRAIN_ENERGY_MULT = new Float32Array(9);
+TERRAIN_ENERGY_MULT[SAND] = 1.3;
+TERRAIN_ENERGY_MULT[MUD] = 1.5;
+TERRAIN_ENERGY_MULT[MOUNTAIN] = 1.8;
+TERRAIN_ENERGY_MULT[ROCK] = 1.3;
+
+/** Get effective movement steps for an animal on its current terrain tile. */
+function _terrainSteps(animal, world, baseSteps) {
+  const tIdx = world.idx(animal.x, animal.y);
+  const factor = TERRAIN_SPEED_FACTOR[world.terrain[tIdx]];
+  return factor ? Math.max(1, Math.round(baseSteps * factor)) : baseSteps;
+}
+
+/** Get terrain energy multiplier for a tile. Returns 1.0 for normal terrain. */
+function _terrainEnergyCost(world, tx, ty) {
+  const mult = TERRAIN_ENERGY_MULT[world.terrain[world.idx(tx, ty)]];
+  return mult || 1.0;
+}
 
 // Decision interval per species (ticks between full AI evaluations)
 const DECISION_INTERVALS = buildDecisionIntervals();
@@ -558,11 +586,27 @@ function _seekPrey(animal, world, spatialHash, vision) {
       _computePath(animal, world, target.x, target.y, 30, 'prey');
       const fly = _canFly(animal);
       animal.state = fly ? AnimalState.FLYING : AnimalState.RUNNING;
-      const steps = fly ? animal.speed + 1 : animal.speed;
+      const jitter = (Math.random() * 3 | 0) - 1;
+      const baseSteps = fly ? animal.speed + 1 : animal.speed;
+      const steps = _terrainSteps(animal, world, Math.max(1, baseSteps + jitter));
+      const startTx = animal.x | 0, startTy = animal.y | 0;
       for (let s = 0; s < steps; s++) {
         _followPath(animal, world);
       }
-      _applyEnergyCostWithModifier(animal, fly ? 'FLY' : 'RUN', world.clock.isNight, world.config);
+      const tileDist = Math.abs((animal.x | 0) - startTx) + Math.abs((animal.y | 0) - startTy);
+      if (tileDist > 0) {
+        const action = fly ? 'FLY' : 'RUN';
+        const baseCost = animal.energyCost(action) * tileDist;
+        const tMult = _terrainEnergyCost(world, animal.x | 0, animal.y | 0);
+        const nocturnal = animal._config.nocturnal || false;
+        const isNight = world.clock.isNight;
+        const pMult = (nocturnal && !isNight) || (!nocturnal && isNight)
+          ? (world.config.activity_energy_penalty_wrong_period ?? 1.3) : 1.0;
+        animal.energy = Math.max(0, Math.min(animal.maxEnergy, animal.energy - baseCost * tMult * pMult));
+        animal._dirty = true;
+      } else {
+        animal.applyEnergyCost('IDLE');
+      }
     }
     return;
   }
@@ -629,11 +673,27 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
         _computePath(animal, world, target.x, target.y, 30, 'omnivore-prey');
         const fly = _canFly(animal);
         animal.state = fly ? AnimalState.FLYING : AnimalState.RUNNING;
-        const steps = fly ? animal.speed + 1 : animal.speed;
+        const jitter = (Math.random() * 3 | 0) - 1;
+        const baseSteps = fly ? animal.speed + 1 : animal.speed;
+        const steps = _terrainSteps(animal, world, Math.max(1, baseSteps + jitter));
+        const startTx = animal.x | 0, startTy = animal.y | 0;
         for (let s = 0; s < steps; s++) {
           _followPath(animal, world);
         }
-        _applyEnergyCostWithModifier(animal, fly ? 'FLY' : 'RUN', world.clock.isNight, world.config);
+        const tileDist = Math.abs((animal.x | 0) - startTx) + Math.abs((animal.y | 0) - startTy);
+        if (tileDist > 0) {
+          const action = fly ? 'FLY' : 'RUN';
+          const baseCost = animal.energyCost(action) * tileDist;
+          const tMult = _terrainEnergyCost(world, animal.x | 0, animal.y | 0);
+          const nocturnal = animal._config.nocturnal || false;
+          const isNight = world.clock.isNight;
+          const pMult = (nocturnal && !isNight) || (!nocturnal && isNight)
+            ? (world.config.activity_energy_penalty_wrong_period ?? 1.3) : 1.0;
+          animal.energy = Math.max(0, Math.min(animal.maxEnergy, animal.energy - baseCost * tMult * pMult));
+          animal._dirty = true;
+        } else {
+          animal.applyEnergyCost('IDLE');
+        }
       }
       return;
     }
@@ -1014,13 +1074,18 @@ function _followPath(animal, world) {
   _moveAnimal(animal, nx, ny, world);
   animal.state = AnimalState.WALKING;
   if (crossedTile) {
-    animal.applyEnergyCost('WALK');
+    const tMult = _terrainEnergyCost(world, newTx, newTy);
+    const cost = animal.energyCost('WALK') * tMult;
+    animal.energy = Math.max(0, Math.min(animal.maxEnergy, animal.energy - cost));
+    animal._dirty = true;
   }
 }
 
 /** Walk along path for animal.speed sub-steps (covers ~1 tile for normalized speeds). */
 function _walkPath(animal, world) {
-  for (let s = 0; s < animal.speed; s++) {
+  const jitter = (Math.random() * 3 | 0) - 1; // -1, 0, or +1
+  const steps = _terrainSteps(animal, world, Math.max(1, animal.speed + jitter));
+  for (let s = 0; s < steps; s++) {
     if (!animal.path.length || animal.pathIndex >= animal.path.length) break;
     _followPath(animal, world);
   }
@@ -1031,9 +1096,25 @@ function _randomWalk(animal, world) {
   const startedAt = benchmarkStart(collector);
   try {
     let moved = false;
+    let lastDdx = 0, lastDdy = 0;
+    let tileCrossings = 0;
+    const jitter = (Math.random() * 3 | 0) - 1; // -1, 0, or +1
+    const steps = _terrainSteps(animal, world, Math.max(1, animal.speed + jitter));
 
-    for (let s = 0; s < animal.speed; s++) {
+    for (let s = 0; s < steps; s++) {
       const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+
+      // Directional inertia: 50% chance to keep last direction
+      if (lastDdx | lastDdy) {
+        if (Math.random() < 0.5) {
+          for (let i = 0; i < dirs.length; i++) {
+            if (dirs[i][0] === lastDdx && dirs[i][1] === lastDdy) {
+              const tmp = dirs[0]; dirs[0] = dirs[i]; dirs[i] = tmp;
+              break;
+            }
+          }
+        }
+      }
 
       // Home bias: when far from home, prefer direction toward home (60% chance)
       const homeDist = Math.abs(animal.x - animal.homeX) + Math.abs(animal.y - animal.homeY);
@@ -1045,7 +1126,7 @@ function _randomWalk(animal, world) {
           const sb = (b[0] === hdx ? -1 : 0) + (b[1] === hdy ? -1 : 0);
           return sa - sb;
         });
-      } else {
+      } else if (!(lastDdx | lastDdy) || Math.random() >= 0.5) {
         shuffleInPlace(dirs);
       }
 
@@ -1071,6 +1152,9 @@ function _randomWalk(animal, world) {
         _moveAnimal(animal, nx, ny, world);
         moved = true;
         stepMoved = true;
+        lastDdx = ddx;
+        lastDdy = ddy;
+        if (crossedTile) tileCrossings++;
         break;
       }
 
@@ -1079,7 +1163,16 @@ function _randomWalk(animal, world) {
 
     if (moved) {
       animal.state = AnimalState.WALKING;
-      _applyEnergyCostWithModifier(animal, 'WALK', world.clock.isNight, world.config);
+      // Energy proportional to tiles actually crossed (min 1 WALK cost if moved at all)
+      const baseCost = animal.energyCost('WALK');
+      const tMult = _terrainEnergyCost(world, animal.x | 0, animal.y | 0);
+      const cost = baseCost * Math.max(1, tileCrossings) * tMult;
+      const nocturnal = animal._config.nocturnal || false;
+      const isNight = world.clock.isNight;
+      const penaltyMult = (nocturnal && !isNight) || (!nocturnal && isNight)
+        ? (world.config.activity_energy_penalty_wrong_period ?? 1.3) : 1.0;
+      animal.energy = Math.max(0, Math.min(animal.maxEnergy, animal.energy - cost * penaltyMult));
+      animal._dirty = true;
     } else {
       animal.state = AnimalState.IDLE;
       animal.applyEnergyCost('IDLE');

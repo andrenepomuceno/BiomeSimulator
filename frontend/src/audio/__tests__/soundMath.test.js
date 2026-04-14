@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computePositionalMix, getAudibleRadius, getViewportCenter } from '../soundMath.js';
+import { computePositionalMix, getAudibleRadius, getViewportCenter, shouldMutePositionalSfx } from '../soundMath.js';
 
 describe('soundMath', () => {
   it('computes the center of the active viewport', () => {
@@ -31,5 +31,10 @@ describe('soundMath', () => {
 
     expect(mix.audible).toBe(false);
     expect(mix.gain).toBe(0);
+  });
+
+  it('mutes positional SFX when the camera is zoomed far out', () => {
+    expect(shouldMutePositionalSfx({ x: 0, y: 0, w: 100, h: 100, zoom: 2.5 })).toBe(true);
+    expect(shouldMutePositionalSfx({ x: 0, y: 0, w: 100, h: 100, zoom: 3 })).toBe(false);
   });
 });

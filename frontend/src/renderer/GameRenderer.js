@@ -286,7 +286,7 @@ export class GameRenderer {
   }
 
   _onViewportChanged() {
-    const vp = this.camera.getViewportTiles();
+    const vp = { ...this.camera.getViewportTiles(), zoom: this.camera.zoom };
     if (this.onViewportChange) {
       this.onViewportChange(vp);
     }
@@ -354,7 +354,7 @@ export class GameRenderer {
   }
 
   getViewportTiles() {
-    return this.camera.getViewportTiles();
+    return { ...this.camera.getViewportTiles(), zoom: this.camera.zoom };
   }
 
   centerOn(x, y) {

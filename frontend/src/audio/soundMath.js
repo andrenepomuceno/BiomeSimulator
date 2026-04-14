@@ -1,5 +1,6 @@
 export const MIN_AUDIBLE_RADIUS_TILES = 18;
 export const MAX_AUDIBLE_RADIUS_TILES = 80;
+export const POSITIONAL_SFX_MUTE_ZOOM_THRESHOLD = 2.5;
 
 export function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -21,6 +22,11 @@ export function getAudibleRadius(viewport, baseRadius = MIN_AUDIBLE_RADIUS_TILES
     baseRadius,
     MAX_AUDIBLE_RADIUS_TILES,
   );
+}
+
+export function shouldMutePositionalSfx(viewport) {
+  if (!viewport || !Number.isFinite(viewport.zoom)) return false;
+  return viewport.zoom <= POSITIONAL_SFX_MUTE_ZOOM_THRESHOLD;
 }
 
 export function computePositionalMix(source, viewport, baseRadius = MIN_AUDIBLE_RADIUS_TILES) {

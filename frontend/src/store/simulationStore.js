@@ -15,6 +15,56 @@ export const DEFAULT_AUDIO_SETTINGS = {
 };
 
 export const AUDIO_LOG_LIMIT = 40;
+export const AUDIO_SETTINGS_STORAGE_KEY = 'ecogame.audioSettings';
+
+const PERSISTED_AUDIO_SETTINGS_KEYS = [
+  'muted',
+  'masterVolume',
+  'sfxVolume',
+  'ambienceVolume',
+  'sfxEnabled',
+  'ambienceEnabled',
+];
+
+export function sanitizePersistedAudioSettings(rawSettings) {
+  if (!rawSettings || typeof rawSettings !== 'object') return { ...DEFAULT_AUDIO_SETTINGS };
+
+  const nextSettings = { ...DEFAULT_AUDIO_SETTINGS };
+  for (const key of PERSISTED_AUDIO_SETTINGS_KEYS) {
+    if (!(key in rawSettings)) continue;
+    nextSettings[key] = rawSettings[key];
+  }
+  nextSettings.unlocked = false;
+  return nextSettings;
+}
+
+function loadPersistedAudioSettings() {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return { ...DEFAULT_AUDIO_SETTINGS };
+  }
+
+  try {
+    const serialized = window.localStorage.getItem(AUDIO_SETTINGS_STORAGE_KEY);
+    if (!serialized) return { ...DEFAULT_AUDIO_SETTINGS };
+    return sanitizePersistedAudioSettings(JSON.parse(serialized));
+  } catch {
+    return { ...DEFAULT_AUDIO_SETTINGS };
+  }
+}
+
+function persistAudioSettings(audioSettings) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+
+  try {
+    const persisted = {};
+    for (const key of PERSISTED_AUDIO_SETTINGS_KEYS) {
+      persisted[key] = audioSettings[key];
+    }
+    window.localStorage.setItem(AUDIO_SETTINGS_STORAGE_KEY, JSON.stringify(persisted));
+  } catch {
+    // Ignore storage failures; audio should still work for the current session.
+  }
+}
 
 const useSimStore = create((set, get) => ({
   // Worker reference (set once by useSimulation)
@@ -133,10 +183,12 @@ const useSimStore = create((set, get) => ({
   setRendererProfile: (renderer) => set(state => ({ profiling: { ...state.profiling, renderer } })),
 
   // Audio
-  audioSettings: { ...DEFAULT_AUDIO_SETTINGS },
-  setAudioSettings: (patch) => set(state => ({
-    audioSettings: { ...state.audioSettings, ...patch },
-  })),
+  audioSettings: loadPersistedAudioSettings(),
+  setAudioSettings: (patch) => set(state => {
+    const audioSettings = { ...state.audioSettings, ...patch };
+    persistAudioSettings(audioSettings);
+    return { audioSettings };
+  }),
   audioLog: [],
   pushAudioLog: (entry) => set(state => ({
     audioLog: [entry, ...state.audioLog].slice(0, AUDIO_LOG_LIMIT),
@@ -170,7 +222,7 @@ const useSimStore = create((set, get) => ({
   setThirstMultiplier: (v) => set({ thirstMultiplier: v }),
 
   // Viewport
-  viewport: { x: 0, y: 0, w: 100, h: 100 },
+  viewport: { x: 0, y: 0, w: 100, h: 100, zoom: 4 },
   setViewport: (v) => set({ viewport: v }),
 
   // Save callback (set temporarily when saving)

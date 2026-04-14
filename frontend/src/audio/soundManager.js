@@ -1,5 +1,5 @@
 import { getSoundEventConfig } from './soundEvents.js';
-import { clamp, computePositionalMix } from './soundMath.js';
+import { clamp, computePositionalMix, shouldMutePositionalSfx } from './soundMath.js';
 
 const MAX_ACTIVE_VOICES = 24;
 const ZERO_GAIN = 0.0001;
@@ -146,6 +146,9 @@ export class SoundManager {
     let mix = null;
 
     if (config.positional) {
+      if (shouldMutePositionalSfx(this.viewport)) {
+        return false;
+      }
       mix = computePositionalMix(event, this.viewport, config.audibleRadiusTiles);
       if (!mix.audible) return false;
       gain *= mix.gain;

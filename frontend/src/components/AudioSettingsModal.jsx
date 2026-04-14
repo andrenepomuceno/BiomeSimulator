@@ -1,10 +1,13 @@
 import React from 'react';
 import useSimStore from '../store/simulationStore';
+import { shouldMutePositionalSfx } from '../audio/soundMath.js';
 
 export default function AudioSettingsModal({ open, onClose, onUnlock }) {
-  const { audioSettings, setAudioSettings, audioLog, clearAudioLog } = useSimStore();
+  const { audioSettings, setAudioSettings, audioLog, clearAudioLog, viewport } = useSimStore();
 
   if (!open) return null;
+
+  const worldSfxMutedByZoom = shouldMutePositionalSfx(viewport);
 
   const formatEntryLabel = (entry) => {
     if (entry.type === 'uiClick') return 'UI click';
@@ -33,6 +36,29 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
     setAudioSettings({ [key]: !audioSettings[key] });
   };
 
+  const handleExportLog = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      audioSettings: {
+        muted: audioSettings.muted,
+        masterVolume: audioSettings.masterVolume,
+        sfxVolume: audioSettings.sfxVolume,
+        ambienceVolume: audioSettings.ambienceVolume,
+        sfxEnabled: audioSettings.sfxEnabled,
+        ambienceEnabled: audioSettings.ambienceEnabled,
+      },
+      viewport,
+      entries: audioLog,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `ecogame-audio-log-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="audio-overlay" onClick={onClose}>
       <div className="audio-modal" onClick={e => e.stopPropagation()}>
@@ -52,6 +78,9 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
                 ? 'Events closer to the camera sound louder, and left/right activity pans in stereo.'
                 : 'Browsers require a click or key press before audio can start. Opening this panel already counts in most cases.'}
             </p>
+            {worldSfxMutedByZoom ? (
+              <p className="audio-warning">Camera very far away: positional world SFX are temporarily muted until you zoom back in.</p>
+            ) : null}
             {!audioSettings.unlocked ? (
               <button className="btn btn-sim btn-sm" onClick={onUnlock}>Enable Audio</button>
             ) : null}
@@ -111,9 +140,14 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
                 <strong>Recent sound log</strong>
                 <span>Latest emitted sounds, newest first.</span>
               </div>
-              <button className="btn btn-sm btn-outline-secondary" onClick={clearAudioLog} disabled={audioLog.length === 0}>
-                Clear
-              </button>
+              <div className="audio-log-actions">
+                <button className="btn btn-sm btn-outline-secondary" onClick={handleExportLog} disabled={audioLog.length === 0}>
+                  Export
+                </button>
+                <button className="btn btn-sm btn-outline-secondary" onClick={clearAudioLog} disabled={audioLog.length === 0}>
+                  Clear
+                </button>
+              </div>
             </div>
 
             {audioLog.length === 0 ? (

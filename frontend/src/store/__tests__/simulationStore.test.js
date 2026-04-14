@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import useSimStore, { AUDIO_LOG_LIMIT, DEFAULT_AUDIO_SETTINGS } from '../simulationStore.js';
+import useSimStore, {
+  AUDIO_LOG_LIMIT,
+  DEFAULT_AUDIO_SETTINGS,
+  sanitizePersistedAudioSettings,
+} from '../simulationStore.js';
 
 const initialClock = useSimStore.getState().clock;
 
@@ -121,5 +125,20 @@ describe('simulationStore mergeAnimalDeltas', () => {
 
     store.clearAudioLog();
     expect(useSimStore.getState().audioLog).toEqual([]);
+  });
+
+  it('sanitizes persisted audio settings and always resets unlock state', () => {
+    expect(sanitizePersistedAudioSettings({
+      muted: true,
+      masterVolume: 0.2,
+      sfxEnabled: false,
+      unlocked: true,
+      unknown: 'ignored',
+    })).toMatchObject({
+      muted: true,
+      masterVolume: 0.2,
+      sfxEnabled: false,
+      unlocked: false,
+    });
   });
 });

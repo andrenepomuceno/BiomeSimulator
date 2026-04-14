@@ -468,28 +468,37 @@ function _seekWater(animal, world, vision) {
     return;
   }
 
-  // Search for nearest water — expand range when desperate
+  // Search for water-adjacent walkable tiles — collect candidates to spread animals along coast
   const desperate = animal.thirst > ((_decisionThresholds(animal).critical_thirst ?? 55) + 20);
   const searchR = desperate ? Math.min(vision * 3, 30) : vision * 2;
-  let best = null, bestDist = Infinity;
+  const candidates = []; // walkable tiles adjacent to water
+  let bestDist = Infinity;
 
   for (let dy = -searchR; dy <= searchR; dy++) {
     for (let dx = -searchR; dx <= searchR; dx++) {
-      const nx = animal.x + dx, ny = animal.y + dy;
-      if (world.isInBounds(nx, ny)) {
-        const t = world.terrain[world.idx(nx, ny)];
-        if (t === WATER || t === DEEP_WATER) {
-          const d = Math.abs(dx) + Math.abs(dy);
-          if (d < bestDist) { bestDist = d; best = [nx, ny]; }
-        }
+      const nx = (animal.x | 0) + dx, ny = (animal.y | 0) + dy;
+      if (!world.isInBounds(nx, ny)) continue;
+      // We want walkable tiles adjacent to water, not water tiles themselves
+      if (!world.isWalkableFor(nx, ny, animal._walkableSet)) continue;
+      if (!world.isWaterAdjacent(nx, ny)) continue;
+      const d = Math.abs(dx) + Math.abs(dy);
+      if (d <= bestDist + 4) { // keep tiles within 4 Manhattan of the closest
+        if (d < bestDist) bestDist = d;
+        candidates.push([nx, ny, d]);
       }
     }
   }
 
-  if (best) {
-    // Path to an adjacent walkable tile near the water
+  if (candidates.length) {
+    // Filter to tiles near the closest distance, prefer unoccupied
+    const cutoff = bestDist + 4;
+    const viable = candidates.filter(c => c[2] <= cutoff);
+    // Prefer unoccupied tiles to spread animals out
+    const unoccupied = viable.filter(c => !world.isTileOccupied(c[0], c[1]));
+    const pool = unoccupied.length > 0 ? unoccupied : viable;
+    const pick = pool[(Math.random() * pool.length) | 0];
     const pathLimit = desperate ? 80 : 50;
-    _computePath(animal, world, best[0], best[1], pathLimit, 'water');
+    _computePath(animal, world, pick[0], pick[1], pathLimit, 'water');
   }
 
   if (animal.path.length) {
@@ -1075,12 +1084,9 @@ function _followPath(animal, world) {
 
   if (crossedTile) {
     if (!world.isWalkableFor(newTx, newTy, animal._walkableSet) || world.isTileOccupied(newTx, newTy)) {
-      // Blocked — skip this waypoint
-      animal.pathIndex++;
-      if (animal.pathIndex >= animal.path.length) {
-        animal.path = [];
-        animal.pathIndex = 0;
-      }
+      // Blocked — invalidate entire path so a fresh one is computed next tick
+      animal.path = [];
+      animal.pathIndex = 0;
       return;
     }
   }

@@ -18,6 +18,67 @@ import { RENDERER_CONFIG } from '../engine/config.js';
 
 function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
 
+// ---------------------------------------------------------------------------
+// Post-process blend shader (pass 2):
+// Reads the 1px/tile raw terrain texture with LINEAR filtering and applies
+// domain warping so tile boundaries follow organic curves.
+// ---------------------------------------------------------------------------
+const BLEND_VERT_SRC = `
+  precision highp float;
+  attribute vec2 aVertexPosition;
+  attribute vec2 aTextureCoord;
+  uniform mat3 translationMatrix;
+  uniform mat3 projectionMatrix;
+  varying vec2 v_uv;
+  void main() {
+    v_uv = aTextureCoord;
+    gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);
+  }
+`;
+
+const BLEND_FRAG_SRC = `
+  precision highp float;
+  varying vec2 v_uv;
+  uniform sampler2D u_rawTerrain;
+  uniform vec2 u_worldSize;
+
+  float hash21(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+  }
+
+  float valueNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+
+  void main() {
+    vec2 tc = v_uv * u_worldSize;
+
+    // Domain warp: 2-octave noise displaces lookup for organic borders.
+    // Same seeds as the terrain shader so warp patterns are consistent.
+    float wx = (valueNoise(tc * 0.35 + vec2(13.7, 7.3)) - 0.5) * 2.4
+             + (valueNoise(tc * 0.85 + vec2(87.1, 42.5)) - 0.5) * 0.7;
+    float wy = (valueNoise(tc * 0.35 + vec2(51.2, 23.1)) - 0.5) * 2.4
+             + (valueNoise(tc * 0.85 + vec2(29.4, 73.8)) - 0.5) * 0.7;
+
+    // Warp UV, clamped to valid range.
+    // LINEAR sampling on the 1px/tile texture gives free bilinear
+    // interpolation — smooth gradients between tile colors.
+    vec2 warpedUV = v_uv + vec2(wx, wy) / u_worldSize;
+    warpedUV = clamp(warpedUV, vec2(0.0), vec2(1.0));
+
+    gl_FragColor = texture2D(u_rawTerrain, warpedUV);
+  }
+`;
+
 /**
  * Compute per-tile base colors with per-channel multi-octave noise,
  * height-based brightness, water proximity gradient, and coastal tinting.
@@ -252,10 +313,14 @@ export class TerrainLayer {
     this._waterBaseColors = null;
     this.useGPU = false;      // Phase 2 flag
     // RTT cache state
-    this._cachedRT = null;      // PIXI.RenderTexture (offscreen)
+    this._rawCacheRT = null;    // Pass 1: 1px/tile terrain colors (LINEAR)
+    this._cachedRT = null;      // Pass 2: smooth blended output (Npx/tile)
     this._cachedSprite = null;  // Sprite displaying the cached texture
-    this._cacheEnabled = false; // Set by enableCache()
+    this._blendMesh = null;     // Post-process blend mesh
+    this._blendShader = null;   // Post-process blend shader
+    this._cacheEnabled = false; // Set by enableGPU()
     this._cacheDirty = false;   // Set when terrain changes
+    this._cacheScale = 1;       // Pixels per tile in smooth cache
     this._renderer = null;      // PIXI.Renderer ref (set via setRenderer)
   }
 
@@ -500,33 +565,76 @@ export class TerrainLayer {
   }
 
   /**
-   * Render the GPU mesh to an offscreen RenderTexture and display
-   * the result as a lightweight Sprite.
+   * Two-pass render-to-cache pipeline:
+   *  Pass 1 — terrain shader → raw 1px/tile texture (per-tile colors)
+   *  Pass 2 — blend shader reads raw texture with LINEAR filtering +
+   *           domain warping → smooth Npx/tile output
    */
   _renderToCache() {
     if (!this._mesh || !this._renderer) return;
 
-    // Create (or recreate) the RenderTexture at 1px/tile resolution
-    if (this._cachedRT) {
-      this._cachedRT.destroy(true);
+    const w = this.width;
+    const h = this.height;
+
+    // --- Pass 1: render terrain shader → raw 1px/tile (LINEAR) ---
+    if (!this._rawCacheRT || this._rawCacheRT.width !== w || this._rawCacheRT.height !== h) {
+      if (this._rawCacheRT) this._rawCacheRT.destroy(true);
+      this._rawCacheRT = PIXI.RenderTexture.create({
+        width: w,
+        height: h,
+        scaleMode: PIXI.SCALE_MODES.LINEAR,
+        resolution: 1,
+      });
     }
-    this._cachedRT = PIXI.RenderTexture.create({
-      width: this.width,
-      height: this.height,
-      scaleMode: PIXI.SCALE_MODES.NEAREST,
-      resolution: 1,
-    });
+    this._renderer.render(this._mesh, { renderTexture: this._rawCacheRT });
 
-    // Render the mesh into the offscreen texture
-    this._renderer.render(this._mesh, { renderTexture: this._cachedRT });
+    // --- Pass 2: post-process blend → smooth Npx/tile output ---
+    const maxDim = 4096;
+    const scale = Math.min(
+      RENDERER_CONFIG.cacheResolution || 4,
+      Math.max(1, Math.floor(maxDim / Math.max(w, h))),
+    );
+    this._cacheScale = scale;
+    const outW = w * scale;
+    const outH = h * scale;
 
-    // Create/update the display sprite
+    // Create / update blend mesh
+    if (!this._blendMesh) {
+      this._blendShader = PIXI.Shader.from(BLEND_VERT_SRC, BLEND_FRAG_SRC, {
+        u_rawTerrain: this._rawCacheRT,
+        u_worldSize: [w, h],
+      });
+      const geo = new PIXI.Geometry()
+        .addAttribute('aVertexPosition', [0, 0, outW, 0, outW, outH, 0, outH], 2)
+        .addAttribute('aTextureCoord', [0, 0, 1, 0, 1, 1, 0, 1], 2)
+        .addIndex([0, 1, 2, 0, 2, 3]);
+      this._blendMesh = new PIXI.Mesh(geo, this._blendShader);
+    } else {
+      this._blendShader.uniforms.u_rawTerrain = this._rawCacheRT;
+      this._blendShader.uniforms.u_worldSize = [w, h];
+    }
+
+    // Create / update smooth output RT
+    if (!this._cachedRT || this._cachedRT.width !== outW || this._cachedRT.height !== outH) {
+      if (this._cachedRT) this._cachedRT.destroy(true);
+      this._cachedRT = PIXI.RenderTexture.create({
+        width: outW,
+        height: outH,
+        scaleMode: PIXI.SCALE_MODES.LINEAR,
+        resolution: 1,
+      });
+    }
+    this._renderer.render(this._blendMesh, { renderTexture: this._cachedRT });
+
+    // Display sprite — scale from Npx/tile back to 1 tile per world unit
     if (!this._cachedSprite) {
       this._cachedSprite = new PIXI.Sprite(this._cachedRT);
       this.container.addChild(this._cachedSprite);
     } else {
       this._cachedSprite.texture = this._cachedRT;
     }
+    this._cachedSprite.width = w;
+    this._cachedSprite.height = h;
 
     this._cacheDirty = false;
   }
@@ -576,6 +684,9 @@ export class TerrainLayer {
   destroy() {
     if (this._cachedSprite) { this._cachedSprite.destroy(); this._cachedSprite = null; }
     if (this._cachedRT) { this._cachedRT.destroy(true); this._cachedRT = null; }
+    if (this._rawCacheRT) { this._rawCacheRT.destroy(true); this._rawCacheRT = null; }
+    if (this._blendMesh) { this._blendMesh.destroy(true); this._blendMesh = null; }
+    this._blendShader = null;
     if (this.sprite) { this.sprite.destroy(true); this.sprite = null; }
     if (this._mesh) { this._mesh.destroy(true); this._mesh = null; }
     this._shader = null;

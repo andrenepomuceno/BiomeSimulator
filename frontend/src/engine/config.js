@@ -129,6 +129,10 @@ export const RENDERER_CONFIG = {
   // for large worlds.  Water animation uses periodic re-renders instead of
   // per-frame shader updates.  Set to false if terrain changes frequently.
   cacheStaticTerrain: true,
+  // Pixels per tile for the post-processed smooth cache texture.
+  // Higher = smoother transitions but larger VRAM usage.
+  // 4 is a good default; capped automatically if the result exceeds GPU limits.
+  cacheResolution: 4,
   // Interval (in render frames) between water-animation re-renders when
   // cacheStaticTerrain is active.  Lower = smoother water, higher = cheaper.
   // Only used when cacheStaticTerrain is true.  0 = disable water animation.

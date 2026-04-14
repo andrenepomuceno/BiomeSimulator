@@ -1,4 +1,4 @@
-import { getSoundEventConfig, SOUND_EVENTS, SPECIES_AUDIO_SCALE, AMBIENCE_SAMPLES } from './soundEvents.js';
+import { getSoundEventConfig, SOUND_EVENTS, SPECIES_AUDIO_SCALE, SPECIES_SOUND_GROUP, SOUND_GROUP_PARAMS, AMBIENCE_SAMPLES } from './soundEvents.js';
 import { clamp, computePositionalMix, shouldMutePositionalSfx } from './soundMath.js';
 
 const MAX_ACTIVE_VOICES = 24;
@@ -258,18 +258,24 @@ export class SoundManager {
       }
     }
 
-    const played = this._playPreset(config.preset, gain, pan, speciesScale);
+    const played = this._playPreset(config.preset, gain, pan, speciesScale, event.species || null);
     if (played) {
+      const soundGroup = event.species ? (SPECIES_SOUND_GROUP[event.species] || null) : null;
       this._emitLog({
         type: event.type,
         category: config.category,
         preset: config.preset,
+        priority,
         gain,
         pan,
+        species: event.species || null,
+        soundGroup,
         x: Number.isFinite(event.x) ? event.x : null,
         y: Number.isFinite(event.y) ? event.y : null,
         distance: mix ? mix.distance : null,
+        distanceGain: mix ? mix.gain : null,
         audibleRadius: mix ? mix.audibleRadius : null,
+        nearBoosted: config.positional && mix && mix.gain > 0.7 && priority <= 2,
       });
     }
     return played;
@@ -399,11 +405,13 @@ export class SoundManager {
     this._logger({
       ...entry,
       at: Date.now(),
+      atPrecise: typeof performance !== 'undefined' ? performance.now() : null,
       gain: Number.isFinite(entry.gain) ? Number(entry.gain.toFixed(3)) : null,
       pan: Number.isFinite(entry.pan) ? Number(entry.pan.toFixed(3)) : null,
       x: Number.isFinite(entry.x) ? Number(entry.x.toFixed(1)) : null,
       y: Number.isFinite(entry.y) ? Number(entry.y.toFixed(1)) : null,
       distance: Number.isFinite(entry.distance) ? Number(entry.distance.toFixed(2)) : null,
+      distanceGain: Number.isFinite(entry.distanceGain) ? Number(entry.distanceGain.toFixed(3)) : null,
       audibleRadius: Number.isFinite(entry.audibleRadius) ? Number(entry.audibleRadius.toFixed(2)) : null,
     });
   }
@@ -647,7 +655,7 @@ export class SoundManager {
     return true;
   }
 
-  _playPreset(preset, gain, pan, speciesScale = null) {
+  _playPreset(preset, gain, pan, speciesScale = null, species = null) {
     // Try sample-based playback first; fall back to procedural synthesis
     const sampleBuf = this._getSampleBuffer(preset);
     if (sampleBuf) {
@@ -657,6 +665,17 @@ export class SoundManager {
     const context = this.context;
     const now = context.currentTime;
     let duration = 0.12;
+
+    // Resolve species group modifiers (default to smallMammal-like neutral)
+    const groupName = species ? SPECIES_SOUND_GROUP[species] : null;
+    const gp = groupName ? SOUND_GROUP_PARAMS[groupName] : null;
+    const pm = gp ? gp.pitchMul : 1;       // pitch multiplier
+    const gm = gp ? gp.gainMul : 1;        // gain multiplier
+    const nb = gp ? gp.noiseBand : null;    // noise filter type override
+    const nf = gp ? gp.noiseFreq : 0;       // noise frequency override
+    const tt = gp ? gp.toneType : null;     // oscillator type override
+
+    const effectiveGain = gain * gm;
 
     const voiceGain = context.createGain();
     voiceGain.gain.value = ZERO_GAIN;
@@ -695,53 +714,56 @@ export class SoundManager {
       nodes.push(...burst.nodes);
     };
 
+    // Helper: apply group pitch multiplier to a frequency
+    const pf = (freq) => freq * pm;
+
     switch (preset) {
       case 'attack':
         // Scratch/cut: filtered noise burst + short square transient
         duration = 0.11;
-        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 2200, 1.8, 0.6, 0.07, now));
-        addOscillator('square', 520, 180, 0.35, 0.05);
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 2200, 1.8, 0.6, 0.07, now));
+        addOscillator(tt || 'square', pf(520), pf(180), 0.35, 0.05);
         break;
       case 'death':
         // Fall/thud: steep pitch-drop impact + muffled noise + sub layer
         duration = 0.30;
-        collectBurst(this._addImpact(voiceGain, 180, 0.7, 0.30, now));
-        collectBurst(this._addNoiseBurst(voiceGain, 'lowpass', 400, 0.6, 0.35, 0.12, now));
-        addOscillator('triangle', 120, 40, 0.2, 0.30, -10);
+        collectBurst(this._addImpact(voiceGain, pf(180), 0.7, 0.30, now));
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 400, 0.6, 0.35, 0.12, now));
+        addOscillator(tt || 'triangle', pf(120), pf(40), 0.2, 0.30, -10);
         break;
       case 'eat':
         // Bite/peck: sharp dry noise snap + minimal tonal body
         duration = 0.07;
-        collectBurst(this._addNoiseBurst(voiceGain, 'highpass', 3000, 2.0, 0.5, 0.04, now));
-        addOscillator('sine', 380, 250, 0.4, 0.07);
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'highpass', nf || 3000, 2.0, 0.5, 0.04, now));
+        addOscillator(tt || 'sine', pf(380), pf(250), 0.4, 0.07);
         break;
       case 'fruit':
-        // Organic sparkle: ascending tones + short bright noise
+        // Organic sparkle: not species-dependent (plant event)
         duration = 0.18;
         addOscillator('sine', 680, 1100, 0.5, 0.18, 3);
         addOscillator('triangle', 1020, 1400, 0.2, 0.18);
         collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 4500, 3.0, 0.15, 0.06, now));
         break;
       case 'mate':
-        // Soft chirp
+        // Soft chirp — group-coloured tone
         duration = 0.15;
-        addOscillator('sine', 400, 800, 0.6, 0.15, 3);
-        addOscillator('sine', 800, 1200, 0.2, 0.12);
+        addOscillator(tt || 'sine', pf(400), pf(800), 0.6, 0.15, 3);
+        addOscillator(tt || 'sine', pf(800), pf(1200), 0.2, 0.12);
         break;
       case 'drink':
-        // Splash
+        // Splash — group filter colours the water sound
         duration = 0.10;
-        collectBurst(this._addNoiseBurst(voiceGain, 'lowpass', 500, 0.8, 0.5, 0.08, now));
-        addOscillator('sine', 80, 60, 0.25, 0.06);
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 500, 0.8, 0.5, 0.08, now));
+        addOscillator(tt || 'sine', pf(80), pf(60), 0.25, 0.06);
         break;
       case 'flee':
-        // Urgent rustle
+        // Urgent rustle — group-coloured noise and pitch
         duration = 0.09;
-        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 1800, 1.5, 0.55, 0.06, now));
-        addOscillator('sawtooth', 500, 300, 0.3, 0.04);
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 1800, 1.5, 0.55, 0.06, now));
+        addOscillator(tt || 'sawtooth', pf(500), pf(300), 0.3, 0.04);
         break;
       case 'extinctionWarning':
-        // Ominous descending tone
+        // Ominous descending tone (ecosystem event, no species variation)
         duration = 0.40;
         addOscillator('sine', 250, 80, 0.7, 0.40);
         addOscillator('sine', 60, 45, 0.3, 0.35);
@@ -769,7 +791,7 @@ export class SoundManager {
         break;
     }
 
-    setEnvelope(voiceGain.gain, now, gain, duration);
+    setEnvelope(voiceGain.gain, now, effectiveGain, duration);
 
     for (const source of sources) {
       try { source.start(now); } catch { /* already started by helper */ }

@@ -24,6 +24,87 @@ export const SPECIES_AUDIO_SCALE = {
   Bear: 1.0,
 };
 
+/**
+ * Species sound group classification.
+ * Each group gets distinct synthesis parameters for richer audio variety.
+ */
+export const SPECIES_SOUND_GROUP = {
+  Mosquito: 'insect',
+  Caterpillar: 'insect',
+  Cricket: 'insect',
+  Beetle: 'insect',
+  Crow: 'bird',
+  Hawk: 'bird',
+  Squirrel: 'smallMammal',
+  Rabbit: 'smallMammal',
+  Raccoon: 'smallMammal',
+  Fox: 'smallMammal',
+  Lizard: 'reptile',
+  Snake: 'reptile',
+  Crocodile: 'reptile',
+  Deer: 'largeMammal',
+  Goat: 'largeMammal',
+  Boar: 'largeMammal',
+  Wolf: 'largeMammal',
+  Bear: 'largeMammal',
+};
+
+/**
+ * Per-group synthesis modifiers applied on top of the base preset.
+ * Each entry adjusts frequencies, filter types, and tonal characteristics
+ * to give the group a distinct identity.
+ *
+ * Fields:
+ *   pitchMul   – base frequency multiplier (>1 higher, <1 lower)
+ *   noiseBand  – preferred noise filter type for the group
+ *   noiseFreq  – center/cutoff frequency for the noise filter
+ *   toneType   – oscillator waveform colour for tonal layers
+ *   attackMs   – envelope attack time scale factor
+ *   gainMul    – gain level multiplier applied to the voice
+ */
+export const SOUND_GROUP_PARAMS = {
+  insect: {
+    pitchMul: 1.6,
+    noiseBand: 'highpass',
+    noiseFreq: 4500,
+    toneType: 'square',
+    attackMs: 0.6,
+    gainMul: 0.7,
+  },
+  bird: {
+    pitchMul: 1.35,
+    noiseBand: 'bandpass',
+    noiseFreq: 3200,
+    toneType: 'sine',
+    attackMs: 0.8,
+    gainMul: 0.9,
+  },
+  smallMammal: {
+    pitchMul: 1.1,
+    noiseBand: 'bandpass',
+    noiseFreq: 2000,
+    toneType: 'triangle',
+    attackMs: 1.0,
+    gainMul: 1.0,
+  },
+  largeMammal: {
+    pitchMul: 0.75,
+    noiseBand: 'lowpass',
+    noiseFreq: 800,
+    toneType: 'sawtooth',
+    attackMs: 1.2,
+    gainMul: 1.15,
+  },
+  reptile: {
+    pitchMul: 0.9,
+    noiseBand: 'bandpass',
+    noiseFreq: 1200,
+    toneType: 'triangle',
+    attackMs: 1.1,
+    gainMul: 0.95,
+  },
+};
+
 export const SOUND_EVENTS = {
   uiClick: {
     category: 'ui',

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { shouldMutePositionalSfx } from '../audio/soundMath.js';
-import { buildAudioLogExportText, formatAudioLogEntryLabel, formatAudioLogEntryMeta } from '../utils/audioLogExport.js';
+import { buildAudioLogExportText, formatAudioLogEntryLabel, formatAudioLogEntryMeta, formatAudioLogEntryDetail, formatAudioLogEventTime } from '../utils/audioLogExport.js';
 
 const TABS = {
   SETTINGS: 'settings',
@@ -169,9 +169,10 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
                       <div key={`${entry.at}-${entry.type}-${entry.tick}`} className="audio-log-item">
                         <div className="audio-log-top">
                           <span className="audio-log-type">{formatAudioLogEntryLabel(entry)}</span>
-                          <span className="audio-log-time">{new Date(entry.at).toLocaleTimeString()}</span>
+                          <span className="audio-log-time">{formatAudioLogEventTime(entry.at)}</span>
                         </div>
                         <div className="audio-log-meta">{formatAudioLogEntryMeta(entry, ' · ')}</div>
+                        <div className="audio-log-detail">{formatAudioLogEntryDetail(entry, ' · ')}</div>
                       </div>
                     ))}
                   </div>

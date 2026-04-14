@@ -6,7 +6,7 @@
 import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
-import { MAX_ANIMAL_ENERGY } from '../engine/animalSpecies.js';
+import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet } from '../engine/animalSpecies.js';
 import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 
 const ATTACK_JUMP_DURATION = 18;
@@ -22,6 +22,12 @@ const DIR_NAMES = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
 const ANIM_INTERVAL = 6;
 // Ping-pong sequence: 0, 1, 2, 1, 0, 1, 2, ...
 const ANIM_SEQUENCE = [0, 1, 2, 1];
+
+// Zoom threshold: below this, show pixel overlay instead of sprites
+const ENTITY_ZOOM_THRESHOLD = 6;
+
+// Anchor Y for terrestrial animals – matches where feet are drawn in sprite templates (~50/64)
+const FEET_ANCHOR_Y = 0.78;
 
 // Base scale: 1 tile = 1 world unit. Frame pixels → world units.
 const BASE_SCALE = 1.0 / FRAME_SIZE;
@@ -78,6 +84,17 @@ export class EntityLayer {
     this._lastSelX = -1;
     this._lastSelY = -1;
     overlayContainer.addChild(this._selectionGfx);
+
+    // Pixel overlay: colored dots for each animal when zoomed out
+    this._pixelGfx = new PIXI.Graphics();
+    this._pixelGfxContainer = new PIXI.Container();
+    this._pixelGfxContainer.addChild(this._pixelGfx);
+    this._depthContainer.addChild(this._pixelGfxContainer);
+    this._pixelGfxContainer.zIndex = -1000000;
+
+    // Lazy-loaded lookup tables
+    this._speciesColors = null;
+    this._flyingSet = null;
   }
 
   _emitEffectEvent(type, x, y, species, tick) {
@@ -166,6 +183,14 @@ export class EntityLayer {
    */
   update(animals, renderer, currentTick = 0, zoom = 1) {
     this._ensureTextures();
+
+    // Lazy-load lookup tables
+    if (!this._speciesColors) this._speciesColors = buildAnimalColorMap();
+    if (!this._flyingSet) this._flyingSet = buildCanFlySet();
+
+    // Decide rendering mode based on zoom
+    const showSprites = zoom >= ENTITY_ZOOM_THRESHOLD;
+    const showPixelOverlay = zoom < ENTITY_ZOOM_THRESHOLD + 4;
 
     const seen = new Set();
     const showBars = zoom >= ENTITY_BARS_MIN_ZOOM;
@@ -366,6 +391,13 @@ export class EntityLayer {
       // Uniform scale — direction is handled by the directional sprite frame
       sprite.scale.set(finalScale, finalScale);
 
+      // Anchor: flying species keep 1.0 (hovering above shadow), terrestrial use FEET_ANCHOR_Y
+      const anchorY = this._flyingSet.has(a.species) ? 1.0 : FEET_ANCHOR_Y;
+      if (sprite.anchor.y !== anchorY) sprite.anchor.set(0.5, anchorY);
+
+      // Hide sprite when zoomed out (pixel overlay takes over)
+      if (!showSprites) sprite.visible = false;
+
       // Y-sort: higher Y values render in front
       sprite.zIndex = Math.round(a.y * 1000);
 
@@ -389,6 +421,8 @@ export class EntityLayer {
         const shadowScale = finalScale * FRAME_SIZE * 0.4;
         shadow.scale.set(shadowScale * 0.08, shadowScale * 0.03);
         shadow.alpha = 0.3;
+        // Hide shadow when zoomed out
+        if (!showSprites) shadow.visible = false;
       }
 
       // Alpha based on state
@@ -407,7 +441,7 @@ export class EntityLayer {
       }
 
       // HP bar (zoom >= threshold, not dead)
-      if (showBars && a.state !== 9 && a.alive !== false) {
+      if (showBars && showSprites && a.state !== 9 && a.alive !== false) {
         const barW = 0.6;
         const barH = 0.06;
         const barX = a.x - barW / 2;
@@ -440,6 +474,32 @@ export class EntityLayer {
           this._shadows.delete(id);
         }
       }
+    }
+
+    // ── Pixel overlay: colored dots when zoomed out ──
+    const pxGfx = this._pixelGfx;
+    pxGfx.clear();
+    if (showPixelOverlay) {
+      const fadeStart = ENTITY_ZOOM_THRESHOLD;
+      const fadeEnd = ENTITY_ZOOM_THRESHOLD + 4;
+      this._pixelGfxContainer.alpha = zoom >= fadeEnd ? 0
+        : zoom <= fadeStart ? 1
+        : 1 - (zoom - fadeStart) / (fadeEnd - fadeStart);
+
+      for (const a of animals) {
+        if (a.state === 9 || a.alive === false) continue;
+        const color = this._speciesColors[a.species] || 0xcccccc;
+        pxGfx.beginFill(color, 0.9);
+        pxGfx.drawRect(
+          Math.floor(a.x) + 0.1,
+          Math.floor(a.y) + 0.1,
+          0.8,
+          0.8
+        );
+        pxGfx.endFill();
+      }
+    } else {
+      this._pixelGfxContainer.alpha = 0;
     }
   }
 

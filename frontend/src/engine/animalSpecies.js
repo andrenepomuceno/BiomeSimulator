@@ -964,4 +964,22 @@ export function buildInitialAnimalCounts() {
   return counts;
 }
 
+/** Build a species-name → hex-color lookup for pixel-overlay rendering. */
+export function buildAnimalColorMap() {
+  const map = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    map[key] = sp.color;
+  }
+  return map;
+}
+
+/** Return a Set of species keys that have `can_fly: true`. */
+export function buildCanFlySet() {
+  const set = new Set();
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    if (sp.can_fly) set.add(key);
+  }
+  return set;
+}
+
 export default ANIMAL_SPECIES;

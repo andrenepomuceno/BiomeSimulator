@@ -127,6 +127,20 @@ Base scale: `1.0 / FRAME_SIZE`, multiplied by species factor, energy factor (0.8
 | Alpha | 1.0 normal, 0.65 sleeping, fading for dead over 300 ticks |
 | Shadow | Ellipse shadow on ground, scaled proportionally to sprite size |
 
+### Anchor & Floating Fix
+
+Terrestrial animals use `anchor.y = 0.78` to align sprite feet with the ground shadow. Flying species (`can_fly: true`: CROW, MOSQUITO, HAWK) keep `anchor.y = 1.0` to preserve the hovering effect.
+
+### Pixel Overlay (Zoom < 6)
+
+When zoomed out below the sprite threshold (zoom < 6), animals are rendered as colored dots on a per-species color basis using a `PIXI.Graphics` overlay. This mirrors the PlantLayer dual-mode approach:
+
+- **Zoom < 6**: Pixel overlay at full opacity, sprites hidden
+- **Zoom 6–10**: Both visible, pixel overlay fading out
+- **Zoom ≥ 10**: Only sprites visible
+
+Each animal is drawn as a 0.8×0.8 tile colored rectangle at its floor position, using the species `color` from `animalSpecies.js`.
+
 ---
 
 ## AnimationLayer

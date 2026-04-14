@@ -167,6 +167,8 @@ Reproduction is throttled by species population:
 - At 100% of effective cap: 0% mating success
 - Linear decline between 60–100% capacity
 
+The same effective cap calculation is also applied before the initial spawn pass, so the world never starts above the configured global budget or a species-specific effective cap.
+
 Population count uses `world.getAliveSpeciesCount(species)`, which is lazily cached once per tick to avoid O(N) linear scans.
 
 ---

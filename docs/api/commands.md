@@ -45,7 +45,9 @@ worker.postMessage({
 | `config.initial_plant_density` | float | 0.10 | Fraction of eligible tiles seeded |
 | `config.max_animal_population` | int | 10000 | Global animal population budget (0 = use per-species defaults) |
 | `config.animal_global_vision_multiplier` | float | 1.2 | Scales all species base vision before day/night modifiers |
-| `config.initial_animal_counts` | object | (per-species) | Map of species ID → initial count |
+| `config.initial_animal_counts` | object | (per-species) | Map of species ID → initial count, normalized against `max_animal_population` and each species effective cap before spawn |
+
+When `config.max_animal_population` is enabled, the worker clamps and rebalances the requested initial animal counts before the first spawn pass so the world starts within the same effective caps used later for reproduction.
 
 **Response:** Worker posts a [`worldReady`](messages.md#worldready) message.
 

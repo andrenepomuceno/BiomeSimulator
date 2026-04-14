@@ -407,10 +407,11 @@ The game menu is the primary control surface for starting and restoring scenario
 Expected menu capabilities:
 
 - New game configuration for map size, sea level, island layout, and seed.
-- Fauna presets and editable per-species counts.
+- Fauna presets and editable per-species counts with live auto-balancing against the configured maximum animal population.
 - Flora presets and density controls.
 - Save to a JSON file.
 - Load from a JSON file with user-visible parse failure handling.
+- Confirmation before replacing an existing world with a new scenario.
 
 ### 6.4 Reporting and Guidance
 

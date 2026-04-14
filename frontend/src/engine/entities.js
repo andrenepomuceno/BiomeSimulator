@@ -317,6 +317,8 @@ export class Animal {
       age: this.age,
       alive: this.alive,
       lifeStage: this.lifeStage,
+      mateCooldown: this.mateCooldown,
+      attackCooldown: this.attackCooldown,
       targetX: this.targetX,
       targetY: this.targetY,
       _deathTick: this._deathTick,
@@ -330,6 +332,17 @@ export class Animal {
       parentB: this.parentB,
       direction: this.direction,
     };
+  }
+
+  /** Extended dict for inspector — includes nav/home context on top of toDict(). */
+  toInspectDict() {
+    const d = this.toDict();
+    d.homeX = this.homeX;
+    d.homeY = this.homeY;
+    d._birthTick = this._birthTick;
+    d.pathLength = this.path ? this.path.length : 0;
+    d.pathIndex = this.pathIndex;
+    return d;
   }
 
   /** Full internal state for sub-worker transfer. */

@@ -43,7 +43,7 @@ function createDebounce(callback, delayMs) {
 export default function App() {
   const canvasContainerRef = useRef(null);
   const rendererRef = useRef(null);
-  const { postCmd, requestTileInfo } = useSimulation();
+  const { postCmd, requestTileInfo, requestAnimalDetail } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
   const { unlockAudio, updateListenerViewport, playUiClick, playWorldEffect, syncAmbience } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
@@ -330,7 +330,7 @@ export default function App() {
           </div>
           <div className="canvas-area" ref={canvasContainerRef} />
           <div className="sidebar sidebar-right">
-            <EntityInspector onFocusEntity={_handleFocusEntity} />
+            <EntityInspector onFocusEntity={_handleFocusEntity} requestAnimalDetail={requestAnimalDetail} />
             <TerrainEditor />
           </div>
         </div>

@@ -12,11 +12,13 @@
  *   { cmd: 'placeEntity', entityType, x, y }
  *   { cmd: 'removeEntity', entityId }
  *   { cmd: 'getTileInfo', x, y }
+ *   { cmd: 'getAnimalDetail', id }
  *
  * Messages (worker → main):
  *   { type: 'worldReady', terrain, waterProximity, plantType, plantStage, width, height, seed, animals, clock }
  *   { type: 'tick', clock, animals, plantChanges, stats }
  *   { type: 'tileInfo', ... }
+ *   { type: 'animalDetail', id, detail }
  *   { type: 'entityPlaced', entity }
  *   { type: 'entityRemoved', entityId, ok }
  */
@@ -453,6 +455,7 @@ self.onmessage = function (e) {
       const idx = w.idx(x, y);
       const info = {
         terrain: TERRAIN_NAMES[w.terrain[idx]] || 'unknown',
+        terrainId: w.terrain[idx],
         waterProximity: w.waterProximity[idx],
         plant: {
           type: w.plantType[idx],
@@ -461,6 +464,46 @@ self.onmessage = function (e) {
           log: w.plantLog.get(idx) || [],
         },
       };
+      // Adjacent plant count (crowding)
+      {
+        const width = w.width;
+        const height = w.height;
+        let adjPlants = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < width && ny < height && w.plantType[ny * width + nx] !== 0) {
+              adjPlants++;
+            }
+          }
+        }
+        info.adjacentPlants = adjPlants;
+      }
+      // 3×3 neighborhood terrain + water adjacency
+      {
+        const width = w.width;
+        const height = w.height;
+        const neighbors = [];
+        let waterAdjacent = false;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+              const nIdx = ny * width + nx;
+              const tid = w.terrain[nIdx];
+              neighbors.push(tid);
+              if ((dx !== 0 || dy !== 0) && (tid === 0 || tid === 6)) waterAdjacent = true; // WATER or DEEP_WATER
+            } else {
+              neighbors.push(-1); // out-of-bounds
+            }
+          }
+        }
+        info.neighbors = neighbors; // 9 elements, row-major from (-1,-1)
+        info.waterAdjacent = waterAdjacent;
+      }
       // Find animals on this tile (include fresh corpses so skulls are inspectable)
       info.animals = [];
       for (const a of w.animals) {
@@ -469,6 +512,29 @@ self.onmessage = function (e) {
         }
       }
       self.postMessage({ type: 'tileInfo', x, y, info, refreshOnly: !!e.data.refreshOnly });
+      break;
+    }
+
+    case 'getAnimalDetail': {
+      if (!engine) break;
+      const w = engine.world;
+      const animalId = e.data.id;
+      const animal = w.animals.find(a => a.id === animalId);
+      if (animal) {
+        const detail = animal.toInspectDict();
+        // Add tile context under the animal
+        const ax = animal.x | 0;
+        const ay = animal.y | 0;
+        if (w.isInBounds(ax, ay)) {
+          const aIdx = w.idx(ax, ay);
+          detail._tileTerrain = TERRAIN_NAMES[w.terrain[aIdx]] || 'unknown';
+          detail._tileTerrainId = w.terrain[aIdx];
+          detail._tileWaterProximity = w.waterProximity[aIdx];
+        }
+        self.postMessage({ type: 'animalDetail', id: animalId, detail });
+      } else {
+        self.postMessage({ type: 'animalDetail', id: animalId, detail: null });
+      }
       break;
     }
 

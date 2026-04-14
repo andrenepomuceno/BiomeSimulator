@@ -5,6 +5,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import useSimStore from '../store/simulationStore.js';
 
 const TILE_INFO_REFRESH_INTERVAL = 10;
+const ANIMAL_DETAIL_REFRESH_INTERVAL = 10;
 
 export function useSimulation() {
   const workerRef = useRef(null);
@@ -74,12 +75,21 @@ export function useSimulation() {
                     updated.state !== sel.state || updated.age !== sel.age ||
                     updated.x !== sel.x || updated.y !== sel.y ||
                     updated.alive !== sel.alive || updated.pregnant !== sel.pregnant ||
-                    updated.lifeStage !== sel.lifeStage) {
+                    updated.lifeStage !== sel.lifeStage ||
+                    updated.mateCooldown !== sel.mateCooldown ||
+                    updated.attackCooldown !== sel.attackCooldown ||
+                    updated.direction !== sel.direction ||
+                    updated.gestationTimer !== sel.gestationTimer) {
                   store.setSelectedEntity(updated);
                 }
               } else {
                 store.clearSelection(); // entity died / removed
               }
+            }
+            // Periodically request full detail for inspected animal (actionHistory, nav context)
+            if (sel && sel.alive && workerRef.current && msg.clock &&
+                (msg.clock.tick % ANIMAL_DETAIL_REFRESH_INTERVAL === 0)) {
+              workerRef.current.postMessage({ cmd: 'getAnimalDetail', id: sel.id });
             }
           }
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
@@ -110,13 +120,17 @@ export function useSimulation() {
 
         case 'tileInfo':
           if (msg.info) {
-            if (msg.refreshOnly) {
-              // Automatic tile refresh — always keep tile selected, don't switch to animal
-              store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
-            } else if (msg.info.animals && msg.info.animals.length > 0) {
-              store.setSelectedEntity(msg.info.animals[0]);
-            } else {
-              store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
+            // Always show tile view — animals are listed as occupants inside the tile inspector
+            store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
+          }
+          break;
+
+        case 'animalDetail':
+          if (msg.detail) {
+            // Only apply if the same entity is still selected (guard against stale responses)
+            const currentSel = useSimStore.getState().selectedEntity;
+            if (currentSel && currentSel.id === msg.id) {
+              store.setSelectedEntity({ ...currentSel, ...msg.detail });
             }
           }
           break;
@@ -163,5 +177,10 @@ export function useSimulation() {
     workerRef.current.postMessage({ cmd: 'getTileInfo', x, y });
   }, []);
 
-  return { postCmd, requestTileInfo };
+  const requestAnimalDetail = useCallback((id) => {
+    if (!workerRef.current) return;
+    workerRef.current.postMessage({ cmd: 'getAnimalDetail', id });
+  }, []);
+
+  return { postCmd, requestTileInfo, requestAnimalDetail };
 }

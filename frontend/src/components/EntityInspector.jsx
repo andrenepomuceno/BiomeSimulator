@@ -1,15 +1,40 @@
 /**
  * EntityInspector — shows details of selected entity or tile.
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import useSimStore from '../store/simulationStore';
-import { STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
+import { TERRAIN_NAMES as TERRAIN_DISPLAY_NAMES, STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
 import ANIMAL_SPECIES, { buildAnimalSpeciesConfig } from '../engine/animalSpecies';
 import PLANT_SPECIES, { getPlantByTypeId } from '../engine/plantSpecies';
 import { DIET_COLORS } from '../constants/statusColors';
-import { formatTickTimestamp, resolveTicksPerDay } from '../utils/time';
+import { formatTickTimestamp, resolveTicksPerDay, ticksToDay } from '../utils/time';
 
 const ANIMAL_SPECIES_CONFIG = buildAnimalSpeciesConfig();
+
+// Direction labels
+const DIRECTION_LABELS = { 0: '↓ Down', 1: '← Left', 2: '→ Right', 3: '↑ Up' };
+
+// Build plant→consumers reverse lookup once (which animal species eat which plant typeId at which stages)
+const _plantConsumersCache = {};
+function getPlantConsumers(plantTypeId, plantStage) {
+  const key = `${plantTypeId}:${plantStage}`;
+  if (_plantConsumersCache[key]) return _plantConsumersCache[key];
+  const consumers = [];
+  const plantSp = getPlantByTypeId(plantTypeId);
+  if (!plantSp) return consumers;
+  const plantKey = plantSp.id; // e.g. "GRASS"
+  for (const [speciesId, sp] of Object.entries(ANIMAL_SPECIES)) {
+    if (!sp.edible_plants || !sp.edible_plants.includes(plantKey)) continue;
+    if (Array.isArray(plantSp.edibleStages) && plantSp.edibleStages.includes(plantStage)) {
+      const info = SPECIES_INFO[speciesId];
+      if (info) consumers.push({ speciesId, ...info });
+    }
+  }
+  _plantConsumersCache[key] = consumers;
+  return consumers;
+}
+
+// --- Shared sub-components ---
 
 function Bar({ label, value, max, color, icon }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
@@ -62,7 +87,7 @@ function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
 }
 
 const STAGE_LABELS = ['Seed', 'Young Sprout', 'Adult Sprout', 'Adult', 'Fruit'];
-const WATER_AFFINITY_LABELS = { low: '🏜️ Low', medium: '💧 Medium', high: '🌊 High' };
+const WATER_AFFINITY_LABELS = { none: '🚫 None', low: '🏜️ Low', medium: '💧 Medium', high: '🌊 High' };
 const SEASON_LABELS = ['Spring', 'Summer', 'Autumn', 'Winter'];
 const ANIMAL_LIFE_STAGE_KEYS = ['BABY', 'YOUNG', 'YOUNG_ADULT', 'ADULT', 'PUPA'];
 
@@ -75,6 +100,8 @@ function resolveSeasonIndex(clock, gameConfig) {
   const day = clock?.day ?? Math.floor((clock?.tick || 0) / resolveTicksPerDay(clock?.ticks_per_day));
   return Math.floor(day / seasonLengthDays) % 4;
 }
+
+// --- Plant Attributes (species config) ---
 
 function PlantAttributes({ typeId, terrain, stage, clock, gameConfig }) {
   const sp = getPlantByTypeId(typeId);
@@ -128,6 +155,8 @@ function PlantAttributes({ typeId, terrain, stage, clock, gameConfig }) {
   );
 }
 
+// --- Animal Species Attributes ---
+
 function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
   const sp = ANIMAL_SPECIES_CONFIG[species];
   const rawSpecies = ANIMAL_SPECIES[species];
@@ -153,7 +182,7 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
   const thirstPenaltyStart = (sp.max_thirst || 0) * (healthPenalty.threshold_fraction ?? 0.8);
 
   return (
-    <CollapsibleSection title="Species Attributes" icon="📋" defaultOpen={true}>
+    <CollapsibleSection title="Species Attributes" icon="📋" defaultOpen={false}>
       <div className="inspector-grid">
         <div className="stat-row"><span className="stat-label">🏃 Speed</span><span className="stat-value">{sp.speed}</span></div>
         <div className="stat-row"><span className="stat-label">👁️ Vision (Base)</span><span className="stat-value">{baseVision}</span></div>
@@ -182,6 +211,7 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
           <div className="stat-row"><span className="stat-label">🐣 Clutch Size</span><span className="stat-value">{rawSpecies.clutch_size[0]}–{rawSpecies.clutch_size[1]}</span></div>
         )}
         <div className="stat-row"><span className="stat-label">🌙 Activity</span><span className="stat-value">{sp.nocturnal ? 'Nocturnal' : 'Diurnal'}</span></div>
+        {sp.can_fly && <div className="stat-row"><span className="stat-label">🕊️ Flight</span><span className="stat-value">Can fly</span></div>}
         <div className="stat-row"><span className="stat-label">🦴 Scavenging</span><span className="stat-value">{sp.can_scavenge ? 'Enabled' : 'Disabled'}</span></div>
       </div>
       {sp.life_stage_ages && (
@@ -283,6 +313,8 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
   );
 }
 
+// --- Animal status badge ---
+
 function AnimalStatusBadge({ state, alive }) {
   if (!alive) return <span className="inspector-badge badge-dead">💀 Dead</span>;
   const stateColors = {
@@ -295,6 +327,7 @@ function AnimalStatusBadge({ state, alive }) {
     6: '#ff4444', // Attacking
     7: '#ff8833', // Fleeing
     8: '#ff66aa', // Mating
+    10: '#6699cc', // Flying
   };
   return (
     <span className="inspector-badge" style={{ background: stateColors[state] || '#555' }}>
@@ -302,6 +335,61 @@ function AnimalStatusBadge({ state, alive }) {
     </span>
   );
 }
+
+// --- Derived animal status chips ---
+
+function AnimalStatusChips({ entity, speciesConfig, clock }) {
+  const sp = speciesConfig;
+  if (!sp || !entity) return null;
+  const chips = [];
+
+  // Can fly
+  if (sp.can_fly) chips.push({ label: '🕊️ Can Fly', color: '#6699cc' });
+
+  // Nocturnal / Diurnal + active period
+  const isNight = !!clock?.is_night;
+  if (sp.nocturnal) {
+    chips.push({ label: isNight ? '🌙 Active (Nocturnal)' : '😴 Resting (Nocturnal)', color: isNight ? '#88cc44' : '#aa88cc' });
+  }
+
+  // Critical hunger
+  const critHunger = sp.decision_thresholds?.critical_hunger;
+  if (critHunger != null && entity.hunger >= critHunger) {
+    chips.push({ label: '🍖 Critical Hunger', color: '#ff4444' });
+  }
+
+  // Critical thirst
+  const critThirst = sp.decision_thresholds?.critical_thirst;
+  if (critThirst != null && entity.thirst >= critThirst) {
+    chips.push({ label: '💧 Critical Thirst', color: '#4d96ff' });
+  }
+
+  // Can mate right now?
+  if (entity.alive && entity.lifeStage >= 3) { // ADULT
+    const reasons = [];
+    if (entity.mateCooldown > 0) reasons.push(`Cooldown ${entity.mateCooldown}t`);
+    const mateEnergyMin = sp.decision_thresholds?.mate_energy_min ?? 50;
+    if (entity.energy < mateEnergyMin) reasons.push(`Low energy (${Math.round(entity.energy)}/${mateEnergyMin})`);
+    if (reasons.length === 0) {
+      chips.push({ label: '💕 Can Mate', color: '#88cc44' });
+    } else {
+      chips.push({ label: `💕 Can't Mate: ${reasons.join(', ')}`, color: '#666' });
+    }
+  }
+
+  if (chips.length === 0) return null;
+  return (
+    <div className="d-flex flex-wrap gap-1 mb-2" style={{ fontSize: '0.62rem' }}>
+      {chips.map((c, i) => (
+        <span key={i} className="inspector-badge" style={{ background: c.color, fontSize: '0.6rem', padding: '1px 5px' }}>
+          {c.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// --- Action history entries ---
 
 const ACTION_ICONS = {
   ATTACK: '⚔️', DEFENDED: '🛡️', KILLED: '💥', KILLED_BY: '☠️',
@@ -351,6 +439,8 @@ function ActionLogEntry({ event, ticksPerDay }) {
   );
 }
 
+// --- Plant event log entries ---
+
 const PLANT_EVENT_ICONS = {
   PLANTED: '🌱', BORN: '🌱', GREW: '📈', MATURED: '🌳',
   SPOILED: '🍂', DIED: '💀', EATEN: '🍽️',
@@ -382,22 +472,223 @@ function PlantLogEntry({ event, ticksPerDay }) {
   );
 }
 
-export default function EntityInspector({ onFocusEntity }) {
-  const { selectedEntity, selectedTile, clearSelection, clock, gameConfig } = useSimStore();
+// --- Tile occupant list ---
+
+function TileOccupants({ animals, onSelectAnimal }) {
+  if (!animals || animals.length === 0) return null;
+  const alive = animals.filter(a => a.alive);
+  const corpses = animals.filter(a => !a.alive);
+  return (
+    <CollapsibleSection title={`Occupants (${animals.length})`} icon="🐾" defaultOpen={true}>
+      {alive.map(a => {
+        const info = SPECIES_INFO[a.species] || { emoji: '❓', name: a.species };
+        const hpPct = Math.max(0, Math.min(100, (a.hp / (a.maxHp || 100)) * 100));
+        return (
+          <div
+            key={a.id}
+            className="d-flex align-items-center gap-1 mb-1"
+            style={{ cursor: 'pointer', padding: '2px 4px', borderRadius: 4, background: 'rgba(255,255,255,0.03)' }}
+            onClick={() => onSelectAnimal(a)}
+          >
+            <span style={{ fontSize: '0.8rem' }}>{a.lifeStage === -1 ? '🥚' : info.emoji}</span>
+            <span style={{ flex: 1, fontSize: '0.68rem' }}>
+              {info.name} <span style={{ color: '#666' }}>#{a.id}</span>
+            </span>
+            <AnimalStatusBadge state={a.state} alive={a.alive} />
+            <div style={{ width: 40 }}>
+              <div className="entity-bar" style={{ height: 4 }}>
+                <div className="entity-bar-fill" style={{ width: `${hpPct}%`, background: '#ff4757' }} />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {corpses.length > 0 && (
+        <div style={{ fontSize: '0.62rem', color: '#666', marginTop: 2 }}>
+          💀 {corpses.length} corpse{corpses.length > 1 ? 's' : ''}
+        </div>
+      )}
+    </CollapsibleSection>
+  );
+}
+
+// --- Tile neighborhood 3×3 grid ---
+
+function TileNeighborhood({ neighbors, waterAdjacent, adjacentPlants }) {
+  if (!neighbors || neighbors.length < 9) return null;
+  return (
+    <CollapsibleSection title="Neighborhood" icon="🏘️" defaultOpen={false}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, marginBottom: 4, fontSize: '0.6rem', textAlign: 'center' }}>
+        {neighbors.map((tid, i) => {
+          const name = tid >= 0 ? (TERRAIN_DISPLAY_NAMES[tid] || '?') : '—';
+          const isCenter = i === 4;
+          return (
+            <div key={i} style={{
+              background: isCenter ? 'rgba(136,204,68,0.15)' : 'rgba(255,255,255,0.04)',
+              border: isCenter ? '1px solid rgba(136,204,68,0.3)' : '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 3,
+              padding: '2px 1px',
+            }}>
+              {name}
+            </div>
+          );
+        })}
+      </div>
+      <div className="stat-row"><span className="stat-label">🌿 Adjacent Plants</span><span className="stat-value">{adjacentPlants ?? '?'}</span></div>
+      <div className="stat-row"><span className="stat-label">💧 Water Adjacent</span><span className="stat-value" style={{ color: waterAdjacent ? '#4d96ff' : '#666' }}>{waterAdjacent ? 'Yes' : 'No'}</span></div>
+    </CollapsibleSection>
+  );
+}
+
+// --- Plant stage progress & water stress ---
+
+function PlantStageProgress({ plant, plantSp, waterProximity, adjacentPlants, clock, gameConfig }) {
+  if (!plant || !plantSp) return null;
+  const stage = plant.stage;
+  const age = plant.age;
+
+  const stageIdx = stage - 1;
+  const nextThreshold = stageIdx >= 0 && stageIdx < plantSp.stageAges.length ? plantSp.stageAges[stageIdx] : null;
+  const prevThreshold = stageIdx > 0 ? plantSp.stageAges[stageIdx - 1] : 0;
+
+  const seasonIndex = resolveSeasonIndex(clock, gameConfig);
+  const seasonGrowthMult = gameConfig?.season_growth_multiplier?.[seasonIndex] ?? [1.2, 1.0, 0.8, 0.5][seasonIndex] ?? 1;
+
+  let waterMult = 1.0;
+  const waterMods = gameConfig?.plant_water_growth_modifiers;
+  const nearThreshold = gameConfig?.plant_spawn_water_thresholds?.near ?? 5;
+  const midThreshold = gameConfig?.plant_spawn_water_thresholds?.mid ?? 15;
+  const farThreshold = gameConfig?.plant_water_far_threshold ?? 25;
+  if (waterProximity != null && waterMods) {
+    if (waterProximity <= nearThreshold) waterMult = waterMods.near ?? 1.3;
+    else if (plantSp.waterAffinity === 'low') waterMult = waterMods.lowAffinity ?? 1.0;
+    else if (waterProximity <= midThreshold) waterMult = waterMods.mid ?? 0.8;
+    else if (waterProximity <= farThreshold) {
+      waterMult = plantSp.waterAffinity === 'high'
+        ? (waterMods.farHighAffinity ?? 0.5)
+        : (waterMods.farMediumAffinity ?? 0.7);
+    } else {
+      waterMult = plantSp.waterAffinity === 'high' ? 0.3 : 0.5;
+    }
+  }
+
+  const crowdingThreshold = gameConfig?.plant_crowding_neighbor_threshold ?? 5;
+  const crowdingPenalty = gameConfig?.plant_crowding_growth_penalty ?? 0.7;
+  const isCrowded = adjacentPlants != null && adjacentPlants >= crowdingThreshold;
+  const crowdingMult = isCrowded ? crowdingPenalty : 1.0;
+
+  const effectiveAgeMult = waterMult * seasonGrowthMult * crowdingMult;
+  const estimatedEffectiveAge = Math.round(age * effectiveAgeMult);
+
+  const waterStressThreshold = gameConfig?.water_stress_threshold ?? 20;
+  const waterStressSevereThreshold = gameConfig?.water_stress_severe_threshold ?? 30;
+  const isWaterStressed = waterProximity != null && plantSp.waterAffinity !== 'none' && waterProximity > waterStressThreshold;
+  const isSevereStress = waterProximity != null && waterProximity > waterStressSevereThreshold;
+
+  const isFruiting = stage === 5;
+  const fruitSpoilAge = plantSp.fruitSpoilAge;
+
+  return (
+    <CollapsibleSection title="Growth Status" icon="📈" defaultOpen={true}>
+      {nextThreshold != null && stage >= 1 && stage <= 4 && (
+        <div className="mb-1">
+          <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
+            <span className="text-muted">📊 Stage Progress</span>
+            <span>{age} / {nextThreshold} ticks</span>
+          </div>
+          <div className="entity-bar">
+            <div className="entity-bar-fill" style={{
+              width: `${Math.min(100, ((age - prevThreshold) / Math.max(1, nextThreshold - prevThreshold)) * 100)}%`,
+              background: '#88cc44',
+            }} />
+          </div>
+        </div>
+      )}
+      {isFruiting && fruitSpoilAge > 0 && (
+        <div className="mb-1">
+          <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
+            <span className="text-muted">🍂 Spoil Timer</span>
+            <span>{age} / {fruitSpoilAge} ticks</span>
+          </div>
+          <div className="entity-bar">
+            <div className="entity-bar-fill" style={{
+              width: `${Math.min(100, (age / fruitSpoilAge) * 100)}%`,
+              background: age > fruitSpoilAge * 0.8 ? '#ff6b6b' : '#cc8844',
+            }} />
+          </div>
+        </div>
+      )}
+      <div className="stat-row"><span className="stat-label">⏱️ Effective Age (est.)</span><span className="stat-value">{estimatedEffectiveAge} ticks</span></div>
+      <div className="stat-row"><span className="stat-label">📐 Growth Multiplier</span><span className="stat-value" style={{ color: effectiveAgeMult >= 1 ? '#88cc44' : '#ff8844' }}>{effectiveAgeMult.toFixed(2)}x</span></div>
+      <div className="stat-row"><span className="stat-label">💧 Water Mult</span><span className="stat-value">{waterMult.toFixed(2)}x</span></div>
+      <div className="stat-row"><span className="stat-label">🌸 Season Mult</span><span className="stat-value">{seasonGrowthMult.toFixed(2)}x</span></div>
+      {adjacentPlants != null && (
+        <div className="stat-row">
+          <span className="stat-label">🌿 Crowding</span>
+          <span className="stat-value" style={{ color: isCrowded ? '#ff8844' : '#88cc44' }}>
+            {adjacentPlants}/8 neighbors{isCrowded ? ` (${crowdingPenalty}x penalty)` : ''}
+          </span>
+        </div>
+      )}
+      {isWaterStressed && (
+        <div className="stat-row">
+          <span className="stat-label">⚠️ Water Stress</span>
+          <span className="stat-value" style={{ color: isSevereStress ? '#ff4444' : '#ff8844' }}>
+            {isSevereStress ? 'Severe' : 'Moderate'} (dist: {waterProximity})
+          </span>
+        </div>
+      )}
+    </CollapsibleSection>
+  );
+}
+
+// --- Plant consumers (reverse lookup) ---
+
+function PlantConsumers({ plantTypeId, plantStage }) {
+  const consumers = useMemo(() => getPlantConsumers(plantTypeId, plantStage), [plantTypeId, plantStage]);
+  if (consumers.length === 0) return null;
+  return (
+    <CollapsibleSection title={`Consumers (${consumers.length})`} icon="🐾" defaultOpen={false}>
+      <div className="inspector-chip-list">
+        {consumers.map(c => (
+          <span key={c.speciesId} style={{ background: '#1a2e1a', padding: '2px 7px', borderRadius: 4, border: '1px solid #2a4a2a', fontSize: '0.62rem' }}>
+            {c.emoji} {c.name}
+          </span>
+        ))}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+// ===================== MAIN EXPORT =====================
+
+export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) {
+  const { selectedEntity, selectedTile, clearSelection, setSelectedEntity, clock, gameConfig } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
 
+  // --- Animal Inspector ---
   if (selectedEntity) {
     const e = selectedEntity;
-
     const info = SPECIES_INFO[e.species] || { emoji: '❓', name: e.species, diet: e.diet || '?' };
     const sp = ANIMAL_SPECIES_CONFIG[e.species];
     const maxHunger = sp?.max_hunger || 100;
     const maxThirst = sp?.max_thirst || 100;
     const maxEnergy = sp?.max_energy || 100;
-    const maxHp = e._isEggStage && e.lifeStage === -1 ? (e._eggMaxHp || sp?.egg_hp || maxHp) : (sp?.max_hp || 100);
+    const maxHp = e._isEggStage && e.lifeStage === -1 ? (e._eggMaxHp || sp?.egg_hp || sp?.max_hp || 100) : (sp?.max_hp || 100);
     const maxAge = sp?.max_age || 1;
     const agePct = Math.min(100, (e.age / maxAge) * 100);
-    const isEggStage = e.lifeStage === -1; // LifeStage.EGG
+    const isEggStage = e.lifeStage === -1;
+    const ageDays = ticksToDay(e.age, ticksPerDay);
+    const birthDay = e._birthTick != null ? ticksToDay(e._birthTick, ticksPerDay) : null;
+
+    const homeX = e.homeX;
+    const homeY = e.homeY;
+    const homeDist = (homeX != null && homeY != null) ? Math.round(Math.sqrt((e.x - homeX) ** 2 + (e.y - homeY) ** 2)) : null;
+
+    const handleSelectAnimal = (animal) => {
+      setSelectedEntity(animal);
+      if (requestAnimalDetail) requestAnimalDetail(animal.id);
+    };
 
     return (
       <div className="sidebar-section entity-info">
@@ -408,13 +699,16 @@ export default function EntityInspector({ onFocusEntity }) {
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
         </div>
 
-        {/* Status badge */}
+        {/* Status badges */}
         <div className="mb-2">
           {isEggStage
             ? <span className="inspector-badge" style={{ background: '#ffaa33' }}>🥚 Incubating</span>
             : <AnimalStatusBadge state={e.state} alive={e.alive} />
           }
         </div>
+
+        {/* Derived status chips */}
+        {!isEggStage && <AnimalStatusChips entity={e} speciesConfig={sp} clock={clock} />}
 
         {/* Identity */}
         <CollapsibleSection title="Identity" icon="🪪" defaultOpen={true}>
@@ -442,15 +736,19 @@ export default function EntityInspector({ onFocusEntity }) {
             <span className="stat-value">{LIFE_STAGE_NAMES[e.lifeStage] || 'Unknown'}</span>
           </div>
           <div className="stat-row">
+            <span className="stat-label">Age</span>
+            <span className="stat-value">{e.age} ticks ({ageDays} days)</span>
+          </div>
+          {birthDay != null && (
+            <div className="stat-row">
+              <span className="stat-label">Born</span>
+              <span className="stat-value">Day {birthDay} (tick {e._birthTick})</span>
+            </div>
+          )}
+          <div className="stat-row">
             <span className="stat-label">Position</span>
             <span className="stat-value">({Math.floor(e.x)}, {Math.floor(e.y)})</span>
           </div>
-          {e.targetX != null && e.targetY != null && e.state !== 0 && e.state !== 5 && (
-            <div className="stat-row">
-              <span className="stat-label">Target</span>
-              <span className="stat-value" style={{ color: '#888' }}>({e.targetX}, {e.targetY})</span>
-            </div>
-          )}
         </CollapsibleSection>
 
         {/* Vital signs */}
@@ -482,6 +780,44 @@ export default function EntityInspector({ onFocusEntity }) {
               <div className="entity-bar-fill" style={{ width: `${agePct}%`, background: agePct > 80 ? '#ff6b6b' : '#aaa' }} />
             </div>
           </div>
+        </CollapsibleSection>
+
+        {/* Navigation & Context */}
+        <CollapsibleSection title="Navigation" icon="🧭" defaultOpen={true}>
+          <div className="stat-row">
+            <span className="stat-label">Direction</span>
+            <span className="stat-value">{DIRECTION_LABELS[e.direction] || '?'}</span>
+          </div>
+          {e.targetX != null && e.targetY != null && e.state !== 0 && e.state !== 5 && (
+            <div className="stat-row">
+              <span className="stat-label">Target</span>
+              <span className="stat-value" style={{ color: '#888' }}>({e.targetX}, {e.targetY})</span>
+            </div>
+          )}
+          {e.pathLength > 0 && (
+            <div className="stat-row">
+              <span className="stat-label">Path</span>
+              <span className="stat-value">{e.pathIndex ?? 0}/{e.pathLength} steps</span>
+            </div>
+          )}
+          {homeX != null && homeY != null && (
+            <div className="stat-row">
+              <span className="stat-label">🏠 Home</span>
+              <span className="stat-value">({homeX}, {homeY}){homeDist != null ? ` — ${homeDist} tiles away` : ''}</span>
+            </div>
+          )}
+          {e._tileTerrain && (
+            <div className="stat-row">
+              <span className="stat-label">🗺️ Terrain</span>
+              <span className="stat-value" style={{ textTransform: 'capitalize' }}>{e._tileTerrain}</span>
+            </div>
+          )}
+          {e._tileWaterProximity != null && (
+            <div className="stat-row">
+              <span className="stat-label">💧 Water Distance</span>
+              <span className="stat-value">{e._tileWaterProximity} tiles</span>
+            </div>
+          )}
         </CollapsibleSection>
 
         {/* Cooldowns & Reproduction Status */}
@@ -536,6 +872,7 @@ export default function EntityInspector({ onFocusEntity }) {
     );
   }
 
+  // --- Tile Inspector ---
   if (selectedTile) {
     const t = selectedTile;
     const hasPlant = t.plant && t.plant.type !== 0 && t.plant.type !== 'none';
@@ -550,6 +887,11 @@ export default function EntityInspector({ onFocusEntity }) {
       : '🌿';
     const maxPlantAge = hasPlant && plantSp ? plantSp.stageAges[plantSp.stageAges.length - 1] : 1;
 
+    const handleSelectAnimal = (animal) => {
+      setSelectedEntity(animal);
+      if (requestAnimalDetail) requestAnimalDetail(animal.id);
+    };
+
     return (
       <div className="sidebar-section entity-info">
         <div className="d-flex justify-content-between align-items-center mb-2">
@@ -557,6 +899,7 @@ export default function EntityInspector({ onFocusEntity }) {
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
         </div>
 
+        {/* Terrain */}
         <CollapsibleSection title="Terrain" icon="🗺️" defaultOpen={true}>
           <div className="stat-row">
             <span className="stat-label">Type</span>
@@ -566,8 +909,21 @@ export default function EntityInspector({ onFocusEntity }) {
             <span className="stat-label">Water Distance</span>
             <span className="stat-value">{t.waterProximity} tiles</span>
           </div>
+          {t.waterAdjacent != null && (
+            <div className="stat-row">
+              <span className="stat-label">Water Adjacent</span>
+              <span className="stat-value" style={{ color: t.waterAdjacent ? '#4d96ff' : '#666' }}>{t.waterAdjacent ? 'Yes' : 'No'}</span>
+            </div>
+          )}
         </CollapsibleSection>
 
+        {/* Neighborhood */}
+        <TileNeighborhood neighbors={t.neighbors} waterAdjacent={t.waterAdjacent} adjacentPlants={t.adjacentPlants} />
+
+        {/* Occupants */}
+        <TileOccupants animals={t.animals} onSelectAnimal={handleSelectAnimal} />
+
+        {/* Plant */}
         {hasPlant && (
           <>
             <CollapsibleSection title={`${plantEmoji} ${PLANT_TYPE_NAMES[t.plant.type] || 'Plant'}`} icon="" defaultOpen={true}>
@@ -608,7 +964,24 @@ export default function EntityInspector({ onFocusEntity }) {
                 </div>
               )}
             </CollapsibleSection>
+
+            {/* Plant growth status & multipliers */}
+            <PlantStageProgress
+              plant={t.plant}
+              plantSp={plantSp}
+              waterProximity={t.waterProximity}
+              adjacentPlants={t.adjacentPlants}
+              clock={clock}
+              gameConfig={gameConfig}
+            />
+
+            {/* Plant consumers */}
+            <PlantConsumers plantTypeId={t.plant.type} plantStage={t.plant.stage} />
+
+            {/* Plant species attributes */}
             <PlantAttributes typeId={t.plant.type} terrain={t.terrain} stage={t.plant.stage} clock={clock} gameConfig={gameConfig} />
+
+            {/* Plant event log */}
             {t.plant.log && t.plant.log.length > 0 && (
               <CollapsibleSection title="Event Log" icon="📜" defaultOpen={false}>
                 <div className="inspector-log-list" style={{ maxHeight: 200, overflowY: 'auto' }}>
@@ -620,10 +993,16 @@ export default function EntityInspector({ onFocusEntity }) {
             )}
           </>
         )}
+
+        {/* Empty tile message */}
+        {!hasPlant && (!t.animals || t.animals.length === 0) && (
+          <div className="mt-2 small text-muted" style={{ fontStyle: 'italic' }}>No plants or animals on this tile.</div>
+        )}
       </div>
     );
   }
 
+  // --- Empty state ---
   return (
     <div className="sidebar-section entity-info">
       <h6>Inspector</h6>

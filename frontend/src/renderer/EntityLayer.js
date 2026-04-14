@@ -23,10 +23,34 @@ const ANIM_INTERVAL = 6;
 // Ping-pong sequence: 0, 1, 2, 1, 0, 1, 2, ...
 const ANIM_SEQUENCE = [0, 1, 2, 1];
 
+// Base scale: 1 tile = 1 world unit. Frame pixels → world units.
+const BASE_SCALE = 1.0 / FRAME_SIZE;
+// Minimum / maximum sprite scale (in world units) to clamp species at 0.75–1.5 tiles
+const MIN_SCALE = 0.75 / FRAME_SIZE;
+const MAX_SCALE = 1.5 / FRAME_SIZE;
+
+// Per-species visual scale factor (relative to 1 tile)
+const SPECIES_VISUAL_SCALE = {
+  // Insects — small
+  MOSQUITO: 0.55, CATERPILLAR: 0.55, CRICKET: 0.55, BEETLE: 0.55,
+  // Small animals
+  RABBIT: 0.7, SQUIRREL: 0.7, LIZARD: 0.7, CROW: 0.7,
+  // Medium
+  FOX: 0.85, SNAKE: 0.85, HAWK: 0.85, RACCOON: 0.85,
+  // Large herbivores
+  DEER: 0.95, GOAT: 0.95, BOAR: 0.95,
+  // Apex / large
+  WOLF: 1.1, CROCODILE: 1.1, BEAR: 1.1,
+};
+
 export class EntityLayer {
-  constructor(animationLayer, onEffectEvent) {
-    this.container = new PIXI.Container();
+  constructor(animationLayer, onEffectEvent, depthContainer, shadowContainer, overlayContainer) {
+    this.container = new PIXI.Container(); // kept for API compat (not added to worldContainer)
+    this._depthContainer = depthContainer;
+    this._shadowContainer = shadowContainer;
     this._sprites = new Map(); // id → PIXI.Sprite
+    this._shadows = new Map(); // id → PIXI.Graphics (animal shadow)
+    this._shadowPool = []; // recycled shadow Graphics
     this._textures = null;
     this._texturesReady = false;
     this._animationLayer = animationLayer || null;
@@ -44,7 +68,7 @@ export class EntityLayer {
 
     // Energy bar overlay (single Graphics for all bars — batched draw)
     this._barGfx = new PIXI.Graphics();
-    this.container.addChild(this._barGfx);
+    overlayContainer.addChild(this._barGfx);
 
     // Selection marker
     this._selectedId = null;
@@ -53,7 +77,7 @@ export class EntityLayer {
     this._selectionTick = 0;
     this._lastSelX = -1;
     this._lastSelY = -1;
-    this.container.addChild(this._selectionGfx);
+    overlayContainer.addChild(this._selectionGfx);
   }
 
   _emitEffectEvent(type, x, y, species, tick) {
@@ -76,7 +100,7 @@ export class EntityLayer {
       sprite.alpha = 1;
     } else {
       sprite = new PIXI.Sprite(tex);
-      sprite.anchor.set(0.5);
+      sprite.anchor.set(0.5, 1.0);
     }
     sprite.rotation = 0;
     sprite._spawnTick = null;
@@ -87,7 +111,7 @@ export class EntityLayer {
     sprite._animSeqIdx = 0;
     sprite._animTick = 0;
     sprite._direction = 0;
-    this.container.addChild(sprite);
+    this._depthContainer.addChild(sprite);
     return sprite;
   }
 
@@ -102,8 +126,22 @@ export class EntityLayer {
     sprite._animSeqIdx = 0;
     sprite._animTick = 0;
     sprite._direction = 0;
-    this.container.removeChild(sprite);
+    this._depthContainer.removeChild(sprite);
     this._pool.push(sprite);
+  }
+
+  _acquireShadow() {
+    if (this._shadowPool.length > 0) {
+      const s = this._shadowPool.pop();
+      s.visible = true;
+      return s;
+    }
+    const g = new PIXI.Graphics();
+    g.beginFill(0x000000, 1);
+    g.drawEllipse(0, 0, 12, 5);
+    g.endFill();
+    this._shadowContainer.addChild(g);
+    return g;
   }
 
   /**
@@ -242,7 +280,7 @@ export class EntityLayer {
         sprite._texKey = texKey;
       }
 
-      // Position (already at sub-cell position including tile center)
+      // Position: anchor is (0.5, 1.0) so sprite.y is the feet position
       let spriteX = a.x;
       let spriteY = a.y;
       sprite.rotation = 0;
@@ -251,12 +289,12 @@ export class EntityLayer {
       sprite._lastX = a.x;
       sprite._lastY = a.y;
 
-      // Scale: atlas frame → ~1 tile.  Adjust for frame size so 1 frame ≈ 1 tile.
-      const baseScale = 2 / FRAME_SIZE;
+      // Scale: species-aware sizing clamped to 0.75–1.5 tiles
+      const speciesScale = SPECIES_VISUAL_SCALE[a.species] || 0.85;
       let finalScale;
       if (isEgg) {
         // Eggs: small, static
-        finalScale = baseScale * 0.4;
+        finalScale = BASE_SCALE * 0.4;
       } else {
         const energy = Number.isFinite(a.energy) ? a.energy : 0;
         const energyFactor = 0.8 + (energy / MAX_ANIMAL_ENERGY) * 0.4;
@@ -267,7 +305,7 @@ export class EntityLayer {
           : a.lifeStage === 2 ? 0.85
           : 1.0;
         const pregnantFactor = a.pregnant ? 1.1 : 1.0;
-        finalScale = baseScale * energyFactor * stageFactor * pregnantFactor;
+        finalScale = BASE_SCALE * speciesScale * energyFactor * stageFactor * pregnantFactor;
       }
 
       // Pop-in animation for newly spawned sprites
@@ -309,13 +347,42 @@ export class EntityLayer {
       }
 
       // Guard: clamp to valid range to prevent giant sprites from NaN/invalid data
-      if (!Number.isFinite(finalScale) || finalScale <= 0) finalScale = baseScale;
+      if (!Number.isFinite(finalScale) || finalScale <= 0) finalScale = BASE_SCALE;
+      // Clamp to [0.75, 1.5] tile range (skip during pop-in which briefly exceeds)
+      if (sprite._spawnTick == null) {
+        finalScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, finalScale));
+      }
 
       sprite.x = spriteX;
       sprite.y = spriteY;
 
       // Uniform scale — direction is handled by the directional sprite frame
       sprite.scale.set(finalScale, finalScale);
+
+      // Y-sort: higher Y values render in front
+      sprite.zIndex = Math.round(a.y * 1000);
+
+      // Animal shadow (ground level)
+      let shadow = this._shadows.get(a.id);
+      if (a.state === 9) {
+        // Dead animals: no shadow
+        if (shadow) {
+          shadow.visible = false;
+          this._shadowPool.push(shadow);
+          this._shadows.delete(a.id);
+        }
+      } else {
+        if (!shadow) {
+          shadow = this._acquireShadow();
+          this._shadows.set(a.id, shadow);
+        }
+        shadow.visible = true;
+        shadow.x = a.x;
+        shadow.y = a.y;
+        const shadowScale = finalScale * FRAME_SIZE * 0.4;
+        shadow.scale.set(shadowScale * 0.08, shadowScale * 0.03);
+        shadow.alpha = 0.3;
+      }
 
       // Alpha based on state
       if (a.state === 9) {
@@ -337,7 +404,9 @@ export class EntityLayer {
         const barW = 0.6;
         const barH = 0.06;
         const barX = a.x - barW / 2;
-        const barY = a.y - 0.52;
+        // With anchor (0.5, 1.0), sprite body is above spriteY; bar goes above the sprite
+        const spriteHeight = finalScale * FRAME_SIZE;
+        const barY = spriteY - spriteHeight - 0.06;
 
         const hpMax = a.maxHp || 1;
         const hpRatio = Math.max(0, Math.min(1, (a.hp ?? hpMax) / hpMax));
@@ -351,17 +420,20 @@ export class EntityLayer {
       }
     }
 
-    // Return sprites for animals no longer visible to the pool
+    // Return sprites and shadows for animals no longer visible
     for (const [id, sprite] of this._sprites) {
       if (!seen.has(id)) {
         this._releaseSprite(sprite);
         this._sprites.delete(id);
         this._prevStates.delete(id);
+        const shadow = this._shadows.get(id);
+        if (shadow) {
+          shadow.visible = false;
+          this._shadowPool.push(shadow);
+          this._shadows.delete(id);
+        }
       }
     }
-
-    // Keep bar overlay and selection marker on top
-    this.container.setChildIndex(barGfx, this.container.children.length - 1);
   }
 
   setSelectedId(id) {
@@ -401,16 +473,14 @@ export class EntityLayer {
 
     gfx.clear();
     gfx.lineStyle(0.06, 0xffdd44, 0.9);
-    gfx.drawCircle(0, 0, radius);
+    // Draw circle centered on the sprite visual center (above feet position)
+    gfx.drawCircle(0, -0.3, radius);
     // Inner subtle ring
     gfx.lineStyle(0.03, 0xffffff, 0.5);
-    gfx.drawCircle(0, 0, radius * 0.75);
+    gfx.drawCircle(0, -0.3, radius * 0.75);
 
     gfx.x = sprite.x;
     gfx.y = sprite.y;
     gfx.visible = true;
-
-    // Ensure marker renders on top
-    this.container.setChildIndex(gfx, this.container.children.length - 1);
   }
 }

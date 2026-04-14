@@ -34,15 +34,32 @@ export class GameRenderer {
     this.nightOverlay.alpha = 0;
     this.app.stage.addChild(this.nightOverlay);
 
+    // Shared containers for depth-sorted rendering
+    // Ground-level shadow container (rendered below all sprites)
+    this._shadowContainer = new PIXI.Container();
+    // Y-sorted depth container for plant emojis + animal sprites
+    this._depthContainer = new PIXI.Container();
+    this._depthContainer.sortableChildren = true;
+    // Overlay container for HP bars, selection markers (always on top of sprites)
+    this._overlayContainer = new PIXI.Container();
+
     // Layers
     this.terrainLayer = new TerrainLayer();
-    this.plantLayer = new PlantLayer();
+    this.plantLayer = new PlantLayer(this._depthContainer, this._shadowContainer);
     this.animationLayer = new AnimationLayer();
-    this.entityLayer = new EntityLayer(this.animationLayer, (event) => this._emitEffectEvent(event));
+    this.entityLayer = new EntityLayer(
+      this.animationLayer,
+      (event) => this._emitEffectEvent(event),
+      this._depthContainer,
+      this._shadowContainer,
+      this._overlayContainer,
+    );
 
     this.worldContainer.addChild(this.terrainLayer.container);
-    this.worldContainer.addChild(this.plantLayer.container);
-    this.worldContainer.addChild(this.entityLayer.container);
+    this.worldContainer.addChild(this.plantLayer.container);  // pixel overlay only
+    this.worldContainer.addChild(this._shadowContainer);
+    this.worldContainer.addChild(this._depthContainer);
+    this.worldContainer.addChild(this._overlayContainer);
     this.worldContainer.addChild(this.animationLayer.container);
 
     // Tile selection marker

@@ -13,17 +13,22 @@
 import * as PIXI from 'pixi.js';
 import { PLANT_COLORS } from '../utils/terrainColors.js';
 import { buildFloraAtlasSync, FRAME_SIZE } from '../utils/spriteAtlas.js';
-import { buildSwayStages } from '../engine/plantSpecies.js';
+import { buildSwayStages, buildTreeTypes, buildLowPlantTypes } from '../engine/plantSpecies.js';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const MAX_EMOJI_SPRITES = 8000;
-const BASE_EMOJI_SCALE = 2.6 / FRAME_SIZE; // ~30% larger than 1 tile
+const BASE_EMOJI_SCALE = 1.0 / FRAME_SIZE;
 
-/** Deterministic per-cell scale jitter ±10%. */
-function cellScale(idx) {
+// Per-category visual scale: trees large, medium default, low plants small
+const PLANT_VISUAL_SCALE_TREE = 1.4;
+const PLANT_VISUAL_SCALE_MEDIUM = 1.0;
+const PLANT_VISUAL_SCALE_LOW = 0.75;
+
+/** Deterministic per-cell scale jitter ±10%, multiplied by species visual scale. */
+function cellScale(idx, speciesScale) {
   // simple hash → 0..1
   const h = ((idx * 2654435761) >>> 0) / 4294967296;
-  return BASE_EMOJI_SCALE * (0.9 + h * 0.2);
+  return BASE_EMOJI_SCALE * speciesScale * (0.9 + h * 0.2);
 }
 
 /** Per-plant sway frame with varied phase & period so plants don't move in unison. */
@@ -37,8 +42,8 @@ function swayFrame(tick, idx) {
 }
 
 export class PlantLayer {
-  constructor() {
-    this.container = new PIXI.Container();
+  constructor(depthContainer, shadowContainer) {
+    this.container = new PIXI.Container(); // pixel overlay only
     this.sprite = null; // pixel overlay sprite
     this.width = 0;
     this.height = 0;
@@ -49,20 +54,22 @@ export class PlantLayer {
     this._types = null;  // Uint8Array
     this._stages = null; // Uint8Array
 
-    // Shadow container (rendered below emojis)
-    this._shadowContainer = new PIXI.Container();
-    this.container.addChild(this._shadowContainer);
+    // Shared shadow container (ground level, rendered by GameRenderer)
+    this._shadowContainer = shadowContainer;
     this._shadowPool = [];
 
-    // Emoji sprite overlay
-    this._emojiContainer = new PIXI.Container();
-    this.container.addChild(this._emojiContainer);
+    // Shared depth container for Y-sorted emoji sprites (managed by GameRenderer)
+    this._depthContainer = depthContainer;
     this._emojiPool = [];     // recycled sprites
 
     // Incremental sprite tracking: cellIdx → { sprite, shadow (or null), texKey }
     this._spriteMap = new Map();
 
     this._plantTextures = null;
+
+    // Plant category lookup (typeId → visual scale factor)
+    this._treeTypes = null;
+    this._lowPlantTypes = null;
 
     // Wind sway tick (set externally from GameRenderer)
     this._tick = 0;
@@ -201,15 +208,11 @@ export class PlantLayer {
 
     if (zoom < EMOJI_ZOOM_THRESHOLD) {
       if (this._spriteMap.size > 0) this._returnAll();
-      this._emojiContainer.visible = false;
-      this._shadowContainer.visible = false;
       // Full opacity pixel overlay when sprites hidden
       if (this.sprite) this.sprite.alpha = 1;
       return;
     }
 
-    this._emojiContainer.visible = true;
-    this._shadowContainer.visible = true;
     // Fade pixel overlay as zoom increases past threshold
     if (this.sprite) {
       const fadeStart = EMOJI_ZOOM_THRESHOLD;
@@ -222,6 +225,12 @@ export class PlantLayer {
     }
     if (!this._swayStages) {
       this._swayStages = buildSwayStages();
+    }
+    if (!this._treeTypes) {
+      this._treeTypes = buildTreeTypes();
+    }
+    if (!this._lowPlantTypes) {
+      this._lowPlantTypes = buildLowPlantTypes();
     }
 
     // Clamp viewport to map bounds
@@ -346,18 +355,22 @@ export class PlantLayer {
         }
       }
 
+      const speciesScale = this._getSpeciesScale(ptype);
+      const sc = cellScale(idx, speciesScale);
+
       entry.sprite.x = cx + 0.5;
-      entry.sprite.y = cy + 0.5;
-      const sc = cellScale(idx);
+      // Anchor (0.5, 1.0): base at tile bottom, sprite body extends upward
+      entry.sprite.y = cy + 1.0;
       entry.sprite.scale.set(sc * scaleMultiplier);
+      // Y-sort: higher Y values render in front
+      entry.sprite.zIndex = Math.round((cy + 1.0) * 1000);
 
       if (entry.shadow) {
-        const stage = this._stages[idx];
-        const ss = stage === 3 ? 0.016 : (stage >= 4 ? 0.026 : 0.020);
-        const sh = stage === 3 ? 0.008 : (stage >= 4 ? 0.013 : 0.010);
+        const ss = stage === 3 ? 0.010 : (stage >= 4 ? 0.016 : 0.013);
+        const sh = stage === 3 ? 0.005 : (stage >= 4 ? 0.008 : 0.006);
         entry.shadow.x = cx + 0.5;
-        entry.shadow.y = cy + 0.85;
-        entry.shadow.scale.set(ss * scaleMultiplier, sh);
+        entry.shadow.y = cy + 0.95;
+        entry.shadow.scale.set(ss * speciesScale * scaleMultiplier, sh * speciesScale);
       }
     }
 
@@ -379,22 +392,26 @@ export class PlantLayer {
 
   _addEntry(idx, x, y, ptype, stage, baseKey, texKey, tex, t, swayMap) {
     const sprite = this._acquireSprite(tex);
-    const sc = cellScale(idx);
+    const speciesScale = this._getSpeciesScale(ptype);
+    const sc = cellScale(idx, speciesScale);
 
     sprite.x = x + 0.5;
-    sprite.y = y + 0.5;
-    sprite.anchor.set(0.5, 0.7);
+    // Anchor (0.5, 1.0): base at tile bottom, sprite body extends upward
+    sprite.y = y + 1.0;
+    sprite.anchor.set(0.5, 1.0);
     sprite.scale.set(sc);
     sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.6 : (stage === 3 ? 0.8 : (stage === 5 ? 0.9 : 1.0)));
+    // Y-sort: higher Y values render in front
+    sprite.zIndex = Math.round((y + 1.0) * 1000);
 
     let shadow = null;
     if (stage >= 3) {
       shadow = this._acquireShadow();
       shadow.x = x + 0.5;
-      shadow.y = y + 0.85;
-      const ss = stage === 3 ? 0.016 : (stage >= 4 ? 0.026 : 0.020);
-      const sh = stage === 3 ? 0.008 : (stage >= 4 ? 0.013 : 0.010);
-      shadow.scale.set(ss, sh);
+      shadow.y = y + 0.95;
+      const ss = stage === 3 ? 0.010 : (stage >= 4 ? 0.016 : 0.013);
+      const sh = stage === 3 ? 0.005 : (stage >= 4 ? 0.008 : 0.006);
+      shadow.scale.set(ss * speciesScale, sh * speciesScale);
       shadow.alpha = 0.35;
     }
 
@@ -418,8 +435,8 @@ export class PlantLayer {
       sprite.visible = true;
     } else {
       sprite = new PIXI.Sprite(texture);
-      sprite.anchor.set(0.5);
-      this._emojiContainer.addChild(sprite);
+      sprite.anchor.set(0.5, 1.0);
+      this._depthContainer.addChild(sprite);
     }
     return sprite;
   }
@@ -450,5 +467,12 @@ export class PlantLayer {
     this._prevVP.x1 = 0;
     this._prevVP.y1 = 0;
     this._dirtyCells.clear();
+  }
+
+  /** Get the visual scale factor for a plant typeId based on its category. */
+  _getSpeciesScale(typeId) {
+    if (this._treeTypes && this._treeTypes.has(typeId)) return PLANT_VISUAL_SCALE_TREE;
+    if (this._lowPlantTypes && this._lowPlantTypes.has(typeId)) return PLANT_VISUAL_SCALE_LOW;
+    return PLANT_VISUAL_SCALE_MEDIUM;
   }
 }

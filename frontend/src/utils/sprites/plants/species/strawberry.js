@@ -4,8 +4,10 @@ export default {
   seedHighlight: '#b8a870',
   sproutColor: '#60a838',
   stem: '#5a7a30',
-  leaf: '#38a030',
-  leafDark: '#288828',
+  leaf: '#48b838',
+  leafDark: '#38a028',
   fruit: '#e83040',
   fruitAccent: '#ff5060',
+  bushW: 14,
+  bushH: 10,
 };

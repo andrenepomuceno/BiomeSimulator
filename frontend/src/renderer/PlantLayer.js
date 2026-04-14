@@ -186,11 +186,19 @@ export class PlantLayer {
       if (this._spriteMap.size > 0) this._returnAll();
       this._emojiContainer.visible = false;
       this._shadowContainer.visible = false;
+      // Full opacity pixel overlay when sprites hidden
+      if (this.sprite) this.sprite.alpha = 1;
       return;
     }
 
     this._emojiContainer.visible = true;
     this._shadowContainer.visible = true;
+    // Fade pixel overlay as zoom increases past threshold
+    if (this.sprite) {
+      const fadeStart = EMOJI_ZOOM_THRESHOLD;
+      const fadeEnd = EMOJI_ZOOM_THRESHOLD + 4;
+      this.sprite.alpha = zoom >= fadeEnd ? 0 : Math.max(0, 1 - (zoom - fadeStart) / (fadeEnd - fadeStart));
+    }
 
     if (!this._plantTextures) {
       this._plantTextures = buildFloraAtlasSync();
@@ -327,9 +335,12 @@ export class PlantLayer {
       entry.sprite.scale.set(EMOJI_SCALE * scaleMultiplier);
 
       if (entry.shadow) {
+        const stage = this._stages[idx];
+        const ss = stage === 3 ? 0.014 : (stage >= 4 ? 0.022 : 0.018);
+        const sh = stage === 3 ? 0.007 : (stage >= 4 ? 0.011 : 0.009);
         entry.shadow.x = cx + 0.5;
         entry.shadow.y = cy + 0.85;
-        entry.shadow.scale.set(0.02 * scaleMultiplier, 0.01);
+        entry.shadow.scale.set(ss * scaleMultiplier, sh);
       }
     }
 
@@ -362,7 +373,10 @@ export class PlantLayer {
       shadow = this._acquireShadow();
       shadow.x = x + 0.5;
       shadow.y = y + 0.85;
-      shadow.scale.set(0.02, 0.01);
+      // Shadow grows with stage
+      const ss = stage === 3 ? 0.014 : (stage >= 4 ? 0.022 : 0.018);
+      const sh = stage === 3 ? 0.007 : (stage >= 4 ? 0.011 : 0.009);
+      shadow.scale.set(ss, sh);
       shadow.alpha = 0.2;
     }
 

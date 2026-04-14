@@ -5,8 +5,11 @@ export default {
   sproutColor: '#48a828',
   trunk: '#887040',
   trunkDark: '#685028',
-  leaf: '#308818',
-  leafDark: '#207010',
+  leaf: '#708850',
+  leafDark: '#587038',
   fruit: '#709838',
   fruitAccent: '#88b048',
+  canopyW: 14,
+  canopyH: 10,
+  trunkH: 18,
 };

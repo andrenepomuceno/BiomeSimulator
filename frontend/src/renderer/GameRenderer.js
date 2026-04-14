@@ -8,6 +8,7 @@ import { PlantLayer } from './PlantLayer.js';
 import { EntityLayer } from './EntityLayer.js';
 import { AnimationLayer } from './AnimationLayer.js';
 import useSimStore from '../store/simulationStore.js';
+import { RENDERER_CONFIG } from '../engine/config.js';
 
 export class GameRenderer {
   constructor(container, onViewportChange, onTileClick, onEffectEvent) {
@@ -45,6 +46,10 @@ export class GameRenderer {
 
     // Layers
     this.terrainLayer = new TerrainLayer();
+    // Enable GPU terrain rendering if configured
+    if (RENDERER_CONFIG.useGPUTerrain) {
+      this.terrainLayer.enableGPU();
+    }
     this.plantLayer = new PlantLayer(this._depthContainer, this._shadowContainer);
     this.animationLayer = new AnimationLayer();
     this.entityLayer = new EntityLayer(
@@ -118,7 +123,11 @@ export class GameRenderer {
       this.animationLayer.tick();
       // Animate water every 6 frames (~100ms at 60fps)
       if (++this._waterTick % 6 === 0) {
-        this.terrainLayer.animateWater(this._waterTick);
+        if (this.terrainLayer.useGPU && this.terrainLayer._shader) {
+          this.terrainLayer.updateShaderTime(this._waterTick);
+        } else {
+          this.terrainLayer.animateWater(this._waterTick);
+        }
       }
       // Refresh plant sway every 4 frames
       if (this._waterTick % 4 === 0 && this.camera.zoom >= 6) {

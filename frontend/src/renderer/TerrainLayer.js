@@ -1,39 +1,255 @@
 /**
  * TerrainLayer — renders the terrain grid as a single texture with
- * per-tile color variation, height-based shading, neighbor blending,
- * and elevation shadows.
+ * per-channel multi-octave noise, 8-directional multi-radius blending,
+ * transition-ordered color mixing, coastal effects, height-based shading,
+ * elevation shadows, and water animation.
+ *
+ * When GPU terrain is available (Phase 2), the CPU pixel buffer becomes
+ * the fallback path and the main rendering is done via PIXI.Mesh + shader.
  */
 import * as PIXI from 'pixi.js';
-import { TERRAIN_COLORS, tileHash } from '../utils/terrainColors.js';
-
-// Per-terrain hash variation amplitude (max ± per RGB channel)
-const TERRAIN_VAR = [
-  6,   // 0 WATER
-  12,  // 1 SAND
-  10,  // 2 DIRT
-  10,  // 3 SOIL
-  15,  // 4 ROCK
-  8,   // 5 FERTILE_SOIL
-  5,   // 6 DEEP_WATER
-  15,  // 7 MOUNTAIN
-  10,  // 8 MUD
-];
+import {
+  TERRAIN_COLORS, TERRAIN_VAR_RGB, TRANSITION_TINT,
+  COASTAL_SHALLOW_WATER, COASTAL_WET_SAND,
+  tileHash,
+} from '../utils/terrainColors.js';
+import { TerrainShader } from './TerrainShader.js';
 
 function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
+
+/**
+ * Compute per-tile base colors with per-channel multi-octave noise,
+ * height-based brightness, water proximity gradient, and coastal tinting.
+ * Writes into baseR/baseG/baseB arrays.
+ */
+function computeBaseColors(
+  terrainData, width, height, heightmap, waterProximity,
+  baseR, baseG, baseB,
+) {
+  const total = width * height;
+  for (let i = 0; i < total; i++) {
+    const t = terrainData[i];
+    const color = TERRAIN_COLORS[t] || [0, 0, 0, 255];
+    let r = color[0], g = color[1], b = color[2];
+
+    const x = i % width;
+    const y = (i / width) | 0;
+    const varAmps = TERRAIN_VAR_RGB[t] || [8, 8, 8];
+
+    // --- Multi-octave per-channel noise ---
+    // Octave 1: base frequency, per-channel independent seeds
+    const h0 = tileHash(x, y);
+    const h1 = tileHash(x + 7919, y + 6271);
+    const h2 = tileHash(x + 3571, y + 9929);
+    // Octave 2: 3× frequency, blended at 30%
+    const h0b = tileHash(x * 3 + 127, y * 3 + 311);
+    const h1b = tileHash(x * 3 + 8123, y * 3 + 5987);
+    const h2b = tileHash(x * 3 + 4219, y * 3 + 10061);
+
+    const nr = ((h0 - 0.5) * 0.7 + (h0b - 0.5) * 0.3) * 2;
+    const ng = ((h1 - 0.5) * 0.7 + (h1b - 0.5) * 0.3) * 2;
+    const nb = ((h2 - 0.5) * 0.7 + (h2b - 0.5) * 0.3) * 2;
+
+    r += nr * varAmps[0];
+    g += ng * varAmps[1];
+    b += nb * varAmps[2];
+
+    // --- Coastal tinting ---
+    if (waterProximity) {
+      const wp = waterProximity[i];
+      // Shallow water near land → lighter cyan
+      if ((t === 0) && wp <= 2) {
+        const coastF = wp === 0 ? 0.0 : (wp === 1 ? 0.35 : 0.15);
+        if (coastF > 0) {
+          r += (COASTAL_SHALLOW_WATER[0] - r) * coastF;
+          g += (COASTAL_SHALLOW_WATER[1] - g) * coastF;
+          b += (COASTAL_SHALLOW_WATER[2] - b) * coastF;
+        }
+      }
+      // Wet sand near water → lighter whitish
+      if (t === 1 && wp > 0 && wp <= 2) {
+        const sandF = wp === 1 ? 0.30 : 0.12;
+        r += (COASTAL_WET_SAND[0] - r) * sandF;
+        g += (COASTAL_WET_SAND[1] - g) * sandF;
+        b += (COASTAL_WET_SAND[2] - b) * sandF;
+      }
+      // Water proximity gradient: richer green for SOIL/FERTILE_SOIL
+      if (t === 3 || t === 5) {
+        if (wp > 0 && wp <= 5) {
+          const boost = (5 - wp);
+          g += boost * 3;
+          r -= boost;
+        }
+      }
+    }
+
+    // --- Height-based brightness (0.88 at sea floor → 1.12 at peaks) ---
+    if (heightmap) {
+      const bright = 0.88 + heightmap[i] * 0.24;
+      r *= bright;
+      g *= bright;
+      b *= bright;
+    }
+
+    baseR[i] = r;
+    baseG[i] = g;
+    baseB[i] = b;
+  }
+}
+
+// 8-directional offsets: [dx, dy, weight]
+// Cardinals = 1.0, diagonals = 0.707 (1/√2)
+const NEIGHBOR_OFFSETS_8 = [
+  [0, -1, 1.0],  [-1,  0, 1.0],  [1,  0, 1.0],  [0,  1, 1.0],
+  [-1, -1, 0.707], [1, -1, 0.707], [-1, 1, 0.707], [1,  1, 0.707],
+];
+
+/**
+ * Blend pass: 8-directional neighbor blending with multi-radius support,
+ * transition-ordered color mixing, elevation shadows, and directional highlights.
+ * Writes final clamped RGBA into the pixels buffer.
+ */
+function blendAndShade(
+  terrainData, width, height, heightmap,
+  baseR, baseG, baseB, pixels, waterIdx,
+) {
+  const total = width * height;
+
+  // --- Pre-compute border distance (Chebyshev, radius 2) ---
+  // borderDist[i] = 0 if tile has a different-type neighbor within radius 1,
+  //               = 1 if within radius 2, = 2 otherwise (interior).
+  const borderDist = new Uint8Array(total);
+  borderDist.fill(2);
+  for (let i = 0; i < total; i++) {
+    const t = terrainData[i];
+    const x = i % width;
+    const y = (i / width) | 0;
+    // Check 8-connected for radius 1 border
+    let isBorder = false;
+    for (let d = 0; d < 8; d++) {
+      const nx = x + NEIGHBOR_OFFSETS_8[d][0];
+      const ny = y + NEIGHBOR_OFFSETS_8[d][1];
+      if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+        if (terrainData[ny * width + nx] !== t) { isBorder = true; break; }
+      }
+    }
+    if (isBorder) borderDist[i] = 0;
+  }
+  // Expand radius 1 borders to mark radius 2 neighbors
+  for (let i = 0; i < total; i++) {
+    if (borderDist[i] !== 2) continue;
+    const x = i % width;
+    const y = (i / width) | 0;
+    for (let d = 0; d < 8; d++) {
+      const nx = x + NEIGHBOR_OFFSETS_8[d][0];
+      const ny = y + NEIGHBOR_OFFSETS_8[d][1];
+      if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+        if (borderDist[ny * width + nx] === 0) { borderDist[i] = 1; break; }
+      }
+    }
+  }
+
+  // --- Blend + shade pass ---
+  for (let i = 0; i < total; i++) {
+    const x = i % width;
+    const y = (i / width) | 0;
+    const t = terrainData[i];
+
+    let r = baseR[i], g = baseG[i], b = baseB[i];
+    const bd = borderDist[i];
+
+    // Multi-radius 8-directional blending
+    if (bd < 2) {
+      // Blend factor: radius-0 border tiles get full blend (0.22),
+      // radius-1 tiles get lighter blend (0.10)
+      const maxBlend = bd === 0 ? 0.22 : 0.10;
+      let bR = 0, bG = 0, bB = 0, bW = 0;
+
+      for (let d = 0; d < 8; d++) {
+        const nx = x + NEIGHBOR_OFFSETS_8[d][0];
+        const ny = y + NEIGHBOR_OFFSETS_8[d][1];
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const ni = ny * width + nx;
+        const nt = terrainData[ni];
+        if (nt === t) continue;
+
+        const w = NEIGHBOR_OFFSETS_8[d][2];
+        // Transition tint: use intermediate color if defined
+        const tint = TRANSITION_TINT[t * 16 + nt];
+        if (tint) {
+          bR += tint[0] * w;
+          bG += tint[1] * w;
+          bB += tint[2] * w;
+        } else {
+          bR += baseR[ni] * w;
+          bG += baseG[ni] * w;
+          bB += baseB[ni] * w;
+        }
+        bW += w;
+      }
+
+      if (bW > 0) {
+        const f = maxBlend;
+        const inv = 1 - f;
+        r = r * inv + (bR / bW) * f;
+        g = g * inv + (bG / bW) * f;
+        b = b * inv + (bB / bW) * f;
+      }
+    }
+
+    // Elevation shadow & highlights
+    if (heightmap) {
+      const hHere = heightmap[i];
+      let shadow = 1.0;
+      if (y > 0) {
+        const hN = heightmap[i - width];
+        if (hN > hHere) shadow -= Math.min(0.12, (hN - hHere) * 0.8);
+      }
+      if (y > 0 && x > 0) {
+        const hNW = heightmap[i - width - 1];
+        if (hNW > hHere) shadow -= Math.min(0.08, (hNW - hHere) * 0.5);
+      }
+      r *= shadow;
+      g *= shadow;
+      b *= shadow;
+
+      // Mountain/rock south-face highlight (directional light)
+      if ((t === 7 || t === 4) && y < height - 1) {
+        const hS = heightmap[i + width];
+        if (hS < hHere) {
+          const hl = 1 + Math.min(0.15, (hHere - hS) * 0.6);
+          r *= hl;
+          g *= hl;
+          b *= hl;
+        }
+      }
+    }
+
+    const pi = i * 4;
+    pixels[pi]     = clamp255(r);
+    pixels[pi + 1] = clamp255(g);
+    pixels[pi + 2] = clamp255(b);
+    pixels[pi + 3] = 255;
+
+    if (t === 0 || t === 6) waterIdx.push(i);
+  }
+}
 
 export class TerrainLayer {
   constructor() {
     this.container = new PIXI.Container();
     this.sprite = null;
+    this._mesh = null;        // Phase 2 GPU mesh (null until enabled)
+    this._shader = null;      // Phase 2 terrain shader
     this.width = 0;
     this.height = 0;
     this._pixels = null;
     this._terrainData = null;
     this._heightmap = null;
     this._waterProximity = null;
-    // Water tile tracking for animated water (Phase 2)
     this._waterIndices = null;
     this._waterBaseColors = null;
+    this.useGPU = false;      // Phase 2 flag
   }
 
   setTerrain(terrainData, width, height, heightmap, waterProximity) {
@@ -43,122 +259,37 @@ export class TerrainLayer {
     this._heightmap = heightmap || null;
     this._waterProximity = waterProximity || null;
 
+    // GPU path (Phase 2): build data textures + mesh
+    if (this.useGPU && this._shader) {
+      this._buildGPUTerrain(terrainData, width, height, heightmap, waterProximity);
+      return;
+    }
+
+    // CPU path: compute pixel buffer
+    this._buildCPUTerrain(terrainData, width, height, heightmap, waterProximity);
+  }
+
+  _buildCPUTerrain(terrainData, width, height, heightmap, waterProximity) {
     const total = width * height;
     const pixels = new Uint8Array(total * 4);
-
-    // --- Pass 1: base color + hash variation + height shading + water proximity ---
     const baseR = new Float32Array(total);
     const baseG = new Float32Array(total);
     const baseB = new Float32Array(total);
 
-    for (let i = 0; i < total; i++) {
-      const t = terrainData[i];
-      const color = TERRAIN_COLORS[t] || [0, 0, 0, 255];
-      let r = color[0], g = color[1], b = color[2];
+    // Pass 1: base colors
+    computeBaseColors(
+      terrainData, width, height, heightmap, waterProximity,
+      baseR, baseG, baseB,
+    );
 
-      const x = i % width;
-      const y = (i / width) | 0;
-
-      // Hash-based per-tile color variation
-      const h = tileHash(x, y);
-      const v = (h - 0.5) * 2 * (TERRAIN_VAR[t] || 8);
-      r += v;
-      g += v;
-      b += v;
-
-      // Height-based brightness (0.88 at sea floor → 1.12 at peaks)
-      if (heightmap) {
-        const bright = 0.88 + heightmap[i] * 0.24;
-        r *= bright;
-        g *= bright;
-        b *= bright;
-      }
-
-      // Water proximity gradient: richer green for SOIL/FERTILE_SOIL near water
-      if (waterProximity && (t === 3 || t === 5)) {
-        const wp = waterProximity[i];
-        if (wp > 0 && wp <= 5) {
-          const boost = (5 - wp);
-          g += boost * 3;
-          r -= boost;
-        }
-      }
-
-      baseR[i] = r;
-      baseG[i] = g;
-      baseB[i] = b;
-    }
-
-    // --- Pass 2: neighbor blending + elevation shadow + edge highlights ---
+    // Pass 2: blend + shade
     const waterIdx = [];
+    blendAndShade(
+      terrainData, width, height, heightmap,
+      baseR, baseG, baseB, pixels, waterIdx,
+    );
 
-    for (let i = 0; i < total; i++) {
-      const x = i % width;
-      const y = (i / width) | 0;
-      const t = terrainData[i];
-
-      let r = baseR[i], g = baseG[i], b = baseB[i];
-
-      // Neighbor blending: soften terrain transitions
-      let bR = 0, bG = 0, bB = 0, bN = 0;
-      if (y > 0 && terrainData[i - width] !== t) {
-        bR += baseR[i - width]; bG += baseG[i - width]; bB += baseB[i - width]; bN++;
-      }
-      if (y < height - 1 && terrainData[i + width] !== t) {
-        bR += baseR[i + width]; bG += baseG[i + width]; bB += baseB[i + width]; bN++;
-      }
-      if (x > 0 && terrainData[i - 1] !== t) {
-        bR += baseR[i - 1]; bG += baseG[i - 1]; bB += baseB[i - 1]; bN++;
-      }
-      if (x < width - 1 && terrainData[i + 1] !== t) {
-        bR += baseR[i + 1]; bG += baseG[i + 1]; bB += baseB[i + 1]; bN++;
-      }
-      if (bN > 0) {
-        const f = 0.20;
-        const inv = 1 - f;
-        r = r * inv + (bR / bN) * f;
-        g = g * inv + (bG / bN) * f;
-        b = b * inv + (bB / bN) * f;
-      }
-
-      // Elevation shadow: darken tiles south of higher terrain (sun from south)
-      if (heightmap) {
-        const hHere = heightmap[i];
-        let shadow = 1.0;
-        if (y > 0) {
-          const hN = heightmap[i - width];
-          if (hN > hHere) shadow -= Math.min(0.12, (hN - hHere) * 0.8);
-        }
-        if (y > 0 && x > 0) {
-          const hNW = heightmap[i - width - 1];
-          if (hNW > hHere) shadow -= Math.min(0.08, (hNW - hHere) * 0.5);
-        }
-        r *= shadow;
-        g *= shadow;
-        b *= shadow;
-
-        // Mountain/rock south-face highlight (directional light)
-        if ((t === 7 || t === 4) && y < height - 1) {
-          const hS = heightmap[i + width];
-          if (hS < hHere) {
-            const hl = 1 + Math.min(0.15, (hHere - hS) * 0.6);
-            r *= hl;
-            g *= hl;
-            b *= hl;
-          }
-        }
-      }
-
-      const pi = i * 4;
-      pixels[pi]     = clamp255(r);
-      pixels[pi + 1] = clamp255(g);
-      pixels[pi + 2] = clamp255(b);
-      pixels[pi + 3] = 255;
-
-      if (t === 0 || t === 6) waterIdx.push(i);
-    }
-
-    // Store water tile info for animated water (Phase 2)
+    // Store water tile info for animated sparkle
     this._waterIndices = new Uint32Array(waterIdx);
     this._waterBaseColors = new Uint8Array(waterIdx.length * 3);
     for (let j = 0; j < waterIdx.length; j++) {
@@ -170,7 +301,7 @@ export class TerrainLayer {
 
     this._pixels = pixels;
 
-    // Create texture from pixel data
+    // Create / replace Pixi texture + sprite
     const resource = new PIXI.BufferResource(pixels, { width, height });
     const baseTexture = new PIXI.BaseTexture(resource, {
       format: PIXI.FORMATS.RGBA,
@@ -192,8 +323,15 @@ export class TerrainLayer {
 
   /**
    * Update individual terrain tiles (for editor).
+   * Re-computes per-tile color with multi-octave per-channel noise and height shading.
    */
   updateTiles(changes) {
+    // GPU path delegates to data texture update
+    if (this.useGPU && this._shader) {
+      this._updateTilesGPU(changes);
+      return;
+    }
+
     if (!this._pixels || !this.sprite) return;
 
     for (const { x, y, terrain } of changes) {
@@ -203,13 +341,19 @@ export class TerrainLayer {
 
       const color = TERRAIN_COLORS[terrain] || [0, 0, 0, 255];
       let r = color[0], g = color[1], b = color[2];
+      const varAmps = TERRAIN_VAR_RGB[terrain] || [8, 8, 8];
 
-      // Apply hash variation
-      const h = tileHash(x, y);
-      const v = (h - 0.5) * 2 * (TERRAIN_VAR[terrain] || 8);
-      r += v;
-      g += v;
-      b += v;
+      // Multi-octave per-channel noise (same as setTerrain pass 1)
+      const h0 = tileHash(x, y);
+      const h1 = tileHash(x + 7919, y + 6271);
+      const h2 = tileHash(x + 3571, y + 9929);
+      const h0b = tileHash(x * 3 + 127, y * 3 + 311);
+      const h1b = tileHash(x * 3 + 8123, y * 3 + 5987);
+      const h2b = tileHash(x * 3 + 4219, y * 3 + 10061);
+
+      r += ((h0 - 0.5) * 0.7 + (h0b - 0.5) * 0.3) * 2 * varAmps[0];
+      g += ((h1 - 0.5) * 0.7 + (h1b - 0.5) * 0.3) * 2 * varAmps[1];
+      b += ((h2 - 0.5) * 0.7 + (h2b - 0.5) * 0.3) * 2 * varAmps[2];
 
       // Height-based brightness
       if (this._heightmap) {
@@ -234,8 +378,10 @@ export class TerrainLayer {
   /**
    * Animate water tiles with sine-based color shimmer.
    * Call from render loop, throttled (every 6–8 frames).
+   * Skipped when GPU path is active (shader handles water animation).
    */
   animateWater(tick) {
+    if (this.useGPU && this._shader) return;
     if (!this._waterIndices || !this._pixels || !this.sprite) return;
 
     const indices = this._waterIndices;
@@ -243,9 +389,6 @@ export class TerrainLayer {
     const pixels = this._pixels;
     const w = this.width;
 
-    // Sparkle: small bright points that appear and disappear
-    // Use a deterministic hash per tile combined with tick to create
-    // pseudo-random sparkle timing without storing per-tile state.
     for (let j = 0; j < indices.length; j++) {
       const idx = indices[j];
       const x = idx % w;
@@ -254,16 +397,12 @@ export class TerrainLayer {
       const bj = j * 3;
       const pi = idx * 4;
 
-      // Base color (restored each frame)
       let r = base[bj], g = base[bj + 1], b = base[bj + 2];
 
-      // Sparkle: hash-based pseudo-random timing per tile
-      // Very slow subtle cycle (~100 sec), <1% density
       const h = ((x * 374761393 + y * 668265263) ^ 0x5deece66d) >>> 0;
       const sparklePhase = (h + tick) % 6000;
 
       if (sparklePhase < 50) {
-        // Sparkle active for 50 ticks: very gentle fade in/out
         const t = sparklePhase / 49;
         const intensity = Math.sin(t * Math.PI) * 30;
         r += intensity;
@@ -279,5 +418,83 @@ export class TerrainLayer {
     this.sprite.texture.baseTexture.resource.data = pixels;
     this.sprite.texture.baseTexture.resource.update();
     this.sprite.texture.baseTexture.update();
+  }
+
+  // --- Phase 2 GPU implementation ---
+
+  /**
+   * Enable GPU rendering path.  Call before setTerrain() to take effect.
+   */
+  enableGPU() {
+    this.useGPU = true;
+    if (!this._shader) {
+      this._shaderWrapper = new TerrainShader();
+    }
+  }
+
+  _buildGPUTerrain(terrainData, width, height, heightmap, waterProximity) {
+    if (!this._shaderWrapper) this._shaderWrapper = new TerrainShader();
+    const shader = this._shaderWrapper.build(
+      terrainData, width, height, heightmap, waterProximity,
+    );
+    this._shader = shader;
+
+    // Build a quad geometry covering [0, 0] → [width, height] world units
+    const geometry = new PIXI.Geometry()
+      .addAttribute('aVertexPosition', [
+        0, 0,
+        width, 0,
+        width, height,
+        0, height,
+      ], 2)
+      .addAttribute('aTextureCoord', [
+        0, 0,
+        1, 0,
+        1, 1,
+        0, 1,
+      ], 2)
+      .addIndex([0, 1, 2, 0, 2, 3]);
+
+    // Remove old sprite/mesh
+    if (this.sprite) {
+      this.container.removeChild(this.sprite);
+      this.sprite.destroy(true);
+      this.sprite = null;
+    }
+    if (this._mesh) {
+      this.container.removeChild(this._mesh);
+      this._mesh.destroy(true);
+    }
+
+    this._mesh = new PIXI.Mesh(geometry, shader);
+    this.container.addChild(this._mesh);
+  }
+
+  _updateTilesGPU(changes) {
+    if (!this._shaderWrapper) return;
+    // Update terrain data array
+    if (this._terrainData) {
+      for (const { x, y, terrain } of changes) {
+        this._terrainData[y * this.width + x] = terrain;
+      }
+    }
+    this._shaderWrapper.updateTiles(changes, this._terrainData, this._heightmap);
+  }
+
+  /**
+   * Update shader time uniform for GPU water animation.
+   * Called from render loop when GPU path is active.
+   */
+  updateShaderTime(tick) {
+    if (this._shader) this._shader.uniforms.u_time = tick;
+  }
+
+  destroy() {
+    if (this.sprite) { this.sprite.destroy(true); this.sprite = null; }
+    if (this._mesh) { this._mesh.destroy(true); this._mesh = null; }
+    this._shader = null;
+    this._pixels = null;
+    this._waterIndices = null;
+    this._waterBaseColors = null;
   }
 }

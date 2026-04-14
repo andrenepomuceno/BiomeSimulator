@@ -116,3 +116,12 @@ export const DEFAULT_CONFIG = {
   ),
   animal_species: buildAnimalSpeciesConfig(),
 };
+
+/**
+ * Renderer configuration (separate from simulation to keep engine worker-safe).
+ */
+export const RENDERER_CONFIG = {
+  // Set to true to use GPU-shader terrain rendering (Phase 2).
+  // Falls back to CPU pixel buffer when false or when WebGL2 is unavailable.
+  useGPUTerrain: true,
+};

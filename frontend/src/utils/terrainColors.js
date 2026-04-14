@@ -1,5 +1,6 @@
 /**
- * Terrain enum → RGBA color mapping.
+ * Terrain enum → RGBA color mapping, per-channel noise amplitudes,
+ * transition LUT, and coastal helpers.
  */
 
 /**
@@ -35,6 +36,89 @@ export const TERRAIN_COLORS = {
   [MOUNTAIN]: [170, 165, 160, 255],
   [MUD]: [100, 80, 50, 255],
 };
+
+/**
+ * Per-channel variation amplitude [R, G, B] for each terrain type.
+ * Used by multi-octave per-tile noise. Higher values = more visual texture.
+ */
+export const TERRAIN_VAR_RGB = [
+  [4,  6,  8],   // 0 WATER        — slight blue-green shift
+  [14, 12, 6],   // 1 SAND         — warm red-yellow dominant
+  [12, 10, 6],   // 2 DIRT         — earthy red-brown dominant
+  [6,  14, 6],   // 3 SOIL         — green dominant
+  [15, 15, 16],  // 4 ROCK         — balanced, high variation
+  [8,  10, 5],   // 5 FERTILE_SOIL — earthy, slight green
+  [3,  4,  7],   // 6 DEEP_WATER   — subtle blue shift
+  [16, 15, 14],  // 7 MOUNTAIN     — balanced, high variation
+  [12, 10, 7],   // 8 MUD          — warm brown
+];
+
+/**
+ * Elevation-based terrain priority (lower = lower elevation).
+ * Used for transition ordering — blending passes through intermediate types.
+ */
+export const TERRAIN_ELEVATION_ORDER = [
+  /*0 WATER*/        1,
+  /*1 SAND*/         3,
+  /*2 DIRT*/         5,
+  /*3 SOIL*/         6,
+  /*4 ROCK*/         8,
+  /*5 FERTILE_SOIL*/ 7,
+  /*6 DEEP_WATER*/   0,
+  /*7 MOUNTAIN*/     9,
+  /*8 MUD*/          4,
+];
+
+/**
+ * Transition tint LUT: TRANSITION_TINT[fromType][toType] → [r, g, b]
+ * Gives the intermediate color that should appear at terrain boundaries
+ * instead of a direct color mix. Only populated for visually important pairs.
+ */
+const _T = {};
+function _pair(a, b, color) { _T[a * 16 + b] = color; _T[b * 16 + a] = color; }
+// Water ↔ Sand: wet-sand/shore foam
+_pair(WATER, SAND,         [120, 160, 170]);
+_pair(DEEP_WATER, WATER,   [22,  78,  155]);
+// Sand ↔ Dirt: dry transition
+_pair(SAND, DIRT,          [175, 145, 95]);
+// Sand ↔ Soil: slightly sandy green
+_pair(SAND, SOIL,          [135, 170, 95]);
+// Dirt ↔ Soil: earthy green
+_pair(DIRT, SOIL,          [100, 125, 60]);
+// Dirt ↔ Fertile: rich dark transitional
+_pair(DIRT, FERTILE_SOIL,  [112, 80,  45]);
+// Soil ↔ Fertile: lush dark green
+_pair(SOIL, FERTILE_SOIL,  [72,  105, 45]);
+// Rock ↔ Mountain: gray gradient
+_pair(ROCK, MOUNTAIN,      [145, 142, 145]);
+// Soil ↔ Rock: grassy rock
+_pair(SOIL, ROCK,          [90,  135, 95]);
+// Dirt ↔ Rock: dry rock
+_pair(DIRT, ROCK,          [130, 110, 95]);
+// Water ↔ Mud: swampy edge
+_pair(WATER, MUD,          [65,  90,  115]);
+// Sand ↔ Mud: wet sand
+_pair(SAND, MUD,           [155, 135, 90]);
+// Mud ↔ Soil: transitional
+_pair(MUD, SOIL,           [80,  115, 55]);
+// Mud ↔ Dirt: transitional
+_pair(MUD, DIRT,           [120, 90,  55]);
+export const TRANSITION_TINT = _T;
+
+/**
+ * Look up a transition tint between two terrain types.
+ * Returns [r, g, b] or null if no special tint is defined (use direct mix).
+ */
+export function getTransitionTint(fromType, toType) {
+  return _T[fromType * 16 + toType] || null;
+}
+
+/**
+ * Coastal color adjustments: shallow water near land gets lighter/cyan,
+ * sand near water gets lighter/white.
+ */
+export const COASTAL_SHALLOW_WATER = [55, 140, 200]; // Lighter cyan for shore water
+export const COASTAL_WET_SAND      = [225, 215, 180]; // Whitish wet sand
 
 export const TERRAIN_NAMES = {
   [WATER]: 'Water',

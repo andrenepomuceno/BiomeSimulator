@@ -84,6 +84,7 @@ async function doTick() {
       await doParallelFauna();
       engine._phases.behaviorMs = performance.now() - behaviorStart;
       engine._phases.spatialMs = 0;
+      engine.tickEggs();
       engine.tickCleanup();
     } else {
       engine.tick();
@@ -259,6 +260,7 @@ function postTickState(tickMs = 0) {
     type: 'tick',
     clock: w.clock.toDict(),
     animals,
+    eggs: (w.eggs || []).filter(e => e.alive).map(e => e.toDict()),
     plantChanges: plantChangesOverflow ? [] : w.plantChanges,
     incremental: !isFullSync,
   };

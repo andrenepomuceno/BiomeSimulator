@@ -53,6 +53,9 @@ function reconstructAnimal(ad, speciesConfig) {
   a.targetX = ad.targetX;
   a.targetY = ad.targetY;
   a._birthTick = ad._birthTick || 0;
+  a.pregnant = ad.pregnant || false;
+  a.gestationTimer = ad.gestationTimer || 0;
+  a._gestationLitterSize = ad._gestationLitterSize || 0;
   a.actionHistory = ad.actionHistory || [];
   return a;
 }
@@ -144,6 +147,9 @@ self.onmessage = function (e) {
           consumed: animal.consumed,
           targetX: animal.targetX,
           targetY: animal.targetY,
+          pregnant: animal.pregnant,
+          gestationTimer: animal.gestationTimer,
+          _gestationLitterSize: animal._gestationLitterSize,
           actionHistory: animal.actionHistory,
         });
       }
@@ -157,10 +163,19 @@ self.onmessage = function (e) {
         }
       }
 
+      // Collect egg births from oviparous/metamorphosis species mating
+      const eggBirths = [];
+      if (world.eggs) {
+        for (const egg of world.eggs) {
+          eggBirths.push(egg.toDict());
+        }
+      }
+
       self.postMessage({
         cmd: 'tickResult',
         deltas,
         births,
+        eggBirths,
         plantChanges: world.plantChanges,
         deadIds,
       });

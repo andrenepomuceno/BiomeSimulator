@@ -83,6 +83,9 @@ export class World {
     // Animals
     this.animals = [];
 
+    // Eggs (oviparous / metamorphosis species)
+    this.eggs = [];
+
     // Entity ID counter
     this._nextId = 1;
 
@@ -250,6 +253,14 @@ export class World {
       }
     }
 
+    let eggCount = 0;
+    const eggSpeciesCounts = {};
+    for (const egg of this.eggs) {
+      if (!egg.alive) continue;
+      eggCount++;
+      eggSpeciesCounts[egg.species] = (eggSpeciesCounts[egg.species] || 0) + 1;
+    }
+
     return {
       herbivores,
       carnivores,
@@ -257,6 +268,8 @@ export class World {
       plants_total: plantsTotal,
       plant_types: plantCounts,
       fruits,
+      eggs_total: eggCount,
+      egg_species: eggSpeciesCounts,
     };
   }
 }

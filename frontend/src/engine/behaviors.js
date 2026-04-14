@@ -1,7 +1,7 @@
 /**
  * Animal AI — state machine and decision logic.
  */
-import { Animal, AnimalState, LifeStage } from './entities.js';
+import { Animal, Egg, AnimalState, LifeStage, ReproductionType } from './entities.js';
 import { WATER, DEEP_WATER, SAND, MUD, MOUNTAIN, ROCK } from './world.js';
 import { aStar } from './pathfinding.js';
 import { SUB_CELL_STEP, SUB_CELL_DIVISOR, SEX_MALE, SEX_FEMALE, SEX_HERMAPHRODITE, SEX_ASEXUAL, REPRO_SEXUAL, REPRO_HERMAPHRODITE } from './config.js';
@@ -174,6 +174,17 @@ export function decideAndAct(animal, world, spatialHash) {
     animal.logAction(world.clock.tick, 'LIFE_STAGE', { from: _prevLifeStage, to: animal.lifeStage });
   }
 
+  // Viviparous birth — triggered when gestation timer reaches 0
+  if (animal.pregnant && animal.gestationTimer <= 0) {
+    giveBirth(animal, world);
+  }
+
+  // PUPA stage: immobile, no actions (still takes damage and can die)
+  if (animal.lifeStage === LifeStage.PUPA) {
+    animal.state = AnimalState.IDLE;
+    return;
+  }
+
   // Die of old age or zero HP
   if (animal.age > animal.maxAge || animal.hp <= 0) {
     animal.alive = false;
@@ -302,7 +313,7 @@ export function decideAndAct(animal, world, spatialHash) {
   }
 
   // 5. Mating opportunity (promoted — breed before moderate hunger/thirst)
-  if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && animal.energy > (_decisionThresholds(animal).mate_energy_min ?? 50)) {
+  if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && !animal.pregnant && animal.energy > (_decisionThresholds(animal).mate_energy_min ?? 50)) {
     const mate = _findMate(animal, spatialHash, Math.max(vision, _decisionThresholds(animal).mate_search_radius_min ?? 10));
     if (mate) {
       const dist = Math.abs(mate.x - animal.x) + Math.abs(mate.y - animal.y);
@@ -652,6 +663,9 @@ function _seekPrey(animal, world, spatialHash, vision) {
   // No live prey — try scavenging recent corpses (if species allows)
   if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
 
+  // No live prey — try eating nearby eggs
+  if (_tryEatEgg(animal, world, vision)) return;
+
   // No prey — carnivores eat fruit as fallback when desperate
   // Only if they have explicit edible_plants (empty list = strictly carnivorous)
   if (animal.hunger > (_decisionThresholds(animal).desperate_hunger_fallback_food_min ?? 50) && animal._ediblePlants.size > 0) {
@@ -738,6 +752,9 @@ function _seekOmnivoreFood(animal, world, spatialHash, vision) {
 
     // No live prey — try scavenging recent corpses (if species allows)
     if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
+
+    // No live prey — try eating nearby eggs
+    if (_tryEatEgg(animal, world, vision)) return;
   }
 
   // Fallback: seek plants in vision range
@@ -782,6 +799,46 @@ function _tryScavenge(animal, world, spatialHash, vision) {
 
   // Walk toward corpse
   _computePath(animal, world, target.x, target.y, 30, 'scavenge');
+  if (animal.path.length) {
+    _walkPath(animal, world);
+    return true;
+  }
+  return false;
+}
+
+/** Try to eat a nearby egg (carnivores/omnivores). Returns true if action was taken. */
+function _tryEatEgg(animal, world, vision) {
+  if (!world.eggs || world.eggs.length === 0) return false;
+  // Only carnivores and omnivores eat eggs
+  if (animal.diet === 'HERBIVORE') return false;
+  let target = null;
+  let bestDist = Infinity;
+  for (const egg of world.eggs) {
+    if (!egg.alive) continue;
+    // Don't eat own species' eggs
+    if (egg.species === animal.species) continue;
+    const dist = Math.abs(egg.x - animal.x) + Math.abs(egg.y - animal.y);
+    if (dist > vision) continue;
+    if (dist < bestDist) {
+      bestDist = dist;
+      target = egg;
+    }
+  }
+  if (!target) return false;
+
+  if (bestDist <= 1.5) {
+    // Eat the egg
+    target.takeDamage(target.maxHp); // destroy in one bite
+    animal.hunger = Math.max(0, animal.hunger - 20);
+    animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
+    animal.state = AnimalState.EATING;
+    animal.applyEnergyCost('EAT');
+    animal.logAction(world.clock.tick, 'ATE_EGG', { species: target.species, eggId: target.id });
+    return true;
+  }
+
+  // Walk toward egg
+  _computePath(animal, world, target.x, target.y, 30, 'egg');
   if (animal.path.length) {
     _walkPath(animal, world);
     return true;
@@ -984,6 +1041,7 @@ function _findMate(animal, spatialHash, searchRadius) {
   for (const entity of nearby) {
     if (entity.species !== animal.species || !entity.alive || entity.id === animal.id) continue;
     if (entity.lifeStage !== LifeStage.ADULT || entity.mateCooldown > 0 || entity.energy <= (_decisionThresholds(entity).mate_energy_min ?? 50)) continue;
+    if (entity.pregnant) continue; // skip pregnant females
     if (repro === REPRO_SEXUAL) {
       if (animal.sex === SEX_MALE && entity.sex !== SEX_FEMALE) continue;
       if (animal.sex === SEX_FEMALE && entity.sex !== SEX_MALE) continue;
@@ -1012,44 +1070,105 @@ function _doMate(animal, mate, world) {
   mate.logAction(world.clock.tick, 'MATED', { partner: animal.species, partnerId: animal.id });
 
   // Per-species population cap, scaled by global cap when set
-  const baseMax = animal._config.max_population;
-  if (baseMax) {
-    const globalMax = world.config.max_animal_population;
-    const effectiveMax = globalMax > 0
-      ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
-      : baseMax;
-    const count = world.getAliveSpeciesCount(animal.species);
-    if (count >= effectiveMax) return;
-    // Gradual slowdown: from 60% capacity onward, reproduction chance drops linearly
-    const ratio = count / effectiveMax;
-    if (ratio > 0.6) {
-      const chance = 1 - ((ratio - 0.6) / 0.4); // 100% at 60% → 0% at 100%
-      if (Math.random() > chance) return;
-    }
-  }
+  if (_checkPopulationCap(animal, world)) return;
 
-  // Spawn baby nearby — search adjacent tiles from parent's tile
+  const reproType = animal._config.reproduction_type || 'VIVIPAROUS';
+  const clutchRange = animal._config.clutch_size || [1, 1];
+  const litterSize = clutchRange[0] + Math.floor(Math.random() * (clutchRange[1] - clutchRange[0] + 1));
+
+  if (reproType === ReproductionType.VIVIPAROUS) {
+    // Viviparous: female becomes pregnant, babies born after gestation
+    const female = animal.sex === SEX_FEMALE ? animal : mate;
+    female.pregnant = true;
+    female.gestationTimer = animal._config.gestation_period || 30;
+    female._gestationLitterSize = litterSize;
+    female.logAction(world.clock.tick, 'PREGNANT', { litterSize, gestationTicks: female.gestationTimer });
+  } else {
+    // Oviparous / Metamorphosis: lay eggs on adjacent tiles
+    _layEggs(animal, mate, world, litterSize);
+  }
+}
+
+/** Check population cap; returns true if reproduction should be aborted. */
+function _checkPopulationCap(animal, world) {
+  const baseMax = animal._config.max_population;
+  if (!baseMax) return false;
+  const globalMax = world.config.max_animal_population;
+  const effectiveMax = globalMax > 0
+    ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
+    : baseMax;
+  const count = world.getAliveSpeciesCount(animal.species);
+  if (count >= effectiveMax) return true;
+  const ratio = count / effectiveMax;
+  if (ratio > 0.6) {
+    const chance = 1 - ((ratio - 0.6) / 0.4);
+    if (Math.random() > chance) return true;
+  }
+  return false;
+}
+
+/** Lay eggs on adjacent walkable tiles. */
+function _layEggs(animal, mate, world, clutchSize) {
   const baseTx = animal.x | 0;
   const baseTy = animal.y | 0;
-  let bx = animal.x, by = animal.y;
-  let babyPlaced = false;
-  for (const [ddx, ddy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+  const speciesConfig = world.config.animal_species[animal.species];
+  if (!world.eggs) world.eggs = [];
+  const offsets = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+  let placed = 0;
+  for (const [ddx, ddy] of offsets) {
+    if (placed >= clutchSize) break;
     const ntx = baseTx + ddx, nty = baseTy + ddy;
-    if (world.isWalkableFor(ntx, nty, animal._walkableSet) && !world.isTileOccupied(ntx, nty)) {
-      bx = ntx + 0.5; by = nty + 0.5; babyPlaced = true; break;
+    if (world.isWalkableFor(ntx, nty, animal._walkableSet)) {
+      const egg = new Egg(world.nextId(), ntx + 0.5, nty + 0.5, animal.species, speciesConfig);
+      egg.parentA = animal.id;
+      egg.parentB = mate.id;
+      egg._birthTick = world.clock.tick;
+      world.eggs.push(egg);
+      placed++;
     }
   }
-  if (!babyPlaced) return; // No free tile for baby
+  if (placed > 0) {
+    animal.logAction(world.clock.tick, 'LAID_EGGS', { count: placed });
+    mate.logAction(world.clock.tick, 'LAID_EGGS', { count: placed });
+  }
+}
 
-  const speciesConfig = world.config.animal_species[animal.species];
-  const baby = new Animal(world.nextId(), bx, by, animal.species, speciesConfig);
-  baby.energy = speciesConfig.max_energy * 0.4;
-  baby.age = 0;
-  baby.logAction(world.clock.tick, 'BORN', { parentA: animal.id, parentB: mate.id });
-  animal.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
-  mate.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
-  world.animals.push(baby);
-  world.placeAnimal(bx, by);
+/**
+ * Handle viviparous birth — called when gestation timer reaches 0.
+ * Spawns litter babies around the mother.
+ */
+export function giveBirth(mother, world) {
+  if (!mother.pregnant || mother.gestationTimer > 0) return;
+  const litterSize = mother._gestationLitterSize || 1;
+  const speciesConfig = world.config.animal_species[mother.species];
+  const baseTx = mother.x | 0;
+  const baseTy = mother.y | 0;
+  const offsets = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+  let born = 0;
+  for (const [ddx, ddy] of offsets) {
+    if (born >= litterSize) break;
+    // Re-check pop cap per baby
+    if (_checkPopulationCap(mother, world)) break;
+    const ntx = baseTx + ddx, nty = baseTy + ddy;
+    if (world.isWalkableFor(ntx, nty, mother._walkableSet) && !world.isTileOccupied(ntx, nty)) {
+      const bx = ntx + 0.5, by = nty + 0.5;
+      const baby = new Animal(world.nextId(), bx, by, mother.species, speciesConfig);
+      baby.energy = speciesConfig.max_energy * 0.4;
+      baby.age = 0;
+      baby._birthTick = world.clock.tick;
+      baby.logAction(world.clock.tick, 'BORN', { parentA: mother.id });
+      mother.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
+      world.animals.push(baby);
+      world.placeAnimal(bx, by);
+      born++;
+    }
+  }
+  mother.pregnant = false;
+  mother.gestationTimer = 0;
+  mother._gestationLitterSize = 0;
+  if (born > 0) {
+    mother.logAction(world.clock.tick, 'GAVE_BIRTH', { count: born });
+  }
 }
 
 // ---- Movement helpers ----

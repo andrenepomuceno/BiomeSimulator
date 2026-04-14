@@ -43,6 +43,8 @@ export function generateEmojiTextures() {
   // Special state textures
   textures.SLEEPING = canvasToTexture(emojiToCanvas('💤'));
   textures.DEAD = canvasToTexture(emojiToCanvas('💀'));
+  textures.EGG = canvasToTexture(emojiToCanvas('🥚'));
+  textures.PUPA = canvasToTexture(emojiToCanvas('🫘'));
 
   return textures;
 }

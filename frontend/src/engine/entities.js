@@ -22,6 +22,13 @@ export const LifeStage = {
   YOUNG: 1,
   YOUNG_ADULT: 2,
   ADULT: 3,
+  PUPA: 4,
+};
+
+export const ReproductionType = {
+  VIVIPAROUS: 'VIVIPAROUS',
+  OVIPAROUS: 'OVIPAROUS',
+  METAMORPHOSIS: 'METAMORPHOSIS',
 };
 
 // Pre-computed reverse lookup: stage number → stage key string
@@ -75,6 +82,11 @@ export class Animal {
     this.consumed = false;
     this.homeX = x;
     this.homeY = y;
+
+    // Reproduction — viviparous gestation
+    this.pregnant = false;
+    this.gestationTimer = 0;
+    this._gestationLitterSize = 0;
 
     // Terrain / diet sets for fast O(1) lookups
     this._walkableSet = new Set(config.walkable_terrain || [1, 2, 3, 5, 8]);
@@ -142,6 +154,16 @@ export class Animal {
   get matureAge() { return this._config.mature_age; }
 
   get lifeStage() {
+    // Metamorphosis species: BABY → YOUNG → PUPA → ADULT
+    const pupaAge = this._config.pupa_age;
+    if (pupaAge != null) {
+      const pupaDuration = this._config.pupa_duration || 60;
+      const ages = this._config.life_stage_ages;
+      if (ages && this.age < ages[0]) return LifeStage.BABY;
+      if (this.age < pupaAge) return LifeStage.YOUNG;
+      if (this.age < pupaAge + pupaDuration) return LifeStage.PUPA;
+      return LifeStage.ADULT;
+    }
     const ages = this._config.life_stage_ages;
     if (!ages) return this.age >= this.matureAge ? LifeStage.ADULT : LifeStage.YOUNG;
     if (this.age < ages[0]) return LifeStage.BABY;
@@ -162,11 +184,24 @@ export class Animal {
 
   tickNeeds(hungerMult, thirstMult) {
     const stage = this.lifeStage;
+
+    // PUPA: suspended animation — only age advances, minimal metabolism
+    if (stage === LifeStage.PUPA) {
+      this.age++;
+      if (this.mateCooldown > 0) this.mateCooldown--;
+      if (this.attackCooldown > 0) this.attackCooldown--;
+      this._dirty = true;
+      return;
+    }
+
     const stageKey = LIFE_STAGE_KEYS[stage] || 'ADULT';
     const hMult = this._config.metabolic_multipliers?.hunger?.[stageKey] ?? 1;
     const tMult = this._config.metabolic_multipliers?.thirst?.[stageKey] ?? 1;
-    this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate * hungerMult * hMult);
-    this.thirst = Math.min(this._config.max_thirst, this.thirst + this._config.thirst_rate * thirstMult * tMult);
+
+    // Gestation increases hunger/thirst by 25%
+    const gestationMult = this.pregnant ? 1.25 : 1.0;
+    this.hunger = Math.min(this._config.max_hunger, this.hunger + this._config.hunger_rate * hungerMult * hMult * gestationMult);
+    this.thirst = Math.min(this._config.max_thirst, this.thirst + this._config.thirst_rate * thirstMult * tMult * gestationMult);
 
     const healthPenalty = this._config.health_penalty || {};
     const thresholdFraction = healthPenalty.threshold_fraction ?? 0.8;
@@ -185,6 +220,12 @@ export class Animal {
     this.age++;
     if (this.mateCooldown > 0) this.mateCooldown--;
     if (this.attackCooldown > 0) this.attackCooldown--;
+
+    // Gestation countdown
+    if (this.pregnant && this.gestationTimer > 0) {
+      this.gestationTimer--;
+    }
+
     this._dirty = true;
   }
 
@@ -210,6 +251,9 @@ export class Animal {
       targetX: this.targetX,
       targetY: this.targetY,
       _deathTick: this._deathTick,
+      pregnant: this.pregnant,
+      gestationTimer: this.gestationTimer,
+      _gestationLitterSize: this._gestationLitterSize,
       actionHistory: this.actionHistory,
     };
   }
@@ -231,6 +275,9 @@ export class Animal {
       targetX: this.targetX,
       targetY: this.targetY,
       _deathTick: this._deathTick,
+      pregnant: this.pregnant,
+      gestationTimer: this.gestationTimer,
+      _gestationLitterSize: this._gestationLitterSize,
     };
   }
 
@@ -264,6 +311,9 @@ export class Animal {
       targetX: this.targetX,
       targetY: this.targetY,
       _birthTick: this._birthTick,
+      pregnant: this.pregnant,
+      gestationTimer: this.gestationTimer,
+      _gestationLitterSize: this._gestationLitterSize,
       actionHistory: this.actionHistory,
     };
   }
@@ -271,5 +321,64 @@ export class Animal {
   /** Clear dirty flag after serialization. */
   clearDirty() {
     this._dirty = false;
+  }
+}
+
+/**
+ * Egg entity — immobile, has HP, incubates over time, can be eaten by predators.
+ * Created by oviparous/metamorphosis species during mating.
+ */
+export class Egg {
+  constructor(id, x, y, species, config) {
+    this.id = id;
+    this.x = x;
+    this.y = y;
+    this.species = species;
+    this.isEgg = true;
+    this._config = config;
+    this.hp = config.egg_hp || 10;
+    this.maxHp = this.hp;
+    this.age = 0;
+    this.incubationPeriod = config.incubation_period || 30;
+    this.hatchCount = 1; // how many babies this egg produces (usually 1)
+    this.alive = true;
+    this.parentA = null;
+    this.parentB = null;
+    this._birthTick = 0;
+  }
+
+  tick() {
+    if (!this.alive) return;
+    this.age++;
+  }
+
+  get ready() {
+    return this.alive && this.age >= this.incubationPeriod;
+  }
+
+  takeDamage(dmg) {
+    if (!this.alive) return;
+    this.hp = Math.max(0, this.hp - dmg);
+    if (this.hp <= 0) {
+      this.alive = false;
+    }
+  }
+
+  toDict() {
+    return {
+      id: this.id,
+      x: this.x,
+      y: this.y,
+      species: this.species,
+      isEgg: true,
+      hp: Math.round(this.hp * 10) / 10,
+      maxHp: this.maxHp,
+      age: this.age,
+      incubationPeriod: this.incubationPeriod,
+      hatchCount: this.hatchCount,
+      alive: this.alive,
+      parentA: this.parentA,
+      parentB: this.parentB,
+    };
   }
 }

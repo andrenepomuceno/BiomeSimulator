@@ -64,7 +64,7 @@ function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
 const STAGE_LABELS = ['Seed', 'Young Sprout', 'Adult Sprout', 'Adult', 'Fruit'];
 const WATER_AFFINITY_LABELS = { low: '🏜️ Low', medium: '💧 Medium', high: '🌊 High' };
 const SEASON_LABELS = ['Spring', 'Summer', 'Autumn', 'Winter'];
-const ANIMAL_LIFE_STAGE_KEYS = ['BABY', 'YOUNG', 'YOUNG_ADULT', 'ADULT'];
+const ANIMAL_LIFE_STAGE_KEYS = ['BABY', 'YOUNG', 'YOUNG_ADULT', 'ADULT', 'PUPA'];
 
 function formatPercent(value, digits = 0) {
   return `${(value * 100).toFixed(digits)}%`;
@@ -169,6 +169,18 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
         <div className="stat-row"><span className="stat-label">🍖 Hunger Rate</span><span className="stat-value">{sp.hunger_rate}/tick</span></div>
         <div className="stat-row"><span className="stat-label">💧 Thirst Rate</span><span className="stat-value">{sp.thirst_rate}/tick</span></div>
         <div className="stat-row"><span className="stat-label">♻️ Reproduction</span><span className="stat-value">{sp.reproduction}</span></div>
+        {rawSpecies.reproduction_type && (
+          <div className="stat-row"><span className="stat-label">🤰 Type</span><span className="stat-value" style={{ textTransform: 'capitalize' }}>{rawSpecies.reproduction_type}</span></div>
+        )}
+        {rawSpecies.gestation_period > 0 && (
+          <div className="stat-row"><span className="stat-label">🤰 Gestation</span><span className="stat-value">{rawSpecies.gestation_period} ticks</span></div>
+        )}
+        {rawSpecies.incubation_period > 0 && (
+          <div className="stat-row"><span className="stat-label">🥚 Incubation</span><span className="stat-value">{rawSpecies.incubation_period} ticks</span></div>
+        )}
+        {rawSpecies.clutch_size && (
+          <div className="stat-row"><span className="stat-label">🐣 Clutch Size</span><span className="stat-value">{rawSpecies.clutch_size[0]}–{rawSpecies.clutch_size[1]}</span></div>
+        )}
         <div className="stat-row"><span className="stat-label">🌙 Activity</span><span className="stat-value">{sp.nocturnal ? 'Nocturnal' : 'Diurnal'}</span></div>
         <div className="stat-row"><span className="stat-label">🦴 Scavenging</span><span className="stat-value">{sp.can_scavenge ? 'Enabled' : 'Disabled'}</span></div>
       </div>
@@ -453,8 +465,8 @@ export default function EntityInspector({ onFocusEntity }) {
           </div>
         </CollapsibleSection>
 
-        {/* Cooldowns */}
-        {(e.mateCooldown > 0 || e.attackCooldown > 0) && (
+        {/* Cooldowns & Reproduction Status */}
+        {(e.mateCooldown > 0 || e.attackCooldown > 0 || e.pregnant || e.lifeStage === 4) && (
           <CollapsibleSection title="Cooldowns" icon="⏱️" defaultOpen={true}>
             {e.mateCooldown > 0 && (
               <div className="stat-row">
@@ -466,6 +478,23 @@ export default function EntityInspector({ onFocusEntity }) {
               <div className="stat-row">
                 <span className="stat-label">⚔️ Attack</span>
                 <span className="stat-value" style={{ color: '#ff4444' }}>{e.attackCooldown} ticks</span>
+              </div>
+            )}
+            {e.pregnant && (
+              <>
+                <div className="stat-row">
+                  <span className="stat-label">🤰 Pregnant</span>
+                  <span className="stat-value" style={{ color: '#ff99cc' }}>
+                    {e._gestationLitterSize || '?'} offspring
+                  </span>
+                </div>
+                <Bar icon="🤰" label="Gestation" value={e.gestationTimer || 0} max={sp?.gestation_period || e.gestationTimer || 1} color="#ff99cc" />
+              </>
+            )}
+            {e.lifeStage === 4 && (
+              <div className="stat-row">
+                <span className="stat-label">🫘 Pupa</span>
+                <span className="stat-value" style={{ color: '#aa88cc' }}>Metamorphosing</span>
               </div>
             )}
           </CollapsibleSection>

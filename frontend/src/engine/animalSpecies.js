@@ -148,6 +148,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'BLUEBERRY', 'POTATO'],
     prey_species: [],
     can_scavenge: false,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 30,
+    clutch_size: [2, 5],
   },
 
   SQUIRREL: {
@@ -183,6 +186,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'OAK_TREE', 'COCONUT_PALM'],
     prey_species: [],
     can_scavenge: false,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 35,
+    clutch_size: [1, 3],
   },
 
   BEETLE: {
@@ -218,6 +224,10 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'MUSHROOM', 'CARROT'],
     prey_species: [],
     can_scavenge: true,
+    reproduction_type: 'OVIPAROUS',
+    incubation_period: 20,
+    clutch_size: [3, 6],
+    egg_hp: 8,
   },
 
   GOAT: {
@@ -253,6 +263,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'CARROT', 'SUNFLOWER', 'CACTUS', 'POTATO', 'CHILI_PEPPER'],
     prey_species: [],
     can_scavenge: false,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 80,
+    clutch_size: [1, 2],
   },
 
   DEER: {
@@ -288,6 +301,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'CARROT', 'POTATO', 'OLIVE_TREE'],
     prey_species: [],
     can_scavenge: false,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 70,
+    clutch_size: [1, 2],
   },
 
   FOX: {
@@ -324,6 +340,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['STRAWBERRY', 'BLUEBERRY'],
     prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'CROW', 'MOSQUITO', 'CATERPILLAR', 'CRICKET', 'LIZARD'],
     can_scavenge: true,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 60,
+    clutch_size: [2, 4],
   },
 
   WOLF: {
@@ -359,6 +378,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['BLUEBERRY'],
     prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'RACCOON', 'BOAR', 'FOX', 'SNAKE', 'HAWK', 'LIZARD'],
     can_scavenge: true,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 80,
+    clutch_size: [2, 4],
   },
 
   BOAR: {
@@ -394,6 +416,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'MUSHROOM', 'OAK_TREE', 'CACTUS', 'COCONUT_PALM', 'POTATO', 'CHILI_PEPPER', 'OLIVE_TREE'],
     prey_species: ['BEETLE', 'CATERPILLAR', 'SNAKE', 'CRICKET', 'LIZARD'],
     can_scavenge: true,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 90,
+    clutch_size: [2, 5],
   },
 
   BEAR: {
@@ -430,6 +455,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'APPLE_TREE', 'MANGO_TREE', 'COCONUT_PALM', 'OLIVE_TREE'],
     prey_species: ['RABBIT', 'SQUIRREL', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'FOX', 'WOLF', 'SNAKE', 'HAWK', 'CROCODILE', 'LIZARD'],
     can_scavenge: true,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 120,
+    clutch_size: [1, 2],
   },
 
   RACCOON: {
@@ -466,6 +494,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['STRAWBERRY', 'BLUEBERRY', 'CARROT', 'TOMATO', 'COCONUT_PALM', 'POTATO', 'CHILI_PEPPER'],
     prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO', 'CRICKET'],
     can_scavenge: true,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 50,
+    clutch_size: [2, 4],
   },
 
   CROW: {
@@ -503,6 +534,9 @@ const ANIMAL_SPECIES = {
     edible_plants: ['SUNFLOWER', 'TOMATO', 'CARROT', 'COCONUT_PALM', 'CHILI_PEPPER', 'OLIVE_TREE'],
     prey_species: ['BEETLE', 'CATERPILLAR', 'MOSQUITO', 'CRICKET'],
     can_scavenge: true,
+    reproduction_type: 'VIVIPAROUS',
+    gestation_period: 30,
+    clutch_size: [2, 4],
   },
 
   MOSQUITO: {
@@ -539,6 +573,10 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'SUNFLOWER', 'STRAWBERRY', 'BLUEBERRY', 'CARROT', 'POTATO', 'CHILI_PEPPER'],
     prey_species: [],
     can_scavenge: false,
+    reproduction_type: 'OVIPAROUS',
+    incubation_period: 12,
+    clutch_size: [4, 10],
+    egg_hp: 5,
   },
 
   CATERPILLAR: {
@@ -574,6 +612,12 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'STRAWBERRY', 'CARROT', 'TOMATO', 'SUNFLOWER', 'OAK_TREE', 'APPLE_TREE', 'POTATO', 'CHILI_PEPPER', 'OLIVE_TREE'],
     prey_species: [],
     can_scavenge: false,
+    reproduction_type: 'METAMORPHOSIS',
+    incubation_period: 20,
+    clutch_size: [3, 6],
+    egg_hp: 8,
+    pupa_age: 30,
+    pupa_duration: 60,
   },
 
   CRICKET: {
@@ -609,6 +653,10 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'SUNFLOWER', 'POTATO', 'CHILI_PEPPER'],
     prey_species: [],
     can_scavenge: false,
+    reproduction_type: 'OVIPAROUS',
+    incubation_period: 18,
+    clutch_size: [3, 6],
+    egg_hp: 8,
   },
 
   LIZARD: {
@@ -644,6 +692,10 @@ const ANIMAL_SPECIES = {
     edible_plants: ['GRASS', 'BLUEBERRY', 'POTATO', 'CHILI_PEPPER', 'OLIVE_TREE'],
     prey_species: ['BEETLE', 'MOSQUITO', 'CATERPILLAR', 'CRICKET'],
     can_scavenge: true,
+    reproduction_type: 'OVIPAROUS',
+    incubation_period: 30,
+    clutch_size: [2, 5],
+    egg_hp: 10,
   },
 
   SNAKE: {
@@ -679,6 +731,10 @@ const ANIMAL_SPECIES = {
     edible_plants: [],
     prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'MOSQUITO', 'CATERPILLAR', 'CROW', 'CRICKET', 'LIZARD'],
     can_scavenge: false,
+    reproduction_type: 'OVIPAROUS',
+    incubation_period: 45,
+    clutch_size: [3, 6],
+    egg_hp: 15,
   },
 
   HAWK: {
@@ -715,6 +771,10 @@ const ANIMAL_SPECIES = {
     edible_plants: [],
     prey_species: ['RABBIT', 'SQUIRREL', 'BEETLE', 'MOSQUITO', 'CATERPILLAR', 'SNAKE', 'CROW', 'CRICKET', 'LIZARD'],
     can_scavenge: false,
+    reproduction_type: 'OVIPAROUS',
+    incubation_period: 40,
+    clutch_size: [1, 3],
+    egg_hp: 20,
   },
 
   CROCODILE: {
@@ -750,6 +810,10 @@ const ANIMAL_SPECIES = {
     edible_plants: [],
     prey_species: ['RABBIT', 'DEER', 'GOAT', 'BOAR', 'RACCOON', 'SNAKE', 'LIZARD'],
     can_scavenge: true,
+    reproduction_type: 'OVIPAROUS',
+    incubation_period: 70,
+    clutch_size: [4, 8],
+    egg_hp: 25,
   },
 };
 

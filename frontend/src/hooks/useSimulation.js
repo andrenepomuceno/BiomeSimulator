@@ -30,6 +30,7 @@ export function useSimulation() {
           const heightmap = msg.heightmap ? new Float32Array(msg.heightmap) : null;
           store.setTerrain(terrain, msg.width, msg.height);
           store.setAnimals(msg.animals || []);
+          if (msg.eggs) store.setEggs(msg.eggs);
           store.setClock(msg.clock);
           if (msg.hungerMultiplier != null) store.setHungerMultiplier(msg.hungerMultiplier);
           if (msg.thirstMultiplier != null) store.setThirstMultiplier(msg.thirstMultiplier);
@@ -68,6 +69,7 @@ export function useSimulation() {
               else store.clearSelection(); // entity died / removed
             }
           }
+          if (msg.eggs) store.setEggs(msg.eggs);
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
           if (msg.fruitChanges) store.setFruitChanges(msg.fruitChanges);
           if (msg.plantsFullSync) {

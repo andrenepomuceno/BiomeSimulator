@@ -82,8 +82,10 @@ export class EntityLayer {
    * Get the texture key for an animal based on its state and species.
    */
   _getTexKey(a) {
+    if (a.isEgg) return 'EGG';
     if (a.state === 9) return 'DEAD';
     if (a.state === 5) return 'SLEEPING';
+    if (a.lifeStage === 4) return 'PUPA';
     return a.species;
   }
 
@@ -93,20 +95,25 @@ export class EntityLayer {
    * @param {PIXI.Renderer} renderer - (unused, kept for API compat)
    * @param {number} currentTick
    * @param {number} zoom - current camera zoom level
+   * @param {Array} eggs - [{id, x, y, species, hp, maxHp, ...}, ...]
    */
-  update(animals, renderer, currentTick = 0, zoom = 1) {
+  update(animals, renderer, currentTick = 0, zoom = 1, eggs = []) {
     this._ensureTextures();
 
     const seen = new Set();
     const showBars = zoom >= ENTITY_BARS_MIN_ZOOM;
 
+    // Combine animals and eggs into one pass
+    const entities = eggs.length > 0 ? animals.concat(eggs) : animals;
+
     // Clear energy bars (redrawn each frame)
     const barGfx = this._barGfx;
     barGfx.clear();
 
-    for (const a of animals) {
+    for (const a of entities) {
       seen.add(a.id);
       let sprite = this._sprites.get(a.id);
+      const isEgg = !!a.isEgg;
 
       const texKey = this._getTexKey(a);
       const tex = this._textures[texKey] || this._textures[a.species];
@@ -171,14 +178,22 @@ export class EntityLayer {
 
       // Scale: 96px texture → ~1 tile.  Base scale 0.012, range varies by life stage
       const baseScale = 0.012;
-      const energy = Number.isFinite(a.energy) ? a.energy : 0;
-      const energyFactor = 0.8 + (energy / MAX_ANIMAL_ENERGY) * 0.4;
-      const stageFactor = a.state === 9 ? 1.0
-        : a.lifeStage === 0 ? 0.5
-        : a.lifeStage === 1 ? 0.7
-        : a.lifeStage === 2 ? 0.85
-        : 1.0;
-      let finalScale = baseScale * energyFactor * stageFactor;
+      let finalScale;
+      if (isEgg) {
+        // Eggs: small, static
+        finalScale = baseScale * 0.4;
+      } else {
+        const energy = Number.isFinite(a.energy) ? a.energy : 0;
+        const energyFactor = 0.8 + (energy / MAX_ANIMAL_ENERGY) * 0.4;
+        const stageFactor = a.state === 9 ? 1.0
+          : a.lifeStage === 4 ? 0.6   // PUPA
+          : a.lifeStage === 0 ? 0.5
+          : a.lifeStage === 1 ? 0.7
+          : a.lifeStage === 2 ? 0.85
+          : 1.0;
+        const pregnantFactor = a.pregnant ? 1.1 : 1.0;
+        finalScale = baseScale * energyFactor * stageFactor * pregnantFactor;
+      }
 
       // Pop-in animation for newly spawned sprites
       if (sprite._spawnTick != null && currentTick > 0) {

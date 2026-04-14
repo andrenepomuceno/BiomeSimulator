@@ -156,12 +156,12 @@ export class GameRenderer {
     }
   }
 
-  updateEntities(animals, renderer, tick, zoom) {
+  updateEntities(animals, renderer, tick, zoom, eggs = []) {
     const store = useSimStore.getState();
     const profiling = store.profilingEnabled;
     const t0 = profiling ? performance.now() : 0;
 
-    this.entityLayer.update(animals, renderer, tick, zoom);
+    this.entityLayer.update(animals, renderer, tick, zoom, eggs);
 
     if (profiling) {
       store.setRendererProfile({

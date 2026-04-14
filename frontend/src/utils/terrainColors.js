@@ -188,4 +188,5 @@ export const LIFE_STAGE_NAMES = {
   1: '🌱 Jovem',
   2: '🌿 Adulto Jovem',
   3: '🌳 Adulto',
+  4: '🐛 Pupa',
 };

@@ -12,8 +12,13 @@ const TOOLS = [
   { id: 'ERASE', label: '🗑️ Erase' },
 ];
 
-export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onReportToggle, onEntitiesToggle }) {
-  const { paused, running, tps, clock, tool, setTool } = useSimStore();
+export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onAudioToggle, onReportToggle, onEntitiesToggle }) {
+  const { paused, running, tps, clock, tool, setTool, audioSettings } = useSimStore();
+  const audioLabel = audioSettings.muted
+    ? '🔇 Audio'
+    : audioSettings.unlocked
+      ? '🔊 Audio'
+      : '🔈 Audio';
 
   return (
     <div className="toolbar">
@@ -77,6 +82,9 @@ export default function Toolbar({ onStart, onPause, onResume, onStep, onReset, o
       </button>
       <button className="btn btn-sim btn-sm" onClick={onGuideToggle} title="In-Game Guide">
         ❓ Guide
+      </button>
+      <button className={`btn btn-sim btn-sm ${audioSettings.muted ? 'audio-btn-muted' : ''}`} onClick={onAudioToggle} title="Audio Settings">
+        {audioLabel}
       </button>
       <button className="btn btn-sim btn-sm" onClick={onEntitiesToggle} title="Entity Summary">
         📋 Entities

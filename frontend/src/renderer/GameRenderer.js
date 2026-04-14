@@ -10,10 +10,11 @@ import { AnimationLayer } from './AnimationLayer.js';
 import useSimStore from '../store/simulationStore.js';
 
 export class GameRenderer {
-  constructor(container, onViewportChange, onTileClick) {
+  constructor(container, onViewportChange, onTileClick, onEffectEvent) {
     this.container = container;
     this.onViewportChange = onViewportChange;
     this.onTileClick = onTileClick;
+    this.onEffectEvent = onEffectEvent || null;
 
     this.app = new PIXI.Application({
       resizeTo: container,
@@ -37,7 +38,7 @@ export class GameRenderer {
     this.terrainLayer = new TerrainLayer();
     this.plantLayer = new PlantLayer();
     this.animationLayer = new AnimationLayer();
-    this.entityLayer = new EntityLayer(this.animationLayer);
+    this.entityLayer = new EntityLayer(this.animationLayer, (event) => this._emitEffectEvent(event));
 
     this.worldContainer.addChild(this.terrainLayer.container);
     this.worldContainer.addChild(this.plantLayer.container);
@@ -143,6 +144,7 @@ export class GameRenderer {
     for (const change of plantChanges) {
       if (change[3] === 5 && change[0] >= x1 && change[0] <= x2 && change[1] >= y1 && change[1] <= y2) {
         this.animationLayer.spawnFruit(change[0] + 0.5, change[1] + 0.5);
+        this._emitEffectEvent({ type: 'fruit', x: change[0] + 0.5, y: change[1] + 0.5 });
         if (++fruitCount >= 30) break; // Cap per tick
       }
     }
@@ -276,6 +278,11 @@ export class GameRenderer {
     this.nightOverlay.beginFill(color);
     this.nightOverlay.drawRect(0, 0, width, height);
     this.nightOverlay.endFill();
+  }
+
+  _emitEffectEvent(event) {
+    if (!this.onEffectEvent || !event) return;
+    this.onEffectEvent(event);
   }
 
   _onViewportChanged() {

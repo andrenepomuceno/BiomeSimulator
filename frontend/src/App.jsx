@@ -5,6 +5,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import useSimStore from './store/simulationStore';
 import { useSimulation } from './hooks/useSimulation';
 import { useEditor } from './hooks/useEditor';
+import { useAudio } from './hooks/useAudio';
 import { GameRenderer } from './renderer/GameRenderer';
 import Toolbar from './components/Toolbar';
 import GameMenu from './components/GameMenu';
@@ -15,12 +16,14 @@ import Minimap from './components/Minimap';
 import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
 import HelpModal from './components/HelpModal';
+import AudioSettingsModal from './components/AudioSettingsModal';
 
 const MODALS = {
   MENU: 'menu',
   GUIDE: 'guide',
   REPORT: 'report',
   ENTITIES: 'entities',
+  AUDIO: 'audio',
 };
 
 // Simple debounce implementation for speed slider
@@ -40,6 +43,7 @@ export default function App() {
   const rendererRef = useRef(null);
   const { postCmd, requestTileInfo } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
+  const { unlockAudio, updateListenerViewport, playUiClick, playWorldEffect, syncAmbience } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
   const debouncedSpeedChangeRef = useRef(null);
 
@@ -54,13 +58,19 @@ export default function App() {
 
     const onViewportChange = (vp) => {
       useSimStore.getState().setViewport(vp);
+      updateListenerViewport(vp);
     };
 
     const onTileClick = (x, y) => {
       handleTileClick(x, y);
     };
 
-    const renderer = new GameRenderer(canvasContainerRef.current, onViewportChange, onTileClick);
+    const renderer = new GameRenderer(
+      canvasContainerRef.current,
+      onViewportChange,
+      onTileClick,
+      playWorldEffect,
+    );
     rendererRef.current = renderer;
 
     // Generate initial map via worker
@@ -114,6 +124,25 @@ export default function App() {
     }
   }, [clock.is_night, clock.tick]);
 
+  useEffect(() => {
+    syncAmbience(clock);
+  }, [clock.is_night, clock.tick_in_day, clock.ticks_per_day, syncAmbience]);
+
+  useEffect(() => {
+    const attemptUnlock = () => {
+      if (useSimStore.getState().audioSettings.unlocked) return;
+      void unlockAudio();
+    };
+
+    window.addEventListener('pointerdown', attemptUnlock, true);
+    window.addEventListener('keydown', attemptUnlock, true);
+
+    return () => {
+      window.removeEventListener('pointerdown', attemptUnlock, true);
+      window.removeEventListener('keydown', attemptUnlock, true);
+    };
+  }, [unlockAudio]);
+
   // Sync selection marker to renderer
   useEffect(() => {
     if (!rendererRef.current) return;
@@ -129,25 +158,30 @@ export default function App() {
   // --- Actions ---
 
   function _handleStart() {
+    playUiClick();
     postCmd('start');
     useSimStore.getState().setSimState({ running: true, paused: false });
   }
 
   function _handlePause() {
+    playUiClick();
     postCmd('pause');
     useSimStore.getState().setSimState({ paused: true });
   }
 
   function _handleResume() {
+    playUiClick();
     postCmd('resume');
     useSimStore.getState().setSimState({ paused: false });
   }
 
   function _handleStep() {
+    playUiClick();
     postCmd('step');
   }
 
   function _handleReset() {
+    playUiClick();
     postCmd('reset');
     useSimStore.getState().setSimState({ running: false, paused: true });
   }
@@ -223,6 +257,7 @@ export default function App() {
   }
 
   function _handleSave(callback) {
+    playUiClick();
     useSimStore.getState().setSaveCallback(callback);
     postCmd('saveState');
   }
@@ -233,11 +268,20 @@ export default function App() {
   }
 
   function _openModal(modalId) {
+    playUiClick();
+    if (modalId === MODALS.AUDIO) {
+      void unlockAudio();
+    }
     setActiveModal(modalId);
   }
 
   function _closeModal() {
+    if (activeModal) playUiClick();
     setActiveModal(null);
+  }
+
+  function _handleUnlockAudio() {
+    void unlockAudio();
   }
 
   return (
@@ -250,6 +294,11 @@ export default function App() {
         onLoad={_handleLoad}
       />
       <HelpModal open={activeModal === MODALS.GUIDE} onClose={_closeModal} />
+      <AudioSettingsModal
+        open={activeModal === MODALS.AUDIO}
+        onClose={_closeModal}
+        onUnlock={_handleUnlockAudio}
+      />
       <SimulationReport open={activeModal === MODALS.REPORT} onClose={_closeModal} />
       <EntitySummaryWindow
         open={activeModal === MODALS.ENTITIES}
@@ -266,6 +315,7 @@ export default function App() {
           onSpeedChange={_handleSpeedChange}
           onMenuToggle={() => _openModal(MODALS.MENU)}
           onGuideToggle={() => _openModal(MODALS.GUIDE)}
+          onAudioToggle={() => _openModal(MODALS.AUDIO)}
           onReportToggle={() => _openModal(MODALS.REPORT)}
           onEntitiesToggle={() => _openModal(MODALS.ENTITIES)}
         />

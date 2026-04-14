@@ -4,6 +4,16 @@
 import { create } from 'zustand';
 import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 
+export const DEFAULT_AUDIO_SETTINGS = {
+  muted: false,
+  masterVolume: 0.55,
+  sfxVolume: 0.72,
+  ambienceVolume: 0.32,
+  sfxEnabled: true,
+  ambienceEnabled: true,
+  unlocked: false,
+};
+
 const useSimStore = create((set, get) => ({
   // Worker reference (set once by useSimulation)
   worker: null,
@@ -119,6 +129,12 @@ const useSimStore = create((set, get) => ({
   setProfilingEnabled: (enabled) => set({ profilingEnabled: !!enabled }),
   setEngineProfile: (engine) => set(state => ({ profiling: { ...state.profiling, engine } })),
   setRendererProfile: (renderer) => set(state => ({ profiling: { ...state.profiling, renderer } })),
+
+  // Audio
+  audioSettings: { ...DEFAULT_AUDIO_SETTINGS },
+  setAudioSettings: (patch) => set(state => ({
+    audioSettings: { ...state.audioSettings, ...patch },
+  })),
 
   // Selected entity / tile
   selectedEntity: null,

@@ -24,12 +24,13 @@ const ANIM_INTERVAL = 6;
 const ANIM_SEQUENCE = [0, 1, 2, 1];
 
 export class EntityLayer {
-  constructor(animationLayer) {
+  constructor(animationLayer, onEffectEvent) {
     this.container = new PIXI.Container();
     this._sprites = new Map(); // id → PIXI.Sprite
     this._textures = null;
     this._texturesReady = false;
     this._animationLayer = animationLayer || null;
+    this._onEffectEvent = onEffectEvent || null;
 
     // Track previous state per animal to detect transitions
     this._prevStates = new Map(); // id → state
@@ -49,6 +50,11 @@ export class EntityLayer {
     this._lastSelX = -1;
     this._lastSelY = -1;
     this.container.addChild(this._selectionGfx);
+  }
+
+  _emitEffectEvent(type, x, y) {
+    if (!this._onEffectEvent) return;
+    this._onEffectEvent({ type, x, y });
   }
 
   _ensureTextures() {
@@ -186,9 +192,15 @@ export class EntityLayer {
         if (a.state === 6) {
           sprite._attackTick = currentTick;
           if (this._animationLayer) this._animationLayer.spawnAttack(a.x, a.y);
-        } else if (this._animationLayer && a.state === 9) this._animationLayer.spawnDeath(a.x, a.y);   // DEAD
-        else if (this._animationLayer && a.state === 8) this._animationLayer.spawnMate(a.x, a.y);    // MATING
-        else if (this._animationLayer && a.state === 3) this._animationLayer.spawnEat(a.x, a.y);     // EATING
+          this._emitEffectEvent('attack', a.x, a.y);
+        } else if (this._animationLayer && a.state === 9) {
+          this._animationLayer.spawnDeath(a.x, a.y);
+          this._emitEffectEvent('death', a.x, a.y);
+        } else if (this._animationLayer && a.state === 8) this._animationLayer.spawnMate(a.x, a.y);    // MATING
+        else if (this._animationLayer && a.state === 3) {
+          this._animationLayer.spawnEat(a.x, a.y);
+          this._emitEffectEvent('eat', a.x, a.y);
+        }
       }
       this._prevStates.set(a.id, a.state);
 

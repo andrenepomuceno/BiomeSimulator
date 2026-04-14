@@ -73,6 +73,11 @@ const SIMULATION_CONTROL_REFERENCE = [
     value: 'Change the simulation ticks per second.',
     note: 'Lower speeds are better for learning. Higher speeds are better for long trends.',
   },
+  {
+    label: 'Audio',
+    value: 'Open the audio panel to mute sound and tune master, SFX, and ambience levels.',
+    note: 'World sounds follow the camera: nearby events play louder, and activity to the left or right pans in stereo.',
+  },
 ];
 
 const NEEDS_REFERENCE = [

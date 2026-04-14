@@ -6,6 +6,7 @@ import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
 import { MAX_ANIMAL_ENERGY } from '../engine/animalSpecies.js';
+import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 
 const ATTACK_JUMP_DURATION = 12;
 const ATTACK_JUMP_HEIGHT = 0.22;
@@ -172,8 +173,8 @@ export class EntityLayer {
         sprite._lastX = a.x;
       }
 
-      // Scale: 96px texture → ~1 tile.  Base scale 0.012, range varies by life stage
-      const baseScale = 0.012;
+      // Scale: atlas frame → ~1 tile.  Adjust for frame size so 1 frame ≈ 1 tile.
+      const baseScale = 1 / FRAME_SIZE;
       let finalScale;
       if (isEgg) {
         // Eggs: small, static

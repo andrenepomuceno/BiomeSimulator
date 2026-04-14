@@ -3,15 +3,20 @@
  *
  * Pixel overlay: always visible, 1 pixel per tile (efficient at any zoom).
  * Emoji sprites: shown when zoom >= EMOJI_ZOOM_THRESHOLD for tiles in viewport.
+ *
+ * Sprites are managed incrementally: a Map keyed by cell index tracks active
+ * sprites. On each update only the delta (entered/left/changed tiles) is
+ * processed, avoiding the previous full pool-return-and-rebuild every frame.
  */
 import * as PIXI from 'pixi.js';
 import { PLANT_COLORS } from '../utils/terrainColors.js';
 import { generatePlantEmojiTextures } from '../utils/emojiTextures.js';
 import { buildSwayStages } from '../engine/plantSpecies.js';
+import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const MAX_EMOJI_SPRITES = 8000;
-const EMOJI_SCALE = 0.011; // 96px texture → ~1 tile
+const EMOJI_SCALE = 1 / FRAME_SIZE; // atlas frame → ~1 tile
 
 export class PlantLayer {
   constructor() {
@@ -30,21 +35,28 @@ export class PlantLayer {
     this._shadowContainer = new PIXI.Container();
     this.container.addChild(this._shadowContainer);
     this._shadowPool = [];
-    this._activeShadows = [];
-    this._shadowTex = null;
 
     // Emoji sprite overlay
     this._emojiContainer = new PIXI.Container();
     this.container.addChild(this._emojiContainer);
     this._emojiPool = [];     // recycled sprites
-    this._activeEmojis = [];  // currently visible sprites
+
+    // Incremental sprite tracking: cellIdx → { sprite, shadow (or null), texKey }
+    this._spriteMap = new Map();
+
     this._plantTextures = null;
 
     // Wind sway tick (set externally from GameRenderer)
     this._tick = 0;
 
-    // Growth pulse tracking: idx → { startTick, targetScale }
+    // Previous viewport for incremental diff
+    this._prevVP = { x0: 0, y0: 0, x1: 0, y1: 0 };
+
+    // Growth pulse tracking: idx → startTick
     this._growthPulses = new Map();
+
+    // Dirty cell indices (tiles changed since last updateEmojis)
+    this._dirtyCells = new Set();
   }
 
   init(width, height) {
@@ -73,7 +85,7 @@ export class PlantLayer {
     this.container.addChildAt(this.sprite, 0);
 
     // Clear emoji state
-    this._returnAllEmojis();
+    this._returnAll();
   }
 
   /**
@@ -96,6 +108,9 @@ export class PlantLayer {
       // Update raw data
       this._types[idx] = ptype;
       this._stages[idx] = stage;
+
+      // Mark cell dirty for incremental sprite update
+      this._dirtyCells.add(idx);
 
       if (ptype === 0 || stage === 0 || stage === 6) {
         this._pixels[i] = 0;
@@ -148,23 +163,26 @@ export class PlantLayer {
       this._baseTexture.resource.update();
       this._baseTexture.update();
     }
+
+    // Force full rebuild on next updateEmojis
+    this._returnAll();
   }
 
-  // ---- Emoji sprite overlay ----
+  // ---- Emoji sprite overlay (incremental) ----
 
   /**
    * Update emoji sprites for visible plants in the viewport.
    * Called by GameRenderer on viewport/zoom change and each tick.
+   *
+   * Uses incremental diff: only tiles that entered/left the viewport or
+   * whose plant data changed are touched. Sway is applied in-place on
+   * existing sprites without pool recycling.
    */
   updateEmojis(vx, vy, vw, vh, zoom, tick) {
     if (tick != null) this._tick = tick;
 
     if (zoom < EMOJI_ZOOM_THRESHOLD) {
-      // Hide emojis at low zoom
-      if (this._activeEmojis.length > 0) {
-        this._returnAllEmojis();
-        this._returnAllShadows();
-      }
+      if (this._spriteMap.size > 0) this._returnAll();
       this._emojiContainer.visible = false;
       this._shadowContainer.visible = false;
       return;
@@ -176,30 +194,9 @@ export class PlantLayer {
     if (!this._plantTextures) {
       this._plantTextures = generatePlantEmojiTextures();
     }
-
-    // Build shadow texture lazily (small dark ellipse)
-    if (!this._shadowTex) {
-      const g = new PIXI.Graphics();
-      g.beginFill(0x000000, 0.2);
-      g.drawEllipse(0, 0, 12, 5);
-      g.endFill();
-      this._shadowTex = this._emojiContainer.parent
-        ? PIXI.RenderTexture.create({ width: 24, height: 10 })
-        : null;
-      // Fallback: use runtime graphics-based shadow if RenderTexture unavailable
-      if (!this._shadowTex) {
-        this._shadowTex = g;
-      }
-    }
-
-    // Build sway stages map lazily
     if (!this._swayStages) {
       this._swayStages = buildSwayStages();
     }
-
-    // Return all current emojis/shadows to pool
-    this._returnAllEmojis();
-    this._returnAllShadows();
 
     // Clamp viewport to map bounds
     const x0 = Math.max(0, vx);
@@ -207,60 +204,118 @@ export class PlantLayer {
     const x1 = Math.min(this.width, vx + vw + 1);
     const y1 = Math.min(this.height, vy + vh + 1);
 
-    const t = this._tick;
-    const swayMap = this._swayStages;
-    let count = 0;
+    const prev = this._prevVP;
+    const viewportChanged = x0 !== prev.x0 || y0 !== prev.y0 || x1 !== prev.x1 || y1 !== prev.y1;
 
-    for (let y = y0; y < y1 && count < MAX_EMOJI_SPRITES; y++) {
-      for (let x = x0; x < x1 && count < MAX_EMOJI_SPRITES; x++) {
-        const idx = y * this.width + x;
-        const ptype = this._types[idx];
-        const stage = this._stages[idx];
-        if (ptype === 0 || stage === 0 || stage === 6) continue;
-
-        const key = `${ptype}_${stage}`;
-        const tex = this._plantTextures[key];
-        if (!tex) continue;
-
-        // Wind sway offset — only for stages that sway per species config
-        const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
-        const sway = canSway ? 0.03 * Math.sin(t * 0.08 + x * 0.5 + y * 0.3) : 0;
-
-        // Growth pulse
-        let scaleMultiplier = 1.0;
-        const pulseStart = this._growthPulses.get(idx);
-        if (pulseStart != null) {
-          const age = t - pulseStart;
-          if (age < 8) {
-            // 1.0 → 1.3 → 1.0 ease-out
-            const p = age / 8;
-            scaleMultiplier = 1.0 + 0.3 * Math.sin(p * Math.PI);
-          } else {
-            this._growthPulses.delete(idx);
-          }
+    // ── Phase 1: Remove sprites outside new viewport ──
+    if (viewportChanged) {
+      for (const [idx, entry] of this._spriteMap) {
+        const cx = idx % this.width;
+        const cy = (idx / this.width) | 0;
+        if (cx < x0 || cx >= x1 || cy < y0 || cy >= y1) {
+          this._releaseEntry(entry);
+          this._spriteMap.delete(idx);
         }
-
-        const sprite = this._getPooledSprite(tex);
-        sprite.x = x + 0.5 + sway;
-        sprite.y = y + 0.5;
-        sprite.scale.set(EMOJI_SCALE * scaleMultiplier);
-        // Alpha: seed=0.5, youngSprout=0.6, adultSprout=0.8, adult=1.0, fruit=0.9
-        sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.6 : (stage === 3 ? 0.8 : (stage === 5 ? 0.9 : 1.0)));
-        this._activeEmojis.push(sprite);
-
-        // Ground shadow (only for stage >= 3, visible enough)
-        if (stage >= 3) {
-          const shadow = this._getPooledShadow();
-          shadow.x = x + 0.5 + sway * 0.3;
-          shadow.y = y + 0.85;
-          shadow.scale.set(0.02 * scaleMultiplier, 0.01);
-          shadow.alpha = 0.2;
-          this._activeShadows.push(shadow);
-        }
-
-        count++;
       }
     }
+
+    // ── Phase 2: Process dirty cells within viewport ──
+    const dirty = this._dirtyCells;
+    if (dirty.size > 0) {
+      for (const idx of dirty) {
+        const cx = idx % this.width;
+        const cy = (idx / this.width) | 0;
+        if (cx < x0 || cx >= x1 || cy < y0 || cy >= y1) continue;
+
+        const ptype = this._types[idx];
+        const stage = this._stages[idx];
+        const key = (ptype === 0 || stage === 0 || stage === 6) ? null : `${ptype}_${stage}`;
+        const existing = this._spriteMap.get(idx);
+
+        if (!key) {
+          // Plant removed/dead — release sprite
+          if (existing) {
+            this._releaseEntry(existing);
+            this._spriteMap.delete(idx);
+          }
+        } else if (existing) {
+          // Plant changed — update texture if needed
+          if (existing.texKey !== key) {
+            const tex = this._plantTextures[key];
+            if (tex) {
+              existing.sprite.texture = tex;
+              existing.texKey = key;
+            }
+          }
+        }
+        // New cells in dirty set that don't have sprites yet will be
+        // picked up in Phase 3 if they are in the viewport.
+      }
+      dirty.clear();
+    }
+
+    // ── Phase 3: Add sprites for new viewport tiles ──
+    const t = this._tick;
+    const swayMap = this._swayStages;
+
+    if (viewportChanged) {
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const idx = y * this.width + x;
+          if (this._spriteMap.has(idx)) continue;
+          if (this._spriteMap.size >= MAX_EMOJI_SPRITES) break;
+
+          const ptype = this._types[idx];
+          const stage = this._stages[idx];
+          if (ptype === 0 || stage === 0 || stage === 6) continue;
+
+          const key = `${ptype}_${stage}`;
+          const tex = this._plantTextures[key];
+          if (!tex) continue;
+
+          this._addEntry(idx, x, y, ptype, stage, key, tex, t, swayMap);
+        }
+      }
+    }
+
+    // ── Phase 4: Update sway + growth pulse on all active sprites ──
+    for (const [idx, entry] of this._spriteMap) {
+      const cx = idx % this.width;
+      const cy = (idx / this.width) | 0;
+      const ptype = this._types[idx];
+      const stage = this._stages[idx];
+
+      const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
+      const sway = canSway ? 0.03 * Math.sin(t * 0.08 + cx * 0.5 + cy * 0.3) : 0;
+
+      let scaleMultiplier = 1.0;
+      const pulseStart = this._growthPulses.get(idx);
+      if (pulseStart != null) {
+        const age = t - pulseStart;
+        if (age < 8) {
+          const p = age / 8;
+          scaleMultiplier = 1.0 + 0.3 * Math.sin(p * Math.PI);
+        } else {
+          this._growthPulses.delete(idx);
+        }
+      }
+
+      entry.sprite.x = cx + 0.5 + sway;
+      entry.sprite.y = cy + 0.5;
+      entry.sprite.scale.set(EMOJI_SCALE * scaleMultiplier);
+
+      if (entry.shadow) {
+        entry.shadow.x = cx + 0.5 + sway * 0.3;
+        entry.shadow.y = cy + 0.85;
+        entry.shadow.scale.set(0.02 * scaleMultiplier, 0.01);
+      }
+    }
+
+    // Update previous viewport
+    prev.x0 = x0;
+    prev.y0 = y0;
+    prev.x1 = x1;
+    prev.y1 = y1;
 
     // Expire old growth pulses
     if (this._growthPulses.size > 500) {
@@ -270,7 +325,40 @@ export class PlantLayer {
     }
   }
 
-  _getPooledSprite(texture) {
+  // ── Sprite lifecycle helpers ──
+
+  _addEntry(idx, x, y, ptype, stage, key, tex, t, swayMap) {
+    const sprite = this._acquireSprite(tex);
+    const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
+    const sway = canSway ? 0.03 * Math.sin(t * 0.08 + x * 0.5 + y * 0.3) : 0;
+
+    sprite.x = x + 0.5 + sway;
+    sprite.y = y + 0.5;
+    sprite.scale.set(EMOJI_SCALE);
+    sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.6 : (stage === 3 ? 0.8 : (stage === 5 ? 0.9 : 1.0)));
+
+    let shadow = null;
+    if (stage >= 3) {
+      shadow = this._acquireShadow();
+      shadow.x = x + 0.5 + sway * 0.3;
+      shadow.y = y + 0.85;
+      shadow.scale.set(0.02, 0.01);
+      shadow.alpha = 0.2;
+    }
+
+    this._spriteMap.set(idx, { sprite, shadow, texKey: key });
+  }
+
+  _releaseEntry(entry) {
+    entry.sprite.visible = false;
+    this._emojiPool.push(entry.sprite);
+    if (entry.shadow) {
+      entry.shadow.visible = false;
+      this._shadowPool.push(entry.shadow);
+    }
+  }
+
+  _acquireSprite(texture) {
     let sprite;
     if (this._emojiPool.length > 0) {
       sprite = this._emojiPool.pop();
@@ -284,13 +372,12 @@ export class PlantLayer {
     return sprite;
   }
 
-  _getPooledShadow() {
+  _acquireShadow() {
     let sprite;
     if (this._shadowPool.length > 0) {
       sprite = this._shadowPool.pop();
       sprite.visible = true;
     } else {
-      // Create a simple dark ellipse graphic as shadow sprite
       const g = new PIXI.Graphics();
       g.beginFill(0x000000, 1);
       g.drawEllipse(0, 0, 12, 5);
@@ -301,19 +388,15 @@ export class PlantLayer {
     return sprite;
   }
 
-  _returnAllEmojis() {
-    for (const sprite of this._activeEmojis) {
-      sprite.visible = false;
-      this._emojiPool.push(sprite);
+  _returnAll() {
+    for (const [, entry] of this._spriteMap) {
+      this._releaseEntry(entry);
     }
-    this._activeEmojis.length = 0;
-  }
-
-  _returnAllShadows() {
-    for (const sprite of this._activeShadows) {
-      sprite.visible = false;
-      this._shadowPool.push(sprite);
-    }
-    this._activeShadows.length = 0;
+    this._spriteMap.clear();
+    this._prevVP.x0 = 0;
+    this._prevVP.y0 = 0;
+    this._prevVP.x1 = 0;
+    this._prevVP.y1 = 0;
+    this._dirtyCells.clear();
   }
 }

@@ -30,12 +30,14 @@ See [Simulation Rules](../simulation/) for runtime behavior and [Architecture](.
 | `simulation.js` | Tick orchestration, world generation, entity management |
 | `world.js` | World model: terrain grid, plant arrays, animal list, clock |
 | `entities.js` | Animal class with state machine, energy, needs |
-| `flora.js` | Plant lifecycle: growth, fruiting, seed spreading |
-| `behaviors.js` | Animal AI: decision tree, pathfinding, combat, mating |
+| `flora.js` | Stable facade for plant lifecycle modules under `flora/` |
+| `behaviors.js` | Stable facade for animal AI modules under `behaviors/` |
 | `pathfinding.js` | Bounded A* algorithm (4-directional) |
 | `spatialHash.js` | O(1) spatial indexing for neighbor queries |
 | `mapGenerator.js` | Procedural terrain via Perlin noise + island masks |
 | `benchmarkProfiler.js` | In-engine tick timing and perf metrics |
+
+Internal folders such as `frontend/src/engine/flora/` and `frontend/src/engine/behaviors/` hold the extracted implementation details while the top-level facade files preserve import stability for `simulation.js`, workers, and other engine consumers.
 
 ### Worker Files (`frontend/src/worker/`)
 

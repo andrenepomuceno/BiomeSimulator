@@ -47,6 +47,110 @@ block-beta
 | **Renderer** (`src/renderer/`) | Pixi.js only. No game logic. Reads data, draws frames. |
 | **Components** (`src/components/`) | React + Bootstrap UI. Read store, dispatch commands via hooks. |
 
+## Source Graph
+
+This file-level graph maps the main runtime handoff from React on the main thread to the worker-hosted simulation engine. Helper modules are grouped where expanding every file would make the graph unreadable.
+
+```mermaid
+flowchart TB
+  subgraph MainThread["Main Thread (frontend/src/)"]
+    direction LR
+
+    subgraph UI["React UI"]
+      direction TB
+      App["App.jsx<br/>layout, effects, renderer wiring"]
+      Components["components/<br/>Toolbar, StatsPanel, Minimap,<br/>EntityInspector, TerrainEditor,<br/>GameMenu, SimulationReport,<br/>EntitySummaryWindow"]
+    end
+
+    subgraph Bridge["State Bridge"]
+      direction TB
+      Store["store/simulationStore.js<br/>single Zustand store"]
+      UseSim["hooks/useSimulation.js<br/>worker lifecycle + inbound sync"]
+      UseEditor["hooks/useEditor.js<br/>tile tools + selection commands"]
+    end
+
+    subgraph Render["Pixi Renderer"]
+      direction TB
+      GameRenderer["renderer/GameRenderer.js<br/>Pixi app + orchestration"]
+      Camera["renderer/Camera.js<br/>pan, zoom, tile coordinates"]
+      TerrainLayer["renderer/TerrainLayer.js"]
+      PlantLayer["renderer/PlantLayer.js"]
+      EntityLayer["renderer/EntityLayer.js"]
+      AnimationLayer["renderer/AnimationLayer.js"]
+    end
+  end
+
+  subgraph WorkerBoundary["Worker Boundary (frontend/src/worker/)"]
+    direction LR
+    SimWorker["simWorker.js<br/>command handler, tick loop,<br/>incremental/full serialization"]
+    FaunaPool["faunaWorker.js x N<br/>parallel animal AI chunks"]
+  end
+
+  subgraph Engine["Pure Engine (frontend/src/engine/)"]
+    direction LR
+    SimEngine["simulation.js<br/>SimulationEngine"]
+    World["world.js<br/>World, Clock, typed arrays"]
+    Entities["entities.js<br/>Animal model + serialization"]
+    Behaviors["behaviors/<br/>combat, eating, movement,<br/>reproduce, scavenge, seek, states"]
+    Flora["flora.js<br/>seedInitialPlants + processPlants"]
+    MapGen["mapGenerator.js<br/>terrain + water proximity"]
+    Spatial["spatialHash.js<br/>neighbor queries"]
+    Path["pathfinding.js<br/>bounded A*"]
+    Species["animalSpecies.js, plantSpecies.js,<br/>config.js"]
+  end
+
+  App -->|renders| Components
+  Components -->|read state and fire UI callbacks| Store
+  Store -->|terrain, animals, plants,<br/>clock, selection, viewport| App
+  App -->|uses| UseSim
+  App -->|uses| UseEditor
+  App -->|creates and updates| GameRenderer
+  GameRenderer -->|tile click callback| UseEditor
+  GameRenderer -->|viewport callback| Store
+  UseEditor -->|reads tool, worker, selection| Store
+  UseEditor -->|optimistic terrain paint| TerrainLayer
+  GameRenderer --> Camera
+  GameRenderer --> TerrainLayer
+  GameRenderer --> PlantLayer
+  GameRenderer --> EntityLayer
+  GameRenderer --> AnimationLayer
+
+  App -->|generate, start, pause,<br/>resume, step, save, load| UseSim
+  UseSim -->|new Worker() + postMessage| SimWorker
+  SimWorker -->|worldReady, tick, tileInfo,<br/>savedState| UseSim
+  UseSim -->|setWorker + hydrate store| Store
+  UseEditor -->|getTileInfo, editTerrain,<br/>placeEntity, removeEntity| SimWorker
+
+  SimWorker -->|generateWorld, tick,<br/>editTerrain, load, save| SimEngine
+  SimWorker -->|parallel fauna chunks| FaunaPool
+  FaunaPool -->|deltas, births,<br/>plantChanges, deadIds| SimWorker
+
+  SimEngine --> World
+  SimEngine --> Entities
+  SimEngine --> Behaviors
+  SimEngine --> Flora
+  SimEngine --> MapGen
+  SimEngine --> Spatial
+  SimEngine --> Species
+  Behaviors -->|mutates animal state| Entities
+  Behaviors -->|reads terrain, plants,<br/>clock, occupancy| World
+  Behaviors --> Spatial
+  Behaviors --> Path
+  Flora --> World
+  MapGen --> World
+  Species --> Behaviors
+  Species --> FaunaPool
+  FaunaPool -->|reconstructs chunk world state| World
+  FaunaPool --> Behaviors
+  FaunaPool --> Spatial
+```
+
+Current implementation notes:
+
+- `useEditor` sends canvas commands directly through the worker reference stored in Zustand, while `useSimulation` owns worker creation and inbound message hydration.
+- Worker sync is driven by incremental or full-state serialization in `simWorker.js`; the viewport currently stays on the main thread for renderer and minimap feedback.
+- `behaviors/` and the renderer layers are grouped so the graph stays readable while still pointing at the files contributors usually touch first.
+
 ---
 
 ## Data Flow
@@ -85,7 +189,7 @@ sequenceDiagram
 
     W->>E: tickCleanup()
     E->>E: remove dead, adaptive cleanup, record stats
-    E-->>W: getStateForViewport(vx, vy, vw, vh)
+  W->>W: serialize full or incremental state
 
     W->>M: postMessage({type: 'tick', clock, animals, plantChanges, stats})
     M->>S: setAnimals() or mergeAnimalDeltas()

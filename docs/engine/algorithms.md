@@ -116,13 +116,16 @@ graph TD
     simulation --> behaviors["behaviors.js"]
     simulation --> plantSpecies
 
+    flora --> floraModules["flora/index.js + internal flora/* modules"]
+    behaviors --> behaviorModules["behaviors/index.js + internal behaviors/* modules"]
+
     behaviors --> entities
     behaviors --> world
     behaviors --> pathfinding["pathfinding.js"]
     behaviors --> config
 
-    flora --> world
-    flora --> plantSpecies
+    floraModules --> world
+    floraModules --> plantSpecies
 
     simWorker["simWorker.js"] --> simulation
     simWorker --> faunaWorker["faunaWorker.js"]

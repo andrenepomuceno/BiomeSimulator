@@ -4,10 +4,12 @@
 import React, { useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
-import ANIMAL_SPECIES from '../engine/animalSpecies';
+import ANIMAL_SPECIES, { buildAnimalSpeciesConfig } from '../engine/animalSpecies';
 import PLANT_SPECIES, { getPlantByTypeId } from '../engine/plantSpecies';
 import { DIET_COLORS } from '../constants/statusColors';
 import { formatTickTimestamp, resolveTicksPerDay } from '../utils/time';
+
+const ANIMAL_SPECIES_CONFIG = buildAnimalSpeciesConfig();
 
 function Bar({ label, value, max, color, icon }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
@@ -31,7 +33,7 @@ function EnergyCostTable({ costs }) {
     ATTACK: '⚔️ Attack', MATE: '💕 Mate', FLEE: '🏃‍♂️ Flee',
   };
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px 6px', fontSize: '0.65rem' }}>
+    <div className="inspector-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2px 8px' }}>
       {Object.entries(costs).map(([action, cost]) => (
         <div key={action} className="d-flex justify-content-between">
           <span className="text-muted">{ACTION_LABELS[action] || action}</span>
@@ -61,18 +63,48 @@ function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
 
 const STAGE_LABELS = ['Seed', 'Young Sprout', 'Adult Sprout', 'Adult', 'Fruit'];
 const WATER_AFFINITY_LABELS = { low: '🏜️ Low', medium: '💧 Medium', high: '🌊 High' };
+const SEASON_LABELS = ['Spring', 'Summer', 'Autumn', 'Winter'];
+const ANIMAL_LIFE_STAGE_KEYS = ['BABY', 'YOUNG', 'YOUNG_ADULT', 'ADULT'];
 
-function PlantAttributes({ typeId }) {
+function formatPercent(value, digits = 0) {
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+function resolveSeasonIndex(clock, gameConfig) {
+  const seasonLengthDays = gameConfig?.season_length_days ?? 30;
+  const day = clock?.day ?? Math.floor((clock?.tick || 0) / resolveTicksPerDay(clock?.ticks_per_day));
+  return Math.floor(day / seasonLengthDays) % 4;
+}
+
+function PlantAttributes({ typeId, terrain, stage, clock, gameConfig }) {
   const sp = getPlantByTypeId(typeId);
   if (!sp) return null;
+
+  const seasonIndex = resolveSeasonIndex(clock, gameConfig);
+  const season = SEASON_LABELS[seasonIndex] || 'Unknown';
+  const terrainKey = typeof terrain === 'string' ? terrain.toUpperCase() : terrain;
+  const currentTerrainGrowth = sp.terrainGrowth?.[terrainKey];
+  const growthMultiplier = gameConfig?.season_growth_multiplier?.[seasonIndex] ?? [1.2, 1.0, 0.8, 0.5][seasonIndex] ?? 1;
+  const reproductionMultiplier = gameConfig?.season_reproduction_multiplier?.[seasonIndex] ?? [1.5, 1.0, 0.7, 0.2][seasonIndex] ?? 1;
+  const deathMultiplier = gameConfig?.season_death_multiplier?.[seasonIndex] ?? [0.8, 1.0, 1.2, 2.0][seasonIndex] ?? 1;
+  const edibleStageLabels = (sp.edibleStages || []).map(stageId => PLANT_STAGE_NAMES[stageId] || `Stage ${stageId}`);
+  const isCurrentStageEdible = Array.isArray(sp.edibleStages) ? sp.edibleStages.includes(stage) : false;
+
   return (
     <CollapsibleSection title="Plant Attributes" icon="📋" defaultOpen={true}>
       <div className="stat-row"><span className="stat-label">Reproduction</span><span className="stat-value">{sp.reproduction} ({sp.sex})</span></div>
       <div className="stat-row"><span className="stat-label">Water Affinity</span><span className="stat-value">{WATER_AFFINITY_LABELS[sp.waterAffinity] || sp.waterAffinity}</span></div>
       <div className="stat-row"><span className="stat-label">Production Chance</span><span className="stat-value">{(sp.productionChance * 100).toFixed(1)}%/tick</span></div>
       <div className="stat-row"><span className="stat-label">Fruit Spoil Age</span><span className="stat-value">{sp.fruitSpoilAge} ticks</span></div>
-      <h6 className="mt-2 mb-1" style={{ fontSize: '0.7rem' }}>🌱 Growth Stages</h6>
-      <div style={{ fontSize: '0.65rem' }}>
+      <div className="stat-row"><span className="stat-label">Edible Stages</span><span className="stat-value">{edibleStageLabels.length > 0 ? edibleStageLabels.join(', ') : 'None'}</span></div>
+      <div className="stat-row"><span className="stat-label">Current Stage</span><span className="stat-value" style={{ color: isCurrentStageEdible ? '#88cc44' : '#999' }}>{isCurrentStageEdible ? 'Edible' : 'Not edible'}</span></div>
+      <div className="stat-row"><span className="stat-label">Terrain Growth</span><span className="stat-value" style={{ color: currentTerrainGrowth > 1 ? '#88cc44' : currentTerrainGrowth === 0 ? '#ff6b6b' : '#ddd' }}>{currentTerrainGrowth != null ? `${currentTerrainGrowth.toFixed(2)}x on ${terrainKey}` : `n/a on ${terrainKey || '?'}`}</span></div>
+      <div className="stat-row"><span className="stat-label">Season</span><span className="stat-value">{season}</span></div>
+      <div className="stat-row"><span className="stat-label">Season Growth</span><span className="stat-value">{growthMultiplier.toFixed(2)}x</span></div>
+      <div className="stat-row"><span className="stat-label">Season Reproduction</span><span className="stat-value">{reproductionMultiplier.toFixed(2)}x</span></div>
+      <div className="stat-row"><span className="stat-label">Season Death</span><span className="stat-value">{deathMultiplier.toFixed(2)}x</span></div>
+      <h6 className="mt-2 mb-1 inspector-subtitle">🌱 Growth Stages</h6>
+      <div className="inspector-detail-list">
         {sp.stageAges.map((age, i) => (
           <div key={i} className="d-flex justify-content-between">
             <span className="text-muted">{STAGE_LABELS[i]} → {STAGE_LABELS[i + 1] || 'Dead'}</span>
@@ -80,13 +112,26 @@ function PlantAttributes({ typeId }) {
           </div>
         ))}
       </div>
+      {sp.terrainGrowth && (
+        <CollapsibleSection title="Terrain Multipliers" icon="🗺️" defaultOpen={false}>
+          <div className="inspector-detail-list">
+            {Object.entries(sp.terrainGrowth).map(([terrainName, multiplier]) => (
+              <div key={terrainName} className="d-flex justify-content-between">
+                <span className="text-muted">{terrainName}</span>
+                <span style={{ color: terrainKey === terrainName ? '#88cc44' : '#ddd' }}>{multiplier.toFixed(2)}x</span>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
     </CollapsibleSection>
   );
 }
 
-function SpeciesAttributes({ species, clock, gameConfig }) {
-  const sp = ANIMAL_SPECIES[species];
-  if (!sp) return null;
+function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
+  const sp = ANIMAL_SPECIES_CONFIG[species];
+  const rawSpecies = ANIMAL_SPECIES[species];
+  if (!sp || !rawSpecies) return null;
 
   const baseVision = Math.max(1, sp.vision_range || 1);
   const globalVisionMultiplier = gameConfig?.animal_global_vision_multiplier ?? 1;
@@ -97,6 +142,15 @@ function SpeciesAttributes({ species, clock, gameConfig }) {
   const effectiveVision = Math.max(1, sp.nocturnal
     ? (isNight ? scaledBaseVision : Math.floor(scaledBaseVision * nocturnalDayVisionFactor))
     : (isNight ? Math.floor(scaledBaseVision * nightVisionReduction) : scaledBaseVision));
+  const thresholds = sp.decision_thresholds || {};
+  const recovery = sp.recovery || {};
+  const healthPenalty = sp.health_penalty || {};
+  const metabolism = sp.metabolic_multipliers || {};
+  const stageKey = ANIMAL_LIFE_STAGE_KEYS[lifeStage] || 'ADULT';
+  const currentHungerMult = metabolism.hunger?.[stageKey] ?? 1;
+  const currentThirstMult = metabolism.thirst?.[stageKey] ?? 1;
+  const hungerPenaltyStart = (sp.max_hunger || 0) * (healthPenalty.threshold_fraction ?? 0.8);
+  const thirstPenaltyStart = (sp.max_thirst || 0) * (healthPenalty.threshold_fraction ?? 0.8);
 
   return (
     <CollapsibleSection title="Species Attributes" icon="📋" defaultOpen={true}>
@@ -106,6 +160,8 @@ function SpeciesAttributes({ species, clock, gameConfig }) {
         <div className="stat-row"><span className="stat-label">👁️ Vision (Now)</span><span className="stat-value">{effectiveVision}</span></div>
         <div className="stat-row"><span className="stat-label">⚡ Max Energy</span><span className="stat-value">{sp.max_energy}</span></div>
         <div className="stat-row"><span className="stat-label">❤️ Max HP</span><span className="stat-value">{sp.max_hp}</span></div>
+        <div className="stat-row"><span className="stat-label">🍖 Max Hunger</span><span className="stat-value">{sp.max_hunger}</span></div>
+        <div className="stat-row"><span className="stat-label">💧 Max Thirst</span><span className="stat-value">{sp.max_thirst}</span></div>
         <div className="stat-row"><span className="stat-label">⏳ Max Age</span><span className="stat-value">{sp.max_age}</span></div>
         <div className="stat-row"><span className="stat-label">🌱 Mature Age</span><span className="stat-value">{sp.mature_age}</span></div>
         <div className="stat-row"><span className="stat-label">⚔️ Attack</span><span className="stat-value">{sp.attack_power}</span></div>
@@ -113,11 +169,13 @@ function SpeciesAttributes({ species, clock, gameConfig }) {
         <div className="stat-row"><span className="stat-label">🍖 Hunger Rate</span><span className="stat-value">{sp.hunger_rate}/tick</span></div>
         <div className="stat-row"><span className="stat-label">💧 Thirst Rate</span><span className="stat-value">{sp.thirst_rate}/tick</span></div>
         <div className="stat-row"><span className="stat-label">♻️ Reproduction</span><span className="stat-value">{sp.reproduction}</span></div>
+        <div className="stat-row"><span className="stat-label">🌙 Activity</span><span className="stat-value">{sp.nocturnal ? 'Nocturnal' : 'Diurnal'}</span></div>
+        <div className="stat-row"><span className="stat-label">🦴 Scavenging</span><span className="stat-value">{sp.can_scavenge ? 'Enabled' : 'Disabled'}</span></div>
       </div>
       {sp.life_stage_ages && (
         <>
-          <h6 className="mt-2 mb-1" style={{ fontSize: '0.7rem' }}>🎂 Life Stage Ages</h6>
-          <div style={{ fontSize: '0.65rem' }}>
+          <h6 className="mt-2 mb-1 inspector-subtitle">🎂 Life Stage Ages</h6>
+          <div className="inspector-detail-list">
             <div className="d-flex justify-content-between"><span className="text-muted">Baby → Young</span><span>{sp.life_stage_ages[0]} ticks</span></div>
             <div className="d-flex justify-content-between"><span className="text-muted">Young → Young Adult</span><span>{sp.life_stage_ages[1]} ticks</span></div>
             <div className="d-flex justify-content-between"><span className="text-muted">Young Adult → Adult</span><span>{sp.life_stage_ages[2]} ticks</span></div>
@@ -125,11 +183,62 @@ function SpeciesAttributes({ species, clock, gameConfig }) {
         </>
       )}
 
+      <CollapsibleSection title="Decision Thresholds" icon="🧠" defaultOpen={false}>
+        <div className="inspector-detail-list">
+          <div className="d-flex justify-content-between"><span className="text-muted">Critical Hunger</span><span>{thresholds.critical_hunger}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Critical Thirst</span><span>{thresholds.critical_thirst}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Moderate Hunger</span><span>{thresholds.moderate_hunger}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Moderate Thirst</span><span>{thresholds.moderate_thirst}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Eat Opportunistic</span><span>{thresholds.eat_opportunistic}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Drink Opportunistic</span><span>{thresholds.drink_opportunistic}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Sleep Energy Min</span><span>{thresholds.sleep_energy_min}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Mate Energy Min</span><span>{thresholds.mate_energy_min}</span></div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Recovery" icon="🩹" defaultOpen={false}>
+        <div className="inspector-detail-list">
+          <div className="d-flex justify-content-between"><span className="text-muted">Idle Energy</span><span>+{recovery.idle_energy}/tick</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Idle HP</span><span>+{recovery.idle_hp}/tick</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Sleep HP</span><span>+{recovery.sleep_hp}/tick</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Sleep Exit Energy</span><span>{recovery.sleep_exit_energy}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Eat Hunger Relief</span><span>-{recovery.eat_hunger}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Eat Energy</span><span>+{recovery.eat_energy}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Eat HP</span><span>+{recovery.eat_hp}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Drink Thirst Relief</span><span>-{recovery.drink_thirst}</span></div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Health Penalty" icon="☠️" defaultOpen={false}>
+        <div className="inspector-detail-list">
+          <div className="d-flex justify-content-between"><span className="text-muted">Penalty Starts</span><span>{formatPercent(healthPenalty.threshold_fraction ?? 0.8)} of max need</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Hunger HP Loss Starts</span><span>{hungerPenaltyStart.toFixed(0)} / {sp.max_hunger}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Thirst HP Loss Starts</span><span>{thirstPenaltyStart.toFixed(0)} / {sp.max_thirst}</span></div>
+          <div className="d-flex justify-content-between"><span className="text-muted">Max HP Loss</span><span>{healthPenalty.max_penalty}/tick</span></div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Life Stage Metabolism" icon="📈" defaultOpen={false}>
+        <div className="stat-row"><span className="stat-label">Current Stage</span><span className="stat-value">{stageKey}</span></div>
+        <div className="stat-row"><span className="stat-label">Hunger Multiplier</span><span className="stat-value">{currentHungerMult.toFixed(2)}x</span></div>
+        <div className="stat-row"><span className="stat-label">Thirst Multiplier</span><span className="stat-value">{currentThirstMult.toFixed(2)}x</span></div>
+        <div className="inspector-detail-list">
+          {ANIMAL_LIFE_STAGE_KEYS.map(stageName => (
+            <div key={stageName} className="d-flex justify-content-between">
+              <span className="text-muted">{stageName}</span>
+              <span style={{ color: stageName === stageKey ? '#88cc44' : '#ddd' }}>
+                H {((metabolism.hunger?.[stageName] ?? 1)).toFixed(2)}x · T {((metabolism.thirst?.[stageName] ?? 1)).toFixed(2)}x
+              </span>
+            </div>
+          ))}
+        </div>
+      </CollapsibleSection>
+
       {/* Diet — Edible Plants */}
-      {sp.edible_plants && sp.edible_plants.length > 0 && (
+      {rawSpecies.edible_plants && rawSpecies.edible_plants.length > 0 && (
         <CollapsibleSection title="Edible Plants" icon="🌿" defaultOpen={false}>
-          <div style={{ fontSize: '0.65rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {sp.edible_plants.map(k => {
+          <div className="inspector-chip-list">
+            {rawSpecies.edible_plants.map(k => {
               const plant = PLANT_SPECIES[k];
               const emoji = plant?.fruitEmoji || plant?.emoji?.adult || '🌱';
               return (
@@ -143,10 +252,10 @@ function SpeciesAttributes({ species, clock, gameConfig }) {
       )}
 
       {/* Diet — Prey Species */}
-      {sp.prey_species && sp.prey_species.length > 0 && (
+      {rawSpecies.prey_species && rawSpecies.prey_species.length > 0 && (
         <CollapsibleSection title="Prey Species" icon="🎯" defaultOpen={false}>
-          <div style={{ fontSize: '0.65rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {sp.prey_species.map(k => (
+          <div className="inspector-chip-list">
+            {rawSpecies.prey_species.map(k => (
               <span key={k} style={{ background: '#2e1a1a', padding: '2px 7px', borderRadius: 4, border: '1px solid #4a2a2a' }}>
                 {SPECIES_INFO[k]?.emoji} {SPECIES_INFO[k]?.name || k}
               </span>
@@ -257,7 +366,7 @@ export default function EntityInspector() {
   if (selectedEntity) {
     const e = selectedEntity;
     const info = SPECIES_INFO[e.species] || { emoji: '❓', name: e.species, diet: e.diet || '?' };
-    const sp = ANIMAL_SPECIES[e.species];
+    const sp = ANIMAL_SPECIES_CONFIG[e.species];
     const maxHunger = sp?.max_hunger || 100;
     const maxThirst = sp?.max_thirst || 100;
     const maxEnergy = sp?.max_energy || 100;
@@ -343,7 +452,7 @@ export default function EntityInspector() {
         )}
 
         {/* Species attributes */}
-        <SpeciesAttributes species={e.species} clock={clock} gameConfig={gameConfig} />
+        <SpeciesAttributes species={e.species} lifeStage={e.lifeStage} clock={clock} gameConfig={gameConfig} />
 
         {/* Action History */}
         {e.actionHistory && e.actionHistory.length > 0 && (
@@ -431,10 +540,10 @@ export default function EntityInspector() {
                 </div>
               )}
             </CollapsibleSection>
-            <PlantAttributes typeId={t.plant.type} />
+            <PlantAttributes typeId={t.plant.type} terrain={t.terrain} stage={t.plant.stage} clock={clock} gameConfig={gameConfig} />
             {t.plant.log && t.plant.log.length > 0 && (
               <CollapsibleSection title="Event Log" icon="📜" defaultOpen={false}>
-                <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: '0.63rem' }}>
+                <div className="inspector-log-list" style={{ maxHeight: 200, overflowY: 'auto' }}>
                   {[...t.plant.log].reverse().map((ev, i) => (
                     <PlantLogEntry key={i} event={ev} ticksPerDay={ticksPerDay} />
                   ))}

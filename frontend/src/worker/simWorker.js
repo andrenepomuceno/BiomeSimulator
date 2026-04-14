@@ -118,6 +118,7 @@ async function doParallelFauna() {
 
   const allAnimalStates = alive.map(a => a.toWorkerState());
   const activePlantIndices = Array.from(w.activePlantTiles);
+  const eggDicts = (w.eggs || []).filter(e => e.alive).map(e => e.toDict());
 
   const resultPromises = chunks.map((chunkIds, i) => {
     return new Promise(resolve => {
@@ -165,6 +166,7 @@ async function doParallelFauna() {
         thirstMultiplier: w.thirstMultiplier,
         activePlantIndices,
         allAnimals: allAnimalStates,
+        eggs: eggDicts,
         chunkIds,
         nextIdBase: 900000 + i * 100000,
       }, [ptCopy.buffer, psCopy.buffer, paCopy.buffer, agCopy.buffer]);
@@ -439,7 +441,7 @@ self.onmessage = function (e) {
 
     case 'removeEntity': {
       if (!engine) break;
-      const ok = engine.removeEntity(e.data.entityId);
+      const ok = engine.removeEntity(e.data.entityId, !!e.data.isEgg);
       self.postMessage({ type: 'entityRemoved', entityId: e.data.entityId, ok });
       break;
     }

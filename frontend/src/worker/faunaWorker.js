@@ -17,7 +17,7 @@
  */
 
 import { World } from '../engine/world.js';
-import { Animal } from '../engine/entities.js';
+import { Animal, Egg } from '../engine/entities.js';
 import { SpatialHash } from '../engine/spatialHash.js';
 import { decideAndAct } from '../engine/behaviors.js';
 
@@ -109,6 +109,23 @@ self.onmessage = function (e) {
       }
       world.animals = allAnimals;
 
+      // Reconstruct existing eggs so _tryEatEgg works in parallel mode
+      world.eggs = [];
+      if (e.data.eggs) {
+        for (const ed of e.data.eggs) {
+          const sc = speciesConfigs[ed.species];
+          if (!sc) continue;
+          const egg = new Egg(ed.id, ed.x, ed.y, ed.species, sc);
+          egg.hp = ed.hp;
+          egg.maxHp = ed.maxHp;
+          egg.age = ed.age;
+          egg.alive = ed.alive;
+          egg.parentA = ed.parentA;
+          egg.parentB = ed.parentB;
+          world.eggs.push(egg);
+        }
+      }
+
       // Build spatial hash from all alive animals
       spatialHash.rebuild(allAnimals.filter(a => a.alive));
 
@@ -164,10 +181,18 @@ self.onmessage = function (e) {
       }
 
       // Collect egg births from oviparous/metamorphosis species mating
+      // and track eaten/destroyed eggs
       const eggBirths = [];
+      const eatenEggIds = [];
       if (world.eggs) {
         for (const egg of world.eggs) {
-          eggBirths.push(egg.toDict());
+          if (!egg.alive && e.data.eggs && e.data.eggs.some(ed => ed.id === egg.id)) {
+            // Existing egg was eaten by a predator in this chunk
+            eatenEggIds.push(egg.id);
+          } else if (egg.alive && !(e.data.eggs && e.data.eggs.some(ed => ed.id === egg.id))) {
+            // Newly created egg (from mating this tick)
+            eggBirths.push(egg.toDict());
+          }
         }
       }
 
@@ -176,6 +201,7 @@ self.onmessage = function (e) {
         deltas,
         births,
         eggBirths,
+        eatenEggIds,
         plantChanges: world.plantChanges,
         deadIds,
       });

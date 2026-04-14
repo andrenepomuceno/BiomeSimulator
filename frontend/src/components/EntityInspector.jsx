@@ -393,14 +393,23 @@ export default function EntityInspector({ onFocusEntity }) {
     if (e.isEgg) {
       const info = SPECIES_INFO[e.species] || { emoji: '❓', name: e.species };
       const hatchPct = Math.min(100, (e.age / (e.incubationPeriod || 1)) * 100);
+      const isGone = !!e._gone;
+      const goneLabel = hatchPct >= 100 ? '🐣 Hatched!' : '💀 Destroyed';
       return (
-        <div className="sidebar-section entity-info">
+        <div className="sidebar-section entity-info" style={isGone ? { opacity: 0.6 } : undefined}>
           <div className="d-flex justify-content-between align-items-center mb-2">
             <h6 className="mb-0">
               🥚 {info.name} Egg <span style={{ color: '#666', fontWeight: 'normal' }}>#{e.id}</span>
             </h6>
             <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
           </div>
+          {isGone && (
+            <div className="mb-2">
+              <span className="inspector-badge" style={{ background: hatchPct >= 100 ? '#88cc44' : '#ff4444' }}>
+                {goneLabel}
+              </span>
+            </div>
+          )}
           <CollapsibleSection title="Egg Info" icon="🥚" defaultOpen={true}>
             <div className="stat-row"><span className="stat-label">Species</span><span className="stat-value">{info.emoji} {info.name}</span></div>
             <div className="stat-row"><span className="stat-label">Position</span><span className="stat-value">({Math.floor(e.x)}, {Math.floor(e.y)})</span></div>

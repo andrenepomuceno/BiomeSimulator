@@ -38,14 +38,15 @@ export function useEditor(rendererRef) {
         break;
 
       case 'ERASE': {
-        const { animals, selectedEntity } = state;
+        const { animals, eggs, selectedEntity } = state;
         // Prefer the selected entity if it's alive and on the clicked tile
         const target =
           (selectedEntity && selectedEntity.alive && isOnTile(selectedEntity))
             ? selectedEntity
-            : animals.find(a => a.alive && isOnTile(a));
+            : animals.find(a => a.alive && isOnTile(a))
+              || (eggs || []).find(eg => eg.alive && isOnTile(eg));
         if (target) {
-          worker.postMessage({ cmd: 'removeEntity', entityId: target.id });
+          worker.postMessage({ cmd: 'removeEntity', entityId: target.id, isEgg: !!target.isEgg });
         }
         break;
       }

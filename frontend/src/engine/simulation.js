@@ -312,6 +312,17 @@ export class SimulationEngine {
 
     // Merge egg births from sub-workers (with pop cap including pending eggs)
     if (!w.eggs) w.eggs = [];
+    // Remove eggs eaten by sub-worker animals
+    const eatenEggIds = new Set();
+    for (const r of results) {
+      if (!r.eatenEggIds) continue;
+      for (const id of r.eatenEggIds) eatenEggIds.add(id);
+    }
+    if (eatenEggIds.size > 0) {
+      for (const egg of w.eggs) {
+        if (eatenEggIds.has(egg.id)) egg.alive = false;
+      }
+    }
     for (const r of results) {
       if (!r.eggBirths) continue;
       for (const ed of r.eggBirths) {
@@ -399,9 +410,11 @@ export class SimulationEngine {
             w.animals.push(baby);
             w.placeAnimal(bx, by);
             this.spatialHash.insert(baby);
+            hatched.push(egg);
           }
+          // If not placed (no walkable tile), egg stays and retries next tick
         }
-        hatched.push(egg);
+        // If cap-blocked, egg stays and retries next tick
       }
     }
     // Remove hatched and destroyed eggs
@@ -578,8 +591,17 @@ export class SimulationEngine {
   /**
    * Remove an entity by ID.
    */
-  removeEntity(entityId) {
+  removeEntity(entityId, isEgg = false) {
     const w = this.world;
+    if (isEgg && w.eggs) {
+      for (const egg of w.eggs) {
+        if (egg.id === entityId) {
+          egg.alive = false;
+          return true;
+        }
+      }
+      return false;
+    }
     for (const a of w.animals) {
       if (a.id === entityId) {
         a.alive = false;

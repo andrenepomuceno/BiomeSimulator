@@ -63,10 +63,20 @@ export function useSimulation() {
             // Re-read state after the update to avoid a stale snapshot
             const freshState = useSimStore.getState();
             const sel = freshState.selectedEntity;
-            if (sel && !sel.isEgg) {
+            if (sel && !sel.isEgg && !sel._gone) {
               const updated = freshState.animals.find(a => a.id === sel.id);
-              if (updated) store.setSelectedEntity(updated);
-              else store.clearSelection(); // entity died / removed
+              if (updated) {
+                // Only update store if meaningful fields changed
+                if (updated.hp !== sel.hp || updated.energy !== sel.energy ||
+                    updated.hunger !== sel.hunger || updated.thirst !== sel.thirst ||
+                    updated.state !== sel.state || updated.age !== sel.age ||
+                    updated.x !== sel.x || updated.y !== sel.y ||
+                    updated.alive !== sel.alive || updated.pregnant !== sel.pregnant) {
+                  store.setSelectedEntity(updated);
+                }
+              } else {
+                store.clearSelection(); // entity died / removed
+              }
             }
           }
           if (msg.eggs) {
@@ -74,10 +84,23 @@ export function useSimulation() {
             // Update selected egg with fresh data
             const freshState2 = useSimStore.getState();
             const sel2 = freshState2.selectedEntity;
-            if (sel2 && sel2.isEgg) {
+            if (sel2 && sel2.isEgg && !sel2._gone) {
               const updatedEgg = msg.eggs.find(eg => eg.id === sel2.id);
-              if (updatedEgg) store.setSelectedEntity(updatedEgg);
-              else store.clearSelection(); // egg hatched / destroyed
+              if (updatedEgg) {
+                if (updatedEgg.age !== sel2.age || updatedEgg.hp !== sel2.hp) {
+                  store.setSelectedEntity(updatedEgg);
+                }
+              } else {
+                // Egg hatched or destroyed — show final state briefly
+                const gone = { ...sel2, _gone: true, _goneTick: msg.clock?.tick ?? 0 };
+                store.setSelectedEntity(gone);
+              }
+            }
+            // Auto-clear gone eggs after a delay (~30 ticks)
+            if (sel2 && sel2._gone && msg.clock) {
+              if (msg.clock.tick - sel2._goneTick >= 30) {
+                store.clearSelection();
+              }
             }
           }
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
@@ -111,10 +134,11 @@ export function useSimulation() {
             if (msg.refreshOnly) {
               // Automatic tile refresh — always keep tile selected, don't switch to animal/egg
               store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
+            } else if (msg.info.eggs && msg.info.eggs.length > 0) {
+              // Prefer eggs (stationary) over animals (passing through)
+              store.setSelectedEntity(msg.info.eggs[0]);
             } else if (msg.info.animals && msg.info.animals.length > 0) {
               store.setSelectedEntity(msg.info.animals[0]);
-            } else if (msg.info.eggs && msg.info.eggs.length > 0) {
-              store.setSelectedEntity(msg.info.eggs[0]);
             } else {
               store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
             }

@@ -319,19 +319,6 @@ const FRAG_SRC = `
     return col;
   }
 
-  // Bilinear height interpolation — eliminates per-tile brightness steps
-  float sampleHeightSmooth(vec2 tc) {
-    vec2 c = tc - 0.5;
-    vec2 f = fract(c);
-    f = f * f * (3.0 - 2.0 * f);
-    vec2 b = floor(c);
-    float h00 = sampleHeight(clamp(b, vec2(0.0), u_worldSize - 1.0));
-    float h10 = sampleHeight(clamp(b + vec2(1.0, 0.0), vec2(0.0), u_worldSize - 1.0));
-    float h01 = sampleHeight(clamp(b + vec2(0.0, 1.0), vec2(0.0), u_worldSize - 1.0));
-    float h11 = sampleHeight(clamp(b + vec2(1.0, 1.0), vec2(0.0), u_worldSize - 1.0));
-    return mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
-  }
-
   void main() {
     vec2 tileCoord = v_uv * u_worldSize;
     vec2 subTile = fract(tileCoord);
@@ -344,57 +331,9 @@ const FRAG_SRC = `
       return;
     }
 
-    // Center tile — full detail texture from the real (non-warped) position
+    // Per-tile detailed color (patterns + noise + variation)
     int tCenter = sampleTerrain(tileCoord);
-    vec3 centerDetailed = terrainPattern(tCenter, tileCoord, subTile);
-
-    // --- Domain-warped circular multi-point soft blending ---
-    // Instead of bilinear (4-corner grid → step artifacts), sample terrain
-    // at 13 points in a circular pattern around a noise-warped center.
-    // No grid alignment → no staircase edges.
-
-    // Domain warp: 2-octave noise displaces the sampling center
-    float wx = (valueNoise(tileCoord * 0.35 + vec2(13.7, 7.3)) - 0.5) * 2.4
-             + (valueNoise(tileCoord * 0.85 + vec2(87.1, 42.5)) - 0.5) * 0.7;
-    float wy = (valueNoise(tileCoord * 0.35 + vec2(51.2, 23.1)) - 0.5) * 2.4
-             + (valueNoise(tileCoord * 0.85 + vec2(29.4, 73.8)) - 0.5) * 0.7;
-    vec2 warpPos = tileCoord + vec2(wx, wy);
-
-    // Warped center sample (highest weight)
-    vec2 wpc = clamp(warpPos, vec2(0.0), u_worldSize - 1.0);
-    int twc = sampleTerrain(wpc);
-    vec3 accum = getTerrainColor(twc) * 2.0;
-    float wSum = 2.0;
-    float cVotes = (twc == tCenter) ? 2.0 : 0.0;
-
-    // Inner ring: 6 samples at r=0.8, angles 0/60/120/180/240/300 degrees
-    //   (1.000,0.000) (0.500,0.866) (-0.500,0.866) (-1.000,0.000) (-0.500,-0.866) (0.500,-0.866)
-    for (int i = 0; i < 6; i++) {
-      float a = float(i) * 1.0472;
-      vec2 sp = clamp(warpPos + vec2(cos(a), sin(a)) * 0.8, vec2(0.0), u_worldSize - 1.0);
-      int t = sampleTerrain(sp);
-      accum += getTerrainColor(t);
-      wSum += 1.0;
-      if (t == tCenter) cVotes += 1.0;
-    }
-
-    // Outer ring: 6 samples at r=1.8, angles 30/90/150/210/270/330 degrees
-    //   (0.866,0.500) (0.000,1.000) (-0.866,0.500) (-0.866,-0.500) (0.000,-1.000) (0.866,-0.500)
-    for (int i = 0; i < 6; i++) {
-      float a = float(i) * 1.0472 + 0.5236;
-      vec2 sp = clamp(warpPos + vec2(cos(a), sin(a)) * 1.8, vec2(0.0), u_worldSize - 1.0);
-      int t = sampleTerrain(sp);
-      accum += getTerrainColor(t) * 0.5;
-      wSum += 0.5;
-      if (t == tCenter) cVotes += 0.5;
-    }
-
-    vec3 avgColor = accum / wSum;
-    float centerFrac = cVotes / wSum;
-
-    // Deep inside terrain → full detail; near boundary → smooth average
-    float detailMix = smoothstep(0.22, 0.82, centerFrac);
-    vec3 finalColor = mix(avgColor, centerDetailed, detailMix);
+    vec3 finalColor = terrainPattern(tCenter, tileCoord, subTile);
 
     // --- Coastal tinting ---
     float wp = sampleWaterProx(tileCoord);
@@ -415,24 +354,28 @@ const FRAG_SRC = `
     // --- Water animation ---
     finalColor = waterEffect(tCenter, tileCoord, subTile, finalColor);
 
-    // --- Height-based brightness (smooth interpolation) ---
-    float hHere = sampleHeightSmooth(tileCoord);
+    // --- Height-based brightness ---
+    float hHere = sampleHeight(tileCoord);
     float bright = 0.88 + hHere * 0.24;
     finalColor *= bright;
 
-    // --- Elevation shadow (smooth height gradient) ---
-    float hN = sampleHeightSmooth(tileCoord + vec2(0.0, -1.0));
-    if (hN > hHere) {
-      float shadow = 1.0 - min(0.12, (hN - hHere) * 0.8);
-      finalColor *= shadow;
+    // --- Elevation shadow (sun from south) ---
+    if (tileFloor.y > 0.0) {
+      float hN = sampleHeight(tileCoord + vec2(0.0, -1.0));
+      if (hN > hHere) {
+        float shadow = 1.0 - min(0.12, (hN - hHere) * 0.8);
+        finalColor *= shadow;
+      }
     }
-    float hNW = sampleHeightSmooth(tileCoord + vec2(-1.0, -1.0));
-    if (hNW > hHere) {
-      float shadow = 1.0 - min(0.08, (hNW - hHere) * 0.5);
-      finalColor *= shadow;
+    if (tileFloor.y > 0.0 && tileFloor.x > 0.0) {
+      float hNW = sampleHeight(tileCoord + vec2(-1.0, -1.0));
+      if (hNW > hHere) {
+        float shadow = 1.0 - min(0.08, (hNW - hHere) * 0.5);
+        finalColor *= shadow;
+      }
     }
-    if ((tCenter == 7 || tCenter == 4)) {
-      float hS = sampleHeightSmooth(tileCoord + vec2(0.0, 1.0));
+    if ((tCenter == 7 || tCenter == 4) && tileFloor.y < u_worldSize.y - 1.0) {
+      float hS = sampleHeight(tileCoord + vec2(0.0, 1.0));
       if (hS < hHere) {
         float hl = 1.0 + min(0.15, (hHere - hS) * 0.6);
         finalColor *= hl;

@@ -62,20 +62,23 @@ const BLEND_FRAG_SRC = `
   void main() {
     vec2 tc = v_uv * u_worldSize;
 
-    // Domain warp: 2-octave noise displaces lookup for organic borders.
-    // Same seeds as the terrain shader so warp patterns are consistent.
-    float wx = (valueNoise(tc * 0.35 + vec2(13.7, 7.3)) - 0.5) * 2.4
-             + (valueNoise(tc * 0.85 + vec2(87.1, 42.5)) - 0.5) * 0.7;
-    float wy = (valueNoise(tc * 0.35 + vec2(51.2, 23.1)) - 0.5) * 2.4
-             + (valueNoise(tc * 0.85 + vec2(29.4, 73.8)) - 0.5) * 0.7;
+    // Sharp (unwarped) sample — preserves per-tile detail and crispness
+    vec4 sharp = texture2D(u_rawTerrain, v_uv);
 
-    // Warp UV, clamped to valid range.
-    // LINEAR sampling on the 1px/tile texture gives free bilinear
-    // interpolation — smooth gradients between tile colors.
+    // Domain warp: noise displaces lookup for organic borders.
+    // Moderate amplitude keeps transitions smooth without over-blurring.
+    float wx = (valueNoise(tc * 0.35 + vec2(13.7, 7.3)) - 0.5) * 1.2
+             + (valueNoise(tc * 0.85 + vec2(87.1, 42.5)) - 0.5) * 0.35;
+    float wy = (valueNoise(tc * 0.35 + vec2(51.2, 23.1)) - 0.5) * 1.2
+             + (valueNoise(tc * 0.85 + vec2(29.4, 73.8)) - 0.5) * 0.35;
+
+    // Warped sample — LINEAR filtering gives smooth bilinear gradients
     vec2 warpedUV = v_uv + vec2(wx, wy) / u_worldSize;
     warpedUV = clamp(warpedUV, vec2(0.0), vec2(1.0));
+    vec4 smooth = texture2D(u_rawTerrain, warpedUV);
 
-    gl_FragColor = texture2D(u_rawTerrain, warpedUV);
+    // Blend: 55% sharp + 45% smooth → crisp detail with soft borders
+    gl_FragColor = mix(sharp, smooth, 0.45);
   }
 `;
 

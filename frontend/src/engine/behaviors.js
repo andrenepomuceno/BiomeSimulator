@@ -1135,6 +1135,9 @@ function _layEggs(animal, mate, world, clutchSize) {
   const baseTy = animal.y | 0;
   const speciesConfig = world.config.animal_species[animal.species];
   if (!world.eggs) world.eggs = [];
+  // Eggs must be placed on land — exclude water tiles even if the species can walk on them
+  const landWalkable = new Set([...animal._walkableSet].filter(t => t !== 0 && t !== 6));
+  if (landWalkable.size === 0) return; // species can only walk on water — cannot lay eggs
   const offsets = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
   let placed = 0;
   for (const [ddx, ddy] of offsets) {
@@ -1142,7 +1145,7 @@ function _layEggs(animal, mate, world, clutchSize) {
     // Re-check pop cap per egg (count pending eggs toward the cap)
     if (_checkPopulationCapWithEggs(animal, world)) break;
     const ntx = baseTx + ddx, nty = baseTy + ddy;
-    if (world.isWalkableFor(ntx, nty, animal._walkableSet)) {
+    if (world.isWalkableFor(ntx, nty, landWalkable)) {
       const egg = new Egg(world.nextId(), ntx + 0.5, nty + 0.5, animal.species, speciesConfig);
       egg.parentA = animal.id;
       egg.parentB = mate.id;

@@ -4,6 +4,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import useSimStore from '../store/simulationStore';
 
+const TILE_INFO_REFRESH_INTERVAL = 10;
+
 export function useSimulation() {
   const workerRef = useRef(null);
 
@@ -31,9 +33,12 @@ export function useSimulation() {
           store.setClock(msg.clock);
           if (msg.hungerMultiplier != null) store.setHungerMultiplier(msg.hungerMultiplier);
           if (msg.thirstMultiplier != null) store.setThirstMultiplier(msg.thirstMultiplier);
-          if (msg.max_animal_population != null) {
+          if (msg.config) {
+            store.setGameConfig(msg.config);
+          } else if (msg.max_animal_population != null) {
             store.setGameConfig({ max_animal_population: msg.max_animal_population });
           }
+          store.setPlantSnapshot(null);
           // Store plant arrays for renderer (App.jsx reads these)
           useSimStore.setState({
             worldReady: {
@@ -65,6 +70,15 @@ export function useSimulation() {
           }
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
           if (msg.fruitChanges) store.setFruitChanges(msg.fruitChanges);
+          if (msg.plantsFullSync) {
+            store.setPlantSnapshot({
+              width: msg.plantsFullSync.width,
+              height: msg.plantsFullSync.height,
+              plantType: new Uint8Array(msg.plantsFullSync.plantType),
+              plantStage: new Uint8Array(msg.plantsFullSync.plantStage),
+              version: msg.clock?.tick ?? Date.now(),
+            });
+          }
           if (msg.stats) store.setStats(msg.stats);
           if (msg.statsHistory) store.setStatsHistory(msg.statsHistory);
           if (msg.profiling && msg.profiling.engine) {
@@ -73,7 +87,8 @@ export function useSimulation() {
           // Refresh selected tile info each tick so plant data stays current
           {
             const tile = store.selectedTile;
-            if (tile && workerRef.current) {
+            const shouldRefreshTile = tile && workerRef.current && msg.clock && (msg.clock.tick % TILE_INFO_REFRESH_INTERVAL === 0);
+            if (shouldRefreshTile) {
               workerRef.current.postMessage({ cmd: 'getTileInfo', x: tile.x, y: tile.y });
             }
           }

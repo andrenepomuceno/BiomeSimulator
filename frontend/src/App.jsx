@@ -37,7 +37,7 @@ export default function App() {
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
-    clock, stats, worldReady, selectedEntity, selectedTile,
+    clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile,
   } = useSimStore();
 
   // Initialize renderer
@@ -75,7 +75,7 @@ export default function App() {
 
   // Update entities when animals change
   useEffect(() => {
-    if (rendererRef.current && animals.length >= 0) {
+    if (rendererRef.current) {
       const app = rendererRef.current.app;
       const zoom = rendererRef.current.camera.zoom;
       rendererRef.current.updateEntities(animals, app.renderer, clock.tick, zoom);
@@ -88,6 +88,16 @@ export default function App() {
       rendererRef.current.updatePlants(plantChanges);
     }
   }, [plantChanges]);
+
+  useEffect(() => {
+    if (!rendererRef.current || !plantSnapshot) return;
+    rendererRef.current.plantLayer.setFromArrays(
+      plantSnapshot.plantType,
+      plantSnapshot.plantStage,
+      plantSnapshot.width,
+      plantSnapshot.height,
+    );
+  }, [plantSnapshot]);
 
   // Update day/night overlay
   useEffect(() => {

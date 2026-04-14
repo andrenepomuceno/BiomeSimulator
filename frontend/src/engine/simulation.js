@@ -430,8 +430,10 @@ export class SimulationEngine {
     // Animal placement
     const speciesConfig = w.config.animal_species[entityType];
     if (speciesConfig) {
+      if (w.isTileOccupied(x, y)) return null;
       const animal = new Animal(w.nextId(), x + 0.5, y + 0.5, entityType, speciesConfig);
       w.animals.push(animal);
+      w.placeAnimal(x, y);
       this.spatialHash.insert(animal);
       return animal.toDict();
     }

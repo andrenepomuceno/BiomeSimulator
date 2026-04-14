@@ -35,6 +35,7 @@ let profilingEnabled = false;
 let pendingPause = false;
 const FULL_SYNC_INTERVAL = 30;
 const FAUNA_TICK_TIMEOUT_MS = 800;
+const MAX_PLANT_CHANGES_PER_TICK = 5000;
 
 // --- Fauna worker pool ---
 const MIN_ANIMALS_FOR_PARALLEL = 500;
@@ -228,6 +229,7 @@ function postTickState(tickMs = 0) {
   const w = engine.world;
   const tick = w.clock.tick;
   const isFullSync = tick % FULL_SYNC_INTERVAL === 0;
+  const plantChangesOverflow = w.plantChanges.length > MAX_PLANT_CHANGES_PER_TICK;
 
   let animals;
   let animalsDead;
@@ -257,9 +259,18 @@ function postTickState(tickMs = 0) {
     type: 'tick',
     clock: w.clock.toDict(),
     animals,
-    plantChanges: w.plantChanges.slice(0, 5000),
+    plantChanges: plantChangesOverflow ? [] : w.plantChanges,
     incremental: !isFullSync,
   };
+
+  if (plantChangesOverflow) {
+    msg.plantsFullSync = {
+      width: w.width,
+      height: w.height,
+      plantType: new Uint8Array(w.plantType).buffer,
+      plantStage: new Uint8Array(w.plantStage).buffer,
+    };
+  }
 
   if (!isFullSync && animalsDead && animalsDead.length > 0) {
     msg.animalsDead = animalsDead;
@@ -323,6 +334,7 @@ self.onmessage = function (e) {
         width: w.width,
         height: w.height,
         seed,
+        config: w.config,
         terrain: new Uint8Array(w.terrain).buffer,
         waterProximity: new Uint8Array(w.waterProximity).buffer,
         heightmap: w.heightmap ? new Float32Array(w.heightmap).buffer : null,
@@ -358,6 +370,7 @@ self.onmessage = function (e) {
         width: rw.width,
         height: rw.height,
         seed: 0,
+        config: rw.config,
         terrain: new Uint8Array(rw.terrain).buffer,
         waterProximity: new Uint8Array(rw.waterProximity).buffer,
         heightmap: rw.heightmap ? new Float32Array(rw.heightmap).buffer : null,
@@ -477,6 +490,8 @@ self.onmessage = function (e) {
         plantAge: Array.from(sw.plantAge),
         animals: sw.animals.filter(a => a.alive).map(a => a.toDict()),
         nextAnimalId: sw._nextId,
+        hungerMultiplier: sw.hungerMultiplier,
+        thirstMultiplier: sw.thirstMultiplier,
         statsHistory: sw.statsHistory,
       };
       self.postMessage({ type: 'savedState', data: saveData });
@@ -500,7 +515,10 @@ self.onmessage = function (e) {
       lw.plantStage = new Uint8Array(d.plantStage);
       lw.plantAge = new Uint16Array(d.plantAge);
       lw.clock.tick = d.clock.tick;
+      lw.clock.ticksPerDay = d.clock.ticks_per_day || lw.clock.ticksPerDay;
       lw._nextId = d.nextAnimalId || 1000;
+      lw.hungerMultiplier = d.hungerMultiplier ?? lw.hungerMultiplier;
+      lw.thirstMultiplier = d.thirstMultiplier ?? lw.thirstMultiplier;
       lw.statsHistory = d.statsHistory || [];
 
       // Restore animals
@@ -521,6 +539,7 @@ self.onmessage = function (e) {
       if (lw._nextId <= Math.max(...lw.animals.map(a => a.id), 0)) {
         lw._nextId = Math.max(...lw.animals.map(a => a.id), 0) + 1;
       }
+      lw.rebuildDerivedState();
 
       engine.world = lw;
       engine.spatialHash.rebuild(lw.animals.filter(a => a.alive));
@@ -537,6 +556,7 @@ self.onmessage = function (e) {
         width: lw.width,
         height: lw.height,
         seed: 0,
+        config: lw.config,
         terrain: new Uint8Array(lw.terrain).buffer,
         waterProximity: new Uint8Array(lw.waterProximity).buffer,
         heightmap: lw.heightmap ? new Float32Array(lw.heightmap).buffer : null,
@@ -557,5 +577,8 @@ self.onmessage = function (e) {
       }
       break;
     }
+
+    default:
+      console.warn('[SimWorker] Unknown command:', cmd);
   }
 };

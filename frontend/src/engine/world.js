@@ -189,6 +189,27 @@ export class World {
     this.plantLog.delete(idx);
   }
 
+  rebuildAnimalGrid() {
+    this.animalGrid.fill(0);
+    for (const animal of this.animals) {
+      if (animal.alive) this.placeAnimal(animal.x, animal.y);
+    }
+  }
+
+  rebuildActivePlantTiles() {
+    this.activePlantTiles.clear();
+    for (let i = 0; i < this.plantType.length; i++) {
+      if (this.plantType[i] !== 0 && this.plantStage[i] !== 0) {
+        this.activePlantTiles.add(i);
+      }
+    }
+  }
+
+  rebuildDerivedState() {
+    this.rebuildAnimalGrid();
+    this.rebuildActivePlantTiles();
+  }
+
   isWaterAdjacent(x, y) {
     const ix = x | 0, iy = y | 0;
     // Standing on water counts (flying animals over water)

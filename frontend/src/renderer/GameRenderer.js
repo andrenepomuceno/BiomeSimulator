@@ -295,13 +295,14 @@ export class GameRenderer {
     let dragging = false;
     let lastX = 0, lastY = 0;
 
-    this.app.view.addEventListener('pointerdown', (e) => {
+    this._onDragPointerDown = (e) => {
       if (e.button === 0 || e.button === 1) {
         dragging = true;
         lastX = e.clientX;
         lastY = e.clientY;
       }
-    });
+    };
+    this.app.view.addEventListener('pointerdown', this._onDragPointerDown);
 
     this._onPointerMove = (e) => {
       if (!dragging) return;
@@ -322,12 +323,13 @@ export class GameRenderer {
   _setupClick() {
     let downX = 0, downY = 0;
 
-    this.app.view.addEventListener('pointerdown', (e) => {
+    this._onClickPointerDown = (e) => {
       downX = e.clientX;
       downY = e.clientY;
-    });
+    };
+    this.app.view.addEventListener('pointerdown', this._onClickPointerDown);
 
-    this.app.view.addEventListener('pointerup', (e) => {
+    this._onClickPointerUp = (e) => {
       // Only count as click if didn't drag
       const dist = Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY);
       if (dist < 5 && this.onTileClick) {
@@ -340,7 +342,8 @@ export class GameRenderer {
           this.onTileClick(tileCoords.x, tileCoords.y);
         }
       }
-    });
+    };
+    this.app.view.addEventListener('pointerup', this._onClickPointerUp);
   }
 
   getViewportTiles() {
@@ -353,6 +356,15 @@ export class GameRenderer {
 
   destroy() {
     this._resizeObserver.disconnect();
+    if (this._onDragPointerDown) {
+      this.app.view.removeEventListener('pointerdown', this._onDragPointerDown);
+    }
+    if (this._onClickPointerDown) {
+      this.app.view.removeEventListener('pointerdown', this._onClickPointerDown);
+    }
+    if (this._onClickPointerUp) {
+      this.app.view.removeEventListener('pointerup', this._onClickPointerUp);
+    }
     window.removeEventListener('pointermove', this._onPointerMove);
     window.removeEventListener('pointerup', this._onPointerUp);
     if (this._wheelHandler) {

@@ -11,7 +11,7 @@ const useSimStore = create((set, get) => ({
 
   // Game config (params used at game start)
   gameConfig: {},
-  setGameConfig: (c) => set({ gameConfig: c }),
+  setGameConfig: (c) => set(state => ({ gameConfig: { ...state.gameConfig, ...c } })),
 
   // World
   mapWidth: 0,
@@ -77,6 +77,10 @@ const useSimStore = create((set, get) => ({
   // Plant changes queue
   plantChanges: [],
   setPltChanges: (c) => set({ plantChanges: c }),
+  fruitChanges: [],
+  setFruitChanges: (c) => set({ fruitChanges: c }),
+  plantSnapshot: null,
+  setPlantSnapshot: (snapshot) => set({ plantSnapshot: snapshot }),
 
   // Stats
   stats: { herbivores: 0, carnivores: 0, plants_total: 0, fruits: 0 },

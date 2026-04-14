@@ -9,6 +9,7 @@ export function useEditor(rendererRef) {
     const state = useSimStore.getState();
     const worker = state.worker;
     if (!worker) return;
+    const isOnTile = (animal) => (animal.x | 0) === x && (animal.y | 0) === y;
 
     switch (state.tool) {
       case 'SELECT':
@@ -40,9 +41,9 @@ export function useEditor(rendererRef) {
         const { animals, selectedEntity } = state;
         // Prefer the selected entity if it's alive and on the clicked tile
         const target =
-          (selectedEntity && selectedEntity.alive && selectedEntity.x === x && selectedEntity.y === y)
+          (selectedEntity && selectedEntity.alive && isOnTile(selectedEntity))
             ? selectedEntity
-            : animals.find(a => a.alive && a.x === x && a.y === y);
+            : animals.find(a => a.alive && isOnTile(a));
         if (target) {
           worker.postMessage({ cmd: 'removeEntity', entityId: target.id });
         }

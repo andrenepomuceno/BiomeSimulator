@@ -448,10 +448,10 @@ self.onmessage = function (e) {
           log: w.plantLog.get(idx) || [],
         },
       };
-      // Find animals on this tile
+      // Find animals on this tile (include fresh corpses so skulls are inspectable)
       info.animals = [];
       for (const a of w.animals) {
-        if (a.alive && (a.x | 0) === x && (a.y | 0) === y) {
+        if ((a.alive || a.state === 9) && (a.x | 0) === x && (a.y | 0) === y) {
           info.animals.push(a.toDict());
         }
       }

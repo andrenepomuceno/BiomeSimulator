@@ -49,21 +49,26 @@ const useSimStore = create((set, get) => ({
         map.set(delta.id, delta);
       }
     }
-    // Mark dead animals
+    // Mark dead animals (set _deathTick so renderer can fade the skull)
+    const currentTick = state.clock.tick;
     for (const id of deadIds) {
       const existing = map.get(id);
       if (existing) {
-        map.set(id, { ...existing, alive: false, state: 9 });
+        map.set(id, { ...existing, alive: false, state: 9, _deathTick: existing._deathTick ?? currentTick });
       }
     }
-    // Keep alive animals; include state-9 corpses for one render pass then evict
+    // Keep alive animals; retain state-9 corpses for 300 ticks (matching engine cleanup)
     const animals = [];
     for (const a of map.values()) {
       if (a.alive) {
         animals.push(a);
       } else if (a.state === 9) {
-        animals.push(a);
-        map.delete(a.id); // evict so _animalsById doesn't grow without bound
+        const deathTick = a._deathTick ?? currentTick;
+        if (currentTick - deathTick < 300) {
+          animals.push(a);
+        } else {
+          map.delete(a.id); // evict expired corpses so _animalsById doesn't grow without bound
+        }
       }
     }
     set({ animals, _animalsById: map });

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEntitySummaryGroups,
   matchesActiveSelection,
-  reconcileExpandedGroups,
 } from '../entitySummaryGroups.js';
 
 function createAnimalEntry(overrides = {}) {
@@ -84,18 +83,15 @@ describe('entitySummaryGroups', () => {
     expect(matchesActiveSelection(plantEntry, null, { x: 7, y: 4, plant: { type: 0 } })).toBe(false);
   });
 
-  it('drops stale expanded groups while preserving current ones', () => {
-    const current = {
-      'animal:RABBIT': true,
-      'animal:FOX': true,
-      stale: true,
-    };
-    const groups = [
-      { key: 'animal:RABBIT' },
-      { key: 'plant:1' },
+  it('marks the selected group as active without affecting unrelated groups', () => {
+    const entries = [
+      createAnimalEntry({ key: 'A-7', groupKey: 'animal:BEAR', groupLabel: 'Bear', speciesLabel: 'Bear', emoji: '🐻', groupEmoji: '🐻', raw: { id: 7, species: 'BEAR' } }),
+      createPlantEntry(),
     ];
 
-    expect(reconcileExpandedGroups(current, groups)).toEqual({ 'animal:RABBIT': true });
-    expect(reconcileExpandedGroups({ 'plant:1': true }, groups)).toEqual({ 'plant:1': true });
+    const groups = buildEntitySummaryGroups(entries, { id: 7 }, null);
+
+    expect(groups.find(group => group.key === 'animal:BEAR')?.hasActive).toBe(true);
+    expect(groups.find(group => group.key === 'plant:1')?.hasActive).toBe(false);
   });
 });

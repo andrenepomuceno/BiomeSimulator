@@ -1,11 +1,10 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useMemo, useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { SPECIES_INFO, STATE_NAMES, PLANT_STAGE_NAMES } from '../utils/terrainColors';
 import { getPlantByTypeId } from '../engine/plantSpecies';
 import {
   buildEntitySummaryGroups,
   matchesActiveSelection,
-  reconcileExpandedGroups,
 } from './entitySummaryGroups';
 
 const TYPE_FILTERS = [
@@ -18,6 +17,12 @@ const ENTITY_TYPE_LABELS = {
   animal: 'Animal',
   plant: 'Planta',
 };
+
+function handleActionKeyDown(event, action) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  action();
+}
 
 function buildAnimalEntry(animal) {
   const info = SPECIES_INFO[animal.species] || { emoji: '🐾', name: animal.species || 'Unknown' };
@@ -63,7 +68,6 @@ function buildPlantEntry(typeId, stage, x, y) {
 export default function EntitySummaryWindow({ open, onClose, onInspect }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [expandedGroups, setExpandedGroups] = useState({});
   const deferredSearch = useDeferredValue(searchTerm.trim().toLowerCase());
 
   const { animals, worldReady, plantSnapshot, mapWidth, mapHeight, selectedEntity, selectedTile } = useSimStore();
@@ -110,30 +114,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
 
   const hasSearch = deferredSearch.length > 0;
 
-  useEffect(() => {
-    if (open) {
-      setExpandedGroups({});
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    setExpandedGroups(current => reconcileExpandedGroups(current, groupedEntries));
-  }, [open, groupedEntries]);
-
   const totalEntries = animalEntries.length + plantEntries.length;
-
-  const toggleGroup = (groupKey) => {
-    setExpandedGroups(current => {
-      const next = { ...current };
-      if (next[groupKey]) {
-        delete next[groupKey];
-      } else {
-        next[groupKey] = true;
-      }
-      return next;
-    });
-  };
 
   if (!open) return null;
 
@@ -170,53 +151,45 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
 
         <div className="entity-summary-list" role="list">
           {groupedEntries.map(group => {
-            const expanded = hasSearch || !!expandedGroups[group.key] || group.hasActive;
+            const defaultOpen = hasSearch || group.hasActive;
             return (
-              <section
+              <details
                 key={group.key}
                 className={`entity-summary-group ${group.hasActive ? 'has-active' : ''}`}
                 role="listitem"
+                open={defaultOpen || undefined}
               >
-                <button
-                  className={`entity-summary-group-header ${expanded ? 'expanded' : ''}`}
-                  onClick={() => toggleGroup(group.key)}
-                  aria-expanded={expanded}
-                >
+                <summary className="entity-summary-group-summary">
                   <span className="entity-summary-group-main">
-                    <span className="entity-summary-group-chevron">{expanded ? '▾' : '▸'}</span>
-                    <span className="entity-summary-group-emoji">{group.emoji}</span>
-                    <span className="entity-summary-group-text">
-                      <span className="entity-summary-group-label">{group.label}</span>
-                      <span className="entity-summary-group-meta">
-                        {ENTITY_TYPE_LABELS[group.entityType]}
-                        {group.hasActive ? ' · selecionado' : ''}
-                      </span>
+                    <span className="entity-summary-group-label">{group.emoji} {group.label}</span>
+                    <span className="entity-summary-group-meta">
+                      {ENTITY_TYPE_LABELS[group.entityType]}
+                      {group.hasActive ? ' · selecionado' : ''}
                     </span>
                   </span>
                   <span className="entity-summary-group-badge">{group.count}</span>
-                </button>
+                </summary>
 
-                {expanded && (
-                  <div className="entity-summary-group-body" role="list">
-                    {group.entries.map(entry => {
-                      const active = matchesActiveSelection(entry, selectedEntity, selectedTile);
-                      return (
-                        <button
-                          key={entry.key}
-                          className={`entity-summary-item ${active ? 'active' : ''}`}
-                          onClick={() => onInspect?.(entry)}
-                        >
-                          <div className="entity-summary-item-top">
-                            <span>{entry.emoji} {entry.speciesLabel}</span>
-                            <span className="entity-summary-item-id">{entry.idLabel}</span>
-                          </div>
-                          <div className="entity-summary-item-sub">{entry.summary}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
+                <div className="entity-summary-group-body" role="list">
+                  {group.entries.map(entry => {
+                    const active = matchesActiveSelection(entry, selectedEntity, selectedTile);
+                    return (
+                      <div
+                        key={entry.key}
+                        className={`entity-summary-item ${active ? 'active' : ''}`}
+                        onClick={() => onInspect?.(entry)}
+                        onKeyDown={event => handleActionKeyDown(event, () => onInspect?.(entry))}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <span className="entity-summary-item-label">{entry.emoji} {entry.speciesLabel}</span>
+                        <span className="entity-summary-item-id">{entry.idLabel}</span>
+                        <span className="entity-summary-item-sub">{entry.summary}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
             );
           })}
           {groupedEntries.length === 0 && (

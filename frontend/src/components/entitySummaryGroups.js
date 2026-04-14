@@ -38,27 +38,3 @@ export function buildEntitySummaryGroups(entries, selectedEntity, selectedTile) 
     return left.key.localeCompare(right.key);
   });
 }
-
-export function reconcileExpandedGroups(expandedGroups, groups) {
-  const validKeys = new Set(groups.map(group => group.key));
-  const next = {};
-  let changed = false;
-
-  for (const [key, value] of Object.entries(expandedGroups)) {
-    if (!value) {
-      changed = true;
-      continue;
-    }
-    if (!validKeys.has(key)) {
-      changed = true;
-      continue;
-    }
-    next[key] = true;
-  }
-
-  if (!changed && Object.keys(next).length === Object.keys(expandedGroups).length) {
-    return expandedGroups;
-  }
-
-  return next;
-}

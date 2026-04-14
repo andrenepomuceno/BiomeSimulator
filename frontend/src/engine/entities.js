@@ -203,6 +203,13 @@ export class Animal {
     // EGG: suspended animation — only age advances, no metabolism
     if (stage === LifeStage.EGG) {
       this.age++;
+      // Hatch transition: when age just crossed incubation threshold, reset stats
+      if (this._isEggStage && this.age >= this._incubationPeriod) {
+        this.hp = this._config.max_hp;
+        this.energy = this._config.max_energy * 0.5;
+        this.hunger = 0;
+        this.thirst = 0;
+      }
       this._dirty = true;
       return;
     }

@@ -321,9 +321,8 @@ const FRAG_SRC = `
 
   void main() {
     vec2 tileCoord = v_uv * u_worldSize;
-    vec2 tileFloor = floor(tileCoord);
     vec2 subTile = fract(tileCoord);
-    vec2 worldPos = tileCoord;
+    vec2 tileFloor = floor(tileCoord);
 
     // Bounds check
     if (tileFloor.x < 0.0 || tileFloor.y < 0.0 ||
@@ -332,111 +331,59 @@ const FRAG_SRC = `
       return;
     }
 
-    // Sample center terrain — full expensive pattern only here
+    // Center tile — full detail texture from the real (non-warped) position
     int tCenter = sampleTerrain(tileCoord);
-    vec3 centerColor = terrainPattern(tCenter, tileCoord, subTile);
+    vec3 centerDetailed = terrainPattern(tCenter, tileCoord, subTile);
 
-    // --- Noise-distorted organic border blending ---
-    // Use cheap base color for neighbors (no terrainPattern calls).
-    // Distort the blend boundary with noise so edges are wavy, not grid-aligned.
+    // --- Domain-warped bilinear blending for organic borders ---
+    // Warp the effective lookup position with low-frequency noise so the
+    // terrain boundaries follow organic curves instead of the tile grid.
+    // Two octaves: large lazy curves + smaller wiggles.
+    float wx = (valueNoise(tileCoord * 0.35 + vec2(13.7, 7.3)) - 0.5) * 2.4
+             + (valueNoise(tileCoord * 0.85 + vec2(87.1, 42.5)) - 0.5) * 0.7;
+    float wy = (valueNoise(tileCoord * 0.35 + vec2(51.2, 23.1)) - 0.5) * 2.4
+             + (valueNoise(tileCoord * 0.85 + vec2(29.4, 73.8)) - 0.5) * 0.7;
+    vec2 warpedPos = tileCoord + vec2(wx, wy);
 
-    // Noise displacement: shifts the effective tile boundary by ±0.35 tiles
-    // Uses low-freq noise seeded from world position so borders are continuous.
-    float edgeNoise = (valueNoise(worldPos * 2.7 + vec2(13.7, 7.3)) - 0.5) * 0.7;
-    float edgeNoiseY = (valueNoise(worldPos * 2.7 + vec2(51.2, 23.1)) - 0.5) * 0.7;
+    // Bilinear interpolation at the warped position (between 4 tile midpoints)
+    vec2 wCentered = warpedPos - 0.5;
+    vec2 wFloor = floor(wCentered);
+    vec2 wf = fract(wCentered);
+    wf = wf * wf * (3.0 - 2.0 * wf); // Hermite smooth
 
-    // Distorted sub-tile coordinates for blending
-    float dsx = subTile.x + edgeNoise;
-    float dsy = subTile.y + edgeNoiseY;
+    // Clamp corners to world bounds
+    vec2 c00 = clamp(wFloor, vec2(0.0), u_worldSize - 1.0);
+    vec2 c10 = clamp(wFloor + vec2(1.0, 0.0), vec2(0.0), u_worldSize - 1.0);
+    vec2 c01 = clamp(wFloor + vec2(0.0, 1.0), vec2(0.0), u_worldSize - 1.0);
+    vec2 c11 = clamp(wFloor + vec2(1.0, 1.0), vec2(0.0), u_worldSize - 1.0);
 
-    vec3 finalColor = centerColor;
-    float blendTotal = 0.0;
-    vec3 blendAccum = vec3(0.0);
-    float blendWidth = 0.48;
+    int t00 = sampleTerrain(c00);
+    int t10 = sampleTerrain(c10);
+    int t01 = sampleTerrain(c01);
+    int t11 = sampleTerrain(c11);
 
-    // Left neighbor
-    if (dsx < blendWidth && tileFloor.x > 0.0) {
-      int tN = sampleTerrain(tileCoord + vec2(-1.0, 0.0));
-      if (tN != tCenter) {
-        float w = smoothstep(blendWidth, -0.05, dsx);
-        blendAccum += getTerrainColor(tN) * w;
-        blendTotal += w;
-      }
-    }
-    // Right neighbor
-    if (dsx > (1.0 - blendWidth) && tileFloor.x < u_worldSize.x - 1.0) {
-      int tN = sampleTerrain(tileCoord + vec2(1.0, 0.0));
-      if (tN != tCenter) {
-        float w = smoothstep(1.0 - blendWidth, 1.05, dsx);
-        blendAccum += getTerrainColor(tN) * w;
-        blendTotal += w;
-      }
-    }
-    // Top neighbor
-    if (dsy < blendWidth && tileFloor.y > 0.0) {
-      int tN = sampleTerrain(tileCoord + vec2(0.0, -1.0));
-      if (tN != tCenter) {
-        float w = smoothstep(blendWidth, -0.05, dsy);
-        blendAccum += getTerrainColor(tN) * w;
-        blendTotal += w;
-      }
-    }
-    // Bottom neighbor
-    if (dsy > (1.0 - blendWidth) && tileFloor.y < u_worldSize.y - 1.0) {
-      int tN = sampleTerrain(tileCoord + vec2(0.0, 1.0));
-      if (tN != tCenter) {
-        float w = smoothstep(1.0 - blendWidth, 1.05, dsy);
-        blendAccum += getTerrainColor(tN) * w;
-        blendTotal += w;
-      }
-    }
+    // Fast path: all 4 warped corners same as center → pure detail texture
+    vec3 finalColor;
+    if (t00 == tCenter && t10 == tCenter && t01 == tCenter && t11 == tCenter) {
+      finalColor = centerDetailed;
+    } else {
+      // Bilinear blend of base colors at the 4 warped corners
+      vec3 col00 = getTerrainColor(t00);
+      vec3 col10 = getTerrainColor(t10);
+      vec3 col01 = getTerrainColor(t01);
+      vec3 col11 = getTerrainColor(t11);
+      vec3 blended = mix(mix(col00, col10, wf.x), mix(col01, col11, wf.x), wf.y);
 
-    // Diagonal corners (cheap: use radial distance with same noise distortion)
-    float diagDist;
-    // Top-left
-    diagDist = max(dsx, dsy);
-    if (diagDist < 0.35 && tileFloor.x > 0.0 && tileFloor.y > 0.0) {
-      int tN = sampleTerrain(tileCoord + vec2(-1.0, -1.0));
-      if (tN != tCenter) {
-        float w = smoothstep(0.35, -0.05, diagDist) * 0.45;
-        blendAccum += getTerrainColor(tN) * w;
-        blendTotal += w;
-      }
-    }
-    // Top-right
-    diagDist = max(1.0 - dsx, dsy);
-    if (diagDist < 0.35 && tileFloor.x < u_worldSize.x - 1.0 && tileFloor.y > 0.0) {
-      int tN = sampleTerrain(tileCoord + vec2(1.0, -1.0));
-      if (tN != tCenter) {
-        float w = smoothstep(0.35, -0.05, diagDist) * 0.45;
-        blendAccum += getTerrainColor(tN) * w;
-        blendTotal += w;
-      }
-    }
-    // Bottom-left
-    diagDist = max(dsx, 1.0 - dsy);
-    if (diagDist < 0.35 && tileFloor.x > 0.0 && tileFloor.y < u_worldSize.y - 1.0) {
-      int tN = sampleTerrain(tileCoord + vec2(-1.0, 1.0));
-      if (tN != tCenter) {
-        float w = smoothstep(0.35, -0.05, diagDist) * 0.45;
-        blendAccum += getTerrainColor(tN) * w;
-        blendTotal += w;
-      }
-    }
-    // Bottom-right
-    diagDist = max(1.0 - dsx, 1.0 - dsy);
-    if (diagDist < 0.35 && tileFloor.x < u_worldSize.x - 1.0 && tileFloor.y < u_worldSize.y - 1.0) {
-      int tN = sampleTerrain(tileCoord + vec2(1.0, 1.0));
-      if (tN != tCenter) {
-        float w = smoothstep(0.35, -0.05, diagDist) * 0.45;
-        blendAccum += getTerrainColor(tN) * w;
-        blendTotal += w;
-      }
-    }
+      // Weight of the center terrain type in the warped bilinear
+      float cw = 0.0;
+      if (t00 == tCenter) cw += (1.0 - wf.x) * (1.0 - wf.y);
+      if (t10 == tCenter) cw += wf.x * (1.0 - wf.y);
+      if (t01 == tCenter) cw += (1.0 - wf.x) * wf.y;
+      if (t11 == tCenter) cw += wf.x * wf.y;
 
-    if (blendTotal > 0.0) {
-      float blendF = min(blendTotal, 0.65);
-      finalColor = mix(centerColor, blendAccum / blendTotal, blendF);
+      // High cw → show detailed center texture; low cw → bilinear base blend
+      float detailMix = smoothstep(0.08, 0.52, cw);
+      finalColor = mix(blended, centerDetailed, detailMix);
     }
 
     // --- Coastal tinting ---
@@ -449,7 +396,6 @@ const FRAG_SRC = `
       float sandF = wp <= 1.0 ? 0.30 : 0.12;
       finalColor = mix(finalColor, u_coastWetSand, sandF);
     }
-    // Water proximity gradient for soil/fertile soil
     if ((tCenter == 3 || tCenter == 5) && wp > 0.0 && wp <= 5.0) {
       float boost = (5.0 - wp) / 255.0;
       finalColor.g += boost * 3.0;
@@ -479,7 +425,6 @@ const FRAG_SRC = `
         finalColor *= shadow;
       }
     }
-    // Mountain/rock south-face highlight
     if ((tCenter == 7 || tCenter == 4) && tileFloor.y < u_worldSize.y - 1.0) {
       float hS = sampleHeight(tileCoord + vec2(0.0, 1.0));
       if (hS < hHere) {

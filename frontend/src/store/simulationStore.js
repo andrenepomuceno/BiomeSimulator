@@ -14,6 +14,8 @@ export const DEFAULT_AUDIO_SETTINGS = {
   unlocked: false,
 };
 
+export const AUDIO_LOG_LIMIT = 40;
+
 const useSimStore = create((set, get) => ({
   // Worker reference (set once by useSimulation)
   worker: null,
@@ -135,6 +137,11 @@ const useSimStore = create((set, get) => ({
   setAudioSettings: (patch) => set(state => ({
     audioSettings: { ...state.audioSettings, ...patch },
   })),
+  audioLog: [],
+  pushAudioLog: (entry) => set(state => ({
+    audioLog: [entry, ...state.audioLog].slice(0, AUDIO_LOG_LIMIT),
+  })),
+  clearAudioLog: () => set({ audioLog: [] }),
 
   // Selected entity / tile
   selectedEntity: null,

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import useSimStore from '../simulationStore.js';
+import useSimStore, { AUDIO_LOG_LIMIT, DEFAULT_AUDIO_SETTINGS } from '../simulationStore.js';
 
 const initialClock = useSimStore.getState().clock;
 
@@ -8,6 +8,8 @@ function resetStore() {
     animals: [],
     _animalsById: new Map(),
     clock: { ...initialClock, tick: 0 },
+    audioSettings: { ...DEFAULT_AUDIO_SETTINGS },
+    audioLog: [],
     selectedEntity: null,
     selectedTile: null,
   });
@@ -104,5 +106,20 @@ describe('simulationStore mergeAnimalDeltas', () => {
     animal = useSimStore.getState().animals[0];
     expect(animal).toBeUndefined();
     expect(useSimStore.getState()._animalsById.has(7)).toBe(false);
+  });
+
+  it('keeps the newest audio log entries within the configured limit', () => {
+    const store = useSimStore.getState();
+
+    for (let i = 0; i < AUDIO_LOG_LIMIT + 5; i++) {
+      store.pushAudioLog({ type: `sound-${i}`, tick: i, at: i });
+    }
+
+    expect(useSimStore.getState().audioLog).toHaveLength(AUDIO_LOG_LIMIT);
+    expect(useSimStore.getState().audioLog[0]).toMatchObject({ type: `sound-${AUDIO_LOG_LIMIT + 4}` });
+    expect(useSimStore.getState().audioLog.at(-1)).toMatchObject({ type: 'sound-5' });
+
+    store.clearAudioLog();
+    expect(useSimStore.getState().audioLog).toEqual([]);
   });
 });

@@ -16,6 +16,13 @@ export function useAudio() {
     const manager = ensureManager();
     let previousAudioSettings = useSimStore.getState().audioSettings;
     manager.applySettings(previousAudioSettings);
+    manager.setLogger((entry) => {
+      const store = useSimStore.getState();
+      store.pushAudioLog({
+        ...entry,
+        tick: store.clock.tick,
+      });
+    });
 
     const unsubscribe = useSimStore.subscribe((state) => {
       if (state.audioSettings !== previousAudioSettings) {
@@ -26,6 +33,7 @@ export function useAudio() {
 
     return () => {
       unsubscribe();
+      manager.setLogger(null);
       manager.destroy();
       if (managerRef.current === manager) {
         managerRef.current = null;

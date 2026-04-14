@@ -56,6 +56,11 @@ export class SoundManager {
     this._ambienceMode = 'day';
     this._dayLayer = null;
     this._nightLayer = null;
+    this._logger = null;
+  }
+
+  setLogger(logger) {
+    this._logger = typeof logger === 'function' ? logger : null;
   }
 
   applySettings(patch) {
@@ -76,9 +81,19 @@ export class SoundManager {
 
   syncClock(clock) {
     if (!clock) return;
-    this._ambienceMode = clock.is_night ? 'night' : 'day';
+    const nextMode = clock.is_night ? 'night' : 'day';
+    const modeChanged = nextMode !== this._ambienceMode;
+    this._ambienceMode = nextMode;
     if (this.context) {
       this._syncAmbienceMix();
+    }
+    if (modeChanged && this.settings.unlocked && this.settings.ambienceEnabled && !this.settings.muted) {
+      this._emitLog({
+        type: 'ambience',
+        category: 'ambience',
+        mode: this._ambienceMode,
+        gain: this.settings.ambienceVolume,
+      });
     }
   }
 
@@ -128,9 +143,10 @@ export class SoundManager {
 
     let gain = config.baseGain * (event.gainMultiplier || 1);
     let pan = 0;
+    let mix = null;
 
     if (config.positional) {
-      const mix = computePositionalMix(event, this.viewport, config.audibleRadiusTiles);
+      mix = computePositionalMix(event, this.viewport, config.audibleRadiusTiles);
       if (!mix.audible) return false;
       gain *= mix.gain;
       pan = mix.pan;
@@ -139,7 +155,21 @@ export class SoundManager {
     if (gain <= ZERO_GAIN) return false;
 
     this._lastPlayedAt.set(event.type, nowMs);
-    return this._playPreset(config.preset, gain, pan);
+    const played = this._playPreset(config.preset, gain, pan);
+    if (played) {
+      this._emitLog({
+        type: event.type,
+        category: config.category,
+        preset: config.preset,
+        gain,
+        pan,
+        x: Number.isFinite(event.x) ? event.x : null,
+        y: Number.isFinite(event.y) ? event.y : null,
+        distance: mix ? mix.distance : null,
+        audibleRadius: mix ? mix.audibleRadius : null,
+      });
+    }
+    return played;
   }
 
   destroy() {
@@ -178,6 +208,21 @@ export class SoundManager {
     this.ambienceGain = null;
     this._noiseBuffer = null;
     this._activeVoices = 0;
+    this._logger = null;
+  }
+
+  _emitLog(entry) {
+    if (!this._logger) return;
+    this._logger({
+      ...entry,
+      at: Date.now(),
+      gain: Number.isFinite(entry.gain) ? Number(entry.gain.toFixed(3)) : null,
+      pan: Number.isFinite(entry.pan) ? Number(entry.pan.toFixed(3)) : null,
+      x: Number.isFinite(entry.x) ? Number(entry.x.toFixed(1)) : null,
+      y: Number.isFinite(entry.y) ? Number(entry.y.toFixed(1)) : null,
+      distance: Number.isFinite(entry.distance) ? Number(entry.distance.toFixed(2)) : null,
+      audibleRadius: Number.isFinite(entry.audibleRadius) ? Number(entry.audibleRadius.toFixed(2)) : null,
+    });
   }
 
   _ensureContext() {

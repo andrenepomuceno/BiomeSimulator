@@ -590,6 +590,81 @@ html, body, #root {
   margin: 0;
 }
 
+.audio-log-panel {
+  background: rgba(17, 24, 44, 0.88);
+  border: 1px solid #0f346055;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.audio-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.audio-log-header strong {
+  display: block;
+  color: #eef9fc;
+  font-size: 0.84rem;
+}
+
+.audio-log-header span {
+  display: block;
+  color: #8fb2c2;
+  font-size: 0.74rem;
+  margin-top: 3px;
+}
+
+.audio-log-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.audio-log-item {
+  border: 1px solid #0f346044;
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: rgba(26, 31, 56, 0.9);
+}
+
+.audio-log-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.audio-log-type {
+  color: #f2f9fb;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.audio-log-time {
+  color: #7da7b8;
+  font-size: 0.72rem;
+  flex-shrink: 0;
+}
+
+.audio-log-meta {
+  margin-top: 4px;
+  color: #b9d5df;
+  font-size: 0.73rem;
+  line-height: 1.45;
+}
+
+.audio-log-empty {
+  color: #8aa6b7;
+  font-size: 0.78rem;
+  padding: 12px 4px 2px;
+}
+
 /* ── Simulation Report Modal ── */
 
 .report-overlay {
@@ -1301,6 +1376,12 @@ html, body, #root {
 }
 
 @media (max-width: 560px) {
+  .audio-log-header,
+  .audio-log-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .audio-header,
   .audio-body,
   .help-header,

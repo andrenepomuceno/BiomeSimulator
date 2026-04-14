@@ -2,9 +2,28 @@ import React from 'react';
 import useSimStore from '../store/simulationStore';
 
 export default function AudioSettingsModal({ open, onClose, onUnlock }) {
-  const { audioSettings, setAudioSettings } = useSimStore();
+  const { audioSettings, setAudioSettings, audioLog, clearAudioLog } = useSimStore();
 
   if (!open) return null;
+
+  const formatEntryLabel = (entry) => {
+    if (entry.type === 'uiClick') return 'UI click';
+    if (entry.type === 'ambience') return `Ambience ${entry.mode}`;
+    return entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
+  };
+
+  const formatEntryMeta = (entry) => {
+    if (entry.type === 'ambience') {
+      return `tick ${entry.tick} · gain ${entry.gain ?? 0}`;
+    }
+
+    const parts = [`tick ${entry.tick}`];
+    if (entry.gain != null) parts.push(`gain ${entry.gain}`);
+    if (entry.pan != null) parts.push(`pan ${entry.pan}`);
+    if (entry.distance != null) parts.push(`dist ${entry.distance}`);
+    if (entry.x != null && entry.y != null) parts.push(`(${entry.x}, ${entry.y})`);
+    return parts.join(' · ');
+  };
 
   const setSlider = (key) => (e) => {
     setAudioSettings({ [key]: Number(e.target.value) / 100 });
@@ -85,6 +104,34 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
           <p className="audio-help">
             Camera-relative SFX are limited to a nearby horizon, so dense areas stay readable without turning every off-screen event into noise.
           </p>
+
+          <div className="audio-log-panel">
+            <div className="audio-log-header">
+              <div>
+                <strong>Recent sound log</strong>
+                <span>Latest emitted sounds, newest first.</span>
+              </div>
+              <button className="btn btn-sm btn-outline-secondary" onClick={clearAudioLog} disabled={audioLog.length === 0}>
+                Clear
+              </button>
+            </div>
+
+            {audioLog.length === 0 ? (
+              <div className="audio-log-empty">No sounds emitted yet.</div>
+            ) : (
+              <div className="audio-log-list">
+                {audioLog.map((entry) => (
+                  <div key={`${entry.at}-${entry.type}-${entry.tick}`} className="audio-log-item">
+                    <div className="audio-log-top">
+                      <span className="audio-log-type">{formatEntryLabel(entry)}</span>
+                      <span className="audio-log-time">{new Date(entry.at).toLocaleTimeString()}</span>
+                    </div>
+                    <div className="audio-log-meta">{formatEntryMeta(entry)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

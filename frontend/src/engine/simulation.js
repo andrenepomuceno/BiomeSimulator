@@ -5,6 +5,7 @@
 import { World } from './world.js';
 import { Animal } from './entities.js';
 import { SpatialHash } from './spatialHash.js';
+import { createSimulationSupervisor } from './simulationSupervisor.js';
 import { generateTerrain, computeWaterProximity } from './mapGenerator.js';
 import {
   seedInitialPlants,
@@ -26,7 +27,9 @@ import {
   createBenchmarkCollector,
   resetBenchmarkCollector,
   cloneBenchmarkCollector,
+  benchmarkEnd,
   benchmarkAdd,
+  benchmarkStart,
 } from './benchmarkProfiler.js';
 
 export class SimulationEngine {
@@ -37,6 +40,8 @@ export class SimulationEngine {
     this.profilingEnabled = false;
     this._latestProfile = null;
     this._benchmarkCollector = createBenchmarkCollector();
+    this.supervisor = createSimulationSupervisor(config);
+    this._latestSupervisorReport = null;
     this.spatialHash.setBenchmarkCollector(this._benchmarkCollector);
   }
 
@@ -65,6 +70,7 @@ export class SimulationEngine {
   generateWorld() {
     this.world = new World(this.config);
     this.world._benchmarkCollector = this._benchmarkCollector;
+    this.supervisor.reset();
     const { terrain, waterProximity, heightmap, seed } = generateTerrain(this.config);
     this.world.terrain = terrain;
     this.world.waterProximity = waterProximity;
@@ -82,6 +88,7 @@ export class SimulationEngine {
   resetSimulation() {
     const w = this.world;
     w._benchmarkCollector = this._benchmarkCollector;
+    this.supervisor.reset();
     // Reset plants
     w.plantType.fill(0);
     w.plantStage.fill(0);
@@ -150,7 +157,7 @@ export class SimulationEngine {
     const w = this.world;
     w.plantChanges = [];
     this._tickStart = performance.now();
-    this._phases = { plantsMs: 0, behaviorMs: 0, spatialMs: 0, cleanupMs: 0, statsMs: 0 };
+    this._phases = { plantsMs: 0, behaviorMs: 0, spatialMs: 0, cleanupMs: 0, supervisorMs: 0, statsMs: 0 };
 
     w.clock.advance();
 
@@ -260,6 +267,7 @@ export class SimulationEngine {
       animal._eggMaxHp = delta._eggMaxHp || 0;
       animal.parentA = delta.parentA ?? null;
       animal.parentB = delta.parentB ?? null;
+      animal.direction = delta.direction || 0;
       animal._dirty = true;
 
       if (animal.alive) {
@@ -354,6 +362,21 @@ export class SimulationEngine {
       );
     }
     this._phases.cleanupMs = performance.now() - cleanupStart;
+
+    let supervisorReport = this.supervisor.skipAudit(tick, 'tickCleanup');
+    if (this.supervisor.shouldAudit(tick)) {
+      const supervisorStart = benchmarkStart(this._benchmarkCollector);
+      supervisorReport = this.supervisor.audit(w, this.spatialHash, 'tickCleanup');
+      this._phases.supervisorMs = benchmarkEnd(this._benchmarkCollector, 'supervisorAudit', supervisorStart);
+      benchmarkAdd(this._benchmarkCollector, 'supervisorAudits', 1);
+      benchmarkAdd(this._benchmarkCollector, 'supervisorIssues', supervisorReport.issueCount);
+      benchmarkAdd(this._benchmarkCollector, 'supervisorAnimalsAudited', supervisorReport.animalsAudited);
+      benchmarkAdd(this._benchmarkCollector, 'supervisorCellsAudited', supervisorReport.cellsAudited);
+      if (supervisorReport.shouldLog) {
+        console.warn('[SimulationSupervisor] Inconsistencies detected:', supervisorReport);
+      }
+    }
+    this._latestSupervisorReport = supervisorReport;
 
     // Record stats every 10 ticks
     const statsStart = performance.now();

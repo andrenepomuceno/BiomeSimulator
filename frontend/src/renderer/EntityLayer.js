@@ -1,6 +1,7 @@
 /**
- * EntityLayer — renders animals as emoji sprites using a PixiJS sprite pool,
- * with energy bars, direction flipping, and zoom-gated detail levels.
+ * EntityLayer — renders animals as procedural pixel-art sprites using a PixiJS
+ * sprite pool, with 4-directional walk animations, energy bars, and zoom-gated
+ * detail levels.
  */
 import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures.js';
@@ -13,6 +14,14 @@ const ATTACK_JUMP_HEIGHT = 0.22;
 const HIT_WOBBLE_DURATION = 8;
 const HIT_WOBBLE_OFFSET = 0.08;
 const HIT_WOBBLE_ROTATION = 0.22;
+
+// Direction names matching engine Direction enum values (0-3)
+const DIR_NAMES = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
+
+// Animation: cycle frames every ANIM_INTERVAL render ticks when moving
+const ANIM_INTERVAL = 6;
+// Ping-pong sequence: 0, 1, 2, 1, 0, 1, 2, ...
+const ANIM_SEQUENCE = [0, 1, 2, 1];
 
 export class EntityLayer {
   constructor(animationLayer) {
@@ -64,6 +73,10 @@ export class EntityLayer {
     sprite._attackTick = null;
     sprite._hitTick = null;
     sprite._lastHp = null;
+    sprite._animFrame = 0;
+    sprite._animSeqIdx = 0;
+    sprite._animTick = 0;
+    sprite._direction = 0;
     this.container.addChild(sprite);
     return sprite;
   }
@@ -75,19 +88,25 @@ export class EntityLayer {
     sprite._attackTick = null;
     sprite._hitTick = null;
     sprite._lastHp = null;
+    sprite._animFrame = 0;
+    sprite._animSeqIdx = 0;
+    sprite._animTick = 0;
+    sprite._direction = 0;
     this.container.removeChild(sprite);
     this._pool.push(sprite);
   }
 
   /**
-   * Get the texture key for an animal based on its state and species.
+   * Get the texture key for an animal based on its state, direction, and animation frame.
+   * For special states, returns a direction-agnostic single key.
+   * For normal animals, returns e.g. 'RABBIT_DOWN_1'.
    */
-  _getTexKey(a) {
+  _getTexKey(a, direction, animFrame) {
     if (a.lifeStage === -1) return 'EGG'; // LifeStage.EGG = -1
     if (a.state === 9) return 'DEAD';
     if (a.state === 5) return 'SLEEPING';
     if (a.lifeStage === 4) return 'PUPA';
-    return a.species;
+    return `${a.species}_${DIR_NAMES[direction] || 'DOWN'}_${animFrame}`;
   }
 
   /**
@@ -112,15 +131,45 @@ export class EntityLayer {
       let sprite = this._sprites.get(a.id);
       const isEgg = a.lifeStage === -1; // LifeStage.EGG
 
-      const texKey = this._getTexKey(a);
-      const tex = this._textures[texKey] || this._textures[a.species];
+      // Update direction from engine data
+      const dir = a.direction ?? 0;
+
+      // Determine animation frame
+      let animFrame;
+      if (!sprite) {
+        animFrame = 1; // neutral frame for new sprites
+      } else {
+        // Advance walk animation when animal moves
+        const moved = a.x !== sprite._lastX || a.y !== sprite._lastY;
+        if (moved) {
+          sprite._animTick++;
+          if (sprite._animTick >= ANIM_INTERVAL) {
+            sprite._animTick = 0;
+            sprite._animSeqIdx = (sprite._animSeqIdx + 1) % ANIM_SEQUENCE.length;
+          }
+          animFrame = ANIM_SEQUENCE[sprite._animSeqIdx];
+        } else {
+          // Idle: reset to neutral frame
+          sprite._animSeqIdx = 0;
+          sprite._animTick = 0;
+          animFrame = 1;
+        }
+        sprite._direction = dir;
+      }
+
+      const texKey = this._getTexKey(a, dir, animFrame);
+      const tex = this._textures[texKey]
+        || this._textures[`${a.species}_DOWN_1`]
+        || this._textures[a.species];
       if (!tex) continue;
 
       if (!sprite) {
         sprite = this._acquireSprite(tex);
         sprite._texKey = texKey;
         sprite._lastX = a.x;
-        sprite._facingLeft = false;
+        sprite._lastY = a.y;
+        sprite._direction = dir;
+        sprite._animFrame = 1;
         sprite._lastHp = Number.isFinite(a.hp) ? a.hp : null;
         this._sprites.set(a.id, sprite);
         // New animal appeared — birth animation (skip for dead)
@@ -167,11 +216,9 @@ export class EntityLayer {
       let spriteY = a.y;
       sprite.rotation = 0;
 
-      // Direction flip: track horizontal movement
-      if (a.x !== sprite._lastX) {
-        sprite._facingLeft = a.x < sprite._lastX;
-        sprite._lastX = a.x;
-      }
+      // Track position for animation
+      sprite._lastX = a.x;
+      sprite._lastY = a.y;
 
       // Scale: atlas frame → ~1 tile.  Adjust for frame size so 1 frame ≈ 1 tile.
       const baseScale = 1 / FRAME_SIZE;
@@ -236,9 +283,8 @@ export class EntityLayer {
       sprite.x = spriteX;
       sprite.y = spriteY;
 
-      // Apply direction flip via negative scale.x
-      const sx = sprite._facingLeft ? -finalScale : finalScale;
-      sprite.scale.set(sx, finalScale);
+      // Uniform scale — direction is handled by the directional sprite frame
+      sprite.scale.set(finalScale, finalScale);
 
       // Alpha based on state
       if (a.state === 9) {

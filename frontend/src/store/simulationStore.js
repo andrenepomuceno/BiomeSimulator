@@ -17,6 +17,26 @@ export const DEFAULT_AUDIO_SETTINGS = {
 export const AUDIO_LOG_LIMIT = 300;
 export const AUDIO_SETTINGS_STORAGE_KEY = 'ecogame.audioSettings';
 
+const PAUSE_ON_BG_STORAGE_KEY = 'ecogame.pauseOnBackground';
+
+function loadPauseOnBackground() {
+  if (typeof window === 'undefined' || !window.localStorage) return true;
+  try {
+    const raw = window.localStorage.getItem(PAUSE_ON_BG_STORAGE_KEY);
+    if (raw === null) return true;
+    return JSON.parse(raw) !== false;
+  } catch {
+    return true;
+  }
+}
+
+function persistPauseOnBackground(value) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(PAUSE_ON_BG_STORAGE_KEY, JSON.stringify(!!value));
+  } catch { /* ignore */ }
+}
+
 const PERSISTED_AUDIO_SETTINGS_KEYS = [
   'muted',
   'masterVolume',
@@ -181,6 +201,14 @@ const useSimStore = create((set, get) => ({
   setProfilingEnabled: (enabled) => set({ profilingEnabled: !!enabled }),
   setEngineProfile: (engine) => set(state => ({ profiling: { ...state.profiling, engine } })),
   setRendererProfile: (renderer) => set(state => ({ profiling: { ...state.profiling, renderer } })),
+
+  // Background pause
+  pauseOnBackground: loadPauseOnBackground(),
+  setPauseOnBackground: (v) => {
+    const val = !!v;
+    persistPauseOnBackground(val);
+    set({ pauseOnBackground: val });
+  },
 
   // Audio
   audioSettings: loadPersistedAudioSettings(),

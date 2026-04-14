@@ -12,8 +12,8 @@ const TOOLS = [
   { id: 'ERASE', label: '🗑️ Erase' },
 ];
 
-export default function Toolbar({ appVersion, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onAudioToggle, onReportToggle, onEntitiesToggle }) {
-  const { paused, running, tps, clock, tool, setTool, audioSettings } = useSimStore();
+export default function Toolbar({ appVersion, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onAudioToggle, onReportToggle, onEntitiesToggle, onToggleBackground }) {
+  const { paused, running, tps, clock, tool, setTool, audioSettings, pauseOnBackground } = useSimStore();
   const audioLabel = audioSettings.muted
     ? '🔇 Audio'
     : audioSettings.unlocked
@@ -91,6 +91,13 @@ export default function Toolbar({ appVersion, onStart, onPause, onResume, onStep
       </button>
       <button className="btn btn-sim btn-sm" onClick={onEntitiesToggle} title="Entity Summary">
         📋 Entities
+      </button>
+      <button
+        className={`btn btn-sim btn-sm ${!pauseOnBackground ? 'active' : ''}`}
+        onClick={onToggleBackground}
+        title={pauseOnBackground ? 'Simulation pauses when tab is hidden' : 'Simulation runs in background'}
+      >
+        {pauseOnBackground ? '⏸ BG' : '▶ BG'}
       </button>
       <span className="toolbar-version" title="Application version">
         v{appVersion}

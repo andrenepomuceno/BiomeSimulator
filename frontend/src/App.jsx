@@ -50,6 +50,7 @@ export default function App() {
   const { unlockAudio, updateListenerViewport, playUiClick, playWorldEffect, syncAmbience } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
   const debouncedSpeedChangeRef = useRef(null);
+  const autoPausedRef = useRef(false);
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
@@ -194,12 +195,14 @@ export default function App() {
 
   function _handlePause() {
     playUiClick();
+    autoPausedRef.current = false;
     postCmd('pause');
     useSimStore.getState().setSimState({ paused: true });
   }
 
   function _handleResume() {
     playUiClick();
+    autoPausedRef.current = false;
     postCmd('resume');
     useSimStore.getState().setSimState({ paused: false });
   }
@@ -257,6 +260,28 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // Auto-pause when browser tab is hidden
+  useEffect(() => {
+    function onVisibilityChange() {
+      const { running, paused, pauseOnBackground } = useSimStore.getState();
+      if (document.hidden) {
+        if (pauseOnBackground && running && !paused) {
+          postCmd('pause');
+          useSimStore.getState().setSimState({ paused: true });
+          autoPausedRef.current = true;
+        }
+      } else {
+        if (autoPausedRef.current) {
+          postCmd('resume');
+          useSimStore.getState().setSimState({ paused: false });
+          autoPausedRef.current = false;
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
   function _handleMinimapNavigate(x, y) {
     if (rendererRef.current) {
       rendererRef.current.centerOn(x, y);
@@ -309,6 +334,13 @@ export default function App() {
     setActiveModal(null);
   }
 
+  function _handleToggleBackground() {
+    playUiClick();
+    const current = useSimStore.getState().pauseOnBackground;
+    useSimStore.getState().setPauseOnBackground(!current);
+    autoPausedRef.current = false;
+  }
+
   function _handleUnlockAudio() {
     void unlockAudio();
   }
@@ -350,6 +382,7 @@ export default function App() {
           onAudioToggle={() => _openModal(MODALS.AUDIO)}
           onReportToggle={() => _openModal(MODALS.REPORT)}
           onEntitiesToggle={() => _openModal(MODALS.ENTITIES)}
+          onToggleBackground={_handleToggleBackground}
         />
         <div className="main-area">
           <div className="sidebar sidebar-left">

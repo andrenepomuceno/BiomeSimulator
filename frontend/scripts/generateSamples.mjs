@@ -317,6 +317,223 @@ function genFruit3() {
   return normalize(mix(mix(body, upper), paddedAir, 0.15));
 }
 
+// --- Mate samples: soft chirp/call ---
+
+function genMate1() {
+  const dur = 0.15;
+  const chirp = generate(dur, (t) => {
+    const freq = 400 + 400 * (t / dur);
+    return Math.sin(2 * Math.PI * freq * t) * envelope(t, 0.01, 0.04, dur - 0.05) * 0.7;
+  });
+  const harmonic = generate(dur, (t) => {
+    const freq = 800 + 600 * (t / dur);
+    return Math.sin(2 * Math.PI * freq * t) * envelope(t, 0.015, 0.03, dur - 0.045) * 0.2;
+  });
+  let air = generate(dur * 0.3, (t) => noise() * expDecay(t, 0.04));
+  air = bandpass(air, 3000, 2.0);
+  const paddedAir = new Float64Array(Math.round(dur * SAMPLE_RATE));
+  paddedAir.set(air);
+  return normalize(mix(mix(chirp, harmonic), paddedAir, 0.1));
+}
+
+function genMate2() {
+  const dur = 0.18;
+  // Two-note warble
+  const note1 = generate(dur, (t) => {
+    if (t > dur * 0.5) return 0;
+    const freq = 500 + 300 * (t / (dur * 0.5));
+    return Math.sin(2 * Math.PI * freq * t) * envelope(t, 0.008, 0.03, dur * 0.5 - 0.038) * 0.65;
+  });
+  const note2 = generate(dur, (t) => {
+    if (t < dur * 0.45) return 0;
+    const t2 = t - dur * 0.45;
+    const dur2 = dur * 0.55;
+    const freq = 600 + 350 * (t2 / dur2);
+    return Math.sin(2 * Math.PI * freq * t) * envelope(t2, 0.008, 0.025, dur2 - 0.033) * 0.6;
+  });
+  return normalize(mix(note1, note2));
+}
+
+// --- Drink samples: splash/lap ---
+
+function genDrink1() {
+  const dur = 0.12;
+  let splash = generate(dur, (t) => noise() * envelope(t, 0.003, 0.015, dur - 0.018));
+  splash = lowpass(splash, 500, 0.8);
+  const sub = generate(dur, (t) => {
+    return Math.sin(2 * Math.PI * 80 * t) * expDecay(t, 0.06) * 0.25;
+  });
+  return normalize(mix(splash, sub));
+}
+
+function genDrink2() {
+  const dur = 0.10;
+  let lap = generate(dur, (t) => noise() * envelope(t, 0.002, 0.01, dur - 0.012));
+  lap = lowpass(lap, 600, 0.6);
+  // Subtle drip
+  const drip = generate(dur, (t) => {
+    if (t > 0.03) return 0;
+    return Math.sin(2 * Math.PI * 350 * t) * expDecay(t, 0.015) * 0.4;
+  });
+  return normalize(mix(lap, drip));
+}
+
+// --- Flee samples: urgent rustle ---
+
+function genFlee1() {
+  const dur = 0.10;
+  let rustle = generate(dur, (t) => noise() * envelope(t, 0.002, 0.01, dur - 0.012));
+  rustle = bandpass(rustle, 1800, 1.5);
+  const transient = generate(dur, (t) => {
+    if (t > 0.03) return 0;
+    const freq = 500 - 200 * (t / 0.03);
+    // Use sawtooth-like wave for urgency
+    return (2 * ((freq * t) % 1) - 1) * expDecay(t, 0.015) * 0.4;
+  });
+  return normalize(mix(rustle, transient));
+}
+
+function genFlee2() {
+  const dur = 0.09;
+  let hustle = generate(dur, (t) => noise() * envelope(t, 0.001, 0.008, dur - 0.009));
+  hustle = bandpass(hustle, 2200, 1.8);
+  const kick = generate(dur, (t) => {
+    if (t > 0.025) return 0;
+    return Math.sin(2 * Math.PI * 300 * t) * expDecay(t, 0.012) * 0.35;
+  });
+  return normalize(mix(hustle, kick));
+}
+
+// --- Ambience samples: long loops ---
+
+function genAmbienceBirds() {
+  const dur = 6.0;
+  // Random chirps with natural gaps
+  const out = new Float64Array(Math.round(dur * SAMPLE_RATE));
+  const chirpCount = 12 + Math.floor(Math.random() * 6);
+  for (let c = 0; c < chirpCount; c++) {
+    const start = Math.random() * (dur - 0.3);
+    const chirpDur = 0.06 + Math.random() * 0.12;
+    const baseFreq = 2000 + Math.random() * 3000;
+    const rise = (Math.random() - 0.3) * 1500;
+    const startSample = Math.round(start * SAMPLE_RATE);
+    const len = Math.round(chirpDur * SAMPLE_RATE);
+    for (let i = 0; i < len && startSample + i < out.length; i++) {
+      const t = i / SAMPLE_RATE;
+      const freq = baseFreq + rise * (t / chirpDur);
+      const env = envelope(t, 0.005, chirpDur * 0.3, chirpDur * 0.65);
+      out[startSample + i] += Math.sin(2 * Math.PI * freq * t) * env * (0.15 + Math.random() * 0.05);
+    }
+  }
+  return normalize(out, 0.6);
+}
+
+function genAmbienceInsects() {
+  const dur = 6.0;
+  // Continuous subtle buzz + sporadic clicks
+  let buzz = generate(dur, (t) => {
+    const base = Math.sin(2 * Math.PI * 220 * t) * 0.08;
+    const mod = Math.sin(2 * Math.PI * 8 * t) * 0.5 + 0.5;
+    return base * mod + noise() * 0.02;
+  });
+  buzz = bandpass(buzz, 3000, 1.5);
+  // Add clicks
+  const clicks = new Float64Array(Math.round(dur * SAMPLE_RATE));
+  const clickCount = 20 + Math.floor(Math.random() * 15);
+  for (let c = 0; c < clickCount; c++) {
+    const pos = Math.round(Math.random() * (clicks.length - 200));
+    const clickLen = 40 + Math.floor(Math.random() * 80);
+    for (let i = 0; i < clickLen && pos + i < clicks.length; i++) {
+      clicks[pos + i] = noise() * expDecay(i / SAMPLE_RATE, 0.001) * 0.25;
+    }
+  }
+  return normalize(mix(buzz, clicks), 0.5);
+}
+
+function genAmbienceCrickets() {
+  const dur = 6.0;
+  // Rhythmic chirping pulses
+  const out = generate(dur, (t) => {
+    const pulseFreq = 4.5 + Math.sin(2 * Math.PI * 0.15 * t) * 0.5;
+    const pulseEnv = Math.pow(Math.max(0, Math.sin(2 * Math.PI * pulseFreq * t)), 8);
+    const freq = 4200 + Math.sin(2 * Math.PI * 0.3 * t) * 200;
+    return Math.sin(2 * Math.PI * freq * t) * pulseEnv * 0.3 + noise() * pulseEnv * 0.08;
+  });
+  let filtered = bandpass(out, 4500, 2.0);
+  return normalize(filtered, 0.55);
+}
+
+function genAmbienceWind() {
+  const dur = 7.0;
+  // Filtered noise with slow cutoff sweep
+  let raw = generate(dur, (t) => noise());
+  // Apply slow sweeping filter manually by chunking
+  const chunkSize = Math.round(SAMPLE_RATE * 0.1);
+  const out = new Float64Array(raw.length);
+  for (let i = 0; i < raw.length; i += chunkSize) {
+    const t = i / SAMPLE_RATE;
+    const cutoff = 300 + 200 * Math.sin(2 * Math.PI * 0.08 * t);
+    const chunk = raw.slice(i, Math.min(i + chunkSize + 200, raw.length));
+    const filtered = lowpass(chunk, cutoff, 0.4);
+    for (let j = 0; j < Math.min(chunkSize, filtered.length) && i + j < out.length; j++) {
+      out[i + j] = filtered[j];
+    }
+  }
+  return normalize(out, 0.5);
+}
+
+// --- Macro event samples ---
+
+function genExtinctionWarning() {
+  const dur = 0.5;
+  // Ominous descending tone
+  const body = generate(dur, (t) => {
+    const freq = 250 * Math.exp(-2 * t / dur);
+    return Math.sin(2 * Math.PI * freq * t) * envelope(t, 0.02, 0.1, dur - 0.12) * 0.8;
+  });
+  const sub = generate(dur, (t) => {
+    return Math.sin(2 * Math.PI * 60 * t) * envelope(t, 0.03, 0.15, dur - 0.18) * 0.3;
+  });
+  let dark = generate(dur, (t) => noise() * envelope(t, 0.01, 0.08, dur - 0.09));
+  dark = lowpass(dark, 200, 0.5);
+  return normalize(mix(mix(body, sub), dark, 0.25));
+}
+
+function genPopulationBoom() {
+  const dur = 0.4;
+  // Subtle ascending chord
+  const note1 = generate(dur, (t) => {
+    const freq = 400 + 200 * (t / dur);
+    return Math.sin(2 * Math.PI * freq * t) * envelope(t, 0.015, 0.1, dur - 0.115) * 0.5;
+  });
+  const note2 = generate(dur, (t) => {
+    const freq = 600 + 300 * (t / dur);
+    return Math.sin(2 * Math.PI * freq * t) * envelope(t, 0.02, 0.08, dur - 0.1) * 0.3;
+  });
+  const note3 = generate(dur, (t) => {
+    const freq = 800 + 400 * (t / dur);
+    return Math.sin(2 * Math.PI * freq * t) * envelope(t, 0.025, 0.06, dur - 0.085) * 0.15;
+  });
+  return normalize(mix(mix(note1, note2), note3));
+}
+
+function genEcosystemCollapse() {
+  const dur = 0.8;
+  // Dissonant drone
+  const tone1 = generate(dur, (t) => {
+    return Math.sin(2 * Math.PI * 90 * t) * envelope(t, 0.04, 0.2, dur - 0.24) * 0.6;
+  });
+  const tone2 = generate(dur, (t) => {
+    return Math.sin(2 * Math.PI * 95 * t) * envelope(t, 0.04, 0.2, dur - 0.24) * 0.5;
+  });
+  const tone3 = generate(dur, (t) => {
+    return Math.sin(2 * Math.PI * 135 * t) * envelope(t, 0.06, 0.15, dur - 0.21) * 0.35;
+  });
+  let rumble = generate(dur, (t) => noise() * envelope(t, 0.03, 0.3, dur - 0.33));
+  rumble = lowpass(rumble, 150, 0.4);
+  return normalize(mix(mix(mix(tone1, tone2), tone3), rumble, 0.3));
+}
+
 // --- Write all samples ---
 
 const samples = {
@@ -332,6 +549,19 @@ const samples = {
   'fruit-1': genFruit1,
   'fruit-2': genFruit2,
   'fruit-3': genFruit3,
+  'mate-1': genMate1,
+  'mate-2': genMate2,
+  'drink-1': genDrink1,
+  'drink-2': genDrink2,
+  'flee-1': genFlee1,
+  'flee-2': genFlee2,
+  'ambience-birds': genAmbienceBirds,
+  'ambience-insects': genAmbienceInsects,
+  'ambience-crickets': genAmbienceCrickets,
+  'ambience-wind': genAmbienceWind,
+  'extinction-warning': genExtinctionWarning,
+  'population-boom': genPopulationBoom,
+  'ecosystem-collapse': genEcosystemCollapse,
 };
 
 for (const [name, fn] of Object.entries(samples)) {

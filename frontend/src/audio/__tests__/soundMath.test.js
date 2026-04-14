@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computePositionalMix, getAudibleRadius, getViewportCenter, shouldMutePositionalSfx } from '../soundMath.js';
+import { computeEcoMood, computePositionalMix, detectMacroEvents, getAudibleRadius, getViewportCenter, shouldMutePositionalSfx } from '../soundMath.js';
 
 describe('soundMath', () => {
   it('computes the center of the active viewport', () => {
@@ -36,5 +36,66 @@ describe('soundMath', () => {
   it('mutes positional SFX when the camera is zoomed far out', () => {
     expect(shouldMutePositionalSfx({ x: 0, y: 0, w: 100, h: 100, zoom: 2.5 })).toBe(true);
     expect(shouldMutePositionalSfx({ x: 0, y: 0, w: 100, h: 100, zoom: 3 })).toBe(false);
+  });
+});
+
+describe('computeEcoMood', () => {
+  it('returns default mood for null stats', () => {
+    const mood = computeEcoMood(null);
+    expect(mood.trend).toBe('stable');
+    expect(mood.biodiversity).toBe(0.5);
+  });
+
+  it('reports high biodiversity when herbivores and carnivores are balanced', () => {
+    const mood = computeEcoMood({ herbivores: 100, carnivores: 100 });
+    expect(mood.biodiversity).toBeGreaterThan(0.7);
+  });
+
+  it('reports low biodiversity when one group dominates', () => {
+    const mood = computeEcoMood({ herbivores: 200, carnivores: 2 });
+    expect(mood.biodiversity).toBeLessThan(0.5);
+  });
+
+  it('detects booming trend when population grows significantly', () => {
+    const prev = { herbivores: 50, carnivores: 50 };
+    const curr = { herbivores: 80, carnivores: 80 };
+    const mood = computeEcoMood(curr, prev);
+    expect(mood.trend).toBe('booming');
+  });
+
+  it('detects declining trend when population drops', () => {
+    const prev = { herbivores: 100, carnivores: 100 };
+    const curr = { herbivores: 60, carnivores: 60 };
+    const mood = computeEcoMood(curr, prev);
+    expect(mood.trend).toBe('declining');
+  });
+});
+
+describe('detectMacroEvents', () => {
+  it('returns empty array when stats are stable', () => {
+    const prev = { herbivores: 50, carnivores: 50 };
+    const curr = { herbivores: 52, carnivores: 49 };
+    expect(detectMacroEvents(prev, curr)).toEqual([]);
+  });
+
+  it('detects extinction warning when a group drops to near zero', () => {
+    const prev = { herbivores: 50, carnivores: 20 };
+    const curr = { herbivores: 50, carnivores: 1 };
+    const events = detectMacroEvents(prev, curr);
+    expect(events).toContain('extinctionWarning');
+  });
+
+  it('detects population boom when total grows >40%', () => {
+    const prev = { herbivores: 50, carnivores: 50 };
+    const curr = { herbivores: 80, carnivores: 80 };
+    const events = detectMacroEvents(prev, curr);
+    expect(events).toContain('populationBoom');
+  });
+
+  it('detects ecosystem collapse when total drops >50%', () => {
+    const prev = { herbivores: 50, carnivores: 50 };
+    const curr = { herbivores: 15, carnivores: 15 };
+    const events = detectMacroEvents(prev, curr);
+    expect(events).toContain('ecosystemCollapse');
   });
 });

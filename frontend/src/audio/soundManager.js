@@ -1,4 +1,4 @@
-import { getSoundEventConfig, SOUND_EVENTS } from './soundEvents.js';
+import { getSoundEventConfig, SOUND_EVENTS, SPECIES_AUDIO_SCALE, AMBIENCE_SAMPLES } from './soundEvents.js';
 import { clamp, computePositionalMix, shouldMutePositionalSfx } from './soundMath.js';
 
 const MAX_ACTIVE_VOICES = 24;
@@ -58,6 +58,8 @@ export class SoundManager {
     this._ambienceMode = 'day';
     this._dayLayer = null;
     this._nightLayer = null;
+    this._ambienceSampleLayers = null;   // { birds, insects, crickets, wind } loaded AudioBufferSourceNodes
+    this._ecoMood = null;                // { biodiversity, population, trend } from computeEcoMood
     this._logger = null;
 
     /** @type {Map<string, AudioBuffer>} URL → decoded AudioBuffer cache */
@@ -75,6 +77,7 @@ export class SoundManager {
     if (this.context) {
       this._syncBuses();
       this._syncAmbienceMix();
+      this._syncAmbienceSampleLayers();
     }
   }
 
@@ -93,6 +96,7 @@ export class SoundManager {
     this._ambienceMode = nextMode;
     if (this.context) {
       this._syncAmbienceMix();
+      this._syncAmbienceSampleLayers();
     }
     if (modeChanged && this.settings.unlocked && this.settings.ambienceEnabled && !this.settings.muted) {
       this._emitLog({
@@ -133,8 +137,10 @@ export class SoundManager {
         for (const url of cfg.samples) urls.push(url);
       }
     }
+    for (const url of AMBIENCE_SAMPLES) urls.push(url);
 
     await Promise.allSettled(urls.map((url) => this._loadSample(url)));
+    this._ensureAmbienceSampleLayers();
   }
 
   async _loadSample(url) {
@@ -187,6 +193,12 @@ export class SoundManager {
     let pan = 0;
     let mix = null;
 
+    // Species-based pitch/gain variation
+    let speciesScale = null;
+    if (event.species && SPECIES_AUDIO_SCALE[event.species] !== undefined) {
+      speciesScale = SPECIES_AUDIO_SCALE[event.species];
+    }
+
     if (config.positional) {
       if (shouldMutePositionalSfx(this.viewport)) {
         return false;
@@ -200,7 +212,7 @@ export class SoundManager {
     if (gain <= ZERO_GAIN) return false;
 
     this._lastPlayedAt.set(event.type, nowMs);
-    const played = this._playPreset(config.preset, gain, pan);
+    const played = this._playPreset(config.preset, gain, pan, speciesScale);
     if (played) {
       this._emitLog({
         type: event.type,
@@ -215,6 +227,74 @@ export class SoundManager {
       });
     }
     return played;
+  }
+
+  setEcoMood(mood) {
+    this._ecoMood = mood || null;
+    this._syncAmbienceSampleLayers();
+  }
+
+  _ensureAmbienceSampleLayers() {
+    if (!this.context || this._ambienceSampleLayers) return;
+    const context = this.context;
+
+    const makeLayer = (url) => {
+      const buffer = this._sampleBuffers.get(url);
+      if (!buffer) return null;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const gainNode = context.createGain();
+      gainNode.gain.value = ZERO_GAIN;
+      source.connect(gainNode);
+      gainNode.connect(this.ambienceGain);
+      source.start();
+      return { source, gainNode };
+    };
+
+    this._ambienceSampleLayers = {
+      birds: makeLayer('/audio/ambience-birds.wav'),
+      insects: makeLayer('/audio/ambience-insects.wav'),
+      crickets: makeLayer('/audio/ambience-crickets.wav'),
+      wind: makeLayer('/audio/ambience-wind.wav'),
+    };
+    this._syncAmbienceSampleLayers();
+  }
+
+  _syncAmbienceSampleLayers() {
+    if (!this.context || !this._ambienceSampleLayers) return;
+    const now = this.context.currentTime;
+    const enabled = this.settings.unlocked && this.settings.ambienceEnabled && !this.settings.muted;
+
+    const isNight = this._ambienceMode === 'night';
+    const mood = this._ecoMood;
+
+    // Default mix targets for each nature layer
+    let birdsTarget = enabled ? (isNight ? 0.05 : 0.45) : 0;
+    let insectsTarget = enabled ? (isNight ? 0.2 : 0.35) : 0;
+    let cricketsTarget = enabled ? (isNight ? 0.5 : 0.08) : 0;
+    let windTarget = enabled ? 0.25 : 0;
+
+    // Eco mood adjustments: low biodiversity → fewer birds, high → lusher
+    if (mood && enabled) {
+      birdsTarget *= clamp(mood.biodiversity * 1.5, 0.2, 1.5);
+      insectsTarget *= clamp(mood.biodiversity * 1.3, 0.3, 1.4);
+      // Declining population → more wind, less life
+      if (mood.trend === 'declining') {
+        windTarget *= 1.4;
+        birdsTarget *= 0.6;
+      } else if (mood.trend === 'booming') {
+        birdsTarget *= 1.3;
+        windTarget *= 0.7;
+      }
+    }
+
+    const fade = AMBIENCE_FADE_SECONDS * 2; // Slower fade for nature layers
+    const layers = this._ambienceSampleLayers;
+    if (layers.birds) rampParam(layers.birds.gainNode.gain, birdsTarget, now, fade);
+    if (layers.insects) rampParam(layers.insects.gainNode.gain, insectsTarget, now, fade);
+    if (layers.crickets) rampParam(layers.crickets.gainNode.gain, cricketsTarget, now, fade);
+    if (layers.wind) rampParam(layers.wind.gainNode.gain, windTarget, now, fade);
   }
 
   destroy() {
@@ -233,6 +313,16 @@ export class SoundManager {
       for (const dispose of this._nightLayer.disposers) dispose();
       safeDisconnect(this._nightLayer.gainNode);
       this._nightLayer = null;
+    }
+
+    if (this._ambienceSampleLayers) {
+      for (const layer of Object.values(this._ambienceSampleLayers)) {
+        if (!layer) continue;
+        try { layer.source.stop(); } catch { /* ignore */ }
+        safeDisconnect(layer.source);
+        safeDisconnect(layer.gainNode);
+      }
+      this._ambienceSampleLayers = null;
     }
 
     safeDisconnect(this.masterGain);
@@ -458,10 +548,16 @@ export class SoundManager {
     return this._sampleBuffers.get(url) || null;
   }
 
-  _playSample(buffer, gain, pan) {
+  _playSample(buffer, gain, pan, speciesScale = null) {
     const context = this.context;
     const now = context.currentTime;
-    const rate = PLAYBACK_RATE_MIN + Math.random() * (PLAYBACK_RATE_MAX - PLAYBACK_RATE_MIN);
+    // Species scale shifts pitch: tiny creatures → higher pitch, large → lower pitch
+    let rate = PLAYBACK_RATE_MIN + Math.random() * (PLAYBACK_RATE_MAX - PLAYBACK_RATE_MIN);
+    if (speciesScale !== null) {
+      // scale 0 (tiny) → +15% pitch, scale 1 (huge) → -12% pitch
+      const speciesShift = 1.15 - 0.27 * speciesScale;
+      rate *= speciesShift;
+    }
     const duration = buffer.duration / rate;
 
     const source = context.createBufferSource();
@@ -503,11 +599,11 @@ export class SoundManager {
     return true;
   }
 
-  _playPreset(preset, gain, pan) {
+  _playPreset(preset, gain, pan, speciesScale = null) {
     // Try sample-based playback first; fall back to procedural synthesis
     const sampleBuf = this._getSampleBuffer(preset);
     if (sampleBuf) {
-      return this._playSample(sampleBuf, gain, pan);
+      return this._playSample(sampleBuf, gain, pan, speciesScale);
     }
 
     const context = this.context;
@@ -577,6 +673,45 @@ export class SoundManager {
         addOscillator('sine', 680, 1100, 0.5, 0.18, 3);
         addOscillator('triangle', 1020, 1400, 0.2, 0.18);
         collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 4500, 3.0, 0.15, 0.06, now));
+        break;
+      case 'mate':
+        // Soft chirp
+        duration = 0.15;
+        addOscillator('sine', 400, 800, 0.6, 0.15, 3);
+        addOscillator('sine', 800, 1200, 0.2, 0.12);
+        break;
+      case 'drink':
+        // Splash
+        duration = 0.10;
+        collectBurst(this._addNoiseBurst(voiceGain, 'lowpass', 500, 0.8, 0.5, 0.08, now));
+        addOscillator('sine', 80, 60, 0.25, 0.06);
+        break;
+      case 'flee':
+        // Urgent rustle
+        duration = 0.09;
+        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 1800, 1.5, 0.55, 0.06, now));
+        addOscillator('sawtooth', 500, 300, 0.3, 0.04);
+        break;
+      case 'extinctionWarning':
+        // Ominous descending tone
+        duration = 0.40;
+        addOscillator('sine', 250, 80, 0.7, 0.40);
+        addOscillator('sine', 60, 45, 0.3, 0.35);
+        break;
+      case 'populationBoom':
+        // Ascending chord
+        duration = 0.35;
+        addOscillator('sine', 400, 600, 0.5, 0.35);
+        addOscillator('sine', 600, 900, 0.3, 0.30);
+        addOscillator('sine', 800, 1200, 0.15, 0.25);
+        break;
+      case 'ecosystemCollapse':
+        // Dissonant drone
+        duration = 0.60;
+        addOscillator('sine', 90, 85, 0.6, 0.60);
+        addOscillator('sine', 95, 90, 0.5, 0.55);
+        addOscillator('sine', 135, 125, 0.35, 0.50);
+        collectBurst(this._addNoiseBurst(voiceGain, 'lowpass', 150, 0.4, 0.25, 0.40, now));
         break;
       case 'uiClick':
       default:

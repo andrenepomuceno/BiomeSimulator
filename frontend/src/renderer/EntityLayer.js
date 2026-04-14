@@ -52,9 +52,9 @@ export class EntityLayer {
     this.container.addChild(this._selectionGfx);
   }
 
-  _emitEffectEvent(type, x, y) {
+  _emitEffectEvent(type, x, y, species) {
     if (!this._onEffectEvent) return;
-    this._onEffectEvent({ type, x, y });
+    this._onEffectEvent({ type, x, y, species: species || null });
   }
 
   _ensureTextures() {
@@ -192,14 +192,20 @@ export class EntityLayer {
         if (a.state === 6) {
           sprite._attackTick = currentTick;
           if (this._animationLayer) this._animationLayer.spawnAttack(a.x, a.y);
-          this._emitEffectEvent('attack', a.x, a.y);
+          this._emitEffectEvent('attack', a.x, a.y, a.species);
         } else if (this._animationLayer && a.state === 9) {
           this._animationLayer.spawnDeath(a.x, a.y);
-          this._emitEffectEvent('death', a.x, a.y);
-        } else if (this._animationLayer && a.state === 8) this._animationLayer.spawnMate(a.x, a.y);    // MATING
-        else if (this._animationLayer && a.state === 3) {
-          this._animationLayer.spawnEat(a.x, a.y);
-          this._emitEffectEvent('eat', a.x, a.y);
+          this._emitEffectEvent('death', a.x, a.y, a.species);
+        } else if (a.state === 8) {
+          if (this._animationLayer) this._animationLayer.spawnMate(a.x, a.y);
+          this._emitEffectEvent('mate', a.x, a.y, a.species);
+        } else if (a.state === 3) {
+          if (this._animationLayer) this._animationLayer.spawnEat(a.x, a.y);
+          this._emitEffectEvent('eat', a.x, a.y, a.species);
+        } else if (a.state === 4) {
+          this._emitEffectEvent('drink', a.x, a.y, a.species);
+        } else if (a.state === 7 && prevState !== 7) {
+          this._emitEffectEvent('flee', a.x, a.y, a.species);
         }
       }
       this._prevStates.set(a.id, a.state);

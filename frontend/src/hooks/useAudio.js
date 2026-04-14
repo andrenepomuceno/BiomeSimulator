@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { SoundManager } from '../audio/soundManager.js';
+import { computeEcoMood, detectMacroEvents } from '../audio/soundMath.js';
 import useSimStore from '../store/simulationStore.js';
+
+const ECO_MOOD_INTERVAL_MS = 2000;
 
 export function useAudio() {
   const managerRef = useRef(null);
+  const prevStatsRef = useRef(null);
+  const lastMoodCheckRef = useRef(0);
 
   const ensureManager = () => {
     if (!managerRef.current) {
@@ -31,8 +36,31 @@ export function useAudio() {
       }
     });
 
+    // Throttled stats subscription for eco mood + macro events
+    let prevStats = prevStatsRef.current;
+    const unsubscribeStats = useSimStore.subscribe((state) => {
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (nowMs - lastMoodCheckRef.current < ECO_MOOD_INTERVAL_MS) return;
+      lastMoodCheckRef.current = nowMs;
+
+      const stats = state.stats;
+      if (!stats) return;
+
+      const mood = computeEcoMood(stats, prevStats);
+      manager.setEcoMood(mood);
+
+      const macroEvents = detectMacroEvents(prevStats, stats);
+      for (const eventType of macroEvents) {
+        manager.play(eventType);
+      }
+
+      prevStats = { ...stats };
+      prevStatsRef.current = prevStats;
+    });
+
     return () => {
       unsubscribe();
+      unsubscribeStats();
       manager.setLogger(null);
       manager.destroy();
       if (managerRef.current === manager) {

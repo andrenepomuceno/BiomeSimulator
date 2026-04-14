@@ -38,8 +38,9 @@ The tick is split into composable phases to support parallelism:
 
 3. tickCleanup()
    a. Remove newly dead from spatial hash + occupancy grid
-   b. Adaptive cleanup interval: every 10/25/50 ticks (by population)
-   c. Every 10 ticks: record stats snapshot (max 1000)
+   b. Run the sampled consistency supervisor on scheduled audit ticks
+   c. Adaptive cleanup interval: every 10/25/50 ticks (by population)
+   d. Every 10 ticks: record stats snapshot (max 1000)
 ```
 
 The legacy `tick()` method calls all three phases in sequence for backward compatibility.
@@ -56,6 +57,22 @@ When fauna sub-workers are active, the main worker calls `applyFaunaResults(resu
 - Deduplicates plant eating (Set-based tracking)
 - Reassigns proper IDs to births from the main world counter
 - Rebuilds the spatial hash after merge
+
+---
+
+## Sampled Consistency Supervisor
+
+The engine runs a lightweight supervisor from `tickCleanup()` on a configurable audit interval instead of every tick. This keeps the hot path cheap while still checking critical invariants regularly.
+
+Current checks include:
+
+- `animal + egg` overlap on the same tile
+- `egg + egg` overlap on the same tile
+- mismatches between `animalGrid` and the actual alive non-egg animals
+- plant grid inconsistencies across `plantType`, `plantStage`, `plantAge`, and `activePlantTiles`
+- corrupted animal numeric fields and stale spatial-hash membership
+
+The supervisor only logs inside the worker. It does not pause the simulation or mutate state.
 
 ---
 

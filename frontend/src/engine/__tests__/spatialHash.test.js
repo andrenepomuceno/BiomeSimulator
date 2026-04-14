@@ -36,4 +36,18 @@ describe('SpatialHash', () => {
     expect(hash.queryRadius(0.5, 0.5, 2).map(entity => entity.id)).toEqual([1]);
     expect(hash.queryRadius(0.5, 0.5, 5).map(entity => entity.id)).not.toContain(99);
   });
+
+  it('checks direct membership without radius queries', () => {
+    const hash = new SpatialHash(2);
+    const rabbit = createEntity(1, 1.5, 1.5, true);
+
+    hash.insert(rabbit);
+    expect(hash.hasEntity(rabbit)).toBe(true);
+
+    rabbit.x = 3.5;
+    expect(hash.hasEntity(rabbit)).toBe(false);
+
+    hash.update(rabbit);
+    expect(hash.hasEntity(rabbit)).toBe(true);
+  });
 });

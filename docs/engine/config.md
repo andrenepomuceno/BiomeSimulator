@@ -46,5 +46,11 @@ Return to [Documentation Home](../README.md).
 | Fauna | `night_vision_reduction_factor` | 0.65 | Night vision reduction for non-nocturnal species |
 | Fauna | `nocturnal_day_vision_factor` | 0.8 | Day vision reduction for nocturnal species |
 | Fauna | `scavenge_decay_ticks` | 100 | Fresh-corpse window for scavenging |
+| Fauna | `supervisor_enabled` | `true` | Enable the sampled consistency supervisor |
+| Fauna | `supervisor_full_audit_interval_ticks` | `30` | Run a full supervisor audit every N ticks |
+| Fauna | `supervisor_sample_limit` | `5` | Maximum number of logged samples per issue category per audit |
+| Fauna | `supervisor_log_cooldown_ticks` | `120` | Minimum spacing between worker warnings when inconsistencies persist |
 | Fauna | `initial_animal_counts` | `{RABBIT: 25, ...}` | Derived from `animalSpecies.js` |
 | Fauna | `animal_species` | `{RABBIT: {...}, ...}` | Derived from `animalSpecies.js` |
+
+The supervisor is designed to stay off the hot path: it runs full audits on a sampled interval and records timing separately in profiling output as `supervisorMs`.

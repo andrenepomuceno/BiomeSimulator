@@ -103,6 +103,10 @@ export const DEFAULT_CONFIG = {
   max_animal_population: 5000,
   hunger_multiplier: 1.6,
   thirst_multiplier: 1.6,
+  supervisor_enabled: true,
+  supervisor_full_audit_interval_ticks: 30,
+  supervisor_sample_limit: 5,
+  supervisor_log_cooldown_ticks: 120,
 
   // Fauna — derived from animalSpecies.js
   initial_animal_counts: buildInitialAnimalCounts(),

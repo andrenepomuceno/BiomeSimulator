@@ -348,6 +348,7 @@ function runScenario(def, options) {
   const plantsMs = [];
   const behaviorMs = [];
   const cleanupMs = [];
+  const supervisorMs = [];
   const statsMs = [];
 
   const heapStart = process.memoryUsage().heapUsed;
@@ -360,6 +361,7 @@ function runScenario(def, options) {
     plantsMs.push(profile.phases?.plantsMs || 0);
     behaviorMs.push(profile.phases?.behaviorMs || 0);
     cleanupMs.push(profile.phases?.cleanupMs || 0);
+    supervisorMs.push(profile.phases?.supervisorMs || 0);
     statsMs.push(profile.phases?.statsMs || 0);
   }
   const wallMs = performance.now() - t0;
@@ -393,6 +395,7 @@ function runScenario(def, options) {
       plantsAvgMs: mean(plantsMs),
       behaviorAvgMs: mean(behaviorMs),
       cleanupAvgMs: mean(cleanupMs),
+      supervisorAvgMs: mean(supervisorMs),
       statsAvgMs: mean(statsMs),
     },
     wallClock: {
@@ -436,7 +439,7 @@ function printScenarioResult(result, pass) {
   console.log(`  Tick avg/p95/p99: ${fmtMs(result.tick.avgMs)} / ${fmtMs(result.tick.p95Ms)} / ${fmtMs(result.tick.p99Ms)}`);
   console.log(`  Tick min/max     : ${fmtMs(result.tick.minMs)} / ${fmtMs(result.tick.maxMs)}`);
   console.log(`  Tick stddev      : ${fmtMs(result.tick.stddevMs)}`);
-  console.log(`  Engine phases avg: plants ${fmtMs(result.phases.plantsAvgMs)}, ai ${fmtMs(result.phases.behaviorAvgMs)}, cleanup ${fmtMs(result.phases.cleanupAvgMs)}, stats ${fmtMs(result.phases.statsAvgMs)}`);
+  console.log(`  Engine phases avg: plants ${fmtMs(result.phases.plantsAvgMs)}, ai ${fmtMs(result.phases.behaviorAvgMs)}, cleanup ${fmtMs(result.phases.cleanupAvgMs)}, supervisor ${fmtMs(result.phases.supervisorAvgMs)}, stats ${fmtMs(result.phases.statsAvgMs)}`);
   console.log(`  Throughput       : ${result.wallClock.throughputTicksPerSec.toFixed(1)} ticks/s (wall)`);
   console.log(`  Memory delta     : ${result.memory.heapDeltaMb.toFixed(2)} MB`);
   console.log(`  Final world      : animals ${result.world.animalsAlive}/${result.world.animalsTotal}, plants ${result.world.activePlants}`);

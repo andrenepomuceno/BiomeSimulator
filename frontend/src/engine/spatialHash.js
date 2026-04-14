@@ -21,6 +21,14 @@ export class SpatialHash {
     return (Math.floor(x / this.cellSize) & 0xFFFF) | ((Math.floor(y / this.cellSize) & 0xFFFF) << 16);
   }
 
+  hasEntity(entity) {
+    const expectedKey = this._key(entity.x, entity.y);
+    const storedKey = this._entityCell.get(entity.id);
+    if (storedKey !== expectedKey) return false;
+    const cell = this._cells.get(expectedKey);
+    return !!cell && cell.get(entity.id) === entity;
+  }
+
   clear() {
     this._cells.clear();
     this._entityCell.clear();

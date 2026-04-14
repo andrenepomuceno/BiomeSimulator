@@ -123,7 +123,7 @@ export class GameRenderer {
       this.animationLayer.tick();
       // Animate water every 6 frames (~100ms at 60fps)
       if (++this._waterTick % 6 === 0) {
-        if (this.terrainLayer.useGPU && this.terrainLayer._shader) {
+        if (this.terrainLayer.useGPU && this.terrainLayer._mesh) {
           this.terrainLayer.updateShaderTime(this._waterTick);
         } else {
           this.terrainLayer.animateWater(this._waterTick);

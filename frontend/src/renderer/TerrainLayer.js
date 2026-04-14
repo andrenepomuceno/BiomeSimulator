@@ -259,13 +259,13 @@ export class TerrainLayer {
     this._heightmap = heightmap || null;
     this._waterProximity = waterProximity || null;
 
-    // GPU path (Phase 2): build data textures + mesh
-    if (this.useGPU && this._shader) {
+    // GPU path: build data textures + mesh
+    if (this.useGPU) {
       this._buildGPUTerrain(terrainData, width, height, heightmap, waterProximity);
       return;
     }
 
-    // CPU path: compute pixel buffer
+    // CPU fallback path: compute pixel buffer
     this._buildCPUTerrain(terrainData, width, height, heightmap, waterProximity);
   }
 

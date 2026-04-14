@@ -127,9 +127,94 @@ const FRAG_SRC = `
   }
 
   // --- Per-terrain-type sub-tile pattern ---
+  // Each terrain type gets a unique, clearly visible internal texture
+  // that breaks the grid appearance and gives each tile visual richness.
+
+  // Grass blade pattern: thin vertical streaks
+  float grassBlades(vec2 p) {
+    // Multiple layers of thin vertical lines at different frequencies
+    float b1 = sin(p.x * 25.0 + valueNoise(p * 3.0) * 5.0) * 0.5 + 0.5;
+    float b2 = sin(p.x * 40.0 + p.y * 3.0 + valueNoise(p * 5.0) * 3.0) * 0.5 + 0.5;
+    float b3 = sin(p.x * 15.0 - p.y * 2.0 + valueNoise(p * 2.0) * 4.0) * 0.5 + 0.5;
+    // Combine with varying intensity
+    float blades = b1 * 0.4 + b2 * 0.35 + b3 * 0.25;
+    // Add some clumping via low-freq noise
+    float clump = valueNoise(p * 1.5);
+    return blades * mix(0.6, 1.0, clump);
+  }
+
+  // Sand grain / ripple pattern
+  float sandGrain(vec2 p) {
+    // Fine dots (high-freq hash for individual grains)
+    float grain = hash21(floor(p * 12.0)) * 0.5;
+    // Wind ripples (elongated low-freq waves)
+    float ripple = sin(p.x * 8.0 + p.y * 2.5 + valueNoise(p * 2.0) * 3.0) * 0.5 + 0.5;
+    // Combine
+    return grain * 0.4 + ripple * 0.6;
+  }
+
+  // Dirt / earth chunky pattern
+  float dirtPattern(vec2 p) {
+    // Coarse lumps
+    float lumps = valueNoise(p * 6.0);
+    // Small pebbles (scattered dots)
+    float pebble = step(0.85, hash21(floor(p * 10.0)));
+    // Cracks between clumps
+    float crack = abs(valueNoise(p * 8.0) - 0.5) * 2.0;
+    crack = smoothstep(0.0, 0.15, crack);
+    return lumps * 0.6 + pebble * 0.15 + crack * 0.25;
+  }
+
+  // Rock / stone pattern with cracks and layers
+  float rockPattern(vec2 p) {
+    // Layered strata (horizontal-ish bands)
+    float strata = sin(p.y * 6.0 + valueNoise(p * 2.0) * 4.0) * 0.5 + 0.5;
+    // Deep cracks
+    float n = valueNoise(p * 5.0);
+    float crack = abs(n - 0.5);
+    crack = 1.0 - smoothstep(0.0, 0.06, crack);
+    // Surface roughness
+    float rough = fbm(p * 4.0, 3);
+    return strata * 0.35 + rough * 0.45 + (1.0 - crack) * 0.2;
+  }
+
+  // Mountain pattern: layered rock + snow patches
+  float mountainPattern(vec2 p, float height) {
+    float rock = rockPattern(p);
+    // Snow-like patches at high frequency
+    float snow = smoothstep(0.55, 0.75, fbm(p * 3.0 + vec2(17.0, 31.0), 3));
+    return mix(rock, 1.0, snow * 0.3);
+  }
+
+  // Mud pattern: wet splotches
+  float mudPattern(vec2 p) {
+    // Shiny wet patches
+    float wet = valueNoise(p * 4.0);
+    wet = smoothstep(0.3, 0.7, wet);
+    // Bubbles / pockmarks
+    float pock = hash21(floor(p * 8.0));
+    pock = step(0.92, pock);
+    return wet * 0.8 + pock * 0.2;
+  }
+
+  // Fertile soil pattern: rich dark earth with organic debris
+  float fertilePattern(vec2 p) {
+    // Dark clumps of organic matter
+    float organic = fbm(p * 5.0, 2);
+    // Small bright mineral specks
+    float spec = step(0.90, hash21(floor(p * 14.0))) * 0.8;
+    // Worm-like subtle curves
+    float worm = sin(p.x * 12.0 + valueNoise(p * 3.0) * 6.0) * 0.5 + 0.5;
+    worm *= sin(p.y * 10.0 + valueNoise(p * 4.0) * 5.0) * 0.5 + 0.5;
+    return organic * 0.55 + spec + worm * 0.2;
+  }
+
   vec3 terrainPattern(int t, vec2 tileCoord, vec2 subTile) {
     vec3 baseCol = getTerrainColor(t);
     vec3 amps = getVarAmps(t);
+
+    // Sub-tile world position (continuous across tile boundaries)
+    vec2 worldPos = tileCoord + subTile;
 
     // Per-channel noise: 2-octave, independent seeds per channel
     float n0 = (fbm(tileCoord * 1.0 + vec2(0.0, 0.0), 2) - 0.5) * 2.0;
@@ -138,33 +223,69 @@ const FRAG_SRC = `
 
     vec3 noiseColor = baseCol + vec3(n0, n1, n2) * amps;
 
-    // Per-type sub-tile detail patterns
-    if (t == 3 || t == 5) {
-      // SOIL / FERTILE_SOIL: elongated vertical grass streaks
-      float grass = valueNoise(vec2(tileCoord.x * 8.0 + subTile.x * 6.0,
-                                     tileCoord.y * 3.0 + subTile.y * 2.0));
-      noiseColor.g += (grass - 0.5) * 0.06;
-      noiseColor.r -= (grass - 0.5) * 0.02;
+    // Per-type sub-tile texture (strong, clearly visible)
+    if (t == 3) {
+      // SOIL: grass blades
+      float g = grassBlades(worldPos);
+      // Vary blade color: lighter tips, darker roots
+      vec3 grassDark  = baseCol * 0.82;
+      vec3 grassLight = baseCol * vec3(1.05, 1.25, 0.95);
+      noiseColor = mix(grassDark, grassLight, g);
+      // Re-apply per-tile noise on top (subtle)
+      noiseColor += vec3(n0, n1, n2) * amps * 0.5;
+    } else if (t == 5) {
+      // FERTILE_SOIL: rich earth with organic matter
+      float f = fertilePattern(worldPos);
+      vec3 darkEarth  = baseCol * 0.80;
+      vec3 lightEarth = baseCol * vec3(1.15, 1.10, 1.20);
+      noiseColor = mix(darkEarth, lightEarth, f);
+      noiseColor += vec3(n0, n1, n2) * amps * 0.4;
     } else if (t == 1) {
-      // SAND: fine grain dots
-      float grain = hash21(floor(tileCoord * 6.0 + subTile * 4.0));
-      noiseColor += (grain - 0.5) * 0.04;
-    } else if (t == 4 || t == 7) {
-      // ROCK / MOUNTAIN: coarse cracks + patches
-      float coarse = fbm(tileCoord * 0.5 + subTile * 0.3, 3);
-      float crack  = abs(valueNoise(tileCoord * 4.0 + subTile * 3.0) - 0.5);
-      crack = smoothstep(0.0, 0.08, crack);
-      noiseColor += (coarse - 0.5) * 0.06;
-      noiseColor *= mix(0.88, 1.0, crack); // Darken in cracks
+      // SAND: grain + wind ripples
+      float s = sandGrain(worldPos);
+      vec3 sandDark  = baseCol * 0.90;
+      vec3 sandLight = baseCol * vec3(1.12, 1.10, 1.05);
+      noiseColor = mix(sandDark, sandLight, s);
+      noiseColor += vec3(n0, n1, n2) * amps * 0.5;
+    } else if (t == 4) {
+      // ROCK: layered stone + cracks
+      float r = rockPattern(worldPos);
+      vec3 rockDark  = baseCol * 0.78;
+      vec3 rockLight = baseCol * 1.18;
+      noiseColor = mix(rockDark, rockLight, r);
+      noiseColor += vec3(n0, n1, n2) * amps * 0.3;
+    } else if (t == 7) {
+      // MOUNTAIN: layered rock + snow patches
+      float hHere = sampleHeight(tileCoord);
+      float m = mountainPattern(worldPos, hHere);
+      vec3 mtnDark  = baseCol * 0.78;
+      vec3 mtnLight = vec3(0.90, 0.90, 0.92); // lighter / snow-ish
+      noiseColor = mix(mtnDark, mtnLight, m);
+      noiseColor += vec3(n0, n1, n2) * amps * 0.3;
     } else if (t == 2) {
-      // DIRT: medium grain
-      float grain = valueNoise(tileCoord * 5.0 + subTile * 3.0);
-      noiseColor += (grain - 0.5) * 0.04;
+      // DIRT: chunky earth
+      float d = dirtPattern(worldPos);
+      vec3 dirtDark  = baseCol * 0.82;
+      vec3 dirtLight = baseCol * vec3(1.18, 1.12, 1.08);
+      noiseColor = mix(dirtDark, dirtLight, d);
+      noiseColor += vec3(n0, n1, n2) * amps * 0.5;
     } else if (t == 8) {
-      // MUD: wet-looking splotches
-      float splotch = valueNoise(tileCoord * 3.0 + subTile * 2.0);
-      noiseColor += (splotch - 0.5) * 0.05;
-      noiseColor.b += splotch * 0.02;
+      // MUD: wet splotches
+      float mu = mudPattern(worldPos);
+      vec3 mudDry = baseCol * 1.10;
+      vec3 mudWet = baseCol * vec3(0.80, 0.82, 0.90); // darker, slight blue
+      noiseColor = mix(mudDry, mudWet, mu);
+      noiseColor += vec3(n0, n1, n2) * amps * 0.4;
+    } else if (t == 0) {
+      // WATER: subtle depth variation (animation added separately)
+      float w = valueNoise(worldPos * 3.0);
+      noiseColor = mix(baseCol * 0.92, baseCol * 1.08, w);
+      noiseColor += vec3(n0, n1, n2) * amps * 0.5;
+    } else if (t == 6) {
+      // DEEP_WATER: dark rolling variation
+      float dw = fbm(worldPos * 2.0, 2);
+      noiseColor = mix(baseCol * 0.88, baseCol * 1.06, dw);
+      noiseColor += vec3(n0, n1, n2) * amps * 0.5;
     }
 
     return noiseColor;

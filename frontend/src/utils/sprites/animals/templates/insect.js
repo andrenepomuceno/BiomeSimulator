@@ -1,8 +1,8 @@
 /**
- * Insect drawing template (including caterpillar) — 32×32 design grid.
+ * Insect drawing template (including caterpillar) â€” 32Ã—32 design grid.
  * Used by: beetle, mosquito, caterpillar, cricket.
  */
-import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../helpers.js';
+import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawInsect(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;

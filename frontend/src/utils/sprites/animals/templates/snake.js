@@ -1,8 +1,8 @@
 /**
- * Snake drawing template — 32×32 design grid.
- * Used by: snake. Thick body (4×4 segments), large head.
+ * Snake drawing template â€” 32Ã—32 design grid.
+ * Used by: snake. Thick body (4Ã—4 segments), large head.
  */
-import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../helpers.js';
+import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawSnake(ctx, params, dir, frame) {
   const { body, accent, eye, pattern, belly } = params;

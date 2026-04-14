@@ -1,11 +1,11 @@
 /**
- * Special state drawing functions: sleeping, dead, egg, pupa — 32×32 design grid.
+ * Special state drawing functions: sleeping, dead, egg, pupa â€” 32Ã—32 design grid.
  * All sprites fill ~18-22 design pixels to match normal species sizes.
  */
-import { px, rect } from '../helpers.js';
+import { px, rect } from '../../helpers.js';
 
 export function drawSleeping(ctx) {
-  // Body lump — larger, centered
+  // Body lump â€” larger, centered
   rect(ctx, 6, 14, 18, 8, '#9090aa');
   rect(ctx, 8, 12, 14, 2, '#9090aa');
   rect(ctx, 8, 22, 14, 2, '#7878aa');
@@ -31,7 +31,7 @@ export function drawSleeping(ctx) {
 }
 
 export function drawDead(ctx) {
-  // Body on side — wider and taller
+  // Body on side â€” wider and taller
   rect(ctx, 5, 14, 20, 10, '#888888');
   rect(ctx, 7, 12, 10, 2, '#999999');
   rect(ctx, 5, 24, 20, 2, '#777777');

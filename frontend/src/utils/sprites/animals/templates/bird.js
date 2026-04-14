@@ -1,8 +1,8 @@
 /**
- * Bird drawing template — 32×32 design grid.
+ * Bird drawing template â€” 32Ã—32 design grid.
  * Used by: crow, hawk.
  */
-import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../helpers.js';
+import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawBird(ctx, params, dir, frame) {
   const { body, accent, eye, beak, w, h, wingSpan } = params;

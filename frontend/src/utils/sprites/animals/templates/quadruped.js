@@ -1,8 +1,8 @@
 /**
- * Quadruped drawing template — 32×32 design grid.
+ * Quadruped drawing template â€” 32Ã—32 design grid.
  * Used by: rabbit, squirrel, fox, wolf, raccoon, goat, deer, boar, bear.
  */
-import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../helpers.js';
+import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawQuadruped(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -23,7 +23,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     rect(ctx, bx + w - 2, by + h - legShift, 2, 2, shadow);
     rect(ctx, bx + w - 2, by + h + 2 - legShift, 2, 2, outline);
 
-    // Body — rounded
+    // Body â€” rounded
     rect(ctx, bx + 2, by, w - 4, 2, highlight);
     rect(ctx, bx, by + 2, w, h - 4, body);
     rect(ctx, bx + 2, by + h - 2, w - 4, 2, shadow);
@@ -277,7 +277,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
       rect(ctx, f(headX + 2), headY - 2, 2, 2, '#d0d0d0');
       rect(ctx, f(headX + 2), headY - 4, 2, 2, '#e0e0e0');
     }
-    // Antlers (side — branching)
+    // Antlers (side â€” branching)
     if (params.antlers) {
       const ac = '#b08050', al = '#c09868';
       rect(ctx, f(headX + 2), headY - 2, 2, 2, ac);

@@ -166,7 +166,7 @@
     const faunaZoomed = document.getElementById('fauna-zoomed');
     const faunaLabels = [...SPECIES, ...SPECIALS.map((s, i) => i === 0 ? `SPECIALS: ${s}` : s)];
     function renderFaunaZoom(z) { renderZoomed(faunaAtlas, faunaZoomed, FAUNA_COLS, FAUNA_ROWS, z, faunaLabels); }
-    renderFaunaZoom(4);
+    renderFaunaZoom(1);
     document.getElementById('fz1').onclick = () => renderFaunaZoom(1);
     document.getElementById('fz2').onclick = () => renderFaunaZoom(2);
     document.getElementById('fz4').onclick = () => renderFaunaZoom(4);
@@ -175,7 +175,7 @@
     // ── Flora zoom ──────────────────────────────────────────────────
     const floraZoomed = document.getElementById('flora-zoomed');
     function renderFloraZoom(z) { renderZoomed(floraAtlas, floraZoomed, FLORA_COLS, FLORA_ROWS, z, PLANT_NAMES); }
-    renderFloraZoom(4);
+    renderFloraZoom(1);
     document.getElementById('pz1').onclick = () => renderFloraZoom(1);
     document.getElementById('pz2').onclick = () => renderFloraZoom(2);
     document.getElementById('pz4').onclick = () => renderFloraZoom(4);

@@ -3,7 +3,7 @@
  */
 
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 60;
+const MAX_ZOOM = 120;
 const TILE_SIZE = 1; // 1 pixel per tile in the texture, scaled by zoom
 
 export class Camera {

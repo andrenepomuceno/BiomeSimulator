@@ -247,7 +247,7 @@ export class PlantLayer {
           // Plant changed — update texture if needed
           if (existing.baseKey !== baseKey) {
             const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
-            const animFrame = canSway ? ((t + cx * 3 + cy * 7) % 48 < 16 ? 0 : ((t + cx * 3 + cy * 7) % 48 < 32 ? 1 : 2)) : 0;
+            const animFrame = canSway ? ((t + cx * 3 + cy * 7) % 12 < 4 ? 0 : ((t + cx * 3 + cy * 7) % 12 < 8 ? 1 : 2)) : 0;
             const key = `${baseKey}_${animFrame}`;
             const tex = this._plantTextures[key];
             if (tex) {
@@ -278,7 +278,7 @@ export class PlantLayer {
 
           const baseKey = `${ptype}_${stage}`;
           const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
-          const animFrame = canSway ? ((t + x * 3 + y * 7) % 48 < 16 ? 0 : ((t + x * 3 + y * 7) % 48 < 32 ? 1 : 2)) : 0;
+          const animFrame = canSway ? ((t + x * 3 + y * 7) % 12 < 4 ? 0 : ((t + x * 3 + y * 7) % 12 < 8 ? 1 : 2)) : 0;
           const key = `${baseKey}_${animFrame}`;
           const tex = this._plantTextures[key];
           if (!tex) continue;
@@ -298,8 +298,8 @@ export class PlantLayer {
       // Frame-based sway: cycle through 3 frames using tick + spatial hash
       const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
       if (canSway) {
-        const hash = (t + cx * 3 + cy * 7) % 48;
-        const animFrame = hash < 16 ? 0 : (hash < 32 ? 1 : 2);
+        const hash = (t + cx * 3 + cy * 7) % 12;
+        const animFrame = hash < 4 ? 0 : (hash < 8 ? 1 : 2);
         const newKey = `${entry.baseKey}_${animFrame}`;
         if (newKey !== entry.texKey) {
           const tex = this._plantTextures[newKey];

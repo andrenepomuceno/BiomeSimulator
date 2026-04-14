@@ -29,9 +29,41 @@ Return to [Documentation Home](../README.md).
 
 ## Growth Stages
 
+```mermaid
+stateDiagram-v2
+    [*] --> Seed: seedInitialPlants() or\noffspring spreading
+    Seed --> YoungSprout: age ≥ seedToYoung
+    YoungSprout --> AdultSprout: age ≥ youngToAdult
+    AdultSprout --> Adult: age ≥ adultSproutToAdult
+    Adult --> Fruit: fruit production chance\n(per-species probability)
+    Fruit --> Adult: fruit consumed by animal\nor natural cycle
+    Adult --> Dead: age ≥ maxAge or\nwater stress or\nharsh terrain
+    Fruit --> Dead: age ≥ maxAge
+    Seed --> Dead: harsh terrain death chance
+    Dead --> [*]: tile cleared for reseeding
+
+    note right of Adult
+        Can produce offspring\nin adjacent tiles
+    end note
+    note right of Fruit
+        Edible: restores 55 hunger\n+10 HP to animals
+    end note
 ```
-SEED → YOUNG_SPROUT → ADULT_SPROUT → ADULT → FRUIT → DEAD
+
+### Growth Age Calculation
+
+Effective age is a compound of multiple multipliers:
+
 ```
+effectiveAge = baseAge × waterMult × terrainMult × seasonGrowth × crowdingMult
+```
+
+| Factor | Source | Effect |
+|--------|--------|--------|
+| `waterMult` | Distance to nearest water tile + species water affinity | Closer to water = faster growth |
+| `terrainMult` | Per-species `terrainGrowth` map | Soil type suitability |
+| `seasonGrowth` | Seasonal cycle (4 seasons) | Spring boost, winter slowdown |
+| `crowdingMult` | Neighbor plant density | Dense areas slow growth |
 
 Each stage transition is governed by age thresholds in ticks, defined in `plantSpecies.js`:
 
@@ -76,3 +108,12 @@ Each plant species defines a per-terrain growth multiplier in `terrainGrowth`. G
 | MUD | 0.0–0.8× | Swampy terrain, variable growth |
 
 Full per-species terrain multipliers are defined in `plantSpecies.js`.
+
+---
+
+## See Also
+
+- [Plant Species Registry](../engine/plant-species.md) — canonical species data and stage ages
+- [Energy & Needs: Feeding](energy.md#feeding) — how animals consume plants
+- [Algorithms: Terrain Generation](../engine/algorithms.md#terrain-generation-mapgeneratorjs) — water proximity BFS
+- [Architecture: Tick Pipeline](../architecture.md#simulation-tick) — where flora processing fits in the tick

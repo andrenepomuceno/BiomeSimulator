@@ -9,6 +9,37 @@ Return to [Documentation Home](../README.md).
 
 ### `generateTerrain(config)` → `{terrain, waterProximity, seed}`
 
+```mermaid
+flowchart TD
+    Seed["Seeded PRNG\n(mulberry32)"] --> Perlin["Perlin Noise FBM\n6 octaves, scale 0.005\npersistence 0.5"]
+    Perlin --> HM["Heightmap [0, 1]"]
+
+    Seed --> Island["Island Mask\nGaussian blobs near center"]
+    Island --> Mask["Island Mask [0, 1]"]
+
+    HM --> Combine["Combine:\nheightmap × islandMask"]
+    Mask --> Combine
+
+    Seed --> Edge["Edge Falloff\n5-octave noise\nfor organic coastlines"]
+    Edge --> Combine
+
+    Combine --> Classify{"Classify by\nheight thresholds"}
+    Classify -->|"> seaLevel + 0.45"| Rock["🪨 ROCK"]
+    Classify -->|"0.12 – 0.45"| Grass["🌿 GRASS"]
+    Classify -->|"0.05 – 0.12"| Dirt["🟫 DIRT"]
+    Classify -->|"0 – 0.05"| Sand["🏖️ SAND"]
+    Classify -->|"≤ 0"| Water["🌊 WATER"]
+
+    Rock --> Detail["Detail Noise\n3-octave FBM on GRASS\nadds DIRT/ROCK variation"]
+    Grass --> Detail
+    Dirt --> Detail
+    Sand --> Detail
+    Water --> Detail
+
+    Detail --> BFS["Water Proximity BFS\nflood fill from all water tiles\n4-directional"]
+    BFS --> Result["Final: terrain[] + waterProximity[]"]
+```
+
 **Pipeline:**
 
 1. **Perlin noise FBM** — 6 octaves at scale 0.005, persistence 0.5 → heightmap [0, 1]
@@ -70,44 +101,39 @@ Bounded A* with 4-directional movement (no diagonals).
 
 ## Dependency Graph
 
-```
-config.js ← animalSpecies.js (builds species/counts)
-         ← plantSpecies.js  (builds plant data)
+```mermaid
+graph TD
+    config["config.js"] --> animalSpecies["animalSpecies.js"]
+    config --> plantSpecies["plantSpecies.js"]
+    config --> entities["entities.js"]
 
-simulation.js
-├── world.js
-├── entities.js (Animal)
-├── spatialHash.js (SpatialHash)
-├── mapGenerator.js (generateTerrain, computeWaterProximity)
-├── flora.js (seedInitialPlants, processPlants)
-├── behaviors.js (decideAndAct)
-└── plantSpecies.js (stage ages, production chances)
+    simulation["simulation.js"]
+    simulation --> world["world.js"]
+    simulation --> entities
+    simulation --> spatialHash["spatialHash.js"]
+    simulation --> mapGenerator["mapGenerator.js"]
+    simulation --> flora["flora.js"]
+    simulation --> behaviors["behaviors.js"]
+    simulation --> plantSpecies
 
-behaviors.js
-├── entities.js (AnimalState)
-├── world.js (terrain checks)
-├── pathfinding.js (aStar)
-└── config.js (sex/reproduction constants)
+    behaviors --> entities
+    behaviors --> world
+    behaviors --> pathfinding["pathfinding.js"]
+    behaviors --> config
 
-simWorker.js
-├── simulation.js (SimulationEngine)
-├── faunaWorker.js (sub-worker pool, optional)
-└── entities.js (for delta merge)
+    flora --> world
+    flora --> plantSpecies
 
-faunaWorker.js
-├── behaviors.js (decideAndAct)
-├── entities.js (Animal, for reconstruction)
-├── spatialHash.js (local spatial index)
-└── world.js (read-only terrain/plant data)
+    simWorker["simWorker.js"] --> simulation
+    simWorker --> faunaWorker["faunaWorker.js"]
+    simWorker --> entities
 
-flora.js
-├── world.js (terrain constants)
-└── plantSpecies.js (stage thresholds, reproduction modes)
+    faunaWorker --> behaviors
+    faunaWorker --> entities
+    faunaWorker --> spatialHash
+    faunaWorker --> world
 
-mapGenerator.js  ← world.js (terrain constants)
-pathfinding.js   ← world.js (walkability)
-entities.js      ← config.js (sex constants)
-plantSpecies.js  ← world.js (terrain IDs)
-spatialHash.js   — no dependencies
-world.js         — no dependencies
+    mapGenerator --> world
+    pathfinding --> world
+    plantSpecies --> world
 ```

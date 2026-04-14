@@ -10,8 +10,7 @@ The renderer layer (`frontend/src/renderer/`) handles all visual output using Pi
 | Document | Description |
 |----------|-------------|
 | [Overview & Camera](overview.md) | GameRenderer, camera, coordinate system, data flow, viewport culling |
-| [Rendering Layers](layers.md) | TerrainLayer, PlantLayer, EntityLayer |
-| [Emoji Textures](emoji-textures.md) | Emoji texture generation utility |
+| [Rendering Layers](layers.md) | TerrainLayer, PlantLayer, EntityLayer, AnimationLayer, emoji textures |
 
 See [Architecture](../architecture.md) for how the renderer fits into the broader application flow.
 
@@ -26,6 +25,7 @@ See [Architecture](../architecture.md) for how the renderer fits into the broade
 | `TerrainLayer.js` | Renders terrain as a single pixel texture |
 | `PlantLayer.js` | Renders plants as pixel overlay + emoji sprites |
 | `EntityLayer.js` | Renders animals as emoji sprites |
+| `AnimationLayer.js` | Particle effects: attack, birth, death, mating, eating |
 
 ---
 
@@ -36,7 +36,8 @@ See [Architecture](../architecture.md) for how the renderer fits into the broade
 2. PlantLayer      — plant pixel overlay (always visible)
 3. PlantLayer      — plant emoji sprites (zoom ≥ 6 only)
 4. EntityLayer     — animal emoji sprites
-5. Night Overlay   — semi-transparent dark rectangle (0–35% alpha)
+5. AnimationLayer  — particle effects (attack, birth, death, mating)
+6. Night Overlay   — semi-transparent dark rectangle (0–35% alpha)
 ```
 
 All layers live inside a single `PIXI.Container` (`worldContainer`) that is transformed by the camera.

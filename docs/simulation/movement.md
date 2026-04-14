@@ -75,3 +75,12 @@ Additional notes:
 
 - Running/hunting energy is proportional to tiles actually crossed — a blocked predator pays only IDLE cost instead of full RUN cost
 - Day/night activity penalty (1.3×) applies on top of terrain multipliers for species active during the wrong period
+
+---
+
+## See Also
+
+- [Animal AI](ai.md) — how movement decisions are triggered
+- [Energy & Needs](energy.md) — energy costs of walking, running, fleeing
+- [Algorithms: A* Pathfinding](../engine/algorithms.md#a-pathfinding-pathfindingjs) — how paths are computed
+- [Animal Species Registry](../engine/animal-species.md) — per-species speed values

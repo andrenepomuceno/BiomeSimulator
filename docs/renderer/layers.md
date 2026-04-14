@@ -90,3 +90,39 @@ Animal sprites are placed at `(animal.x, animal.y)` in world-space. Since animal
 - Sprites cached in `Map<id, PIXI.Sprite>`
 - Created on first sight, reused on subsequent ticks
 - Removed when entity is no longer in viewport data
+
+---
+
+## AnimationLayer
+
+Particle-based visual feedback for key simulation events.
+
+| Animation | Trigger | Particles | Shape |
+|-----------|---------|-----------|-------|
+| Attack | Combat hit | 5 stars | ⭐ burst |
+| Birth | Offspring spawned | 6 circles | Ring expand |
+| Death | Animal dies | 8 circles | Fade scatter |
+| Fruit Sparkle | Plant reaches Fruit stage | 4 sparkles | Rising glint |
+| Mating | Reproduction | 4 hearts | Float up |
+| Eating | Consuming food | 4 crumbs | Scatter down |
+
+- Max **600 particles** active (ring buffer allocation)
+- Runtime-generated textures: circle, star, heart, sparkle (canvas-drawn)
+- Per-particle physics: position, velocity, gravity, life, scale curves, alpha curves
+
+---
+
+## Emoji Textures (`utils/emojiTextures.js`)
+
+Generates PIXI textures from emoji characters via offscreen canvas.
+
+| Function | Returns |
+|----------|---------|
+| `generateEmojiTextures()` | `{RABBIT, SQUIRREL, ..., SLEEPING, DEAD}` — 13 animal textures |
+| `generatePlantEmojiTextures()` | `{'${type}_${stage}': Texture}` — 24 plant textures |
+
+**Implementation details:**
+
+- 64×64px canvas per emoji
+- Cached as singletons (lazy-loaded on first use)
+- `LINEAR` scale mode for smooth appearance at all zoom levels

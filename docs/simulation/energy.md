@@ -3,6 +3,41 @@
 Navigation: [Documentation Home](../README.md) > [Simulation](README.md) > [Current Document](energy.md)
 Return to [Documentation Home](../README.md).
 
+```mermaid
+flowchart TD
+    subgraph Sources["Energy Sources"]
+        Sleep["😴 Sleep\n+2.0 to +5.0/tick"]
+        IdleRegen["🕐 Idle Regen\n+0.01/tick"]
+    end
+
+    E["🔋 Energy\n(0 – maxEnergy)"]
+
+    subgraph Drains["Energy Costs"]
+        Walk["🚶 Walk: 0.06–0.15"]
+        Run["🏃 Run: 0.20–0.55"]
+        Attack["⚔️ Attack: 0.4–2.0"]
+        Mate["💕 Mate: 0.8–2.5"]
+        Eat["🍽️ Eat: 0.03–0.08"]
+        Drink["💧 Drink: 0.03–0.08"]
+    end
+
+    Sources --> E
+    E --> Drains
+    E -->|"= 0"| ForcedSleep["💤 Forced Sleep\n(can't act until recovered)"]
+
+    subgraph Needs["Needs (always rising)"]
+        Hunger["🍗 Hunger\n(species rate/tick)"]
+        Thirst["💧 Thirst\n(species rate/tick)"]
+    end
+
+    Hunger -->|"> 80%"| HPDrain["❤️ HP Drain\n0–0.5/tick"]
+    Thirst -->|"> 80%"| HPDrain
+    HPDrain -->|"HP = 0"| Death["💀 Death"]
+
+    EatFood["Eat Plant/Prey"] -->|"reduces"| Hunger
+    DrinkWater["Drink Water"] -->|"reduces"| Thirst
+```
+
 ---
 
 ## Energy System
@@ -85,3 +120,13 @@ Some species can eat decomposing bodies (dead animals still on the map).
 | Beetle, Fox, Wolf, Boar, Bear, Raccoon, Crow, Crocodile | Rabbit, Squirrel, Goat, Deer, Mosquito, Caterpillar, Snake, Hawk |
 
 Only species with `can_scavenge: true` in the species registry can scavenge. The `scavenge_decay_ticks` config parameter (default 100) defines the fresh-corpse window.
+
+---
+
+## See Also
+
+- [Animal AI](ai.md) — how energy thresholds drive AI decisions
+- [Movement System](movement.md) — terrain energy multipliers
+- [HP & Combat](combat.md) — combat energy costs and kill rewards
+- [Animal Species Registry](../engine/animal-species.md) — per-species energy values and recovery rates
+- [Plant Lifecycle](plants.md) — stage-based plant nutrition values

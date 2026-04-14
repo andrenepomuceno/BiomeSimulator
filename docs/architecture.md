@@ -11,27 +11,29 @@ Related documentation: [README](README.md), [Engine](engine/), [Renderer](render
 
 ## Layer Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│                 React Components                 │
-│  Toolbar · StatsPanel · EntityInspector · etc.   │
-├─────────────┬───────────────────┬───────────────┤
-│   Zustand   │      Hooks        │   Renderer    │
-│   Store     │  useSimulation    │  GameRenderer │
-│             │  useEditor        │  Camera       │
-│             │                   │  TerrainLayer │
-│             │                   │  PlantLayer   │
-│             │                   │  EntityLayer  │
-├─────────────┴───────────┬───────┴───────────────┤
-│               Main Web Worker                     │
-│                simWorker.js                       │
-│          ┌──────────┼──────────┐                  │
-│     faunaWorker  faunaWorker  ...  (sub-workers) │
-├──────────────────────────────────────────────────┤
-│                  Engine (pure JS)                 │
-│  SimulationEngine · World · Animal · Flora       │
-│  Behaviors · Pathfinding · SpatialHash · MapGen  │
-└──────────────────────────────────────────────────┘
+```mermaid
+block-beta
+  columns 3
+  block:ui["React Components"]:3
+    columns 3
+    Toolbar StatsPanel EntityInspector
+  end
+  block:mid:3
+    columns 3
+    Store["Zustand Store"] Hooks["Hooks\nuseSimulation\nuseEditor"] Renderer["Pixi.js Renderer\nTerrain · Plant · Entity\nAnimation · Camera"]
+  end
+  block:worker["Main Web Worker (simWorker.js)"]:3
+    columns 3
+    simWorker["Tick Loop\nState Sync"] faunaPool["Fauna Worker Pool\n(1–4 sub-workers)"] stateSync["Incremental\nSerialization"]
+  end
+  block:engine["Engine (pure JS — no DOM/React/Pixi)"]:3
+    columns 3
+    SimEngine["SimulationEngine\nWorld · Clock"] AI["Behaviors\nPathfinding\nSpatialHash"] Flora["Flora · MapGen\nSpecies Registries"]
+  end
+
+  ui --> mid
+  mid --> worker
+  worker --> engine
 ```
 
 ### Boundaries
@@ -53,71 +55,70 @@ Related documentation: [README](README.md), [Engine](engine/), [Renderer](render
 
 The tick pipeline is split into composable phases:
 
+```mermaid
+sequenceDiagram
+    participant W as simWorker
+    participant E as SimulationEngine
+    participant FW as faunaWorkers (×N)
+    participant M as Main Thread
+    participant S as Zustand Store
+    participant R as Pixi.js Renderer
+
+    W->>E: tickFlora()
+    activate E
+    E->>E: advanceClock()
+    E->>E: processPlants(world)
+    deactivate E
+
+    alt Parallel fauna (sub-workers enabled)
+        W->>FW: send animal chunks (ArrayBuffer transfer)
+        FW->>FW: decideAndAct() per animal
+        FW-->>W: deltas[], births[], plantChanges[], deadIds[]
+        W->>E: applyFaunaResults(allDeltas)
+        E->>E: resolve movement conflicts
+        E->>E: rebuild spatialHash
+    else Sequential fauna
+        W->>E: tickFaunaSequential()
+        E->>E: decideAndAct() × N animals
+        E->>E: rebuild spatialHash
+    end
+
+    W->>E: tickCleanup()
+    E->>E: remove dead, adaptive cleanup, record stats
+    E-->>W: getStateForViewport(vx, vy, vw, vh)
+
+    W->>M: postMessage({type: 'tick', clock, animals, plantChanges, stats})
+    M->>S: setAnimals() or mergeAnimalDeltas()
+    M->>S: setClock(), setPlantChanges(), setStats()
+    S->>R: entityLayer.update(animals)
+    S->>R: updatePlants(plantChanges)
+    S->>R: setNight(is_night)
+    R->>R: render at 60fps
 ```
-Worker: engine.tickFlora()
-  → processPlants(world)
 
-Worker: engine.tickFaunaSequential()    ← sequential path
-  → decideAndAct(animal, world, spatialHash)  ×N
-  → rebuild spatialHash
-
-    — OR (when fauna sub-workers enabled) —
-
-Worker: doParallelFauna()               ← parallel path
-  → split animals into chunks
-  → send to faunaWorker sub-workers
-  → collect deltas
-  → engine.applyFaunaResults(allDeltas)
-  → rebuild spatialHash
-
-Worker: engine.tickCleanup()
-  → remove dead, adaptive cleanup, stats
-  → getStateForViewport(vx, vy, vw, vh)
-  ↓
-Worker: postMessage({ type: 'tick', clock, animals, plantChanges, stats })
-  ↓
-  animals may be a full array or an incremental delta list
-  (dirty-flag based; full sync every 30 ticks)
-  ↓
-Main Thread: useSimulation.onmessage
-  → full tick:  store.setAnimals(animals)
-  → delta tick: store.mergeAnimalDeltas(deltas)
-  → store.setClock(clock)
-  → store.setPltChanges(plantChanges)
-  → store.setStats(stats)
-  ↓
-React: App.jsx useEffect hooks
-  → renderer.entityLayer.update(animals, renderer, clock.tick)
-  → renderer.updatePlants(plantChanges)
-  → renderer.setNight(clock.is_night)
-  ↓
-Pixi.js: renders at 60fps
-```
+Animals may be a full array or an incremental delta list (dirty-flag based; full sync every 30 ticks).
 
 ### User Interaction
 
-```
-User clicks canvas
-  → GameRenderer.onTileClick(x, y)
-  → useEditor.handleTileClick(x, y)
-  ↓
-If tool = SELECT:
-  → postCmd('getTileInfo', {x, y})
-  → Worker returns tileInfo
-  → store.setSelectedEntity() or store.setSelectedTile()
-  → EntityInspector re-renders
+```mermaid
+flowchart TD
+    Click["User clicks canvas"] --> GR["GameRenderer.onTileClick(x, y)"]
+    GR --> UE["useEditor.handleTileClick(x, y)"]
+    UE --> Tool{Active Tool?}
 
-If tool = PAINT_TERRAIN:
-  → Compute brush circle
-  → renderer.terrainLayer.updateTiles(changes)  (optimistic)
-  → postCmd('editTerrain', {changes})
+    Tool -->|SELECT| Q["postCmd('getTileInfo', {x,y})"]
+    Q --> TI["Worker returns tileInfo"]
+    TI --> Store["store.setSelectedEntity()\nor store.setSelectedTile()"]
+    Store --> EI["EntityInspector re-renders"]
 
-If tool = PLACE_ENTITY:
-  → postCmd('placeEntity', {entityType, x, y})
+    Tool -->|PAINT_TERRAIN| Brush["Compute brush circle"]
+    Brush --> Opt["renderer.terrainLayer.updateTiles()\n(optimistic)"]
+    Opt --> Edit["postCmd('editTerrain', {changes})"]
 
-If tool = ERASE:
-  → Find animal at tile
-  → postCmd('removeEntity', {entityId})
+    Tool -->|PLACE_ENTITY| Place["postCmd('placeEntity',\n{entityType, x, y})"]
+
+    Tool -->|ERASE| Find["Find animal at tile"]
+    Find --> Rem["postCmd('removeEntity', {entityId})"]
 ```
 
 ---
@@ -125,6 +126,33 @@ If tool = ERASE:
 ## Worker Protocol
 
 Communication between main thread and worker uses structured messages. See [API Reference](api/) for the full schema and payload examples.
+
+### Worker Lifecycle & Error Handling
+
+```mermaid
+flowchart LR
+    Init["new Worker('simWorker.js')"] --> Idle["Idle\n(awaiting commands)"]
+    Idle -->|"cmd: generate"| Gen["Generate World"]
+    Gen -->|"worldReady"| Ready["Ready"]
+    Ready -->|"cmd: start"| Running["Tick Loop\n(setInterval)"]
+    Running -->|"cmd: pause"| Paused["Paused"]
+    Paused -->|"cmd: resume"| Running
+    Running -->|"cmd: step"| Running
+    Running -->|"cmd: setSpeed"| Running
+```
+
+**Fauna worker pool sizing:**
+
+| `navigator.hardwareConcurrency` | Sub-workers |
+|---------------------------------|-------------|
+| ≤ 2 | 1 |
+| 3–4 | 2 |
+| 5–8 | 3 |
+| > 8 | 4 |
+
+**Timeout handling:** If a parallel fauna tick exceeds **800ms**, the main worker falls back to applying partial results and logs a warning. This prevents UI freezes on large populations.
+
+**Incremental serialization:** Animals have a dirty flag incremented on state changes. Only dirty animals are sent per tick. A full sync is forced every **30 ticks** to prevent desynchronization.
 
 ---
 
@@ -176,18 +204,19 @@ Single Zustand store (`simulationStore.js`):
 
 ## Component Tree
 
-```
-App
-├── GameMenu (modal: New Game / Save / Load)
-├── Toolbar (top bar: controls, tools, speed, day/night)
-├── Sidebar Left
-│   ├── Minimap
-│   └── StatsPanel (population counters + chart)
-├── Canvas Area (Pixi.js via GameRenderer)
-├── Sidebar Right
-│   ├── EntityInspector (selected entity/tile details, life stage display)
-│   └── TerrainEditor (brush settings, entity palette)
-└── SimulationReport (full-screen analytics overlay)
+```mermaid
+graph TD
+    App["App"]
+    App --> GameMenu["GameMenu\n(modal: New Game / Save / Load)"]
+    App --> Toolbar["Toolbar\n(controls, tools, speed, day/night)"]
+    App --> SL["Sidebar Left"]
+    SL --> Minimap
+    SL --> StatsPanel["StatsPanel\n(population counters + chart)"]
+    App --> Canvas["Canvas Area\n(Pixi.js via GameRenderer)"]
+    App --> SR["Sidebar Right"]
+    SR --> EntityInspector["EntityInspector\n(entity/tile details)"]
+    SR --> TerrainEditor["TerrainEditor\n(brush settings, entity palette)"]
+    App --> SimReport["SimulationReport\n(full-screen analytics overlay)"]
 ```
 
 ---

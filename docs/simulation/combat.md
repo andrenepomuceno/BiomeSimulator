@@ -81,3 +81,12 @@ minimum damage = min_damage
 - Cooldown and damage coefficients are species-configurable via `combat` in `animalSpecies.js`
 
 **Defaults:** `cooldown = 3`, `defense_factor = 0.5`, `min_damage = 1`
+
+---
+
+## See Also
+
+- [Animal AI](ai.md) — threat detection triggers flee behavior
+- [Energy & Needs](energy.md) — attack energy costs and kill rewards
+- [Animal Species Registry](../engine/animal-species.md) — per-species HP, attackPower, defense values
+- [World & Entities](../engine/world.md) — Animal class state machine

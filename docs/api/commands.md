@@ -180,6 +180,55 @@ worker.postMessage({ cmd: 'getTileInfo', x: 100, y: 200 });
 
 ## `saveState`
 
+Serialize the entire world state for persistence.
+
+```javascript
+worker.postMessage({ cmd: 'saveState' });
+```
+
+**Response:** Worker posts a [`savedState`](messages.md#savedstate) message containing the full save object.
+
+### Save Data Schema
+
+```javascript
+{
+  config: { ... },                // Full simulation config used to generate this world
+  width: 500,                     // Map width in tiles
+  height: 500,                    // Map height in tiles
+  clock: { tick, day, tick_in_day, is_night, ticks_per_day },
+  terrain: [0, 3, 3, 1, ...],    // Flat array (was Uint8Array, serialized to regular array)
+  waterProximity: [255, 10, ...], // Flat array (was Uint8Array)
+  plantType: [0, 1, 2, ...],     // Flat array (was Uint8Array)
+  plantStage: [0, 3, 4, ...],    // Flat array (was Uint8Array)
+  plantAge: [0, 120, 400, ...],  // Flat array (was Uint16Array)
+  animals: [ { id, x, y, species, energy, hunger, thirst, age, alive, state, sex, diet, ... } ],
+  nextAnimalId: 1042,             // ID counter for new spawns
+  statsHistory: [ ... ],          // Historical stat snapshots
+}
+```
+
+All TypedArrays are converted to regular arrays via `Array.from()` for JSON serialization.
+
+---
+
+## `loadState`
+
+Restore a previously saved world state.
+
+```javascript
+worker.postMessage({ cmd: 'loadState', state: savedData });
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `state` | object | A save data object previously received from `savedState` |
+
+The worker reconstructs all TypedArrays, re-creates `Animal` instances from dicts, rebuilds the spatial hash, and re-initializes fauna sub-workers with the loaded terrain.
+
+**Response:** Worker posts a [`worldReady`](messages.md#worldready) message.
+
+## `saveState`
+
 Serialize the entire world state for saving.
 
 ```javascript

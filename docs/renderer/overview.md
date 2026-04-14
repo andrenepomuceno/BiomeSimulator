@@ -75,17 +75,34 @@ Animal positions are **sub-tile floats** (e.g. `5.5, 3.25`), already centered at
 
 ## Data Flow
 
-```
-Worker sends tick message
-  ↓
-useSimulation hook → Store (animals, plantChanges, clock)
-  ↓
-App.jsx useEffect hooks
-  ├── renderer.entityLayer.update(animals, renderer, clock.tick)
-  ├── renderer.updatePlants(plantChanges)
-  └── renderer.setNight(clock.is_night)
-  ↓
-Pixi.js renders at 60fps
+```mermaid
+flowchart TD
+    Worker["simWorker\npostMessage({type: 'tick'})"] --> Hook["useSimulation hook"]
+    Hook --> Store["Zustand Store\n(animals, plantChanges, clock)"]
+
+    Store --> UE["App.jsx useEffect hooks"]
+
+    UE --> EL["entityLayer.update()\nSprite pool + state textures\n+ life stage scaling"]
+    UE --> PL["updatePlants()\nPixel overlay + emoji sprites"]
+    UE --> Night["setNight()\nOverlay alpha 0–35%"]
+
+    subgraph Layers["Pixi.js Layer Stack (back → front)"]
+        direction TB
+        L1["1. TerrainLayer\n1px/tile RGBA texture"]
+        L2["2. PlantLayer pixel overlay\n(always visible)"]
+        L3["3. PlantLayer emoji sprites\n(zoom ≥ 6 only)"]
+        L4["4. EntityLayer\nanimal emoji sprites"]
+        L5["5. AnimationLayer\nparticle effects"]
+        L6["6. Night Overlay\nsemi-transparent rectangle"]
+        L1 --- L2 --- L3 --- L4 --- L5 --- L6
+    end
+
+    EL --> L4
+    PL --> L2
+    PL --> L3
+    Night --> L6
+
+    Layers --> Render["GPU renders at 60fps"]
 ```
 
 ---
@@ -95,3 +112,11 @@ Pixi.js renders at 60fps
 - Animals are filtered to the current viewport in the worker (`getStateForViewport`) — includes both alive and recently dead animals
 - Plant emojis are viewport-scoped in `PlantLayer.updateEmojis()`
 - Terrain and plant pixel overlays cover the full map (single texture each)
+
+---
+
+## See Also
+
+- [Rendering Layers](layers.md) — detailed layer implementation, sprite pooling, animations, emoji textures
+- [Architecture: Tick Pipeline](../architecture.md#simulation-tick) — full data flow from worker to screen
+- [Worker API: Messages](../api/messages.md) — tick message format consumed by the renderer

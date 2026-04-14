@@ -716,6 +716,221 @@ html, body, #root {
   padding: 12px 4px 2px;
 }
 
+/* ── Simulation Config Modal ── */
+
+.sim-config-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 10, 18, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1105;
+  backdrop-filter: blur(4px);
+  padding: 16px;
+}
+
+.sim-config-modal {
+  background: linear-gradient(180deg, #16213e 0%, #131d35 100%);
+  border: 1px solid #0f3460;
+  border-radius: 14px;
+  width: min(660px, 100%);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+.sim-config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #0f3460;
+}
+
+.sim-config-header h5 {
+  margin: 4px 0 0;
+  color: #dff8ff;
+  font-size: 1.05rem;
+}
+
+.sim-config-eyebrow {
+  color: #53a8b6;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.sim-config-body {
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sim-config-hero {
+  border-radius: 12px;
+  border: 1px solid rgba(83, 168, 182, 0.18);
+  background: rgba(17, 24, 44, 0.88);
+  padding: 14px 16px;
+}
+
+.sim-config-intro {
+  margin: 0;
+  color: #d6eaf1;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.sim-config-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sim-config-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(83, 168, 182, 0.16);
+  background: rgba(83, 168, 182, 0.08);
+  color: #cfe8ee;
+  font-size: 0.72rem;
+  padding: 5px 10px;
+}
+
+.sim-config-chip.live {
+  border-color: rgba(116, 219, 174, 0.24);
+  background: rgba(116, 219, 174, 0.1);
+}
+
+.sim-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sim-config-section {
+  border-radius: 12px;
+  border: 1px solid #0f346055;
+  background: rgba(17, 24, 44, 0.88);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sim-config-section-header h6 {
+  margin: 0;
+  color: #eef9fc;
+  font-size: 0.85rem;
+}
+
+.sim-config-section-header p {
+  margin: 6px 0 0;
+  color: #89a9b8;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.sim-config-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sim-config-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(15, 52, 96, 0.45);
+}
+
+.sim-config-row:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.sim-config-row-copy {
+  min-width: 0;
+}
+
+.sim-config-row-label {
+  color: #f0f9fb;
+  font-size: 0.8rem;
+}
+
+.sim-config-row-hint {
+  margin-top: 3px;
+  color: #8fb2c2;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.sim-config-row-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sim-config-row-value {
+  color: #e7fbff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.sim-config-source {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.sim-config-source.live {
+  background: rgba(116, 219, 174, 0.12);
+  border: 1px solid rgba(116, 219, 174, 0.22);
+  color: #9feac9;
+}
+
+.sim-config-source.world {
+  background: rgba(83, 168, 182, 0.12);
+  border: 1px solid rgba(83, 168, 182, 0.2);
+  color: #9bd8e2;
+}
+
+.sim-config-footer {
+  margin: 0;
+  color: #86a7b6;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .sim-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-config-row {
+    flex-direction: column;
+  }
+
+  .sim-config-row-meta {
+    align-items: flex-start;
+  }
+
+  .sim-config-row-value {
+    text-align: left;
+  }
+}
+
 /* ── Simulation Report Modal ── */
 
 .report-overlay {

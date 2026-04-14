@@ -45,7 +45,7 @@ block-beta
 | **Store** (`src/store/`) | Single Zustand store. Immutable updates via `set()`. No side effects. |
 | **Hooks** (`src/hooks/`) | Bridge worker messages to store. Own the worker lifecycle. |
 | **Renderer** (`src/renderer/`) | Pixi.js only. No game logic. Reads data, draws frames. |
-| **Components** (`src/components/`) | React + Bootstrap UI. Read store, dispatch commands via hooks. App owns transient modal state for major overlays such as GameMenu, HelpModal, SimulationReport, and EntitySummaryWindow. |
+| **Components** (`src/components/`) | React + Bootstrap UI. Read store, dispatch commands via hooks. App owns transient modal state for major overlays such as GameMenu, HelpModal, SimulationConfigModal, SimulationReport, and EntitySummaryWindow. |
 
 ---
 
@@ -61,7 +61,7 @@ flowchart TB
     subgraph UI["React UI"]
       direction TB
       App["App.jsx<br/>layout, effects, renderer wiring"]
-      Components["components/<br/>Toolbar, StatsPanel, Minimap,<br/>EntityInspector, TerrainEditor,<br/>GameMenu, HelpModal,<br/>SimulationReport, EntitySummaryWindow"]
+      Components["components/<br/>Toolbar, StatsPanel, Minimap,<br/>EntityInspector, TerrainEditor,<br/>GameMenu, HelpModal,<br/>SimulationConfigModal,<br/>SimulationReport, EntitySummaryWindow"]
     end
 
     subgraph Bridge["State Bridge"]
@@ -315,6 +315,7 @@ graph TD
     App["App"]
     App --> GameMenu["GameMenu\n(modal: New Game / Save / Load)"]
   App --> HelpModal["HelpModal\n(in-game guide / tutorial hub)"]
+    App --> SimConfig["SimulationConfigModal\n(read-only runtime config overlay)"]
     App --> Toolbar["Toolbar\n(controls, tools, speed, day/night)"]
     App --> SL["Sidebar Left"]
     SL --> Minimap

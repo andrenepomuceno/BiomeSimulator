@@ -17,10 +17,12 @@ import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
 import HelpModal from './components/HelpModal';
 import AudioSettingsModal from './components/AudioSettingsModal';
+import SimulationConfigModal from './components/SimulationConfigModal';
 
 const MODALS = {
   MENU: 'menu',
   GUIDE: 'guide',
+  CONFIG: 'config',
   REPORT: 'report',
   ENTITIES: 'entities',
   AUDIO: 'audio',
@@ -294,6 +296,7 @@ export default function App() {
         onLoad={_handleLoad}
       />
       <HelpModal open={activeModal === MODALS.GUIDE} onClose={_closeModal} />
+      <SimulationConfigModal open={activeModal === MODALS.CONFIG} onClose={_closeModal} />
       <AudioSettingsModal
         open={activeModal === MODALS.AUDIO}
         onClose={_closeModal}
@@ -315,6 +318,7 @@ export default function App() {
           onSpeedChange={_handleSpeedChange}
           onMenuToggle={() => _openModal(MODALS.MENU)}
           onGuideToggle={() => _openModal(MODALS.GUIDE)}
+          onConfigToggle={() => _openModal(MODALS.CONFIG)}
           onAudioToggle={() => _openModal(MODALS.AUDIO)}
           onReportToggle={() => _openModal(MODALS.REPORT)}
           onEntitiesToggle={() => _openModal(MODALS.ENTITIES)}

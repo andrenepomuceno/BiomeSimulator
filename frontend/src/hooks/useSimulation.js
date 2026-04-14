@@ -31,6 +31,9 @@ export function useSimulation() {
           store.setTerrain(terrain, msg.width, msg.height);
           store.setAnimals(msg.animals || []);
           store.setClock(msg.clock);
+          if (msg.config?.ticks_per_second != null) {
+            store.setSimState({ tps: msg.config.ticks_per_second });
+          }
           if (msg.hungerMultiplier != null) store.setHungerMultiplier(msg.hungerMultiplier);
           if (msg.thirstMultiplier != null) store.setThirstMultiplier(msg.thirstMultiplier);
           if (msg.config) {

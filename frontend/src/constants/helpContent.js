@@ -43,7 +43,7 @@ const SHORTCUT_REFERENCE = [
   {
     label: 'Escape',
     value: 'Close the current major modal, or open the menu if no modal is active.',
-    note: 'Works for the menu, guide, report, and entity summary window.',
+    note: 'Works for the menu, guide, config, report, audio, and entity summary window.',
   },
 ];
 
@@ -77,6 +77,11 @@ const SIMULATION_CONTROL_REFERENCE = [
     label: 'Audio',
     value: 'Open the audio panel to mute sound and tune master, SFX, and ambience levels.',
     note: 'World sounds follow the camera: nearby events play louder, and activity to the left or right pans in stereo.',
+  },
+  {
+    label: 'Config',
+    value: 'Open a read-only runtime view of timing, multipliers, vision, population budget, and supervisor settings.',
+    note: 'Use this when you want the current world baseline without opening the codebase.',
   },
 ];
 
@@ -179,6 +184,10 @@ const MAJOR_PANEL_CARDS = [
   {
     title: '❓ Guide',
     body: 'Use this modal as the fast explanation layer for controls, systems, and panel meanings.',
+  },
+  {
+    title: '⚙ Config',
+    body: 'Inspect the active world configuration, including live timing and multiplier values, without editing them here.',
   },
   {
     title: '📈 Report',

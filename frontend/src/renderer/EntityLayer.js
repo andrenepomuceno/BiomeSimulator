@@ -7,6 +7,12 @@ import { generateEmojiTextures } from '../utils/emojiTextures';
 import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation';
 import { MAX_ANIMAL_ENERGY } from '../engine/animalSpecies';
 
+const ATTACK_JUMP_DURATION = 12;
+const ATTACK_JUMP_HEIGHT = 0.22;
+const HIT_WOBBLE_DURATION = 8;
+const HIT_WOBBLE_OFFSET = 0.08;
+const HIT_WOBBLE_ROTATION = 0.22;
+
 export class EntityLayer {
   constructor(animationLayer) {
     this.container = new PIXI.Container();
@@ -52,12 +58,22 @@ export class EntityLayer {
       sprite = new PIXI.Sprite(tex);
       sprite.anchor.set(0.5);
     }
+    sprite.rotation = 0;
+    sprite._spawnTick = null;
+    sprite._attackTick = null;
+    sprite._hitTick = null;
+    sprite._lastHp = null;
     this.container.addChild(sprite);
     return sprite;
   }
 
   _releaseSprite(sprite) {
     sprite.visible = false;
+    sprite.rotation = 0;
+    sprite._spawnTick = null;
+    sprite._attackTick = null;
+    sprite._hitTick = null;
+    sprite._lastHp = null;
     this.container.removeChild(sprite);
     this._pool.push(sprite);
   }
@@ -101,6 +117,7 @@ export class EntityLayer {
         sprite._texKey = texKey;
         sprite._lastX = a.x;
         sprite._facingLeft = false;
+        sprite._lastHp = Number.isFinite(a.hp) ? a.hp : null;
         this._sprites.set(a.id, sprite);
         // New animal appeared — birth animation (skip for dead)
         if (a.state !== 9 && this._animationLayer) {
@@ -111,16 +128,29 @@ export class EntityLayer {
       }
 
       // Detect state transitions for animations
-      if (this._animationLayer) {
-        const prevState = this._prevStates.get(a.id);
-        if (prevState !== undefined && prevState !== a.state) {
-          if (a.state === 6) this._animationLayer.spawnAttack(a.x, a.y);       // ATTACKING
-          else if (a.state === 9) this._animationLayer.spawnDeath(a.x, a.y);   // DEAD
-          else if (a.state === 8) this._animationLayer.spawnMate(a.x, a.y);    // MATING
-          else if (a.state === 3) this._animationLayer.spawnEat(a.x, a.y);     // EATING
-        }
-        this._prevStates.set(a.id, a.state);
+      const prevState = this._prevStates.get(a.id);
+      if (prevState !== undefined && prevState !== a.state) {
+        if (a.state === 6) {
+          sprite._attackTick = currentTick;
+          if (this._animationLayer) this._animationLayer.spawnAttack(a.x, a.y);
+        } else if (this._animationLayer && a.state === 9) this._animationLayer.spawnDeath(a.x, a.y);   // DEAD
+        else if (this._animationLayer && a.state === 8) this._animationLayer.spawnMate(a.x, a.y);    // MATING
+        else if (this._animationLayer && a.state === 3) this._animationLayer.spawnEat(a.x, a.y);     // EATING
       }
+      this._prevStates.set(a.id, a.state);
+
+      const currentHp = Number.isFinite(a.hp) ? a.hp : null;
+      if (
+        currentTick > 0
+        && currentHp != null
+        && sprite._lastHp != null
+        && currentHp < sprite._lastHp
+        && a.state !== 9
+        && a.alive !== false
+      ) {
+        sprite._hitTick = currentTick;
+      }
+      sprite._lastHp = currentHp;
 
       // Swap texture if state changed
       if (sprite._texKey !== texKey) {
@@ -129,8 +159,9 @@ export class EntityLayer {
       }
 
       // Position (center of tile)
-      sprite.x = a.x + 0.5;
-      sprite.y = a.y + 0.5;
+      let spriteX = a.x + 0.5;
+      let spriteY = a.y + 0.5;
+      sprite.rotation = 0;
 
       // Direction flip: track horizontal movement
       if (a.x !== sprite._lastX) {
@@ -162,15 +193,36 @@ export class EntityLayer {
         }
       }
 
-      // Attack shake
-      if (a.state === 6 && currentTick > 0) {
-        const shake = 0.06 * Math.sin(currentTick * 1.5);
-        sprite.x += shake;
-        finalScale *= 1.1;
+      if (sprite._attackTick != null && currentTick > 0) {
+        const age = currentTick - sprite._attackTick;
+        if (age < ATTACK_JUMP_DURATION) {
+          const t = age / ATTACK_JUMP_DURATION;
+          const jump = Math.sin(t * Math.PI) * ATTACK_JUMP_HEIGHT;
+          spriteY -= jump;
+          finalScale *= 1 + Math.sin(t * Math.PI) * 0.08;
+        } else {
+          sprite._attackTick = null;
+        }
+      }
+
+      if (sprite._hitTick != null && currentTick > 0) {
+        const age = currentTick - sprite._hitTick;
+        if (age < HIT_WOBBLE_DURATION) {
+          const t = age / HIT_WOBBLE_DURATION;
+          const envelope = 1 - t;
+          const wave = Math.sin(t * Math.PI * 3);
+          spriteX += wave * HIT_WOBBLE_OFFSET * envelope;
+          sprite.rotation = wave * HIT_WOBBLE_ROTATION * envelope;
+        } else {
+          sprite._hitTick = null;
+        }
       }
 
       // Guard: clamp to valid range to prevent giant sprites from NaN/invalid data
       if (!Number.isFinite(finalScale) || finalScale <= 0) finalScale = baseScale;
+
+      sprite.x = spriteX;
+      sprite.y = spriteY;
 
       // Apply direction flip via negative scale.x
       const sx = sprite._facingLeft ? -finalScale : finalScale;

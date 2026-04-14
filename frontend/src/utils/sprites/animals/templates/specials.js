@@ -31,28 +31,45 @@ export function drawSleeping(ctx) {
 }
 
 export function drawDead(ctx) {
-  // Body on side â€” wider and taller
-  rect(ctx, 5, 14, 20, 10, '#888888');
-  rect(ctx, 7, 12, 10, 2, '#999999');
-  rect(ctx, 5, 24, 20, 2, '#777777');
-  // Face highlight
-  rect(ctx, 7, 14, 4, 2, '#999999');
-  // X eyes
-  rect(ctx, 7, 12, 2, 2, '#dd3333');
-  rect(ctx, 11, 12, 2, 2, '#dd3333');
-  rect(ctx, 9, 14, 2, 2, '#993333');
-  rect(ctx, 13, 14, 2, 2, '#dd6666');
-  // Legs sticking up
-  rect(ctx, 5, 24, 2, 2, '#888888');
-  rect(ctx, 7, 26, 2, 2, '#888888');
-  rect(ctx, 21, 24, 2, 2, '#888888');
-  rect(ctx, 23, 26, 2, 2, '#888888');
-  // Belly stripe
-  rect(ctx, 5, 20, 20, 2, '#777777');
-  // Ghost wisps
-  rect(ctx, 14, 6, 2, 4, 'rgba(200,200,255,0.4)');
-  rect(ctx, 16, 4, 2, 4, 'rgba(200,200,255,0.3)');
-  rect(ctx, 12, 4, 2, 4, 'rgba(200,200,255,0.3)');
+  // Stylized ossada lying on the ground for clear readability at low zoom.
+  const bone = '#dfd7c5';
+  const boneShade = '#c7bea8';
+  const boneHi = '#f3ebd7';
+
+  // Skull (left)
+  rect(ctx, 5, 15, 6, 6, bone);
+  rect(ctx, 5, 15, 6, 2, boneHi);
+  rect(ctx, 7, 17, 2, 2, '#3f3a30');
+  rect(ctx, 9, 17, 2, 2, '#3f3a30');
+  rect(ctx, 7, 20, 2, 1, boneShade);
+
+  // Spine
+  rect(ctx, 11, 17, 11, 2, bone);
+  rect(ctx, 11, 19, 11, 1, boneShade);
+  rect(ctx, 13, 17, 1, 2, boneHi);
+  rect(ctx, 16, 17, 1, 2, boneHi);
+  rect(ctx, 19, 17, 1, 2, boneHi);
+
+  // Rib cage arcs
+  rect(ctx, 13, 15, 1, 2, bone);
+  rect(ctx, 15, 14, 1, 3, bone);
+  rect(ctx, 17, 14, 1, 3, bone);
+  rect(ctx, 19, 15, 1, 2, bone);
+  rect(ctx, 13, 20, 1, 2, boneShade);
+  rect(ctx, 15, 20, 1, 3, boneShade);
+  rect(ctx, 17, 20, 1, 3, boneShade);
+  rect(ctx, 19, 20, 1, 2, boneShade);
+
+  // Pelvis and tail bones
+  rect(ctx, 22, 17, 3, 3, bone);
+  rect(ctx, 22, 19, 3, 1, boneShade);
+  rect(ctx, 25, 17, 2, 2, bone);
+  rect(ctx, 27, 16, 2, 2, boneShade);
+
+  // Detached leg bones below silhouette
+  rect(ctx, 11, 23, 4, 1, boneShade);
+  rect(ctx, 17, 23, 4, 1, boneShade);
+  rect(ctx, 23, 22, 3, 1, boneShade);
 }
 
 export function drawEgg(ctx) {

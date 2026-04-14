@@ -70,7 +70,7 @@ Renders animals as emoji sprites with state-dependent appearance.
 
 | Method | Description |
 |--------|-------------|
-| `update(animals, renderer, currentTick)` | Reposition sprites, manage sprite pool, apply life stage scaling and skull fade |
+| `update(animals, renderer, currentTick)` | Reposition sprites, manage sprite pool, apply life stage scaling and dead-state fade |
 
 ### Sprite Positioning
 
@@ -80,7 +80,7 @@ Animal sprites are placed at `(animal.x, animal.y)` in world-space. Since animal
 
 | Property | Rule |
 |----------|------|
-| Texture | Species emoji (🐰 🐿️ 🪲 🐐 🦌 🦊 🐺 🐗 🐻 🦝 🐦‍⬛), or 💤 (sleeping), 💀 (dead) |
+| Texture | Species emoji (🐰 🐿️ 🪲 🐐 🦌 🦊 🐺 🐗 🐻 🦝 🐦‍⬛), or 💤 (sleeping), ossada (dead) |
 | Scale | `0.018 × energyFactor × stageFactor` — varies by life stage and health |
 | Stage Scale | Baby 0.5×, Young 0.7×, Young Adult 0.85×, Adult 1.0× |
 | Alpha | 1.0 normal, 0.65 sleeping, fading `0.8 × (1 - elapsed/300)` for dead (over 300 ticks, min 0.05) |

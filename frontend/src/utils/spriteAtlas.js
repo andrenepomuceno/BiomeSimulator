@@ -19,7 +19,7 @@ import { drawSpeciesFrame, DIR_NAMES } from './spriteGenerator.js';
 import { drawPlantFrame } from './plantSpriteGenerator.js';
 
 // ── Atlas geometry ──────────────────────────────────────────────────
-export const FRAME_SIZE = 128;           // px per frame in the atlas
+export const FRAME_SIZE = 256;           // px per frame in the atlas
 const FAUNA_COLS = 12;                    // 4 dirs × 3 frames per species row
 const FLORA_COLS = 18;                    // 6 stages × 3 frames per species row
 

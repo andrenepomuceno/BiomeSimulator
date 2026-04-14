@@ -1,10 +1,15 @@
 /**
  * Shared pixel-art drawing helpers for the sprite generator.
- * Design grid: 32×32, upscaled 4× to 128×128.
+ * Design grid: 64×64, upscaled 4× to 256×256.
+ * Templates authored on the old 32-grid use _CM = 2 so coordinates auto-double.
  */
 
-export const DESIGN = 32;
+export const DESIGN = 64;
 export const SCALE = 4;
+
+/** Coordinate multiplier — legacy 32-grid templates keep _CM = 2. */
+let _CM = 2;
+export function setCoordMultiplier(v) { _CM = v; }
 
 export const DOWN = 0;
 export const LEFT = 1;
@@ -12,14 +17,16 @@ export const RIGHT = 2;
 export const UP = 3;
 
 export function px(ctx, x, y, color) {
-  if (x < 0 || y < 0 || x >= DESIGN || y >= DESIGN) return;
+  const mx = x * _CM;
+  const my = y * _CM;
+  if (mx < 0 || my < 0 || mx >= DESIGN || my >= DESIGN) return;
   ctx.fillStyle = color;
-  ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+  ctx.fillRect(mx * SCALE, my * SCALE, _CM * SCALE, _CM * SCALE);
 }
 
 export function rect(ctx, x, y, w, h, color) {
   ctx.fillStyle = color;
-  ctx.fillRect(x * SCALE, y * SCALE, w * SCALE, h * SCALE);
+  ctx.fillRect(x * _CM * SCALE, y * _CM * SCALE, w * _CM * SCALE, h * _CM * SCALE);
 }
 
 export function darken(hex, amount) {
@@ -39,42 +46,57 @@ export function lighten(hex, amount) {
 }
 
 /**
- * Post-processing outline: scans the canvas and draws a 1-design-pixel dark
- * border around all opaque regions. Called once per frame at atlas build time.
+ * Post-processing outline: 2-pass dark border around all opaque regions.
+ * Pass 1: strong dark edge directly adjacent to opaque pixels.
+ * Pass 2: softer outer glow one more design-pixel out.
  */
 export function addOutline(ctx) {
   const size = DESIGN * SCALE;
   const imgData = ctx.getImageData(0, 0, size, size);
   const { data, width, height } = imgData;
-  // Step in real pixels equals SCALE (one design pixel)
   const s = SCALE;
 
-  // Build a grid of which design-pixels are opaque
   const cols = DESIGN;
   const rows = DESIGN;
   const opaque = new Uint8Array(cols * rows);
   for (let gy = 0; gy < rows; gy++) {
     for (let gx = 0; gx < cols; gx++) {
-      // Sample the center of each design pixel
-      const px = gx * s + (s >> 1);
-      const py = gy * s + (s >> 1);
-      const i = (py * width + px) * 4;
+      const cx = gx * s + (s >> 1);
+      const cy = gy * s + (s >> 1);
+      const i = (cy * width + cx) * 4;
       if (data[i + 3] > 10) opaque[gy * cols + gx] = 1;
     }
   }
 
-  // Draw outline on transparent design-pixels adjacent to opaque ones
+  // Pass 1 — strong inner outline
+  const pass1 = new Uint8Array(cols * rows);
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   for (let gy = 0; gy < rows; gy++) {
     for (let gx = 0; gx < cols; gx++) {
       if (opaque[gy * cols + gx]) continue;
-      // Check 4 neighbors
       const hasNeighbor =
         (gx > 0 && opaque[gy * cols + gx - 1]) ||
         (gx < cols - 1 && opaque[gy * cols + gx + 1]) ||
         (gy > 0 && opaque[(gy - 1) * cols + gx]) ||
         (gy < rows - 1 && opaque[(gy + 1) * cols + gx]);
       if (hasNeighbor) {
+        ctx.fillRect(gx * s, gy * s, s, s);
+        pass1[gy * cols + gx] = 1;
+      }
+    }
+  }
+
+  // Pass 2 — softer outer glow
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) {
+      if (opaque[gy * cols + gx] || pass1[gy * cols + gx]) continue;
+      const hasP1 =
+        (gx > 0 && pass1[gy * cols + gx - 1]) ||
+        (gx < cols - 1 && pass1[gy * cols + gx + 1]) ||
+        (gy > 0 && pass1[(gy - 1) * cols + gx]) ||
+        (gy < rows - 1 && pass1[(gy + 1) * cols + gx]);
+      if (hasP1) {
         ctx.fillRect(gx * s, gy * s, s, s);
       }
     }

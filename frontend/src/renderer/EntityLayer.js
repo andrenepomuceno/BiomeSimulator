@@ -239,7 +239,7 @@ export class EntityLayer {
       sprite._lastY = a.y;
 
       // Scale: atlas frame → ~1 tile.  Adjust for frame size so 1 frame ≈ 1 tile.
-      const baseScale = 1 / FRAME_SIZE;
+      const baseScale = 2 / FRAME_SIZE;
       let finalScale;
       if (isEgg) {
         // Eggs: small, static

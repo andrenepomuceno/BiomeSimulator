@@ -17,7 +17,7 @@ import { buildSwayStages } from '../engine/plantSpecies.js';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const MAX_EMOJI_SPRITES = 8000;
-const BASE_EMOJI_SCALE = 1.3 / FRAME_SIZE; // ~30% larger than 1 tile
+const BASE_EMOJI_SCALE = 2.6 / FRAME_SIZE; // ~30% larger than 1 tile
 
 /** Deterministic per-cell scale jitter ±10%. */
 function cellScale(idx) {

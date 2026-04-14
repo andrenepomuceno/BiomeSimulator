@@ -5,22 +5,23 @@
  * 4 special states (SLEEPING, DEAD, EGG, PUPA) = 220 total frames.
  * Layout: 12 columns × 19 rows (one row per species, last row for specials).
  *
- * Flora atlas: 15 plant types × 5 stages = 75 frames.
- * Layout: 10 columns × 8 rows.
+ * Flora atlas: 15 plant types × 6 stages × 3 frames = 270 frames.
+ * Layout: 18 columns × 15 rows (one row per species).
  *
  * When real pixel-art PNGs exist in public/sprites/, the loader fetches them.
- * Otherwise the fauna atlas is built procedurally via spriteGenerator.js and
- * the flora atlas falls back to emoji rasterisation.
+ * Otherwise both atlases are built procedurally via spriteGenerator.js and
+ * plantSpriteGenerator.js respectively.
  */
 import * as PIXI from 'pixi.js';
 import { SPECIES_INFO } from './terrainColors.js';
 import { buildPlantEmojiMap } from '../engine/plantSpecies.js';
 import { drawSpeciesFrame, DIR_NAMES } from './spriteGenerator.js';
+import { drawPlantFrame } from './plantSpriteGenerator.js';
 
 // ── Atlas geometry ──────────────────────────────────────────────────
 export const FRAME_SIZE = 128;           // px per frame in the atlas
 const FAUNA_COLS = 12;                    // 4 dirs × 3 frames per species row
-const FLORA_COLS = 10;                    // grid width for flora atlas
+const FLORA_COLS = 18;                    // 6 stages × 3 frames per species row
 
 // ── Fauna frame map ─────────────────────────────────────────────────
 // Row per species (0..17): 12 cells = DOWN_0..2, LEFT_0..2, RIGHT_0..2, UP_0..2
@@ -57,20 +58,29 @@ function buildFaunaFrames() {
 }
 
 // ── Flora frame map ─────────────────────────────────────────────────
+// 15 species × 6 stages × 3 frames = 270 frames.
+// Layout: 18 columns (6 stages × 3 frames) × 15 rows (one per species).
+// Keys: "typeId_stage_frame" e.g. "1_1_0", "1_1_1", "1_1_2", "1_2_0" …
+const FLORA_FRAMES_PER_STAGE = 3;
+const FLORA_STAGES = 6;
+const FLORA_SPECIES_COUNT = 15;
+
 function buildFloraFrames() {
-  const emojiMap = buildPlantEmojiMap(); // { "1_1": "🌱", … }
-  const keys = Object.keys(emojiMap).sort((a, b) => {
-    const [at, as] = a.split('_').map(Number);
-    const [bt, bs] = b.split('_').map(Number);
-    return at !== bt ? at - bt : as - bs;
-  });
+  const keys = [];
   const map = {};
-  keys.forEach((key, i) => {
-    const col = i % FLORA_COLS;
-    const row = (i / FLORA_COLS) | 0;
-    map[key] = { col, row, x: col * FRAME_SIZE, y: row * FRAME_SIZE };
-  });
-  return { keys, map, cols: FLORA_COLS, rows: Math.ceil(keys.length / FLORA_COLS) };
+  for (let typeId = 1; typeId <= FLORA_SPECIES_COUNT; typeId++) {
+    const row = typeId - 1;
+    let col = 0;
+    for (let stage = 1; stage <= FLORA_STAGES; stage++) {
+      for (let frame = 0; frame < FLORA_FRAMES_PER_STAGE; frame++) {
+        const key = `${typeId}_${stage}_${frame}`;
+        keys.push(key);
+        map[key] = { col, row, x: col * FRAME_SIZE, y: row * FRAME_SIZE };
+        col++;
+      }
+    }
+  }
+  return { keys, map, cols: FLORA_COLS, rows: FLORA_SPECIES_COUNT };
 }
 
 export const FAUNA_FRAMES = buildFaunaFrames();
@@ -118,23 +128,8 @@ function buildFaunaAtlasCanvas() {
   return canvas;
 }
 
-// ── Fallback: build flora atlas from emojis ─────────────────────────
-function renderEmojiToCanvas(emoji, size) {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, size, size);
-  const fontSize = Math.round(size * 0.75);
-  ctx.font = `${fontSize}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(emoji, size / 2, size / 2 + 1);
-  return canvas;
-}
-
+// ── Fallback: build flora atlas procedurally ────────────────────────
 function buildFloraAtlasCanvas() {
-  const emojiMap = buildPlantEmojiMap();
   const { keys, map, cols, rows } = FLORA_FRAMES;
   const w = cols * FRAME_SIZE;
   const h = rows * FRAME_SIZE;
@@ -142,13 +137,20 @@ function buildFloraAtlasCanvas() {
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const cell = document.createElement('canvas');
+  cell.width = FRAME_SIZE;
+  cell.height = FRAME_SIZE;
+  const cellCtx = cell.getContext('2d');
+  cellCtx.imageSmoothingEnabled = false;
 
   for (const key of keys) {
-    const emoji = emojiMap[key];
-    if (!emoji) continue;
-    const frame = map[key];
-    const cell = renderEmojiToCanvas(emoji, FRAME_SIZE);
-    ctx.drawImage(cell, frame.x, frame.y);
+    const [typeId, stage, frame] = key.split('_').map(Number);
+    const pos = map[key];
+    if (!pos) continue;
+    drawPlantFrame(cellCtx, typeId, stage, frame);
+    ctx.drawImage(cell, pos.x, pos.y);
   }
   return canvas;
 }
@@ -218,7 +220,7 @@ export async function loadFloraAtlas() {
     }
   } catch {
     const canvas = buildFloraAtlasCanvas();
-    baseTexture = PIXI.BaseTexture.from(canvas, { scaleMode: PIXI.SCALE_MODES.LINEAR });
+    baseTexture = PIXI.BaseTexture.from(canvas, { scaleMode: PIXI.SCALE_MODES.NEAREST });
   }
 
   _floraTextures = sliceAtlas(baseTexture, FLORA_FRAMES);
@@ -244,7 +246,7 @@ export function buildFaunaAtlasSync() {
 export function buildFloraAtlasSync() {
   if (_floraTextures) return _floraTextures;
   const canvas = buildFloraAtlasCanvas();
-  const baseTexture = PIXI.BaseTexture.from(canvas, { scaleMode: PIXI.SCALE_MODES.LINEAR });
+  const baseTexture = PIXI.BaseTexture.from(canvas, { scaleMode: PIXI.SCALE_MODES.NEAREST });
   _floraTextures = sliceAtlas(baseTexture, FLORA_FRAMES);
   return _floraTextures;
 }

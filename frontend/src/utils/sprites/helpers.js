@@ -37,3 +37,46 @@ export function lighten(hex, amount) {
   const b = Math.min(255, (n & 255) + Math.round(255 * amount));
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
+
+/**
+ * Post-processing outline: scans the canvas and draws a 1-design-pixel dark
+ * border around all opaque regions. Called once per frame at atlas build time.
+ */
+export function addOutline(ctx) {
+  const size = DESIGN * SCALE;
+  const imgData = ctx.getImageData(0, 0, size, size);
+  const { data, width, height } = imgData;
+  // Step in real pixels equals SCALE (one design pixel)
+  const s = SCALE;
+
+  // Build a grid of which design-pixels are opaque
+  const cols = DESIGN;
+  const rows = DESIGN;
+  const opaque = new Uint8Array(cols * rows);
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) {
+      // Sample the center of each design pixel
+      const px = gx * s + (s >> 1);
+      const py = gy * s + (s >> 1);
+      const i = (py * width + px) * 4;
+      if (data[i + 3] > 10) opaque[gy * cols + gx] = 1;
+    }
+  }
+
+  // Draw outline on transparent design-pixels adjacent to opaque ones
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) {
+      if (opaque[gy * cols + gx]) continue;
+      // Check 4 neighbors
+      const hasNeighbor =
+        (gx > 0 && opaque[gy * cols + gx - 1]) ||
+        (gx < cols - 1 && opaque[gy * cols + gx + 1]) ||
+        (gy > 0 && opaque[(gy - 1) * cols + gx]) ||
+        (gy < rows - 1 && opaque[(gy + 1) * cols + gx]);
+      if (hasNeighbor) {
+        ctx.fillRect(gx * s, gy * s, s, s);
+      }
+    }
+  }
+}

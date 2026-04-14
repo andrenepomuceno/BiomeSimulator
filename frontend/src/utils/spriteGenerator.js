@@ -9,7 +9,7 @@
  *   drawSpeciesFrame(ctx, species, direction, frame)
  *   DIR_NAMES
  */
-import { DESIGN, SCALE } from './sprites/helpers.js';
+import { DESIGN, SCALE, addOutline } from './sprites/helpers.js';
 import { drawQuadruped } from './sprites/templates/quadruped.js';
 import { drawBird } from './sprites/templates/bird.js';
 import { drawInsect } from './sprites/templates/insect.js';
@@ -77,17 +77,19 @@ export function drawSpeciesFrame(ctx, species, direction, frame) {
   ctx.imageSmoothingEnabled = false;
 
   switch (species) {
-    case 'SLEEPING': drawSleeping(ctx); return;
-    case 'DEAD':     drawDead(ctx); return;
-    case 'EGG':      drawEgg(ctx); return;
-    case 'PUPA':     drawPupa(ctx); return;
+    case 'SLEEPING': drawSleeping(ctx); break;
+    case 'DEAD':     drawDead(ctx); break;
+    case 'EGG':      drawEgg(ctx); break;
+    case 'PUPA':     drawPupa(ctx); break;
+    default: {
+      const params = SPECIES_PARAMS[species];
+      if (!params) return;
+      const draw = TEMPLATE_DRAW[params.template];
+      if (draw) draw(ctx, params, direction, frame);
+    }
   }
 
-  const params = SPECIES_PARAMS[species];
-  if (!params) return;
-
-  const draw = TEMPLATE_DRAW[params.template];
-  if (draw) draw(ctx, params, direction, frame);
+  addOutline(ctx);
 }
 
 /** Direction names for building texture keys. */

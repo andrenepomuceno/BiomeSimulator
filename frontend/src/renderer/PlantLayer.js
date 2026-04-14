@@ -1,18 +1,19 @@
 /**
- * PlantLayer — renders plants as pixel overlay + emoji sprites when zoomed in.
+ * PlantLayer — renders plants as pixel overlay + procedural sprites when zoomed in.
  *
  * Pixel overlay: always visible, 1 pixel per tile (efficient at any zoom).
- * Emoji sprites: shown when zoom >= EMOJI_ZOOM_THRESHOLD for tiles in viewport.
+ * Sprites: shown when zoom >= EMOJI_ZOOM_THRESHOLD for tiles in viewport.
  *
  * Sprites are managed incrementally: a Map keyed by cell index tracks active
  * sprites. On each update only the delta (entered/left/changed tiles) is
  * processed, avoiding the previous full pool-return-and-rebuild every frame.
+ *
+ * Animation: frame-based (3 frames per stage) cycled via tick for sway plants.
  */
 import * as PIXI from 'pixi.js';
 import { PLANT_COLORS } from '../utils/terrainColors.js';
-import { generatePlantEmojiTextures } from '../utils/emojiTextures.js';
+import { buildFloraAtlasSync, FRAME_SIZE } from '../utils/spriteAtlas.js';
 import { buildSwayStages } from '../engine/plantSpecies.js';
-import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const MAX_EMOJI_SPRITES = 8000;
@@ -192,7 +193,7 @@ export class PlantLayer {
     this._shadowContainer.visible = true;
 
     if (!this._plantTextures) {
-      this._plantTextures = generatePlantEmojiTextures();
+      this._plantTextures = buildFloraAtlasSync();
     }
     if (!this._swayStages) {
       this._swayStages = buildSwayStages();
@@ -229,10 +230,10 @@ export class PlantLayer {
 
         const ptype = this._types[idx];
         const stage = this._stages[idx];
-        const key = (ptype === 0 || stage === 0 || stage === 6) ? null : `${ptype}_${stage}`;
+        const baseKey = (ptype === 0 || stage === 0 || stage === 6) ? null : `${ptype}_${stage}`;
         const existing = this._spriteMap.get(idx);
 
-        if (!key) {
+        if (!baseKey) {
           // Plant removed/dead — release sprite
           if (existing) {
             this._releaseEntry(existing);
@@ -240,10 +241,14 @@ export class PlantLayer {
           }
         } else if (existing) {
           // Plant changed — update texture if needed
-          if (existing.texKey !== key) {
+          if (existing.baseKey !== baseKey) {
+            const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
+            const animFrame = canSway ? ((t + cx * 3 + cy * 7) % 12 < 4 ? 0 : ((t + cx * 3 + cy * 7) % 12 < 8 ? 1 : 2)) : 0;
+            const key = `${baseKey}_${animFrame}`;
             const tex = this._plantTextures[key];
             if (tex) {
               existing.sprite.texture = tex;
+              existing.baseKey = baseKey;
               existing.texKey = key;
             }
           }
@@ -269,24 +274,39 @@ export class PlantLayer {
           const stage = this._stages[idx];
           if (ptype === 0 || stage === 0 || stage === 6) continue;
 
-          const key = `${ptype}_${stage}`;
+          const baseKey = `${ptype}_${stage}`;
+          const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
+          const animFrame = canSway ? ((t + x * 3 + y * 7) % 12 < 4 ? 0 : ((t + x * 3 + y * 7) % 12 < 8 ? 1 : 2)) : 0;
+          const key = `${baseKey}_${animFrame}`;
           const tex = this._plantTextures[key];
           if (!tex) continue;
 
-          this._addEntry(idx, x, y, ptype, stage, key, tex, t, swayMap);
+          this._addEntry(idx, x, y, ptype, stage, baseKey, key, tex, t, swayMap);
         }
       }
     }
 
-    // ── Phase 4: Update sway + growth pulse on all active sprites ──
+    // ── Phase 4: Update animation frames + growth pulse on all active sprites ──
     for (const [idx, entry] of this._spriteMap) {
       const cx = idx % this.width;
       const cy = (idx / this.width) | 0;
       const ptype = this._types[idx];
       const stage = this._stages[idx];
 
+      // Frame-based sway: cycle through 3 frames using tick + spatial hash
       const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
-      const sway = canSway ? 0.03 * Math.sin(t * 0.08 + cx * 0.5 + cy * 0.3) : 0;
+      if (canSway) {
+        const hash = (t + cx * 3 + cy * 7) % 12;
+        const animFrame = hash < 4 ? 0 : (hash < 8 ? 1 : 2);
+        const newKey = `${entry.baseKey}_${animFrame}`;
+        if (newKey !== entry.texKey) {
+          const tex = this._plantTextures[newKey];
+          if (tex) {
+            entry.sprite.texture = tex;
+            entry.texKey = newKey;
+          }
+        }
+      }
 
       let scaleMultiplier = 1.0;
       const pulseStart = this._growthPulses.get(idx);
@@ -300,12 +320,12 @@ export class PlantLayer {
         }
       }
 
-      entry.sprite.x = cx + 0.5 + sway;
+      entry.sprite.x = cx + 0.5;
       entry.sprite.y = cy + 0.5;
       entry.sprite.scale.set(EMOJI_SCALE * scaleMultiplier);
 
       if (entry.shadow) {
-        entry.shadow.x = cx + 0.5 + sway * 0.3;
+        entry.shadow.x = cx + 0.5;
         entry.shadow.y = cy + 0.85;
         entry.shadow.scale.set(0.02 * scaleMultiplier, 0.01);
       }
@@ -327,12 +347,10 @@ export class PlantLayer {
 
   // ── Sprite lifecycle helpers ──
 
-  _addEntry(idx, x, y, ptype, stage, key, tex, t, swayMap) {
+  _addEntry(idx, x, y, ptype, stage, baseKey, texKey, tex, t, swayMap) {
     const sprite = this._acquireSprite(tex);
-    const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
-    const sway = canSway ? 0.03 * Math.sin(t * 0.08 + x * 0.5 + y * 0.3) : 0;
 
-    sprite.x = x + 0.5 + sway;
+    sprite.x = x + 0.5;
     sprite.y = y + 0.5;
     sprite.scale.set(EMOJI_SCALE);
     sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.6 : (stage === 3 ? 0.8 : (stage === 5 ? 0.9 : 1.0)));
@@ -340,13 +358,13 @@ export class PlantLayer {
     let shadow = null;
     if (stage >= 3) {
       shadow = this._acquireShadow();
-      shadow.x = x + 0.5 + sway * 0.3;
+      shadow.x = x + 0.5;
       shadow.y = y + 0.85;
       shadow.scale.set(0.02, 0.01);
       shadow.alpha = 0.2;
     }
 
-    this._spriteMap.set(idx, { sprite, shadow, texKey: key });
+    this._spriteMap.set(idx, { sprite, shadow, baseKey, texKey });
   }
 
   _releaseEntry(entry) {

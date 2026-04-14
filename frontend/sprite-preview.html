@@ -2,53 +2,70 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Fauna Sprite Atlas Preview</title>
+  <title>Sprite Atlas Preview</title>
   <style>
     body { margin: 0; background: #1a1a2e; color: #eee; font-family: monospace; display: flex; flex-direction: column; align-items: center; }
     h1 { margin: 16px 0 4px; font-size: 18px; }
+    h2 { margin: 24px 0 4px; font-size: 16px; color: #88cc88; }
     .info { font-size: 12px; opacity: 0.7; margin-bottom: 12px; }
     canvas { border: 1px solid #444; image-rendering: pixelated; }
     .controls { margin: 12px 0; display: flex; gap: 12px; }
     button { padding: 8px 16px; font-family: monospace; cursor: pointer; background: #2a6e2a; color: #fff; border: none; border-radius: 4px; }
     button:hover { background: #3a8e3a; }
     .zoom-group label { margin-right: 6px; }
-    #atlas-zoomed { margin-bottom: 40px; }
+    .atlas-canvas { margin-bottom: 40px; }
   </style>
 </head>
 <body>
   <h1>Fauna Sprite Atlas</h1>
-  <div class="info" id="info"></div>
+  <div class="info" id="fauna-info"></div>
   <div class="controls">
-    <button id="btn-download">Download PNG</button>
+    <button id="btn-download-fauna">Download Fauna PNG</button>
     <div class="zoom-group">
       <label>Zoom:</label>
-      <button id="z1">1×</button>
-      <button id="z2">2×</button>
-      <button id="z4">4×</button>
-      <button id="z8">8×</button>
+      <button id="fz1">1×</button>
+      <button id="fz2">2×</button>
+      <button id="fz4">4×</button>
+      <button id="fz8">8×</button>
     </div>
   </div>
-  <canvas id="atlas-zoomed"></canvas>
+  <canvas id="fauna-zoomed" class="atlas-canvas"></canvas>
+
+  <h2>Flora Sprite Atlas</h2>
+  <div class="info" id="flora-info"></div>
+  <div class="controls">
+    <button id="btn-download-flora">Download Flora PNG</button>
+    <div class="zoom-group">
+      <label>Zoom:</label>
+      <button id="pz1">1×</button>
+      <button id="pz2">2×</button>
+      <button id="pz4">4×</button>
+      <button id="pz8">8×</button>
+    </div>
+  </div>
+  <canvas id="flora-zoomed" class="atlas-canvas"></canvas>
 
   <script type="module">
     import { drawSpeciesFrame, DIR_NAMES } from './src/utils/spriteGenerator.js';
+    import { drawPlantFrame } from './src/utils/plantSpriteGenerator.js';
 
     const FRAME = 128;
-    const COLS = 12;
+
+    // ── Fauna Atlas ──────────────────────────────────────────────────
+    const FAUNA_COLS = 12;
     const SPECIES = [
       'RABBIT','SQUIRREL','BEETLE','GOAT','DEER','FOX','WOLF','BOAR',
       'BEAR','RACCOON','CROW','MOSQUITO','CATERPILLAR','CRICKET','LIZARD',
       'SNAKE','HAWK','CROCODILE'
     ];
     const SPECIALS = ['SLEEPING','DEAD','EGG','PUPA'];
-    const ROWS = SPECIES.length + 1; // 18 species + 1 specials row
+    const FAUNA_ROWS = SPECIES.length + 1;
 
-    // Build the raw atlas canvas at 1× scale
-    const atlas = document.createElement('canvas');
-    atlas.width = COLS * FRAME;
-    atlas.height = ROWS * FRAME;
-    const actx = atlas.getContext('2d');
-    actx.imageSmoothingEnabled = false;
+    const faunaAtlas = document.createElement('canvas');
+    faunaAtlas.width = FAUNA_COLS * FRAME;
+    faunaAtlas.height = FAUNA_ROWS * FRAME;
+    const fctx = faunaAtlas.getContext('2d');
+    fctx.imageSmoothingEnabled = false;
 
     const cell = document.createElement('canvas');
     cell.width = FRAME;
@@ -56,91 +73,125 @@
     const cctx = cell.getContext('2d');
     cctx.imageSmoothingEnabled = false;
 
-    // Draw species rows
     for (let r = 0; r < SPECIES.length; r++) {
       const species = SPECIES[r];
       let col = 0;
       for (let d = 0; d < 4; d++) {
         for (let f = 0; f < 3; f++) {
           drawSpeciesFrame(cctx, species, d, f);
-          actx.drawImage(cell, col * FRAME, r * FRAME);
+          fctx.drawImage(cell, col * FRAME, r * FRAME);
           col++;
         }
       }
     }
-    // Draw specials row
     for (let s = 0; s < SPECIALS.length; s++) {
       drawSpeciesFrame(cctx, SPECIALS[s], 0, 0);
-      actx.drawImage(cell, s * FRAME, SPECIES.length * FRAME);
+      fctx.drawImage(cell, s * FRAME, SPECIES.length * FRAME);
     }
 
-    // Info
-    const total = SPECIES.length * 12 + SPECIALS.length;
-    document.getElementById('info').textContent =
-      `${atlas.width}×${atlas.height} px | ${COLS} cols × ${ROWS} rows | ${total} frames | ` +
+    const faunaTotal = SPECIES.length * 12 + SPECIALS.length;
+    document.getElementById('fauna-info').textContent =
+      `${faunaAtlas.width}×${faunaAtlas.height} px | ${FAUNA_COLS} cols × ${FAUNA_ROWS} rows | ${faunaTotal} frames | ` +
       `Row format: DOWN₀ DOWN₁ DOWN₂  LEFT₀ LEFT₁ LEFT₂  RIGHT₀ RIGHT₁ RIGHT₂  UP₀ UP₁ UP₂`;
 
-    // Add row labels
-    function drawLabels(ctx, zoom) {
-      ctx.font = `${11 * zoom}px monospace`;
-      ctx.fillStyle = '#ffdd44';
-      ctx.textBaseline = 'middle';
-      for (let r = 0; r < SPECIES.length; r++) {
-        ctx.fillText(SPECIES[r], 4 * zoom, r * FRAME * zoom + FRAME * zoom / 2);
+    // ── Flora Atlas ─────────────────────────────────────────────────
+    const FLORA_COLS = 18; // 6 stages × 3 frames
+    const PLANT_NAMES = [
+      'Grass','Strawberry','Blueberry','Apple Tree','Mango Tree',
+      'Carrot','Sunflower','Tomato','Mushroom','Oak Tree',
+      'Cactus','Coconut Palm','Potato','Chili Pepper','Olive Tree'
+    ];
+    const FLORA_ROWS = PLANT_NAMES.length;
+    const FLORA_STAGES = 6;
+    const FLORA_FPF = 3;
+
+    const floraAtlas = document.createElement('canvas');
+    floraAtlas.width = FLORA_COLS * FRAME;
+    floraAtlas.height = FLORA_ROWS * FRAME;
+    const plctx = floraAtlas.getContext('2d');
+    plctx.imageSmoothingEnabled = false;
+
+    for (let typeId = 1; typeId <= PLANT_NAMES.length; typeId++) {
+      const row = typeId - 1;
+      let col = 0;
+      for (let stage = 1; stage <= FLORA_STAGES; stage++) {
+        for (let frame = 0; frame < FLORA_FPF; frame++) {
+          drawPlantFrame(cctx, typeId, stage, frame);
+          plctx.drawImage(cell, col * FRAME, row * FRAME);
+          col++;
+        }
       }
-      for (let s = 0; s < SPECIALS.length; s++) {
-        ctx.fillText(SPECIALS[s], (s * FRAME + 4) * zoom, SPECIES.length * FRAME * zoom + FRAME * zoom / 2);
-      }
-      // Direction headers
-      ctx.font = `${9 * zoom}px monospace`;
-      ctx.fillStyle = '#88aaff';
-      const dirs = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
-      for (let d = 0; d < 4; d++) {
-        const x = (d * 3 * FRAME + FRAME * 1.5) * zoom;
-        ctx.textAlign = 'center';
-        ctx.fillText(dirs[d], x, -4 * zoom + 10 * zoom);
-      }
-      ctx.textAlign = 'start';
     }
 
-    // Render zoomed preview
-    const zoomedCanvas = document.getElementById('atlas-zoomed');
-    function renderZoomed(zoom) {
+    const floraTotal = PLANT_NAMES.length * FLORA_STAGES * FLORA_FPF;
+    document.getElementById('flora-info').textContent =
+      `${floraAtlas.width}×${floraAtlas.height} px | ${FLORA_COLS} cols × ${FLORA_ROWS} rows | ${floraTotal} frames | ` +
+      `Row format: SEED₀₁₂  YOUNG₀₁₂  ADULT_SPROUT₀₁₂  ADULT₀₁₂  FRUIT₀₁₂  DEAD₀₁₂`;
+
+    // ── Zoomed rendering helper ─────────────────────────────────────
+    function renderZoomed(atlas, canvas, cols, rows, zoom, labels) {
       const padTop = 16 * zoom;
-      zoomedCanvas.width = atlas.width * zoom;
-      zoomedCanvas.height = atlas.height * zoom + padTop;
-      const zctx = zoomedCanvas.getContext('2d');
+      const padLeft = labels ? 100 * zoom : 0;
+      canvas.width = atlas.width * zoom + padLeft;
+      canvas.height = atlas.height * zoom + padTop;
+      const zctx = canvas.getContext('2d');
       zctx.imageSmoothingEnabled = false;
       zctx.fillStyle = '#1a1a2e';
-      zctx.fillRect(0, 0, zoomedCanvas.width, zoomedCanvas.height);
-      // Grid lines
+      zctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Grid
       zctx.strokeStyle = 'rgba(255,255,255,0.08)';
       zctx.lineWidth = 1;
-      for (let c = 0; c <= COLS; c++) {
-        const x = c * FRAME * zoom;
-        zctx.beginPath(); zctx.moveTo(x, padTop); zctx.lineTo(x, zoomedCanvas.height); zctx.stroke();
+      for (let c = 0; c <= cols; c++) {
+        const x = c * FRAME * zoom + padLeft;
+        zctx.beginPath(); zctx.moveTo(x, padTop); zctx.lineTo(x, canvas.height); zctx.stroke();
       }
-      for (let r = 0; r <= ROWS; r++) {
+      for (let r = 0; r <= rows; r++) {
         const y = r * FRAME * zoom + padTop;
-        zctx.beginPath(); zctx.moveTo(0, y); zctx.lineTo(zoomedCanvas.width, y); zctx.stroke();
+        zctx.beginPath(); zctx.moveTo(0, y); zctx.lineTo(canvas.width, y); zctx.stroke();
       }
       // Atlas
-      zctx.drawImage(atlas, 0, padTop, atlas.width * zoom, atlas.height * zoom);
+      zctx.drawImage(atlas, padLeft, padTop, atlas.width * zoom, atlas.height * zoom);
+      // Labels
+      if (labels) {
+        zctx.font = `${10 * zoom}px monospace`;
+        zctx.fillStyle = '#ffdd44';
+        zctx.textBaseline = 'middle';
+        for (let r = 0; r < labels.length; r++) {
+          zctx.fillText(labels[r], 4 * zoom, r * FRAME * zoom + FRAME * zoom / 2 + padTop);
+        }
+      }
     }
 
-    renderZoomed(4);
+    // ── Fauna zoom ──────────────────────────────────────────────────
+    const faunaZoomed = document.getElementById('fauna-zoomed');
+    const faunaLabels = [...SPECIES, ...SPECIALS.map((s, i) => i === 0 ? `SPECIALS: ${s}` : s)];
+    function renderFaunaZoom(z) { renderZoomed(faunaAtlas, faunaZoomed, FAUNA_COLS, FAUNA_ROWS, z, faunaLabels); }
+    renderFaunaZoom(4);
+    document.getElementById('fz1').onclick = () => renderFaunaZoom(1);
+    document.getElementById('fz2').onclick = () => renderFaunaZoom(2);
+    document.getElementById('fz4').onclick = () => renderFaunaZoom(4);
+    document.getElementById('fz8').onclick = () => renderFaunaZoom(8);
 
-    // Zoom buttons
-    document.getElementById('z1').onclick = () => renderZoomed(1);
-    document.getElementById('z2').onclick = () => renderZoomed(2);
-    document.getElementById('z4').onclick = () => renderZoomed(4);
-    document.getElementById('z8').onclick = () => renderZoomed(8);
+    // ── Flora zoom ──────────────────────────────────────────────────
+    const floraZoomed = document.getElementById('flora-zoomed');
+    function renderFloraZoom(z) { renderZoomed(floraAtlas, floraZoomed, FLORA_COLS, FLORA_ROWS, z, PLANT_NAMES); }
+    renderFloraZoom(4);
+    document.getElementById('pz1').onclick = () => renderFloraZoom(1);
+    document.getElementById('pz2').onclick = () => renderFloraZoom(2);
+    document.getElementById('pz4').onclick = () => renderFloraZoom(4);
+    document.getElementById('pz8').onclick = () => renderFloraZoom(8);
 
-    // Download
-    document.getElementById('btn-download').onclick = () => {
+    // ── Downloads ───────────────────────────────────────────────────
+    document.getElementById('btn-download-fauna').onclick = () => {
       const link = document.createElement('a');
       link.download = 'fauna-atlas.png';
-      link.href = atlas.toDataURL('image/png');
+      link.href = faunaAtlas.toDataURL('image/png');
+      link.click();
+    };
+    document.getElementById('btn-download-flora').onclick = () => {
+      const link = document.createElement('a');
+      link.download = 'flora-atlas.png';
+      link.href = floraAtlas.toDataURL('image/png');
       link.click();
     };
   </script>

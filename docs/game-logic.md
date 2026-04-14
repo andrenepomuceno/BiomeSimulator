@@ -64,7 +64,9 @@ Species `speed` values represent **sub-cell steps per tick**. With 4 sub-cells p
 
 ### Path Following (`_walkPath`)
 
-Each tick, `_walkPath` calls `_followPath` up to `animal.speed` times:
+Each tick, `_walkPath` calls `_followPath` up to `speed ± 1` times (with terrain adjustment):
+- A random **speed jitter** of −1, 0, or +1 sub-steps is applied each tick, so animals of the same species move at slightly different paces
+- **Terrain speed factor** reduces effective steps on difficult ground: MUD/MOUNTAIN 50%, SAND/ROCK 75%
 - Each `_followPath` moves 0.25 tiles toward the next A* waypoint center
 - Movement is along the dominant axis (larger delta of dx/dy)
 - Waypoint is considered reached when within 0.125 of its center
@@ -72,9 +74,10 @@ Each tick, `_walkPath` calls `_followPath` up to `animal.speed` times:
 
 ### Random Walk
 
-Random walk executes `animal.speed` sub-steps per tick:
+Random walk executes `speed ± 1` sub-steps per tick (with terrain adjustment):
 - Each sub-step moves 0.25 tiles in a random cardinal direction
-- Home bias is preserved (60% chance to prefer home direction when far)
+- **Directional inertia:** 50% chance to keep the previous step's direction, producing smoother, more natural paths instead of zig-zag
+- Home bias is preserved (60% chance to prefer home direction when far, overrides inertia)
 
 ### Tile Occupancy
 
@@ -85,8 +88,18 @@ Random walk executes `animal.speed` sub-steps per tick:
 ### Energy Costs
 
 - Walking energy cost is applied **once per tile boundary crossing**, not per sub-step
-- This preserves the original energy economy despite 4× more movement calls per tick
-- Running/fleeing energy is applied once per action (not per movement step)
+- **Terrain energy multiplier** increases cost on difficult ground:
+
+| Terrain | Speed Factor | Energy Multiplier |
+|---------|-------------|-------------------|
+| Soil, Dirt, Fertile Soil | 1.0× | 1.0× |
+| Sand | 0.75× | 1.3× |
+| Rock | 0.75× | 1.3× |
+| Mud | 0.5× | 1.5× |
+| Mountain | 0.5× | 1.8× |
+
+- Running/hunting energy is **proportional to tiles actually crossed** — a blocked predator pays only IDLE cost instead of full RUN
+- Day/night activity penalty (1.3×) applies on top of terrain multipliers for species active during the wrong period
 
 ---
 

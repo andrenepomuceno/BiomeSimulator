@@ -49,9 +49,9 @@ simulation.js
 
 behaviors.js
 ├── entities.js (AnimalState)
-├── world.js (terrain checks)
+├── world.js (terrain checks, terrain type constants for speed/energy modifiers)
 ├── pathfinding.js (aStar)
-└── config.js (sex/reproduction constants)
+└── config.js (sex/reproduction constants, SUB_CELL_STEP/DIVISOR)
 
 simWorker.js
 ├── simulation.js (SimulationEngine)

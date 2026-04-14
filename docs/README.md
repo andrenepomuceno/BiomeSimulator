@@ -1,19 +1,46 @@
 # EcoGame Documentation
 
-Detailed technical documentation for the EcoGame ecosystem simulation.
+Navigation: [Documentation Home](README.md) | [Architecture](architecture.md) | [Engine](engine/) | [Simulation](simulation/) | [Renderer](renderer/) | [API](api/)
+Return to [Documentation Home](README.md).
 
-Start here for the technical docs, or go back to the project overview in [../README.md](../README.md).
+Technical documentation for the EcoGame ecosystem simulation. For the project overview and quick start, see [../README.md](../README.md).
 
 ---
 
-## Contents
+## Sections
 
-| Document | Description |
-|----------|-------------|
-| [Architecture](architecture.md) | System overview, layer boundaries, data flow, store structure, design decisions |
-| [Engine](engine.md) | Engine layer reference: config, species, world model, simulation engine, terrain generation, pathfinding, spatial hash |
-| [Game Logic](game-logic.md) | Simulation rules: animal AI decision tree, energy system, combat, reproduction, plant lifecycle, day/night cycle |
-| [Renderer](renderer.md) | Pixi.js rendering: layer stack, camera, terrain/plant/entity rendering, emoji textures, viewport culling |
-| [API](API.md) | Web Worker message protocol: commands, responses, data types |
+| Section | Description |
+|---------|-------------|
+| [Architecture](architecture.md) | High-level system design, layer boundaries, data flow, component tree, design decisions |
+| [Engine](engine/) | Config, species registries, world model, simulation engine, pathfinding, spatial hash |
+| [Simulation Rules](simulation/) | Animal AI, movement, energy, HP, combat, reproduction, plant lifecycle |
+| [Renderer](renderer/) | Pixi.js layer stack, camera, entity/plant/terrain rendering, emoji textures |
+| [Worker API](api/) | Main↔Worker message protocol: commands, responses, data types |
 
-For setup, build commands, and performance profiling workflows, see [../frontend/README.md](../frontend/README.md).
+For setup, build commands, and performance profiling, see [../frontend/README.md](../frontend/README.md).
+
+---
+
+## Navigation by Task
+
+**Understanding the system:**
+1. Start with [Architecture](architecture.md) for the big picture
+2. Dive into [Engine](engine/) for module structure and species data
+
+**Working on animal behavior:**
+1. [Animal AI Decision Tree](simulation/ai.md)
+2. [Movement System](simulation/movement.md)
+3. [Energy & Needs](simulation/energy.md)
+4. [Species config](engine/animal-species.md) for threshold tuning
+
+**Working on plant systems:**
+1. [Plant Lifecycle](simulation/plants.md)
+2. [Plant Species Registry](engine/plant-species.md)
+
+**Working on rendering:**
+1. [Renderer Overview & Camera](renderer/overview.md)
+2. [Rendering Layers](renderer/layers.md)
+
+**Extending the Worker API:**
+1. [Commands reference](api/commands.md)
+2. [Messages & data types](api/messages.md)

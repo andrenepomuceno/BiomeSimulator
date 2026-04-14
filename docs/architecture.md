@@ -1,8 +1,11 @@
 # Architecture
 
+Navigation: [Documentation Home](README.md) > [Architecture](architecture.md)
+Return to [Documentation Home](README.md).
+
 High-level overview of how EcoGame is structured and how data flows between layers.
 
-Related documentation: [README](README.md), [Engine](engine.md), [Renderer](renderer.md), [API](API.md).
+Related documentation: [README](README.md), [Engine](engine/), [Renderer](renderer/), [API](api/).
 
 ---
 
@@ -37,7 +40,7 @@ Related documentation: [README](README.md), [Engine](engine.md), [Renderer](rend
 |-------|-------|
 | **Engine** (`src/engine/`) | No DOM, no React, no Pixi. Pure classes and functions. Must be serializable for Worker. |
 | **Worker** (`src/worker/`) | Hosts the engine. Communicates via `postMessage` only. |
-| **Store** (`src/store/`) | Single Zustand store. Immutable updates via `set()`. No side effects. Includes `gameConfig` (synced from worker on `worldReady`). |
+| **Store** (`src/store/`) | Single Zustand store. Immutable updates via `set()`. No side effects. |
 | **Hooks** (`src/hooks/`) | Bridge worker messages to store. Own the worker lifecycle. |
 | **Renderer** (`src/renderer/`) | Pixi.js only. No game logic. Reads data, draws frames. |
 | **Components** (`src/components/`) | React + Bootstrap UI. Read store, dispatch commands via hooks. |
@@ -121,53 +124,7 @@ If tool = ERASE:
 
 ## Worker Protocol
 
-Communication between main thread and worker uses structured messages.
-
-For the full message schema and payload examples, see [API](API.md).
-
-### Main → Worker
-
-| Command | Params | Description |
-|---------|--------|-------------|
-| `generate` | `config?` | Create new world |
-| `start` | — | Begin tick loop |
-| `pause` | — | Stop tick loop |
-| `resume` | — | Resume tick loop |
-| `step` | — | Single tick |
-| `setSpeed` | `tps` | Change tick rate (1–120) |
-| `editTerrain` | `changes[]` | Modify terrain tiles |
-| `placeEntity` | `entityType, x, y` | Spawn entity |
-| `removeEntity` | `entityId` | Kill entity |
-| `getTileInfo` | `x, y` | Query tile data |
-| `saveState` | — | Serialize world |
-| `loadState` | `state` | Restore world |
-| `reset` | — | Reset simulation |
-
-### Worker → Main
-
-| Type | Payload | When |
-|------|---------|------|
-| `worldReady` | terrain, plants, animals, clock, dimensions | After generate/load |
-| `tick` | clock, animals, plantChanges, stats, profiling?, incremental? | Each engine tick (may be full or delta) |
-| `tileInfo` | terrain, plant, animals at tile | On getTileInfo |
-| `entityPlaced` | entity dict | On placeEntity |
-| `entityRemoved` | entityId, ok | On removeEntity |
-| `savedState` | full serialized world data | On saveState |
-
-### Fauna Sub-Worker Protocol (`faunaWorker.js`)
-
-| Direction | Type | Payload |
-|-----------|------|---------|
-| main→sub | `init` | config, terrain, waterProximity, plantType/Stage/Fruit, occupancy, width, height |
-| main→sub | `tick` | animalStates[], tick, isNight (transferable ArrayBuffers for plant grids) |
-| sub→main | `result` | deltas[], births[], plantChanges[], deadIds[] |
-| main→sub | `dispose` | — (terminate) |
-
-Sub-workers receive immutable config and terrain once on `init`, then per-tick mutable animal chunks. They run `decideAndAct` locally and return deltas rather than full state.
-
-### Binary Data
-
-Terrain and plant arrays are sent as `ArrayBuffer` copies (not transferred) so the worker retains its own arrays.
+Communication between main thread and worker uses structured messages. See [API Reference](api/) for the full schema and payload examples.
 
 ---
 
@@ -252,3 +209,14 @@ App
 | **Integer spatial hash keys** | Packed `(cx & 0xFFFF) | ((cy & 0xFFFF) << 16)` avoids string allocation in hot loop |
 | **Ring buffer action history** | O(1) `logAction` replaces O(n) `Array.shift()` — constant time regardless of history size |
 | **Lazy species population cache** | `World.getAliveSpeciesCount()` caches per tick; eliminates O(N) scan in mating checks |
+
+---
+
+## Deep-Dive Docs
+
+Use this page for the system map, then continue in focused references:
+
+- [Engine Reference](engine/)
+- [Simulation Rules](simulation/)
+- [Renderer Reference](renderer/)
+- [Worker API Reference](api/)

@@ -21,14 +21,14 @@ const POP_OMNI_LARGE = 80;    // Large omnivores (Bear)
 const POP_OMNI_MED = 300;     // Medium omnivores (Boar, Raccoon, Crow, Lizard)
 
 const DEFAULT_DECISION_THRESHOLDS = {
-  drink_opportunistic: 25,
-  eat_opportunistic: 20,
+  drink_opportunistic: 18,
+  eat_opportunistic: 15,
   eat_seed_min_hunger: 50,
   eat_adult_plant_min_hunger: 35,
-  critical_thirst: 55,
-  critical_hunger: 45,
-  moderate_hunger: 30,
-  moderate_thirst: 35,
+  critical_thirst: 45,
+  critical_hunger: 38,
+  moderate_hunger: 22,
+  moderate_thirst: 25,
   sleep_energy_min: 20,
   mate_energy_min: 50,
   mate_search_radius_min: 10,
@@ -50,8 +50,8 @@ const DEFAULT_METABOLIC_MULTIPLIERS = {
 };
 
 const DEFAULT_HEALTH_PENALTY = {
-  threshold_fraction: 0.8,
-  max_penalty: 0.5,
+  threshold_fraction: 0.7,
+  max_penalty: 0.4,
 };
 
 const DEFAULT_RECOVERY = {

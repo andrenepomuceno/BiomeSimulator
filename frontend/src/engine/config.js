@@ -97,6 +97,8 @@ export const DEFAULT_CONFIG = {
 
   // Fauna — global population budget distributed proportionally per species (0 = use base caps)
   max_animal_population: 10000,
+  hunger_multiplier: 1.6,
+  thirst_multiplier: 1.6,
 
   // Fauna — derived from animalSpecies.js
   initial_animal_counts: buildInitialAnimalCounts(),

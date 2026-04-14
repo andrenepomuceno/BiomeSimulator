@@ -150,7 +150,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: false,
     reproduction_type: 'VIVIPAROUS',
     gestation_period: 30,
-    clutch_size: [2, 5],
+    clutch_size: [1, 3],
   },
 
   SQUIRREL: {
@@ -226,7 +226,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: true,
     reproduction_type: 'OVIPAROUS',
     incubation_period: 20,
-    clutch_size: [3, 6],
+    clutch_size: [1, 3],
     egg_hp: 8,
   },
 
@@ -342,7 +342,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: true,
     reproduction_type: 'VIVIPAROUS',
     gestation_period: 60,
-    clutch_size: [2, 4],
+    clutch_size: [1, 3],
   },
 
   WOLF: {
@@ -380,7 +380,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: true,
     reproduction_type: 'VIVIPAROUS',
     gestation_period: 80,
-    clutch_size: [2, 4],
+    clutch_size: [1, 3],
   },
 
   BOAR: {
@@ -418,7 +418,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: true,
     reproduction_type: 'VIVIPAROUS',
     gestation_period: 90,
-    clutch_size: [2, 5],
+    clutch_size: [1, 3],
   },
 
   BEAR: {
@@ -496,7 +496,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: true,
     reproduction_type: 'VIVIPAROUS',
     gestation_period: 50,
-    clutch_size: [2, 4],
+    clutch_size: [1, 3],
   },
 
   CROW: {
@@ -536,7 +536,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: true,
     reproduction_type: 'VIVIPAROUS',
     gestation_period: 30,
-    clutch_size: [2, 4],
+    clutch_size: [1, 3],
   },
 
   MOSQUITO: {
@@ -575,7 +575,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: false,
     reproduction_type: 'OVIPAROUS',
     incubation_period: 12,
-    clutch_size: [4, 10],
+    clutch_size: [1, 3],
     egg_hp: 5,
   },
 
@@ -614,7 +614,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: false,
     reproduction_type: 'METAMORPHOSIS',
     incubation_period: 20,
-    clutch_size: [3, 6],
+    clutch_size: [1, 3],
     egg_hp: 8,
     pupa_age: 30,
     pupa_duration: 60,
@@ -655,7 +655,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: false,
     reproduction_type: 'OVIPAROUS',
     incubation_period: 18,
-    clutch_size: [3, 6],
+    clutch_size: [1, 3],
     egg_hp: 8,
   },
 
@@ -694,7 +694,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: true,
     reproduction_type: 'OVIPAROUS',
     incubation_period: 30,
-    clutch_size: [2, 5],
+    clutch_size: [1, 3],
     egg_hp: 10,
   },
 
@@ -733,7 +733,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: false,
     reproduction_type: 'OVIPAROUS',
     incubation_period: 45,
-    clutch_size: [3, 6],
+    clutch_size: [1, 3],
     egg_hp: 15,
   },
 
@@ -812,7 +812,7 @@ const ANIMAL_SPECIES = {
     can_scavenge: true,
     reproduction_type: 'OVIPAROUS',
     incubation_period: 70,
-    clutch_size: [4, 8],
+    clutch_size: [1, 3],
     egg_hp: 25,
   },
 };

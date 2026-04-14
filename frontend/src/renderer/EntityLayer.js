@@ -395,8 +395,8 @@ export class EntityLayer {
       const anchorY = this._flyingSet.has(a.species) ? 1.0 : FEET_ANCHOR_Y;
       if (sprite.anchor.y !== anchorY) sprite.anchor.set(0.5, anchorY);
 
-      // Hide sprite when zoomed out (pixel overlay takes over)
-      if (!showSprites) sprite.visible = false;
+      // Toggle sprite visibility based on zoom (pixel overlay takes over when zoomed out)
+      sprite.visible = showSprites;
 
       // Y-sort: higher Y values render in front
       sprite.zIndex = Math.round(a.y * 1000);

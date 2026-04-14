@@ -1,7 +1,7 @@
 /**
  * Procedural pixel-art sprite generator for fauna.
  *
- * Draws each species at 32×32 design resolution, upscaled 4× to 128×128.
+ * Draws each species at 64×64 design resolution, upscaled 4× to 256×256.
  * Species parameters live in individual files under sprites/animals/species/.
  * Drawing templates live under sprites/animals/templates/.
  *

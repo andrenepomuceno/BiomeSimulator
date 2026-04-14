@@ -1,83 +1,96 @@
 /**
  * Palm template — coconut palm (tall trunk + fronds).
- * Stages 2-5 at 32×32 design grid, 3 animation frames for sway.
+ * Stages 2-5 at 64×64 design grid, 3 animation frames for sway.
  */
-import { rect, darken, lighten } from '../../helpers.js';
+import { px, rect, darken, lighten, noise } from '../../helpers.js';
 
 export function drawPalm(ctx, params, stage, frame) {
   const { trunk, trunkDark, leaf, leafDark, fruit, fruitAccent } = params;
-  const cx = 14;
-  const baseY = 30;
+  const cx = 28;
+  const baseY = 60;
 
-  const swayOff = frame === 0 ? 0 : (frame === 1 ? 1 : -1);
+  const swayOff = frame === 0 ? 0 : (frame === 1 ? 2 : -2);
+
+  function barkTex(x, y, w, h) {
+    for (let dy = 0; dy < h; dy++)
+      for (let dx = 0; dx < w; dx++)
+        if (noise(x + dx, y + dy) > 0.76) px(ctx, x + dx, y + dy, trunkDark);
+  }
+
+  function frondTex(x, y, w, h) {
+    for (let dy = 0; dy < h; dy++)
+      for (let dx = 0; dx < w; dx++)
+        if (noise(x + dx, y + dy) > 0.78) px(ctx, x + dx, y + dy, leafDark);
+  }
 
   if (stage === 2) {
-    // Young sprout: thin trunk + 2 small fronds
-    rect(ctx, cx + 1, baseY - 10, 2, 10, trunk);
-    rect(ctx, cx, baseY - 6, 1, 6, trunkDark);
+    rect(ctx, cx + 2, baseY - 20, 4, 20, trunk);
+    rect(ctx, cx, baseY - 12, 2, 12, trunkDark);
+    barkTex(cx, baseY - 20, 6, 20);
     // Fronds
-    rect(ctx, cx - 2 + swayOff, baseY - 12, 3, 2, leaf);
-    rect(ctx, cx + 3 + swayOff, baseY - 12, 3, 2, leaf);
-    rect(ctx, cx + swayOff, baseY - 13, 4, 2, leaf);
-    rect(ctx, cx + 1 + swayOff, baseY - 14, 2, 2, lighten(leaf, 0.15));
-    // Ground
-    rect(ctx, cx - 1, baseY, 6, 2, darken(trunk, 0.3));
+    rect(ctx, cx - 4 + swayOff, baseY - 24, 6, 4, leaf);
+    rect(ctx, cx + 6 + swayOff, baseY - 24, 6, 4, leaf);
+    rect(ctx, cx + swayOff, baseY - 26, 8, 4, leaf);
+    rect(ctx, cx + 2 + swayOff, baseY - 28, 4, 4, lighten(leaf, 0.15));
+    frondTex(cx - 4 + swayOff, baseY - 28, 16, 8);
+    rect(ctx, cx - 2, baseY, 12, 4, darken(trunk, 0.3));
   } else if (stage === 3) {
-    // Adult sprout: taller with more fronds
-    rect(ctx, cx + 1, baseY - 16, 2, 16, trunk);
-    rect(ctx, cx, baseY - 10, 1, 10, trunkDark);
+    rect(ctx, cx + 2, baseY - 32, 4, 32, trunk);
+    rect(ctx, cx, baseY - 20, 2, 20, trunkDark);
+    barkTex(cx, baseY - 32, 6, 32);
     // Trunk segments
-    rect(ctx, cx, baseY - 12, 4, 1, trunkDark);
-    rect(ctx, cx, baseY - 8, 4, 1, trunkDark);
-    // Fronds (3 directions)
-    rect(ctx, cx - 4 + swayOff, baseY - 18, 5, 2, leaf);
-    rect(ctx, cx + 3 + swayOff, baseY - 18, 5, 2, leaf);
-    rect(ctx, cx - 3 + swayOff, baseY - 19, 4, 2, leafDark);
-    rect(ctx, cx + 3 + swayOff, baseY - 19, 4, 2, leafDark);
-    rect(ctx, cx + swayOff, baseY - 20, 4, 2, lighten(leaf, 0.2));
-    // Ground
-    rect(ctx, cx - 2, baseY, 8, 2, darken(trunk, 0.3));
+    rect(ctx, cx, baseY - 24, 8, 2, trunkDark);
+    rect(ctx, cx, baseY - 16, 8, 2, trunkDark);
+    // Fronds
+    rect(ctx, cx - 8 + swayOff, baseY - 36, 10, 4, leaf);
+    rect(ctx, cx + 6 + swayOff, baseY - 36, 10, 4, leaf);
+    rect(ctx, cx - 6 + swayOff, baseY - 38, 8, 4, leafDark);
+    rect(ctx, cx + 6 + swayOff, baseY - 38, 8, 4, leafDark);
+    rect(ctx, cx + swayOff, baseY - 40, 8, 4, lighten(leaf, 0.2));
+    frondTex(cx - 8 + swayOff, baseY - 40, 24, 8);
+    rect(ctx, cx - 4, baseY, 16, 4, darken(trunk, 0.3));
   } else if (stage === 4) {
-    // Adult: tall palm
-    rect(ctx, cx + 1, baseY - 22, 2, 22, trunk);
-    rect(ctx, cx, baseY - 14, 1, 14, trunkDark);
+    rect(ctx, cx + 2, baseY - 44, 4, 44, trunk);
+    rect(ctx, cx, baseY - 28, 2, 28, trunkDark);
+    barkTex(cx, baseY - 44, 6, 44);
     // Trunk segments
-    rect(ctx, cx, baseY - 18, 4, 1, trunkDark);
-    rect(ctx, cx, baseY - 14, 4, 1, trunkDark);
-    rect(ctx, cx, baseY - 10, 4, 1, trunkDark);
-    // Fronds — wider drooping leaves
-    rect(ctx, cx - 8 + swayOff, baseY - 23, 9, 2, leaf);
-    rect(ctx, cx - 7 + swayOff, baseY - 21, 5, 2, leafDark);
-    rect(ctx, cx + 3 + swayOff, baseY - 23, 9, 2, leaf);
-    rect(ctx, cx + 6 + swayOff, baseY - 21, 5, 2, leafDark);
-    // Mid fronds angled
-    rect(ctx, cx - 5 + swayOff, baseY - 25, 6, 2, leaf);
-    rect(ctx, cx + 3 + swayOff, baseY - 25, 6, 2, leaf);
-    // Top crown
-    rect(ctx, cx - 1 + swayOff, baseY - 27, 6, 3, leaf);
-    rect(ctx, cx + swayOff, baseY - 28, 4, 2, lighten(leaf, 0.2));
-    // Ground
-    rect(ctx, cx - 2, baseY, 8, 2, darken(trunk, 0.3));
+    rect(ctx, cx, baseY - 36, 8, 2, trunkDark);
+    rect(ctx, cx, baseY - 28, 8, 2, trunkDark);
+    rect(ctx, cx, baseY - 20, 8, 2, trunkDark);
+    // Fronds — wide drooping
+    rect(ctx, cx - 16 + swayOff, baseY - 46, 18, 4, leaf);
+    rect(ctx, cx - 14 + swayOff, baseY - 42, 10, 4, leafDark);
+    rect(ctx, cx + 6 + swayOff, baseY - 46, 18, 4, leaf);
+    rect(ctx, cx + 12 + swayOff, baseY - 42, 10, 4, leafDark);
+    // Mid fronds
+    rect(ctx, cx - 10 + swayOff, baseY - 50, 12, 4, leaf);
+    rect(ctx, cx + 6 + swayOff, baseY - 50, 12, 4, leaf);
+    // Crown
+    rect(ctx, cx - 2 + swayOff, baseY - 54, 12, 6, leaf);
+    rect(ctx, cx + swayOff, baseY - 56, 8, 4, lighten(leaf, 0.2));
+    frondTex(cx - 16 + swayOff, baseY - 56, 40, 14);
+    rect(ctx, cx - 4, baseY, 16, 4, darken(trunk, 0.3));
   } else if (stage === 5) {
-    // Fruit: palm with coconuts
-    rect(ctx, cx + 1, baseY - 22, 2, 22, trunk);
-    rect(ctx, cx, baseY - 14, 1, 14, trunkDark);
-    rect(ctx, cx, baseY - 18, 4, 1, trunkDark);
-    rect(ctx, cx, baseY - 14, 4, 1, trunkDark);
-    rect(ctx, cx, baseY - 10, 4, 1, trunkDark);
-    // Fronds — same wide shape
-    rect(ctx, cx - 8 + swayOff, baseY - 23, 9, 2, leaf);
-    rect(ctx, cx - 7 + swayOff, baseY - 21, 5, 2, leafDark);
-    rect(ctx, cx + 3 + swayOff, baseY - 23, 9, 2, leaf);
-    rect(ctx, cx + 6 + swayOff, baseY - 21, 5, 2, leafDark);
-    rect(ctx, cx - 5 + swayOff, baseY - 25, 6, 2, leaf);
-    rect(ctx, cx + 3 + swayOff, baseY - 25, 6, 2, leaf);
-    rect(ctx, cx - 1 + swayOff, baseY - 27, 6, 3, leaf);
-    // Coconuts hanging below fronds
-    rect(ctx, cx - 1 + swayOff, baseY - 22, 3, 3, fruit);
-    rect(ctx, cx + 2 + swayOff, baseY - 22, 3, 3, fruit);
-    rect(ctx, cx + swayOff, baseY - 21, 2, 2, fruitAccent || lighten(fruit, 0.2));
-    // Ground
-    rect(ctx, cx - 2, baseY, 8, 2, darken(trunk, 0.3));
+    rect(ctx, cx + 2, baseY - 44, 4, 44, trunk);
+    rect(ctx, cx, baseY - 28, 2, 28, trunkDark);
+    barkTex(cx, baseY - 44, 6, 44);
+    rect(ctx, cx, baseY - 36, 8, 2, trunkDark);
+    rect(ctx, cx, baseY - 28, 8, 2, trunkDark);
+    rect(ctx, cx, baseY - 20, 8, 2, trunkDark);
+    // Fronds
+    rect(ctx, cx - 16 + swayOff, baseY - 46, 18, 4, leaf);
+    rect(ctx, cx - 14 + swayOff, baseY - 42, 10, 4, leafDark);
+    rect(ctx, cx + 6 + swayOff, baseY - 46, 18, 4, leaf);
+    rect(ctx, cx + 12 + swayOff, baseY - 42, 10, 4, leafDark);
+    rect(ctx, cx - 10 + swayOff, baseY - 50, 12, 4, leaf);
+    rect(ctx, cx + 6 + swayOff, baseY - 50, 12, 4, leaf);
+    rect(ctx, cx - 2 + swayOff, baseY - 54, 12, 6, leaf);
+    frondTex(cx - 16 + swayOff, baseY - 56, 40, 14);
+    // Coconuts
+    rect(ctx, cx - 2 + swayOff, baseY - 44, 6, 6, fruit);
+    rect(ctx, cx + 4 + swayOff, baseY - 44, 6, 6, fruit);
+    rect(ctx, cx + swayOff, baseY - 42, 4, 4, fruitAccent || lighten(fruit, 0.2));
+    px(ctx, cx - 1 + swayOff, baseY - 43, lighten(fruit, 0.2));
+    rect(ctx, cx - 4, baseY, 16, 4, darken(trunk, 0.3));
   }
 }

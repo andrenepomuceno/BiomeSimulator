@@ -1,8 +1,8 @@
 /**
  * Procedural pixel-art sprite generator for flora.
  *
- * Draws each plant species × stage × frame at 32×32 design resolution,
- * upscaled 4× to 128×128.  Species parameters live in plants/species/,
+ * Draws each plant species × stage × frame at 64×64 design resolution,
+ * upscaled 4× to 256×256.  Species parameters live in plants/species/,
  * drawing templates in plants/templates/.
  *
  * Public API:

@@ -8,6 +8,6 @@ export default {
   leafDark: '#287060',
   fruit: '#6030d0',
   fruitAccent: '#8050e0',
-  bushW: 12,
-  bushH: 12,
+  bushW: 24,
+  bushH: 24,
 };

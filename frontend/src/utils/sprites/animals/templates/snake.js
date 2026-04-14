@@ -1,68 +1,150 @@
 /**
- * Snake drawing template â€” 32Ã—32 design grid.
- * Used by: snake. Thick body (4Ã—4 segments), large head.
+ * Snake drawing template — 64x64 design grid.
+ * Used by: snake species.
+ *
+ * Sinusoidal body segments with scale patterns, forked tongue, belly plates.
  */
-import { px, rect, darken, lighten, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawSnake(ctx, params, dir, frame) {
-  const { body, accent, eye, pattern, belly } = params;
+  const { body, accent, pattern, belly, eye, headW, headH, segments, segW } = params;
   const shadow = darken(body, 0.15);
-  const highlight = lighten(body, 0.1);
-  const cx = 16;
-  const cy = 16;
-  const phase = frame * 0.9;
+  const highlight = lighten(body, 0.10);
+  const outline = darken(body, 0.3);
+  const patternDark = pattern ? darken(pattern, 0.1) : null;
+  const cx = 32;
+  const cy = 32;
+  const phase = (frame / 3) * Math.PI * 2;
+  const isVert = dir === DOWN || dir === UP;
 
-  if (dir === DOWN || dir === UP) {
-    const segCount = 9;
-    const headEnd = dir === DOWN ? 0 : segCount - 1;
-    for (let i = 0; i < segCount; i++) {
-      const y = dir === DOWN ? cy - 8 + i * 2 : cy + 8 - i * 2;
-      const waveX = Math.sin(i * 0.7 + phase) * 3.0;
-      const x = cx - 2 + Math.round(waveX);
-      const isHead = i === headEnd;
-      const color = isHead ? body : (i % 3 === 0 ? pattern : (i % 2 === 0 ? body : accent));
-      rect(ctx, x, y, 4, 2, color);
-      rect(ctx, x + 1, y, 2, 1, highlight);
-      rect(ctx, x, y + 1, 4, 1, shadow);
-      if (belly && waveX < 0) rect(ctx, x + 2, y + 1, 2, 1, belly);
+  // Segment helpers
+  const segCount = segments || 9;
+  const sw = segW || 6;
+  const segH = sw;
+
+  // Draw a single segment with scale detail
+  function seg(sx, sy, w, h, primary, secondary) {
+    rect(ctx, sx, sy, w, h, primary);
+    // Belly stripe
+    if (isVert) {
+      rect(ctx, sx + 1, sy, 2, h, belly || accent);
+    } else {
+      rect(ctx, sx, sy + h - 2, w, 2, belly || accent);
     }
+    // Scale pattern
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        if (noise(sx + dx, sy + dy) > 0.78) px(ctx, sx + dx, sy + dy, secondary || shadow);
+      }
+    }
+  }
+
+  if (isVert) {
+    const direction = dir === DOWN ? 1 : -1;
+    const startY = cy - direction * Math.floor(segCount * segH / 2);
+
+    for (let i = 0; i < segCount; i++) {
+      const yOff = startY + i * segH * direction;
+      const xOff = cx + Math.round(Math.sin(phase + i * 0.6) * 8);
+      const w = sw + (i < 2 ? 2 : i > segCount - 3 ? -(segCount - 1 - i) : 0);
+      const col = i % 3 === 0 && pattern ? pattern : (i % 2 === 0 ? body : accent);
+      const secCol = i % 3 === 0 && patternDark ? patternDark : shadow;
+
+      seg(xOff - Math.floor(w / 2), yOff, w, segH, col, secCol);
+
+      // Dorsal diamond pattern
+      if (pattern && i > 0 && i < segCount - 1 && i % 2 === 1) {
+        px(ctx, xOff, yOff + 1, pattern);
+        px(ctx, xOff - 1, yOff + 2, pattern);
+        px(ctx, xOff + 1, yOff + 2, pattern);
+        px(ctx, xOff, yOff + 3, pattern);
+      }
+    }
+
     // Head
-    const hy = dir === DOWN ? cy - 10 : cy + 8;
-    rect(ctx, cx - 4, hy, 8, 4, body);
-    rect(ctx, cx - 3, hy, 6, 2, highlight);
-    rect(ctx, cx - 4, hy + 2, 8, 2, shadow);
+    const hw = headW || 10;
+    const hh = headH || 7;
+    const headY = dir === DOWN ? startY - hh - 1 : startY + segCount * segH + 1;
+    const hx = cx - Math.floor(hw / 2);
+
+    // Head shape (slightly rounded)
+    rect(ctx, hx + 1, headY, hw - 2, 1, body);
+    rect(ctx, hx, headY + 1, hw, hh - 2, body);
+    rect(ctx, hx + 1, headY + hh - 1, hw - 2, 1, shadow);
+    // Scale texture on head
+    for (let dy = 0; dy < hh; dy++) {
+      for (let dx = 0; dx < hw; dx++) {
+        if (noise(hx + dx, headY + dy) > 0.8) px(ctx, hx + dx, headY + dy, shadow);
+      }
+    }
+    // Eyes (slit pupil)
     if (dir === DOWN) {
-      rect(ctx, cx - 3, hy + 2, 2, 2, eye);
-      rect(ctx, cx + 2, hy + 2, 2, 2, eye);
-      // Tongue
-      rect(ctx, cx - 1, hy + 4, 2, 2, '#ff0000');
-      rect(ctx, cx + 1, hy + 4, 2, 2, '#ff0000');
-      rect(ctx, cx - 2, hy + 6, 2, 2, '#cc0000');
-      rect(ctx, cx + 2, hy + 6, 2, 2, '#cc0000');
+      rect(ctx, hx + 2, headY + 2, 3, 3, eye);
+      rect(ctx, hx + hw - 5, headY + 2, 3, 3, eye);
+      px(ctx, hx + 3, headY + 2, '#000000');
+      px(ctx, hx + hw - 4, headY + 2, '#000000');
+      px(ctx, hx + 2, headY + 2, '#ffffff');
+      px(ctx, hx + hw - 3, headY + 2, '#ffffff');
     }
+    // Forked tongue
+    const tongueY = dir === DOWN ? headY + hh : headY - 3;
+    const tongueDir = dir === DOWN ? 1 : -1;
+    px(ctx, cx, tongueY, '#cc2222');
+    px(ctx, cx, tongueY + tongueDir, '#cc2222');
+    px(ctx, cx - 1, tongueY + tongueDir * 2, '#cc2222');
+    px(ctx, cx + 1, tongueY + tongueDir * 2, '#cc2222');
   } else {
+    // LEFT / RIGHT
     const flip = dir === LEFT;
-    const f = flip ? (x) => 31 - x : (x) => x;
-    const segCount = 9;
+    const f = flip ? (x) => 63 - x : (x) => x;
+    const direction = 1;
+    const startX = cx - Math.floor(segCount * sw / 2);
+
     for (let i = 0; i < segCount; i++) {
-      const sx = cx - 8 + i * 2;
-      const wave = Math.sin(i * 0.7 + phase) * 3.0;
-      const y = cy - 2 + Math.round(wave);
-      const color = i % 3 === 0 ? pattern : (i % 2 === 0 ? body : accent);
-      rect(ctx, f(sx), y, 2, 4, color);
-      rect(ctx, f(sx), y, 1, 4, highlight);
-      rect(ctx, f(sx + 1), y, 1, 4, shadow);
-      if (belly) rect(ctx, f(sx), y + 3, 2, 1, belly);
+      const xOff = startX + i * sw * direction;
+      const yOff = cy + Math.round(Math.sin(phase + i * 0.6) * 6);
+      const h = sw + (i < 2 ? 2 : i > segCount - 3 ? -(segCount - 1 - i) : 0);
+      const col = i % 3 === 0 && pattern ? pattern : (i % 2 === 0 ? body : accent);
+      const secCol = i % 3 === 0 && patternDark ? patternDark : shadow;
+
+      for (let dx = 0; dx < sw; dx++) {
+        for (let dy = 0; dy < h; dy++) {
+          const c = dy < h - 2 ? col : (belly || accent);
+          px(ctx, f(xOff + dx), yOff - Math.floor(h / 2) + dy, c);
+          if (noise(xOff + dx, yOff + dy) > 0.78) px(ctx, f(xOff + dx), yOff - Math.floor(h / 2) + dy, secCol);
+        }
+      }
+
+      // Dorsal pattern
+      if (pattern && i > 0 && i < segCount - 1 && i % 2 === 1) {
+        const py = yOff - Math.floor(h / 2);
+        px(ctx, f(xOff + 2), py + 1, pattern);
+        px(ctx, f(xOff + 1), py + 2, pattern);
+        px(ctx, f(xOff + 3), py + 2, pattern);
+        px(ctx, f(xOff + 2), py + 3, pattern);
+      }
     }
+
     // Head
-    const hx = cx + 10;
-    rect(ctx, f(hx), cy - 4, 4, 8, body);
-    rect(ctx, f(hx), cy - 3, 2, 6, highlight);
-    rect(ctx, f(hx + 2), cy - 3, 2, 6, shadow);
-    rect(ctx, f(hx + 2), cy - 3, 2, 2, eye);
-    // Tongue
-    rect(ctx, f(hx + 4), cy - 1, 2, 2, '#ff0000');
-    rect(ctx, f(hx + 6), cy - 2, 2, 2, '#cc0000');
-    rect(ctx, f(hx + 6), cy + 1, 2, 2, '#cc0000');
+    const hw = headW || 10;
+    const hh = headH || 7;
+    const headX = startX + segCount * sw + 1;
+    const hy = cy - Math.floor(hh / 2);
+
+    for (let dx = 0; dx < hw; dx++) for (let dy = 0; dy < hh; dy++) px(ctx, f(headX + dx), hy + dy, body);
+    for (let dx = 0; dx < hw; dx++) {
+      for (let dy = 0; dy < hh; dy++) {
+        if (noise(headX + dx, hy + dy) > 0.8) px(ctx, f(headX + dx), hy + dy, shadow);
+      }
+    }
+    // Eye
+    rect(ctx, f(headX + hw - 4), hy + 1, 3, 3, eye);
+    px(ctx, f(headX + hw - 3), hy + 2, '#000000');
+    px(ctx, f(headX + hw - 4), hy + 1, '#ffffff');
+    // Forked tongue
+    px(ctx, f(headX + hw), cy, '#cc2222');
+    px(ctx, f(headX + hw + 1), cy, '#cc2222');
+    px(ctx, f(headX + hw + 2), cy - 1, '#cc2222');
+    px(ctx, f(headX + hw + 2), cy + 1, '#cc2222');
   }
 }

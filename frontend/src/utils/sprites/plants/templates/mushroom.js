@@ -1,78 +1,75 @@
 /**
  * Mushroom template — mushroom (cap + stem).
- * Stages 2-5 at 32×32 design grid, 3 frames (mushrooms are rigid, frames are identical).
+ * Stages 2-5 at 64×64 design grid, 3 frames (slight cap wobble).
  */
-import { rect, darken, lighten } from '../../helpers.js';
+import { px, rect, darken, lighten, noise } from '../../helpers.js';
 
 export function drawMushroom(ctx, params, stage, frame) {
   const { stem, stemDark, cap, capDark, spots, fruit } = params;
-  const cx = 14;
-  const baseY = 28;
+  const cx = 28;
+  const baseY = 56;
 
-  // Mushrooms don't sway, but frames can show slight cap wobble
-  const wobble = frame === 1 ? 1 : (frame === 2 ? -1 : 0);
+  const wobble = frame === 1 ? 2 : (frame === 2 ? -2 : 0);
+
+  function capTex(x, y, w, h) {
+    for (let dy = 0; dy < h; dy++)
+      for (let dx = 0; dx < w; dx++)
+        if (noise(x + dx, y + dy) > 0.78) px(ctx, x + dx, y + dy, capDark);
+  }
 
   if (stage === 2) {
-    // Young: tiny mushroom
-    rect(ctx, cx + 1, baseY - 4, 2, 4, stem);
-    rect(ctx, cx, baseY - 6, 4, 3, cap);
-    rect(ctx, cx + 1, baseY - 6, 2, 1, lighten(cap, 0.2));
-    // Ground
-    rect(ctx, cx - 1, baseY, 6, 2, darken(stem, 0.3));
+    rect(ctx, cx + 2, baseY - 8, 4, 8, stem);
+    rect(ctx, cx, baseY - 12, 8, 6, cap);
+    rect(ctx, cx + 2, baseY - 12, 4, 2, lighten(cap, 0.2));
+    capTex(cx, baseY - 12, 8, 6);
+    rect(ctx, cx - 2, baseY, 12, 4, darken(stem, 0.3));
   } else if (stage === 3) {
-    // Adult sprout: medium mushroom
-    rect(ctx, cx + 1, baseY - 8, 3, 8, stem);
-    rect(ctx, cx, baseY - 6, 1, 4, stemDark);
+    rect(ctx, cx + 2, baseY - 16, 6, 16, stem);
+    rect(ctx, cx, baseY - 12, 2, 8, stemDark);
     // Cap
-    rect(ctx, cx - 2 + wobble, baseY - 12, 8, 5, cap);
-    rect(ctx, cx - 1 + wobble, baseY - 14, 6, 3, cap);
-    // Shading
-    rect(ctx, cx - 1 + wobble, baseY - 8, 6, 2, capDark);
-    rect(ctx, cx + wobble, baseY - 14, 4, 2, lighten(cap, 0.2));
-    // Spots
+    rect(ctx, cx - 4 + wobble, baseY - 24, 16, 10, cap);
+    rect(ctx, cx - 2 + wobble, baseY - 28, 12, 6, cap);
+    rect(ctx, cx - 2 + wobble, baseY - 16, 12, 4, capDark);
+    rect(ctx, cx + wobble, baseY - 28, 8, 4, lighten(cap, 0.2));
+    capTex(cx - 4 + wobble, baseY - 28, 16, 14);
     if (spots) {
-      rect(ctx, cx + wobble, baseY - 12, 2, 2, spots);
-      rect(ctx, cx + 3 + wobble, baseY - 11, 2, 2, spots);
+      rect(ctx, cx + wobble, baseY - 24, 4, 4, spots);
+      rect(ctx, cx + 6 + wobble, baseY - 22, 4, 4, spots);
     }
-    // Ground
-    rect(ctx, cx - 2, baseY, 8, 2, darken(stem, 0.3));
+    rect(ctx, cx - 4, baseY, 16, 4, darken(stem, 0.3));
   } else if (stage === 4) {
-    // Adult: full mushroom
-    rect(ctx, cx + 1, baseY - 10, 3, 10, stem);
-    rect(ctx, cx, baseY - 6, 1, 6, stemDark);
+    rect(ctx, cx + 2, baseY - 20, 6, 20, stem);
+    rect(ctx, cx, baseY - 12, 2, 12, stemDark);
     // Large cap
-    rect(ctx, cx - 4 + wobble, baseY - 16, 12, 7, cap);
-    rect(ctx, cx - 3 + wobble, baseY - 18, 10, 3, cap);
-    // Shading
-    rect(ctx, cx - 3 + wobble, baseY - 10, 10, 2, capDark);
-    rect(ctx, cx - 2 + wobble, baseY - 18, 8, 2, lighten(cap, 0.2));
-    // Spots
+    rect(ctx, cx - 8 + wobble, baseY - 32, 24, 14, cap);
+    rect(ctx, cx - 6 + wobble, baseY - 36, 20, 6, cap);
+    rect(ctx, cx - 6 + wobble, baseY - 20, 20, 4, capDark);
+    rect(ctx, cx - 4 + wobble, baseY - 36, 16, 4, lighten(cap, 0.2));
+    capTex(cx - 8 + wobble, baseY - 36, 24, 20);
     if (spots) {
-      rect(ctx, cx - 2 + wobble, baseY - 16, 2, 2, spots);
-      rect(ctx, cx + 2 + wobble, baseY - 14, 2, 2, spots);
-      rect(ctx, cx + 5 + wobble, baseY - 15, 2, 2, spots);
+      rect(ctx, cx - 4 + wobble, baseY - 32, 4, 4, spots);
+      rect(ctx, cx + 4 + wobble, baseY - 28, 4, 4, spots);
+      rect(ctx, cx + 10 + wobble, baseY - 30, 4, 4, spots);
     }
-    // Gills under cap
-    rect(ctx, cx - 2 + wobble, baseY - 10, 8, 1, darken(stem, 0.15));
-    // Ground
-    rect(ctx, cx - 3, baseY, 10, 2, darken(stem, 0.3));
+    // Gills
+    rect(ctx, cx - 4 + wobble, baseY - 20, 16, 2, darken(stem, 0.15));
+    rect(ctx, cx - 6, baseY, 20, 4, darken(stem, 0.3));
   } else if (stage === 5) {
-    // Fruit: same cap but with spore clusters
-    rect(ctx, cx + 1, baseY - 10, 3, 10, stem);
-    rect(ctx, cx, baseY - 6, 1, 6, stemDark);
-    rect(ctx, cx - 4 + wobble, baseY - 16, 12, 7, cap);
-    rect(ctx, cx - 3 + wobble, baseY - 18, 10, 3, cap);
-    rect(ctx, cx - 3 + wobble, baseY - 10, 10, 2, capDark);
-    rect(ctx, cx - 2 + wobble, baseY - 18, 8, 2, lighten(cap, 0.2));
+    rect(ctx, cx + 2, baseY - 20, 6, 20, stem);
+    rect(ctx, cx, baseY - 12, 2, 12, stemDark);
+    rect(ctx, cx - 8 + wobble, baseY - 32, 24, 14, cap);
+    rect(ctx, cx - 6 + wobble, baseY - 36, 20, 6, cap);
+    rect(ctx, cx - 6 + wobble, baseY - 20, 20, 4, capDark);
+    rect(ctx, cx - 4 + wobble, baseY - 36, 16, 4, lighten(cap, 0.2));
+    capTex(cx - 8 + wobble, baseY - 36, 24, 20);
     if (spots) {
-      rect(ctx, cx - 2 + wobble, baseY - 16, 2, 2, spots);
-      rect(ctx, cx + 2 + wobble, baseY - 14, 2, 2, spots);
+      rect(ctx, cx - 4 + wobble, baseY - 32, 4, 4, spots);
+      rect(ctx, cx + 4 + wobble, baseY - 28, 4, 4, spots);
     }
     // Spore clusters
-    rect(ctx, cx - 3 + wobble, baseY - 10, 2, 2, fruit);
-    rect(ctx, cx + 5 + wobble, baseY - 10, 2, 2, fruit);
-    rect(ctx, cx + 1 + wobble, baseY - 9, 2, 2, fruit);
-    // Ground
-    rect(ctx, cx - 3, baseY, 10, 2, darken(stem, 0.3));
+    rect(ctx, cx - 6 + wobble, baseY - 20, 4, 4, fruit);
+    rect(ctx, cx + 10 + wobble, baseY - 20, 4, 4, fruit);
+    rect(ctx, cx + 2 + wobble, baseY - 18, 4, 4, fruit);
+    rect(ctx, cx - 6, baseY, 20, 4, darken(stem, 0.3));
   }
 }

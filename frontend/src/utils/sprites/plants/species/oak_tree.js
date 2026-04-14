@@ -10,7 +10,7 @@ export default {
   leafHighlight: '#389030',
   fruit: '#8a6428',
   fruitAccent: '#a07838',
-  canopyW: 20,
-  canopyH: 14,
-  trunkH: 14,
+  canopyW: 40,
+  canopyH: 28,
+  trunkH: 28,
 };

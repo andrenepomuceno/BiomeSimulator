@@ -1,82 +1,84 @@
 /**
  * Cactus template — segmented cactus with arms.
- * Stages 2-5 at 32×32 design grid, 3 frames (cacti are rigid, frames identical).
+ * Stages 2-5 at 64×64 design grid, 3 frames (cacti are rigid, frames identical).
  */
-import { rect, darken, lighten } from '../../helpers.js';
+import { px, rect, darken, lighten, noise } from '../../helpers.js';
 
 export function drawCactus(ctx, params, stage, frame) {
   const { body, bodyDark, highlight, flower, fruit } = params;
-  const cx = 14;
-  const baseY = 28;
+  const cx = 28;
+  const baseY = 56;
+  const spine = '#c8c880';
 
-  // Cacti don't sway; frames are identical
+  function ribTex(x, y, w, h) {
+    for (let dy = 0; dy < h; dy++)
+      for (let dx = 0; dx < w; dx++)
+        if (noise(x + dx, y + dy) > 0.78) px(ctx, x + dx, y + dy, bodyDark);
+  }
+
   if (stage === 2) {
-    // Young: small single column
-    rect(ctx, cx, baseY - 8, 4, 8, body);
-    rect(ctx, cx, baseY - 8, 1, 8, highlight);
-    rect(ctx, cx + 3, baseY - 8, 1, 8, bodyDark);
-    // Tip
-    rect(ctx, cx + 1, baseY - 9, 2, 2, lighten(body, 0.1));
-    // Ground
-    rect(ctx, cx - 2, baseY, 8, 2, darken(body, 0.4));
+    rect(ctx, cx, baseY - 16, 8, 16, body);
+    rect(ctx, cx, baseY - 16, 2, 16, highlight);
+    rect(ctx, cx + 6, baseY - 16, 2, 16, bodyDark);
+    ribTex(cx, baseY - 16, 8, 16);
+    rect(ctx, cx + 2, baseY - 18, 4, 4, lighten(body, 0.1));
+    rect(ctx, cx - 4, baseY, 16, 4, darken(body, 0.4));
   } else if (stage === 3) {
-    // Adult sprout: taller with one arm stub
-    rect(ctx, cx, baseY - 14, 4, 14, body);
-    rect(ctx, cx, baseY - 14, 1, 14, highlight);
-    rect(ctx, cx + 3, baseY - 14, 1, 14, bodyDark);
+    rect(ctx, cx, baseY - 28, 8, 28, body);
+    rect(ctx, cx, baseY - 28, 2, 28, highlight);
+    rect(ctx, cx + 6, baseY - 28, 2, 28, bodyDark);
+    ribTex(cx, baseY - 28, 8, 28);
     // Right arm stub
-    rect(ctx, cx + 4, baseY - 10, 4, 3, body);
-    rect(ctx, cx + 4, baseY - 10, 4, 1, highlight);
-    rect(ctx, cx + 7, baseY - 8, 1, 2, bodyDark);
-    // Tip
-    rect(ctx, cx + 1, baseY - 15, 2, 2, lighten(body, 0.1));
+    rect(ctx, cx + 8, baseY - 20, 8, 6, body);
+    rect(ctx, cx + 8, baseY - 20, 8, 2, highlight);
+    rect(ctx, cx + 14, baseY - 16, 2, 4, bodyDark);
+    rect(ctx, cx + 2, baseY - 30, 4, 4, lighten(body, 0.1));
     // Spines
-    rect(ctx, cx - 1, baseY - 12, 1, 1, '#c8c880');
-    rect(ctx, cx + 4, baseY - 8, 1, 1, '#c8c880');
-    // Ground
-    rect(ctx, cx - 2, baseY, 10, 2, darken(body, 0.4));
+    px(ctx, cx - 2, baseY - 24, spine);
+    px(ctx, cx + 8, baseY - 16, spine);
+    px(ctx, cx - 2, baseY - 16, spine);
+    rect(ctx, cx - 4, baseY, 20, 4, darken(body, 0.4));
   } else if (stage === 4) {
-    // Adult: full cactus with arms
-    rect(ctx, cx, baseY - 18, 4, 18, body);
-    rect(ctx, cx, baseY - 18, 1, 18, highlight);
-    rect(ctx, cx + 3, baseY - 18, 1, 18, bodyDark);
+    rect(ctx, cx, baseY - 36, 8, 36, body);
+    rect(ctx, cx, baseY - 36, 2, 36, highlight);
+    rect(ctx, cx + 6, baseY - 36, 2, 36, bodyDark);
+    ribTex(cx, baseY - 36, 8, 36);
     // Left arm
-    rect(ctx, cx - 4, baseY - 14, 4, 3, body);
-    rect(ctx, cx - 4, baseY - 14, 1, 3, bodyDark);
-    rect(ctx, cx - 4, baseY - 17, 3, 4, body);
-    rect(ctx, cx - 4, baseY - 17, 1, 4, highlight);
+    rect(ctx, cx - 8, baseY - 28, 8, 6, body);
+    rect(ctx, cx - 8, baseY - 28, 2, 6, bodyDark);
+    rect(ctx, cx - 8, baseY - 34, 6, 8, body);
+    rect(ctx, cx - 8, baseY - 34, 2, 8, highlight);
+    ribTex(cx - 8, baseY - 34, 6, 8);
     // Right arm
-    rect(ctx, cx + 4, baseY - 12, 4, 3, body);
-    rect(ctx, cx + 7, baseY - 12, 1, 3, bodyDark);
-    rect(ctx, cx + 5, baseY - 16, 3, 5, body);
-    rect(ctx, cx + 5, baseY - 16, 1, 5, highlight);
-    // Tip
-    rect(ctx, cx + 1, baseY - 19, 2, 2, lighten(body, 0.1));
+    rect(ctx, cx + 8, baseY - 24, 8, 6, body);
+    rect(ctx, cx + 14, baseY - 24, 2, 6, bodyDark);
+    rect(ctx, cx + 10, baseY - 32, 6, 10, body);
+    rect(ctx, cx + 10, baseY - 32, 2, 10, highlight);
+    ribTex(cx + 10, baseY - 32, 6, 10);
+    rect(ctx, cx + 2, baseY - 38, 4, 4, lighten(body, 0.1));
     // Spines
-    rect(ctx, cx - 1, baseY - 16, 1, 1, '#c8c880');
-    rect(ctx, cx + 4, baseY - 10, 1, 1, '#c8c880');
-    rect(ctx, cx - 5, baseY - 15, 1, 1, '#c8c880');
-    rect(ctx, cx + 8, baseY - 14, 1, 1, '#c8c880');
-    // Ground
-    rect(ctx, cx - 4, baseY, 14, 2, darken(body, 0.4));
+    px(ctx, cx - 2, baseY - 32, spine); px(ctx, cx + 8, baseY - 20, spine);
+    px(ctx, cx - 10, baseY - 30, spine); px(ctx, cx + 16, baseY - 28, spine);
+    rect(ctx, cx - 8, baseY, 28, 4, darken(body, 0.4));
   } else if (stage === 5) {
-    // Fruit: cactus with flowers/fruit on tips
-    rect(ctx, cx, baseY - 18, 4, 18, body);
-    rect(ctx, cx, baseY - 18, 1, 18, highlight);
-    rect(ctx, cx + 3, baseY - 18, 1, 18, bodyDark);
-    // Arms (same as adult)
-    rect(ctx, cx - 4, baseY - 14, 4, 3, body);
-    rect(ctx, cx - 4, baseY - 17, 3, 4, body);
-    rect(ctx, cx - 4, baseY - 17, 1, 4, highlight);
-    rect(ctx, cx + 4, baseY - 12, 4, 3, body);
-    rect(ctx, cx + 5, baseY - 16, 3, 5, body);
-    rect(ctx, cx + 5, baseY - 16, 1, 5, highlight);
+    rect(ctx, cx, baseY - 36, 8, 36, body);
+    rect(ctx, cx, baseY - 36, 2, 36, highlight);
+    rect(ctx, cx + 6, baseY - 36, 2, 36, bodyDark);
+    ribTex(cx, baseY - 36, 8, 36);
+    // Arms (same as stage 4)
+    rect(ctx, cx - 8, baseY - 28, 8, 6, body);
+    rect(ctx, cx - 8, baseY - 34, 6, 8, body);
+    rect(ctx, cx - 8, baseY - 34, 2, 8, highlight);
+    rect(ctx, cx + 8, baseY - 24, 8, 6, body);
+    rect(ctx, cx + 10, baseY - 32, 6, 10, body);
+    rect(ctx, cx + 10, baseY - 32, 2, 10, highlight);
+    ribTex(cx - 8, baseY - 34, 6, 8);
+    ribTex(cx + 10, baseY - 32, 6, 10);
     // Flowers/fruit on tips
-    rect(ctx, cx, baseY - 21, 4, 3, flower || fruit);
-    rect(ctx, cx + 1, baseY - 22, 2, 2, lighten(flower || fruit, 0.2));
-    rect(ctx, cx - 4, baseY - 19, 3, 2, flower || fruit);
-    rect(ctx, cx + 5, baseY - 18, 3, 2, flower || fruit);
-    // Ground
-    rect(ctx, cx - 4, baseY, 14, 2, darken(body, 0.4));
+    rect(ctx, cx, baseY - 42, 8, 6, flower || fruit);
+    rect(ctx, cx + 2, baseY - 44, 4, 4, lighten(flower || fruit, 0.2));
+    rect(ctx, cx - 8, baseY - 38, 6, 4, flower || fruit);
+    rect(ctx, cx + 10, baseY - 36, 6, 4, flower || fruit);
+    rect(ctx, cx - 8, baseY, 28, 4, darken(body, 0.4));
   }
 }

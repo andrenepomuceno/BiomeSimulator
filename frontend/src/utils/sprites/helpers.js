@@ -1,20 +1,22 @@
 /**
  * Shared pixel-art drawing helpers for the sprite generator.
  * Design grid: 64×64, upscaled 4× to 256×256.
- * Templates authored on the old 32-grid use _CM = 2 so coordinates auto-double.
+ * All templates now author directly in the 64×64 coordinate space (_CM = 1).
  */
 
 export const DESIGN = 64;
 export const SCALE = 4;
 
-/** Coordinate multiplier — legacy 32-grid templates keep _CM = 2. */
-let _CM = 2;
+/** Coordinate multiplier — now defaults to 1 (native 64×64 grid). */
+let _CM = 1;
 export function setCoordMultiplier(v) { _CM = v; }
 
 export const DOWN = 0;
 export const LEFT = 1;
 export const RIGHT = 2;
 export const UP = 3;
+
+// ── Core drawing ────────────────────────────────────────────────────
 
 export function px(ctx, x, y, color) {
   const mx = x * _CM;
@@ -29,21 +31,82 @@ export function rect(ctx, x, y, w, h, color) {
   ctx.fillRect(x * _CM * SCALE, y * _CM * SCALE, w * _CM * SCALE, h * _CM * SCALE);
 }
 
-export function darken(hex, amount) {
+export function vline(ctx, x, y, h, color) {
+  rect(ctx, x, y, 1, h, color);
+}
+
+export function hline(ctx, x, y, w, color) {
+  rect(ctx, x, y, w, 1, color);
+}
+
+/** Filled circle via midpoint algorithm. */
+export function circle(ctx, cx, cy, r, color) {
+  for (let dy = -r; dy <= r; dy++) {
+    const hw = Math.round(Math.sqrt(r * r - dy * dy));
+    rect(ctx, cx - hw, cy + dy, hw * 2 + 1, 1, color);
+  }
+}
+
+/** Filled ellipse. */
+export function ellipse(ctx, cx, cy, rx, ry, color) {
+  for (let dy = -ry; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(1 - (dy * dy) / (ry * ry)));
+    rect(ctx, cx - hw, cy + dy, hw * 2 + 1, 1, color);
+  }
+}
+
+/** Checkerboard dither pattern between two colours. */
+export function dither(ctx, x, y, w, h, color1, color2) {
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      px(ctx, x + dx, y + dy, (dx + dy) & 1 ? color2 : color1);
+    }
+  }
+}
+
+// ── Colour math ─────────────────────────────────────────────────────
+
+function _parseHex(hex) {
   const n = parseInt(hex.slice(1), 16);
-  const r = Math.max(0, ((n >> 16) & 255) - Math.round(255 * amount));
-  const g = Math.max(0, ((n >> 8) & 255) - Math.round(255 * amount));
-  const b = Math.max(0, (n & 255) - Math.round(255 * amount));
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function _toHex(r, g, b) {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
-export function lighten(hex, amount) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.min(255, ((n >> 16) & 255) + Math.round(255 * amount));
-  const g = Math.min(255, ((n >> 8) & 255) + Math.round(255 * amount));
-  const b = Math.min(255, (n & 255) + Math.round(255 * amount));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+export function darken(hex, amount) {
+  const [r, g, b] = _parseHex(hex);
+  const a = Math.round(255 * amount);
+  return _toHex(Math.max(0, r - a), Math.max(0, g - a), Math.max(0, b - a));
 }
+
+export function lighten(hex, amount) {
+  const [r, g, b] = _parseHex(hex);
+  const a = Math.round(255 * amount);
+  return _toHex(Math.min(255, r + a), Math.min(255, g + a), Math.min(255, b + a));
+}
+
+/** Linearly interpolate between two hex colours. t=0→hex1, t=1→hex2. */
+export function blend(hex1, hex2, t) {
+  const [r1, g1, b1] = _parseHex(hex1);
+  const [r2, g2, b2] = _parseHex(hex2);
+  return _toHex(
+    Math.round(r1 + (r2 - r1) * t),
+    Math.round(g1 + (g2 - g1) * t),
+    Math.round(b1 + (b2 - b1) * t),
+  );
+}
+
+/** Simple deterministic hash for per-pixel texture variation. Returns 0-1. */
+export function noise(x, y) {
+  let h = (x * 374761393 + y * 668265263 + 1013904223) | 0;
+  h = ((h >> 13) ^ h) * 1274126177;
+  h = (h >> 16) ^ h;
+  return (h & 0x7fff) / 0x7fff;
+}
+
+// ── Post-processing ─────────────────────────────────────────────────
 
 /**
  * Post-processing outline: 2-pass dark border around all opaque regions.
@@ -53,7 +116,7 @@ export function lighten(hex, amount) {
 export function addOutline(ctx) {
   const size = DESIGN * SCALE;
   const imgData = ctx.getImageData(0, 0, size, size);
-  const { data, width, height } = imgData;
+  const { data, width } = imgData;
   const s = SCALE;
 
   const cols = DESIGN;

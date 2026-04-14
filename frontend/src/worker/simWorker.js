@@ -34,6 +34,7 @@ let tickTimeoutId = null;
 let profilingEnabled = false;
 let pendingPause = false;
 const FULL_SYNC_INTERVAL = 30;
+const FAUNA_TICK_TIMEOUT_MS = 800;
 
 // --- Fauna worker pool ---
 const MIN_ANIMALS_FOR_PARALLEL = 500;
@@ -62,7 +63,12 @@ function scheduleNextTick() {
 }
 
 async function doTick() {
-  if (!engine || !engine.world || _ticking) return;
+  if (!engine || !engine.world) return;
+  if (_ticking) {
+    // If a long tick is still running, keep the loop alive instead of stalling.
+    scheduleNextTick();
+    return;
+  }
   _ticking = true;
   try {
     const t0 = performance.now();
@@ -114,13 +120,30 @@ async function doParallelFauna() {
   const resultPromises = chunks.map((chunkIds, i) => {
     return new Promise(resolve => {
       const worker = faunaWorkers[i];
+      let settled = false;
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        worker.removeEventListener('message', handler);
+        worker.removeEventListener('error', onError);
+        resolve(result);
+      };
       const handler = (e) => {
         if (e.data.cmd === 'tickResult') {
-          worker.removeEventListener('message', handler);
-          resolve(e.data);
+          finish(e.data);
         }
       };
+      const onError = () => {
+        // Fall back to empty result for this chunk instead of hanging the tick.
+        finish({ deltas: [], births: [], plantChanges: [], deadIds: [] });
+      };
+      const timeoutId = setTimeout(() => {
+        // Sub-worker may have been terminated during world regeneration.
+        finish({ deltas: [], births: [], plantChanges: [], deadIds: [] });
+      }, FAUNA_TICK_TIMEOUT_MS);
       worker.addEventListener('message', handler);
+      worker.addEventListener('error', onError);
 
       const ptCopy = new Uint8Array(w.plantType);
       const psCopy = new Uint8Array(w.plantStage);
@@ -154,7 +177,7 @@ function initFaunaWorkers(config, terrain, waterProximity, heightmap) {
   disposeFaunaWorkers();
   const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 2) : 2;
   const count = Math.min(Math.max(1, cores - 2), MAX_FAUNA_WORKERS);
-  if (count < 2) return;
+  if (count < 2) return Promise.resolve();
 
   const readyPromises = [];
   for (let i = 0; i < count; i++) {
@@ -181,7 +204,7 @@ function initFaunaWorkers(config, terrain, waterProximity, heightmap) {
     faunaWorkers.push(worker);
     readyPromises.push(readyPromise);
   }
-  Promise.all(readyPromises).then(() => { faunaWorkersReady = true; });
+  return Promise.all(readyPromises).then(() => { faunaWorkersReady = true; });
 }
 
 function disposeFaunaWorkers() {
@@ -266,6 +289,13 @@ self.onmessage = function (e) {
 
   switch (cmd) {
     case 'generate': {
+      // New game can be triggered while previous world is running.
+      // Enter a known-safe loop state before rebuilding engine/workers.
+      stopLoop();
+      running = false;
+      paused = true;
+      pendingPause = false;
+
       const config = { ...DEFAULT_CONFIG, ...e.data.config };
       engine = new SimulationEngine(config);
       engine.setProfilingEnabled(profilingEnabled);

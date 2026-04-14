@@ -41,6 +41,55 @@ Notes:
 
 ---
 
+## Movement System
+
+Animals move in **sub-tile increments** rather than jumping full tiles. Each tile is logically divided into a 4×4 sub-grid (`SUB_CELL_DIVISOR = 4`), so each movement step covers 0.25 tiles (`SUB_CELL_STEP`).
+
+### Coordinates
+
+- Animal positions (`x`, `y`) are **floats** (e.g. `5.5, 3.25`)
+- Animals spawn at tile centers (`tileX + 0.5, tileY + 0.5`)
+- Tile membership is determined by flooring: `tile = position | 0`
+- All `world.js` methods floor float inputs internally, so tile lookups are transparent
+
+### Speed
+
+Species `speed` values represent **sub-cell steps per tick**. With 4 sub-cells per tile:
+
+| Code Speed | Effective Tiles/Tick | Example Species |
+|------------|---------------------|------------------|
+| 4 | 1 | Rabbit, Beetle, Bear |
+| 8 | 2 | Deer, Fox, Wolf |
+| 12 | 3 | Hawk |
+
+### Path Following (`_walkPath`)
+
+Each tick, `_walkPath` calls `_followPath` up to `animal.speed` times:
+- Each `_followPath` moves 0.25 tiles toward the next A* waypoint center
+- Movement is along the dominant axis (larger delta of dx/dy)
+- Waypoint is considered reached when within 0.125 of its center
+- **A* pathfinding remains tile-based** — start and goal are floored to integer tiles
+
+### Random Walk
+
+Random walk executes `animal.speed` sub-steps per tick:
+- Each sub-step moves 0.25 tiles in a random cardinal direction
+- Home bias is preserved (60% chance to prefer home direction when far)
+
+### Tile Occupancy
+
+- The `animalGrid` occupancy map operates at **tile granularity** (not sub-tile)
+- Occupancy is updated only when an animal crosses a tile boundary
+- Two animals can share the same tile if they're on different sub-cells within it — but tile-boundary crossings check `isTileOccupied`
+
+### Energy Costs
+
+- Walking energy cost is applied **once per tile boundary crossing**, not per sub-step
+- This preserves the original energy economy despite 4× more movement calls per tick
+- Running/fleeing energy is applied once per action (not per movement step)
+
+---
+
 ## Energy System
 
 Every action costs energy. Energy is clamped between 0 and `maxEnergy` (species-specific).
@@ -182,8 +231,11 @@ minimum damage = min_damage
 ### Threat Detection (Herbivores & Omnivores)
 
 - Scan vision range for carnivores using spatial hash
-- If threat found: FLEE state → move 3 tiles in opposite direction
-- Uses A* for escape pathfinding
+- If threat found: FLEE state → burst-move away from threat
+- Each burst jumps to a full tile (not sub-step), using `effectiveSpeed = ceil(speed / SUB_CELL_DIVISOR)` bursts
+- Direct flee: tries stepping 3→1 tiles along the escape vector
+- Lateral fallback: evaluates all 8 neighbors if direct path is blocked
+- Flying species get +1 burst
 - Both herbivores and omnivores will flee from stronger predators
 
 ---
@@ -209,7 +261,7 @@ minimum damage = min_damage
 
 ### Offspring
 
-- Baby spawns at parent's position
+- Baby spawns on an adjacent walkable tile at tile center (`tileX + 0.5, tileY + 0.5`)
 - Initial energy: 40% of species max
 - Age: 0 (Life Stage: BABY)
 - Both parents enter `MATING` state

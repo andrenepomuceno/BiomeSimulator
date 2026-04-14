@@ -86,6 +86,8 @@ world.js — no dependencies
 |--------|--------|
 | `SEX_MALE`, `SEX_FEMALE`, `SEX_ASEXUAL`, `SEX_HERMAPHRODITE` | String identifiers |
 | `REPRO_SEXUAL`, `REPRO_ASEXUAL`, `REPRO_HERMAPHRODITE` | Reproduction mode identifiers |
+| `SUB_CELL_DIVISOR` | `4` — each tile is divided into a 4×4 sub-grid for movement |
+| `SUB_CELL_STEP` | `0.25` — movement increment per sub-step (1 / SUB_CELL_DIVISOR) |
 
 ### `DEFAULT_CONFIG`
 
@@ -126,26 +128,28 @@ This file is the **single source of truth** for all animal data. `config.js` der
 
 ### Species Table
 
-| Species | Diet | Speed | Vision | Max Energy | Max HP | Max Age | Attack | Defense | Max Pop | Initial Count |
-|---------|------|-------|--------|-----------|--------|---------|--------|---------|---------|---------------|
-| 🐰 Rabbit | Herbivore | 1 | 10 | 100 | 50 | 1400 | 1 | 2 | 500 | 100 |
-| 🐿️ Squirrel | Herbivore | 1 | 11 | 90 | 40 | 1300 | 1 | 1 | 500 | 60 |
-| 🪲 Beetle | Herbivore | 1 | 7 | 70 | 20 | 1000 | 1 | 4 | 800 | 80 |
-| 🐐 Goat | Herbivore | 1 | 12 | 150 | 80 | 2200 | 3 | 5 | 300 | 35 |
-| 🦌 Deer | Herbivore | 2 | 14 | 140 | 70 | 2000 | 2 | 3 | 300 | 35 |
-| 🦟 Mosquito | Herbivore | 2 | 8 | 40 | 10 | 600 | 1 | 0 | 800 | 60 |
-| 🐛 Caterpillar | Herbivore | 1 | 5 | 50 | 15 | 800 | 0 | 1 | 800 | 70 |
-| 🦗 Cricket | Herbivore | 2 | 6 | 45 | 15 | 700 | 0 | 0 | 800 | 90 |
-| 🦊 Fox | Carnivore | 2 | 14 | 130 | 60 | 1600 | 6 | 4 | 150 | 28 |
-| 🐺 Wolf | Carnivore | 2 | 16 | 160 | 120 | 1800 | 9 | 6 | 80 | 20 |
-| 🐍 Snake | Carnivore | 1 | 12 | 120 | 40 | 1600 | 5 | 3 | 150 | 20 |
-| 🦅 Hawk | Carnivore | 3 | 20 | 110 | 45 | 1800 | 7 | 3 | 150 | 15 |
-| 🐊 Crocodile | Carnivore | 1 | 12 | 180 | 180 | 2400 | 9 | 8 | 80 | 10 |
-| 🐗 Boar | Omnivore | 1 | 12 | 150 | 100 | 1800 | 5 | 5 | 300 | 30 |
-| 🐻 Bear | Omnivore | 1 | 14 | 200 | 200 | 2500 | 10 | 8 | 80 | 12 |
-| 🦝 Raccoon | Omnivore | 1 | 11 | 100 | 50 | 1400 | 3 | 3 | 300 | 25 |
-| 🐦‍⬛ Crow | Omnivore | 2 | 16 | 80 | 30 | 1200 | 2 | 1 | 300 | 35 |
-| 🦎 Lizard | Omnivore | 1 | 11 | 85 | 45 | 1300 | 3 | 2 | 300 | 35 |
+Speed values are in **sub-cell steps per tick**. With `SUB_CELL_DIVISOR = 4`, a speed of 4 means the animal crosses 1 tile per tick, speed 8 = 2 tiles/tick, etc.
+
+| Species | Diet | Speed | Tiles/tick | Vision | Max Energy | Max HP | Max Age | Attack | Defense | Max Pop | Initial Count |
+|---------|------|-------|------------|--------|-----------|--------|---------|--------|---------|---------|---------------|
+| 🐰 Rabbit | Herbivore | 4 | 1 | 10 | 100 | 50 | 1400 | 1 | 2 | 500 | 100 |
+| 🐿️ Squirrel | Herbivore | 4 | 1 | 11 | 90 | 40 | 1300 | 1 | 1 | 500 | 60 |
+| 🪲 Beetle | Herbivore | 4 | 1 | 7 | 70 | 20 | 1000 | 1 | 4 | 800 | 80 |
+| 🐐 Goat | Herbivore | 4 | 1 | 12 | 150 | 80 | 2200 | 3 | 5 | 300 | 35 |
+| 🦌 Deer | Herbivore | 8 | 2 | 14 | 140 | 70 | 2000 | 2 | 3 | 300 | 35 |
+| 🦟 Mosquito | Herbivore | 8 | 2 | 8 | 40 | 10 | 600 | 1 | 0 | 800 | 60 |
+| 🐛 Caterpillar | Herbivore | 4 | 1 | 5 | 50 | 15 | 800 | 0 | 1 | 800 | 70 |
+| 🦗 Cricket | Herbivore | 8 | 2 | 6 | 45 | 15 | 700 | 0 | 0 | 800 | 90 |
+| 🦊 Fox | Carnivore | 8 | 2 | 14 | 130 | 60 | 1600 | 6 | 4 | 150 | 28 |
+| 🐺 Wolf | Carnivore | 8 | 2 | 16 | 160 | 120 | 1800 | 9 | 6 | 80 | 20 |
+| 🐍 Snake | Carnivore | 4 | 1 | 12 | 120 | 40 | 1600 | 5 | 3 | 150 | 20 |
+| 🦅 Hawk | Carnivore | 12 | 3 | 20 | 110 | 45 | 1800 | 7 | 3 | 150 | 15 |
+| 🐊 Crocodile | Carnivore | 4 | 1 | 12 | 180 | 180 | 2400 | 9 | 8 | 80 | 10 |
+| 🐗 Boar | Omnivore | 4 | 1 | 12 | 150 | 100 | 1800 | 5 | 5 | 300 | 30 |
+| 🐻 Bear | Omnivore | 4 | 1 | 14 | 200 | 200 | 2500 | 10 | 8 | 80 | 12 |
+| 🦝 Raccoon | Omnivore | 4 | 1 | 11 | 100 | 50 | 1400 | 3 | 3 | 300 | 25 |
+| 🐦‍⬛ Crow | Omnivore | 8 | 2 | 16 | 80 | 30 | 1200 | 2 | 1 | 300 | 35 |
+| 🦎 Lizard | Omnivore | 4 | 1 | 11 | 85 | 45 | 1300 | 3 | 2 | 300 | 35 |
 
 ### Species Data Fields
 
@@ -157,7 +161,7 @@ This file is the **single source of truth** for all animal data. `config.js` der
   diet: 'HERBIVORE',      // HERBIVORE | CARNIVORE | OMNIVORE
   reproduction: 'SEXUAL', // SEXUAL | ASEXUAL | HERMAPHRODITE
   color: 0x66cc66,        // hex color for renderer
-  speed: 1,               // tiles per tick
+  speed: 4,               // sub-cell steps per tick (4 steps = 1 tile)
   vision_range: 10,       // perception radius
   max_energy: 100,        // energy cap
   max_hp: 50,              // health points cap
@@ -301,14 +305,20 @@ Holds the entire world state using flat TypedArrays for memory efficiency.
 | `plantAge` | `Uint16Array` | Ticks since planted |
 | `plantFruit` | `Uint8Array` | Boolean (0 or 1) |
 
+All World methods that accept `(x, y)` coordinates **floor float inputs** internally using `| 0` (bitwise OR). This allows sub-tile animal positions (e.g. `5.75, 3.25`) to be passed directly — the tile lookup always resolves to the integer tile.
+
 **Key Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `idx(x, y)` | `→ number` | Flat array index |
-| `isInBounds(x, y)` | `→ boolean` | Boundary check |
-| `isWalkable(x, y)` | `→ boolean` | Not WATER or ROCK |
-| `isWaterAdjacent(x, y)` | `→ boolean` | 8-neighbor water check |
+| `idx(x, y)` | `→ number` | Flat array index (floors float inputs) |
+| `isInBounds(x, y)` | `→ boolean` | Boundary check (floors float inputs) |
+| `isWalkable(x, y)` | `→ boolean` | Not WATER or ROCK (floors float inputs) |
+| `isWalkableFor(x, y, walkableSet)` | `→ boolean` | Species-specific walkability check |
+| `isWaterAdjacent(x, y)` | `→ boolean` | 8-neighbor water check (floors float inputs) |
+| `isTileOccupied(x, y)` | `→ boolean` | Whether animalGrid has an occupant (floors float inputs) |
+| `placeAnimal(x, y)` | — | Mark tile as occupied (floors float inputs) |
+| `vacateAnimal(x, y)` | — | Mark tile as vacant (floors float inputs) |
 | `getAliveSpeciesCount(species)` | `→ number` | Alive count for a species (lazy cached per tick) |
 | `getStats()` | `→ object` | Population counts, plant stats |
 
@@ -339,7 +349,7 @@ Stage is determined by comparing `animal.age` against `life_stage_ages` threshol
 const animal = new Animal(id, x, y, 'RABBIT', speciesConfig);
 ```
 
-**Core Properties:** `id`, `x`, `y`, `species`, `diet`, `sex`, `state`, `energy`, `hp`, `hunger`, `thirst`, `age`, `alive`, `_deathTick`, `actionHistory`
+**Core Properties:** `id`, `x`, `y` (float, tile-center e.g. `5.5, 3.25`), `species`, `diet`, `sex`, `state`, `energy`, `hp`, `hunger`, `thirst`, `age`, `alive`, `_deathTick`, `actionHistory`
 
 **Dirty Tracking:** `_dirty` flag set on any mutation (position, energy, state, HP). Used by incremental serialization to send only changed animals per tick.
 

@@ -96,6 +96,8 @@ Screen → Tile:
   tileY = (screenY - container.y) / zoom
 ```
 
+Animal positions are **sub-tile floats** (e.g. `5.5, 3.25`), centered at spawn on `tile + 0.5`. Sprites are placed directly at `(animal.x, animal.y)` in world coordinates — no `+0.5` offset is needed since positions already include it. Plant and terrain coordinates remain integer tile indices.
+
 ---
 
 ## TerrainLayer
@@ -162,6 +164,10 @@ Renders animals as emoji sprites with state-dependent appearance.
 | Method | Description |
 |--------|-------------|
 | `update(animals, renderer, currentTick)` | Reposition sprites, manage sprite pool, apply life stage scaling and skull fade |
+
+### Sprite Positioning
+
+Animal sprites are placed at `(animal.x, animal.y)` in world-space. Since animal positions are sub-tile floats already centered on tiles (e.g. `5.5, 3.25`), no additional offset is applied. HP bars are positioned relative to the animal's float coordinates.
 
 ### Sprite Behavior
 

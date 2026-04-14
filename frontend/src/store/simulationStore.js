@@ -243,6 +243,12 @@ const useSimStore = create((set, get) => ({
   placeEntityType: 'RABBIT',
   setPlaceEntityType: (t) => set({ placeEntityType: t }),
 
+  // Selection target filters (what the SELECT tool picks)
+  selectionTargets: { animals: true, plants: true, terrain: true },
+  setSelectionTarget: (key, value) => set(state => ({
+    selectionTargets: { ...state.selectionTargets, [key]: value },
+  })),
+
   // Global rate multipliers
   hungerMultiplier: 1.2,
   thirstMultiplier: 1.25,

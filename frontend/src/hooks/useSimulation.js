@@ -122,24 +122,32 @@ export function useSimulation() {
 
         case 'tileInfo':
           if (msg.info) {
+            // Apply selection-target filters
+            const targets = useSimStore.getState().selectionTargets;
+            const filtered = { ...msg.info };
+            if (!targets.animals) filtered.animals = [];
+            if (!targets.plants) filtered.plant = null;
+
             if (msg.refreshOnly) {
               // Periodic refresh — only update if still viewing the same tile
               const currentTile = useSimStore.getState().selectedTile;
               if (currentTile && currentTile.x === msg.x && currentTile.y === msg.y) {
-                store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
+                store.setSelectedTile({ x: msg.x, y: msg.y, ...filtered });
               }
             } else {
               // Fresh click: auto-select lone animal (alive or corpse); otherwise show tile view
-              const tileAnimals = msg.info.animals || [];
+              const tileAnimals = filtered.animals || [];
+              const hasPlant = !!filtered.plant;
               if (tileAnimals.length === 1) {
                 store.setSelectedEntity(tileAnimals[0]);
                 // Also request detailed info (actionHistory, nav context)
                 if (workerRef.current) {
                   workerRef.current.postMessage({ cmd: 'getAnimalDetail', id: tileAnimals[0].id });
                 }
-              } else {
-                store.setSelectedTile({ x: msg.x, y: msg.y, ...msg.info });
+              } else if (tileAnimals.length > 0 || hasPlant || targets.terrain) {
+                store.setSelectedTile({ x: msg.x, y: msg.y, ...filtered });
               }
+              // If nothing matched filters, skip selection entirely
             }
           }
           break;

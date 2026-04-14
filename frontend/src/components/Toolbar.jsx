@@ -13,7 +13,7 @@ const TOOLS = [
 ];
 
 export default function Toolbar({ appVersion, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onAudioToggle, onReportToggle, onEntitiesToggle, onToggleBackground }) {
-  const { paused, running, tps, clock, tool, setTool, audioSettings, pauseOnBackground } = useSimStore();
+  const { paused, running, tps, clock, tool, setTool, audioSettings, pauseOnBackground, selectionTargets, setSelectionTarget } = useSimStore();
   const audioLabel = audioSettings.muted
     ? '🔇 Audio'
     : audioSettings.unlocked
@@ -63,6 +63,22 @@ export default function Toolbar({ appVersion, onStart, onPause, onResume, onStep
           </button>
         ))}
       </div>
+
+      {/* Selection target filters (visible only for SELECT tool) */}
+      {tool === 'SELECT' && (
+        <div className="select-filters">
+          {[{ key: 'animals', label: '🐾 Animals' }, { key: 'plants', label: '🌿 Plants' }, { key: 'terrain', label: '🗺️ Terrain' }].map(f => (
+            <label key={f.key} className="select-filter-label">
+              <input
+                type="checkbox"
+                checked={selectionTargets[f.key]}
+                onChange={(e) => setSelectionTarget(f.key, e.target.checked)}
+              />
+              {f.label}
+            </label>
+          ))}
+        </div>
+      )}
 
       {/* Speed control */}
       <div className="speed-control">

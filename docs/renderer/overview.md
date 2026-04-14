@@ -46,7 +46,7 @@ const camera = new Camera(worldContainer, screen, onChanged);
 
 | Property | Range | Description |
 |----------|-------|-------------|
-| `zoom` | 1–40 | Current scale factor |
+| `zoom` | 1–60 | Current scale factor |
 | `worldW`, `worldH` | — | Map dimensions in tiles |
 
 ### Methods

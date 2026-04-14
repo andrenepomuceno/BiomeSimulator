@@ -5,6 +5,7 @@ import React, { useMemo, useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { ANIMAL_HEX_COLORS, SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
 import { buildSimulationReportText, deriveSimulationReportData, DIET_GROUPS } from '../utils/simulationReportExport';
+import { buildPlantChartColors, buildPlantChartEmojis } from '../engine/plantSpecies';
 import {
   Chart as ChartJS,
   LineElement, PointElement, LinearScale, CategoryScale,
@@ -19,29 +20,9 @@ ChartJS.register(
   Legend, Tooltip, Filler, Title,
 );
 
-const PLANT_COLORS_MAP = {
-  1: '#7fbb5c',  // Grass
-  2: '#ff6b6b',  // Strawberry
-  3: '#6b6bff',  // Blueberry
-  4: '#66aa44',  // Apple Tree
-  5: '#ffaa33',  // Mango Tree
-  6: '#ff8844',  // Carrot
-  7: '#ffdd44',  // Sunflower
-  8: '#ff4444',  // Tomato
-  9: '#aa8866',  // Mushroom
-  10: '#8B6914', // Oak Tree
-  11: '#88cc88', // Cactus
-  12: '#44bb88', // Coconut Palm
-  13: '#b08b57', // Potato
-  14: '#dd4b39', // Chili Pepper
-  15: '#7da34e', // Olive Tree
-};
+const PLANT_COLORS_MAP = buildPlantChartColors();
 
-const PLANT_EMOJIS = {
-  1: '🌱', 2: '🍓', 3: '🫐', 4: '🍎', 5: '🥭', 6: '🥕',
-  7: '🌻', 8: '🍅', 9: '🍄', 10: '🌳', 11: '🌵', 12: '🌴',
-  13: '🥔', 14: '🌶️', 15: '🫒',
-};
+const PLANT_EMOJIS = buildPlantChartEmojis();
 
 const TABS = [
   { id: 'population', label: '🐾 Population' },

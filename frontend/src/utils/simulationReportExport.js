@@ -1,12 +1,9 @@
 import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 import { buildDayLabel, resolveTicksPerDay, ticksToDay } from './time.js';
 import { PLANT_TYPE_NAMES, SPECIES_INFO } from './terrainColors.js';
+import { buildDietGroups } from '../engine/animalSpecies.js';
 
-export const DIET_GROUPS = {
-  Herbivore: ['RABBIT', 'SQUIRREL', 'BEETLE', 'GOAT', 'DEER', 'MOSQUITO', 'CATERPILLAR', 'CRICKET'],
-  Carnivore: ['FOX', 'WOLF', 'SNAKE', 'HAWK', 'CROCODILE'],
-  Omnivore: ['BOAR', 'BEAR', 'RACCOON', 'CROW', 'LIZARD'],
-};
+export const DIET_GROUPS = buildDietGroups();
 
 export function deriveSimulationReportData(statsHistory, ticksPerDay) {
   if (!statsHistory || statsHistory.length === 0) return null;

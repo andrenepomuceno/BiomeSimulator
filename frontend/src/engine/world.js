@@ -2,6 +2,7 @@
  * World model — terrain, plant grids (parallel TypedArrays), animals, clock.
  */
 import { DEFAULT_DAY_FRACTION, DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
+import { DIET } from './animalSpecies.js';
 
 // Terrain types
 export const WATER = 0;
@@ -285,7 +286,7 @@ export class World {
     for (const a of this.animals) {
       if (!a.alive) continue;
       speciesCounts[a.species] = (speciesCounts[a.species] || 0) + 1;
-      if (a.diet === 'HERBIVORE') herbivores++;
+      if (a.diet === DIET.HERBIVORE) herbivores++;
       else carnivores++;
     }
 

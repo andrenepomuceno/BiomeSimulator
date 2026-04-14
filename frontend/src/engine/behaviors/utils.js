@@ -1,5 +1,5 @@
 import { S_ADULT, S_FRUIT, S_SEED } from '../flora.js';
-import { buildDecisionIntervals } from '../animalSpecies.js';
+import { buildDecisionIntervals, DIET } from '../animalSpecies.js';
 import { buildEdibleStagesMap } from '../plantSpecies.js';
 
 export const DECISION_INTERVALS = buildDecisionIntervals();
@@ -27,13 +27,13 @@ export function _canFly(animal) {
 }
 
 export function _plantHungerReduction(animal, base) {
-  if (animal.diet === 'CARNIVORE') return Math.round(base * 0.45);
-  return animal.diet === 'OMNIVORE' ? Math.round(base * 0.55) : base;
+  if (animal.diet === DIET.CARNIVORE) return Math.round(base * 0.45);
+  return animal.diet === DIET.OMNIVORE ? Math.round(base * 0.55) : base;
 }
 
 export function _plantEnergyGain(animal, base) {
-  if (animal.diet === 'CARNIVORE') return Math.round(base * 0.4);
-  return animal.diet === 'OMNIVORE' ? Math.round(base * 0.5) : base;
+  if (animal.diet === DIET.CARNIVORE) return Math.round(base * 0.4);
+  return animal.diet === DIET.OMNIVORE ? Math.round(base * 0.5) : base;
 }
 
 export function _decisionThresholds(animal) {

@@ -390,6 +390,27 @@ export const PLANT_IDS = Object.fromEntries(
   Object.values(PLANT_SPECIES).map(sp => [sp.id, sp.typeId])
 );
 
+// Chart / UI presentation data per species.  Keyed by species id.
+// chartColor = hex color for Chart.js datasets.
+// chartEmoji = single representative emoji for UI labels.
+const PLANT_UI_DATA = {
+  GRASS:        { chartColor: '#7fbb5c', chartEmoji: '🌱' },
+  STRAWBERRY:   { chartColor: '#ff6b6b', chartEmoji: '🍓' },
+  BLUEBERRY:    { chartColor: '#6b6bff', chartEmoji: '🫐' },
+  APPLE_TREE:   { chartColor: '#66aa44', chartEmoji: '🍎' },
+  MANGO_TREE:   { chartColor: '#ffaa33', chartEmoji: '🥭' },
+  CARROT:       { chartColor: '#ff8844', chartEmoji: '🥕' },
+  SUNFLOWER:    { chartColor: '#ffdd44', chartEmoji: '🌻' },
+  TOMATO:       { chartColor: '#ff4444', chartEmoji: '🍅' },
+  MUSHROOM:     { chartColor: '#aa8866', chartEmoji: '🍄' },
+  OAK_TREE:     { chartColor: '#8B6914', chartEmoji: '🌳' },
+  CACTUS:       { chartColor: '#88cc88', chartEmoji: '🌵' },
+  COCONUT_PALM: { chartColor: '#44bb88', chartEmoji: '🌴' },
+  POTATO:       { chartColor: '#b08b57', chartEmoji: '🥔' },
+  CHILI_PEPPER: { chartColor: '#dd4b39', chartEmoji: '🌶️' },
+  OLIVE_TREE:   { chartColor: '#7da34e', chartEmoji: '🫒' },
+};
+
 const TREE_PLANTS = ['APPLE_TREE', 'MANGO_TREE', 'OAK_TREE', 'COCONUT_PALM', 'OLIVE_TREE'];
 const LOW_PLANTS = ['GRASS', 'MUSHROOM', 'CARROT', 'POTATO'];
 const DESERT_PLANTS = ['CACTUS', 'COCONUT_PALM', 'CHILI_PEPPER'];
@@ -434,6 +455,30 @@ export function buildStageAges() {
   const map = {};
   for (const sp of Object.values(PLANT_SPECIES)) {
     map[sp.typeId] = sp.stageAges;
+  }
+  return map;
+}
+
+/**
+ * Build a typeId → display name map (includes 0: 'None').
+ * Returns { 0: 'None', 1: 'Grass', 2: 'Strawberry', ... }
+ */
+export function buildPlantTypeNames() {
+  const map = { 0: 'None' };
+  for (const sp of Object.values(PLANT_SPECIES)) {
+    map[sp.typeId] = sp.name;
+  }
+  return map;
+}
+
+/**
+ * Build a typeId → sex/reproduction string map.
+ * Returns { 1: 'ASEXUAL', 2: 'HERMAPHRODITE', ... }
+ */
+export function buildPlantTypeSex() {
+  const map = {};
+  for (const sp of Object.values(PLANT_SPECIES)) {
+    map[sp.typeId] = sp.sex;
   }
   return map;
 }
@@ -635,6 +680,41 @@ export function buildPlantMaxCounts() {
     max[id] = speciesMax ?? Math.max(80, Math.round(value * PLANT_POPULATION_MAX_FACTOR));
   }
   return max;
+}
+
+/**
+ * Build a typeId → chart hex-color map for Chart.js datasets.
+ * Returns { 1: '#7fbb5c', 2: '#ff6b6b', ... }
+ */
+export function buildPlantChartColors() {
+  const map = {};
+  for (const [id, sp] of Object.entries(PLANT_SPECIES)) {
+    map[sp.typeId] = PLANT_UI_DATA[id]?.chartColor ?? '#888888';
+  }
+  return map;
+}
+
+/**
+ * Build a typeId → single representative emoji for chart labels.
+ * Returns { 1: '🌱', 2: '🍓', ... }
+ */
+export function buildPlantChartEmojis() {
+  const map = {};
+  for (const [id, sp] of Object.entries(PLANT_SPECIES)) {
+    map[sp.typeId] = PLANT_UI_DATA[id]?.chartEmoji ?? '🌱';
+  }
+  return map;
+}
+
+/**
+ * Build the plant placement list for the terrain editor UI.
+ * Returns [{ key: 'GRASS_PLANT', emoji: '🌱', label: 'Grass' }, ...]
+ */
+export function buildPlantPlaceTypes() {
+  return Object.entries(PLANT_SPECIES).map(([id, sp]) => {
+    const uiKey = id === 'GRASS' ? 'GRASS_PLANT' : id;
+    return { key: uiKey, emoji: PLANT_UI_DATA[id]?.chartEmoji ?? '🌱', label: sp.name };
+  });
 }
 
 export default PLANT_SPECIES;

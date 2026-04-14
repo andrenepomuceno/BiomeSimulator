@@ -10,6 +10,22 @@
 import { TERRAIN_IDS } from './world.js';
 import { PLANT_IDS } from './plantSpecies.js';
 
+/** Diet enum — canonical source for diet strings used across the codebase. */
+export const DIET = Object.freeze({
+  HERBIVORE: 'HERBIVORE',
+  CARNIVORE: 'CARNIVORE',
+  OMNIVORE: 'OMNIVORE',
+});
+
+/** Sound-group enum — maps to synthesis profiles in soundEvents.js. */
+export const SOUND_GROUP = Object.freeze({
+  INSECT: 'insect',
+  BIRD: 'bird',
+  SMALL_MAMMAL: 'smallMammal',
+  LARGE_MAMMAL: 'largeMammal',
+  REPTILE: 'reptile',
+});
+
 // Population caps by trophic level (food pyramid: prey > mid-predator > apex)
 // Tuned for default global cap of 5000
 const POP_INSECT = 400;       // Numerous small invertebrates (Beetle, Mosquito, Caterpillar, Cricket)
@@ -120,9 +136,12 @@ const ANIMAL_SPECIES = {
     id: 'RABBIT',
     name: 'Rabbit',
     emoji: '🐰',
-    diet: 'HERBIVORE',
+    diet: DIET.HERBIVORE,
     reproduction: 'SEXUAL',
     color: 0x66cc66,
+    visualScale: 0.7,
+    audioScale: 0.211,
+    soundGroup: SOUND_GROUP.SMALL_MAMMAL,
     speed: 4,
     vision_range: 10,
     max_energy: 100,
@@ -157,9 +176,12 @@ const ANIMAL_SPECIES = {
     id: 'SQUIRREL',
     name: 'Squirrel',
     emoji: '🐿️',
-    diet: 'HERBIVORE',
+    diet: DIET.HERBIVORE,
     reproduction: 'SEXUAL',
     color: 0xcc8844,
+    visualScale: 0.7,
+    audioScale: 0.158,
+    soundGroup: SOUND_GROUP.SMALL_MAMMAL,
     speed: 4,
     vision_range: 11,
     max_energy: 90,
@@ -195,9 +217,12 @@ const ANIMAL_SPECIES = {
     id: 'BEETLE',
     name: 'Beetle',
     emoji: '🪲',
-    diet: 'HERBIVORE',
+    diet: DIET.HERBIVORE,
     reproduction: 'SEXUAL',
     color: 0x556633,
+    visualScale: 0.55,
+    audioScale: 0.053,
+    soundGroup: SOUND_GROUP.INSECT,
     speed: 4,
     vision_range: 7,
     max_energy: 70,
@@ -234,9 +259,12 @@ const ANIMAL_SPECIES = {
     id: 'GOAT',
     name: 'Goat',
     emoji: '🐐',
-    diet: 'HERBIVORE',
+    diet: DIET.HERBIVORE,
     reproduction: 'SEXUAL',
     color: 0xbbbbbb,
+    visualScale: 0.95,
+    audioScale: 0.368,
+    soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 4,
     vision_range: 12,
     max_energy: 150,
@@ -272,9 +300,12 @@ const ANIMAL_SPECIES = {
     id: 'DEER',
     name: 'Deer',
     emoji: '🦌',
-    diet: 'HERBIVORE',
+    diet: DIET.HERBIVORE,
     reproduction: 'SEXUAL',
     color: 0xcc9955,
+    visualScale: 0.95,
+    audioScale: 0.316,
+    soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 8,
     vision_range: 14,
     max_energy: 140,
@@ -311,9 +342,12 @@ const ANIMAL_SPECIES = {
     name: 'Fox',
     emoji: '🦊',
     nocturnal: true,
-    diet: 'CARNIVORE',
+    diet: DIET.CARNIVORE,
     reproduction: 'SEXUAL',
     color: 0xdd8833,
+    visualScale: 0.85,
+    audioScale: 0.263,
+    soundGroup: SOUND_GROUP.SMALL_MAMMAL,
     speed: 8,
     vision_range: 14,
     max_energy: 130,
@@ -349,9 +383,12 @@ const ANIMAL_SPECIES = {
     id: 'WOLF',
     name: 'Wolf',
     emoji: '🐺',
-    diet: 'CARNIVORE',
+    diet: DIET.CARNIVORE,
     reproduction: 'SEXUAL',
     color: 0xdd4444,
+    visualScale: 1.1,
+    audioScale: 0.579,
+    soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 8,
     vision_range: 16,
     max_energy: 160,
@@ -387,9 +424,12 @@ const ANIMAL_SPECIES = {
     id: 'BOAR',
     name: 'Boar',
     emoji: '🐗',
-    diet: 'OMNIVORE',
+    diet: DIET.OMNIVORE,
     reproduction: 'SEXUAL',
     color: 0x885533,
+    visualScale: 0.95,
+    audioScale: 0.474,
+    soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 4,
     vision_range: 12,
     max_energy: 150,
@@ -426,9 +466,12 @@ const ANIMAL_SPECIES = {
     name: 'Bear',
     emoji: '🐻',
     nocturnal: true,
-    diet: 'OMNIVORE',
+    diet: DIET.OMNIVORE,
     reproduction: 'SEXUAL',
     color: 0x8B4513,
+    visualScale: 1.1,
+    audioScale: 1.0,
+    soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 4,
     vision_range: 14,
     max_energy: 200,
@@ -465,9 +508,12 @@ const ANIMAL_SPECIES = {
     name: 'Raccoon',
     emoji: '🦝',
     nocturnal: true,
-    diet: 'OMNIVORE',
+    diet: DIET.OMNIVORE,
     reproduction: 'SEXUAL',
     color: 0x778899,
+    visualScale: 0.85,
+    audioScale: 0.211,
+    soundGroup: SOUND_GROUP.SMALL_MAMMAL,
     speed: 4,
     vision_range: 11,
     max_energy: 100,
@@ -505,9 +551,12 @@ const ANIMAL_SPECIES = {
     emoji: '🐦‍⬛',
     nocturnal: true,
     can_fly: true,
-    diet: 'OMNIVORE',
+    diet: DIET.OMNIVORE,
     reproduction: 'SEXUAL',
     color: 0x333344,
+    visualScale: 0.7,
+    audioScale: 0.105,
+    soundGroup: SOUND_GROUP.BIRD,
     speed: 8,
     vision_range: 16,
     max_energy: 80,
@@ -544,9 +593,12 @@ const ANIMAL_SPECIES = {
     name: 'Mosquito',
     emoji: '🦟',
     can_fly: true,
-    diet: 'HERBIVORE',
+    diet: DIET.HERBIVORE,
     reproduction: 'SEXUAL',
     color: 0x556655,
+    visualScale: 0.55,
+    audioScale: 0.0,
+    soundGroup: SOUND_GROUP.INSECT,
     speed: 8,
     vision_range: 8,
     max_energy: 40,
@@ -583,9 +635,12 @@ const ANIMAL_SPECIES = {
     id: 'CATERPILLAR',
     name: 'Caterpillar',
     emoji: '🐛',
-    diet: 'HERBIVORE',
+    diet: DIET.HERBIVORE,
     reproduction: 'SEXUAL',
     color: 0x88bb33,
+    visualScale: 0.55,
+    audioScale: 0.026,
+    soundGroup: SOUND_GROUP.INSECT,
     speed: 4,
     vision_range: 5,
     max_energy: 50,
@@ -624,9 +679,12 @@ const ANIMAL_SPECIES = {
     id: 'CRICKET',
     name: 'Cricket',
     emoji: '🦗',
-    diet: 'HERBIVORE',
+    diet: DIET.HERBIVORE,
     reproduction: 'SEXUAL',
     color: 0x6f9933,
+    visualScale: 0.55,
+    audioScale: 0.026,
+    soundGroup: SOUND_GROUP.INSECT,
     speed: 8,
     vision_range: 6,
     max_energy: 45,
@@ -663,9 +721,12 @@ const ANIMAL_SPECIES = {
     id: 'LIZARD',
     name: 'Lizard',
     emoji: '🦎',
-    diet: 'OMNIVORE',
+    diet: DIET.OMNIVORE,
     reproduction: 'SEXUAL',
     color: 0x5a8f4b,
+    visualScale: 0.7,
+    audioScale: 0.184,
+    soundGroup: SOUND_GROUP.REPTILE,
     speed: 4,
     vision_range: 11,
     max_energy: 85,
@@ -702,9 +763,12 @@ const ANIMAL_SPECIES = {
     id: 'SNAKE',
     name: 'Snake',
     emoji: '🐍',
-    diet: 'CARNIVORE',
+    diet: DIET.CARNIVORE,
     reproduction: 'SEXUAL',
     color: 0x448844,
+    visualScale: 0.85,
+    audioScale: 0.158,
+    soundGroup: SOUND_GROUP.REPTILE,
     speed: 4,
     vision_range: 12,
     max_energy: 120,
@@ -742,9 +806,12 @@ const ANIMAL_SPECIES = {
     name: 'Hawk',
     emoji: '🦅',
     can_fly: true,
-    diet: 'CARNIVORE',
+    diet: DIET.CARNIVORE,
     reproduction: 'SEXUAL',
     color: 0xaa6622,
+    visualScale: 0.85,
+    audioScale: 0.184,
+    soundGroup: SOUND_GROUP.BIRD,
     speed: 12,
     vision_range: 20,
     max_energy: 110,
@@ -781,9 +848,12 @@ const ANIMAL_SPECIES = {
     id: 'CROCODILE',
     name: 'Crocodile',
     emoji: '🐊',
-    diet: 'CARNIVORE',
+    diet: DIET.CARNIVORE,
     reproduction: 'SEXUAL',
     color: 0x556b2f,
+    visualScale: 1.1,
+    audioScale: 0.895,
+    soundGroup: SOUND_GROUP.REPTILE,
     speed: 4,
     vision_range: 12,
     max_energy: 180,
@@ -868,13 +938,13 @@ export const MAX_ANIMAL_ENERGY = Object.values(ANIMAL_SPECIES)
 export const ALL_ANIMAL_IDS = Object.keys(ANIMAL_SPECIES);
 
 /** Only herbivore keys */
-export const HERBIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === 'HERBIVORE');
+export const HERBIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === DIET.HERBIVORE);
 
 /** Only carnivore keys */
-export const CARNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === 'CARNIVORE');
+export const CARNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === DIET.CARNIVORE);
 
 /** Only omnivore keys */
-export const OMNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === 'OMNIVORE');
+export const OMNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === DIET.OMNIVORE);
 
 export function getEffectiveAnimalPopulationCap(speciesId, globalBudget = 0) {
   const baseCap = ANIMAL_SPECIES[speciesId]?.max_population || 0;
@@ -935,7 +1005,7 @@ export function normalizeAnimalCountsToBudget(counts = {}, globalBudget = 0, opt
 export function buildAnimalSpeciesConfig() {
   const cfg = {};
   for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
-    const { id, name, color, initial_count, ...rawSimParams } = sp;
+    const { id, name, color, emoji, visualScale, audioScale, soundGroup, initial_count, ...rawSimParams } = sp;
     const simParams = _mergeAnimalDefaults(rawSimParams);
     if (simParams.walkable_terrain)
       simParams.walkable_terrain = simParams.walkable_terrain.map(t => TERRAIN_IDS[t]);
@@ -1003,6 +1073,75 @@ export function buildCanFlySet() {
     if (sp.can_fly) set.add(key);
   }
   return set;
+}
+
+// ---------------------------------------------------------------------------
+// Derived lookup builders — single source of truth for consumer layers
+// ---------------------------------------------------------------------------
+
+/** Build species display info map: { RABBIT: { emoji, name, diet }, ... } */
+export function buildSpeciesInfo() {
+  const map = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    const dietLabel = sp.diet.charAt(0) + sp.diet.slice(1).toLowerCase();
+    map[key] = { emoji: sp.emoji, name: sp.name, diet: dietLabel };
+  }
+  return map;
+}
+
+/** Build species hex-color map for rendering: { RABBIT: 0x66cc66, ... } */
+export function buildAnimalColors() {
+  const map = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    map[key] = sp.color;
+  }
+  return map;
+}
+
+/** Build hex-string color map: { RABBIT: '#66cc66', ... } */
+export function buildAnimalHexColors() {
+  const map = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    map[key] = `#${sp.color.toString(16).padStart(6, '0')}`;
+  }
+  return map;
+}
+
+/** Build diet groups: { Herbivore: ['RABBIT', ...], Carnivore: [...], Omnivore: [...] } */
+export function buildDietGroups() {
+  const groups = { Herbivore: [], Carnivore: [], Omnivore: [] };
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    const label = sp.diet.charAt(0) + sp.diet.slice(1).toLowerCase();
+    if (groups[label]) groups[label].push(key);
+  }
+  return groups;
+}
+
+/** Build per-species visual scale map: { RABBIT: 0.7, ... } */
+export function buildSpeciesVisualScale() {
+  const map = {};
+  for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
+    map[key] = sp.visualScale ?? 1.0;
+  }
+  return map;
+}
+
+/** Build per-species audio scale map (display-name keys): { Rabbit: 0.211, ... } */
+export function buildSpeciesAudioScale() {
+  const map = {};
+  for (const [, sp] of Object.entries(ANIMAL_SPECIES)) {
+    map[sp.name] = sp.audioScale ?? 0;
+  }
+  return map;
+}
+
+/** Build per-species sound group map (display-name keys): { Rabbit: 'smallMammal', ... } */
+export function buildSpeciesSoundGroup() {
+  const map = {};
+  for (const [, sp] of Object.entries(ANIMAL_SPECIES)) {
+    map[sp.name] = sp.soundGroup ?? SOUND_GROUP.SMALL_MAMMAL;
+  }
+  return map;
 }
 
 export default ANIMAL_SPECIES;

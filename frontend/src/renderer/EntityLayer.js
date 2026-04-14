@@ -6,7 +6,7 @@
 import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
-import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet } from '../engine/animalSpecies.js';
+import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
 import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 
 const ATTACK_JUMP_DURATION = 18;
@@ -35,19 +35,8 @@ const BASE_SCALE = 1.0 / FRAME_SIZE;
 const MIN_SCALE = 0.75 / FRAME_SIZE;
 const MAX_SCALE = 1.5 / FRAME_SIZE;
 
-// Per-species visual scale factor (relative to 1 tile)
-const SPECIES_VISUAL_SCALE = {
-  // Insects — small
-  MOSQUITO: 0.55, CATERPILLAR: 0.55, CRICKET: 0.55, BEETLE: 0.55,
-  // Small animals
-  RABBIT: 0.7, SQUIRREL: 0.7, LIZARD: 0.7, CROW: 0.7,
-  // Medium
-  FOX: 0.85, SNAKE: 0.85, HAWK: 0.85, RACCOON: 0.85,
-  // Large herbivores
-  DEER: 0.95, GOAT: 0.95, BOAR: 0.95,
-  // Apex / large
-  WOLF: 1.1, CROCODILE: 1.1, BEAR: 1.1,
-};
+// Per-species visual scale factor (relative to 1 tile) — derived from animalSpecies.js registry
+const SPECIES_VISUAL_SCALE = buildSpeciesVisualScale();
 
 export class EntityLayer {
   constructor(animationLayer, onEffectEvent, depthContainer, shadowContainer, overlayContainer) {

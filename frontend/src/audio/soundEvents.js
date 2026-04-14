@@ -1,53 +1,17 @@
 /**
  * Species size scale used for pitch/gain variation.
- * Maps species name → a 0–1 factor where 0 = tiny, 1 = massive.
- * Derived from max_hp: scale = clamp((max_hp - 10) / 190, 0, 1).
+ * Maps species display name → a 0–1 factor where 0 = tiny, 1 = massive.
+ * Derived from the canonical ANIMAL_SPECIES registry.
  */
-export const SPECIES_AUDIO_SCALE = {
-  Mosquito: 0.0,
-  Caterpillar: 0.026,
-  Cricket: 0.026,
-  Beetle: 0.053,
-  Crow: 0.105,
-  Squirrel: 0.158,
-  Snake: 0.158,
-  Lizard: 0.184,
-  Hawk: 0.184,
-  Rabbit: 0.211,
-  Raccoon: 0.211,
-  Fox: 0.263,
-  Deer: 0.316,
-  Goat: 0.368,
-  Boar: 0.474,
-  Wolf: 0.579,
-  Crocodile: 0.895,
-  Bear: 1.0,
-};
+import { buildSpeciesAudioScale, buildSpeciesSoundGroup } from '../engine/animalSpecies.js';
+export const SPECIES_AUDIO_SCALE = buildSpeciesAudioScale();
 
 /**
  * Species sound group classification.
  * Each group gets distinct synthesis parameters for richer audio variety.
+ * Derived from the canonical ANIMAL_SPECIES registry.
  */
-export const SPECIES_SOUND_GROUP = {
-  Mosquito: 'insect',
-  Caterpillar: 'insect',
-  Cricket: 'insect',
-  Beetle: 'insect',
-  Crow: 'bird',
-  Hawk: 'bird',
-  Squirrel: 'smallMammal',
-  Rabbit: 'smallMammal',
-  Raccoon: 'smallMammal',
-  Fox: 'smallMammal',
-  Lizard: 'reptile',
-  Snake: 'reptile',
-  Crocodile: 'reptile',
-  Deer: 'largeMammal',
-  Goat: 'largeMammal',
-  Boar: 'largeMammal',
-  Wolf: 'largeMammal',
-  Bear: 'largeMammal',
-};
+export const SPECIES_SOUND_GROUP = buildSpeciesSoundGroup();
 
 /**
  * Per-group synthesis modifiers applied on top of the base preset.

@@ -1,4 +1,5 @@
 import { AnimalState } from '../entities.js';
+import { DIET } from '../animalSpecies.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from '../benchmarkProfiler.js';
 import { _threatCacheTtl, _threatScanCooldown } from './movement.js';
 import { _combatConfig } from './utils.js';
@@ -67,8 +68,8 @@ export function _isThreatValidFor(animal, threat, vision) {
   const dist = Math.abs(threat.x - animal.x) + Math.abs(threat.y - animal.y);
   if (dist > vision + 2) return false;
   if (threat._preySpecies.size > 0 && !threat._preySpecies.has(animal.species)) return false;
-  if (threat.diet === 'CARNIVORE') return true;
-  if (animal.diet === 'OMNIVORE' && threat.diet === 'OMNIVORE') {
+  if (threat.diet === DIET.CARNIVORE) return true;
+  if (animal.diet === DIET.OMNIVORE && threat.diet === DIET.OMNIVORE) {
     return threat._config.attack_power > animal._config.attack_power + (_combatConfig(animal).threat_attack_margin ?? 2);
   }
   return false;
@@ -100,8 +101,8 @@ export function _findNearestThreat(animal, world, spatialHash, vision) {
     for (const entity of nearby) {
       if (!entity.alive || entity.id === animal.id) continue;
       if (entity._preySpecies.size > 0 && !entity._preySpecies.has(animal.species)) continue;
-      const isThreat = entity.diet === 'CARNIVORE' ||
-        (animal.diet === 'OMNIVORE' && entity.diet === 'OMNIVORE' && entity._config.attack_power > animal._config.attack_power + 2);
+      const isThreat = entity.diet === DIET.CARNIVORE ||
+        (animal.diet === DIET.OMNIVORE && entity.diet === DIET.OMNIVORE && entity._config.attack_power > animal._config.attack_power + 2);
       if (!isThreat) continue;
       const distCandidate = Math.abs(entity.x - animal.x) + Math.abs(entity.y - animal.y);
       if (distCandidate < bestDist) {

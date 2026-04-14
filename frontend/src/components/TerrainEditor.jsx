@@ -4,6 +4,7 @@
 import React from 'react';
 import useSimStore from '../store/simulationStore';
 import { TERRAIN_COLORS, TERRAIN_NAMES, WATER, SAND, DIRT, SOIL, ROCK, FERTILE_SOIL, DEEP_WATER, MOUNTAIN, MUD, SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
+import { buildPlantPlaceTypes } from '../engine/plantSpecies';
 
 const TERRAIN_TYPES = [WATER, DEEP_WATER, SAND, DIRT, SOIL, ROCK, FERTILE_SOIL, MOUNTAIN, MUD];
 
@@ -41,17 +42,7 @@ export default function TerrainEditor() {
 
   if (tool === 'PLACE_ENTITY') {
     const ANIMAL_TYPES = Object.keys(SPECIES_INFO);
-    const PLANT_PLACE_TYPES = [
-      { key: 'GRASS_PLANT', emoji: '🌱', label: 'Grass' },
-      { key: 'STRAWBERRY', emoji: '🍓', label: 'Strawberry' },
-      { key: 'BLUEBERRY', emoji: '🫐', label: 'Blueberry' },
-      { key: 'APPLE_TREE', emoji: '🍎', label: 'Apple Tree' },
-      { key: 'MANGO_TREE', emoji: '🥭', label: 'Mango Tree' },
-      { key: 'CARROT', emoji: '🥕', label: 'Carrot' },
-      { key: 'POTATO', emoji: '🥔', label: 'Potato' },
-      { key: 'CHILI_PEPPER', emoji: '🌶️', label: 'Chili Pepper' },
-      { key: 'OLIVE_TREE', emoji: '🫒', label: 'Olive Tree' },
-    ];
+    const PLANT_PLACE_TYPES = buildPlantPlaceTypes();
     return (
       <div className="sidebar-section">
         <h6>Place Entity</h6>

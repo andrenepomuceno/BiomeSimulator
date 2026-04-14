@@ -1,4 +1,5 @@
 import { AnimalState, LifeStage } from '../entities.js';
+import { DIET } from '../animalSpecies.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from '../benchmarkProfiler.js';
 import { S_ADULT, S_SEED } from '../flora.js';
 import { DEEP_WATER, WATER } from '../world.js';
@@ -110,7 +111,7 @@ export function decideAndAct(animal, world, spatialHash) {
       return;
     }
 
-    if (animal.hunger > (_decisionThresholds(animal).eat_opportunistic ?? 20) && (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE')) {
+    if (animal.hunger > (_decisionThresholds(animal).eat_opportunistic ?? 20) && (animal.diet === DIET.HERBIVORE || animal.diet === DIET.OMNIVORE)) {
       const idx = world.idx(animal.x, animal.y);
       const ptype = world.plantType[idx];
       const stage = world.plantStage[idx];
@@ -133,7 +134,7 @@ export function decideAndAct(animal, world, spatialHash) {
       return;
     }
 
-    if (animal.diet === 'HERBIVORE' || animal.diet === 'OMNIVORE') {
+    if (animal.diet === DIET.HERBIVORE || animal.diet === DIET.OMNIVORE) {
       const threat = _findNearestThreat(animal, world, spatialHash, vision);
       if (threat) {
         _fleeFrom(animal, threat, world);
@@ -142,9 +143,9 @@ export function decideAndAct(animal, world, spatialHash) {
     }
 
     if (animal.hunger > (_decisionThresholds(animal).critical_hunger ?? 45)) {
-      if (animal.diet === 'HERBIVORE') {
+      if (animal.diet === DIET.HERBIVORE) {
         _seekPlantFood(animal, world, vision);
-      } else if (animal.diet === 'OMNIVORE') {
+      } else if (animal.diet === DIET.OMNIVORE) {
         _seekOmnivoreFood(animal, world, spatialHash, vision);
       } else {
         _seekPrey(animal, world, spatialHash, vision);
@@ -180,9 +181,9 @@ export function decideAndAct(animal, world, spatialHash) {
     }
 
     if (animal.hunger > (_decisionThresholds(animal).moderate_hunger ?? 30)) {
-      if (animal.diet === 'HERBIVORE') {
+      if (animal.diet === DIET.HERBIVORE) {
         _seekPlantFood(animal, world, vision);
-      } else if (animal.diet === 'OMNIVORE') {
+      } else if (animal.diet === DIET.OMNIVORE) {
         _seekOmnivoreFood(animal, world, spatialHash, vision);
       } else {
         _seekPrey(animal, world, spatialHash, vision);

@@ -14,7 +14,7 @@ export const DEFAULT_AUDIO_SETTINGS = {
   unlocked: false,
 };
 
-export const AUDIO_LOG_LIMIT = 40;
+export const AUDIO_LOG_LIMIT = 120;
 export const AUDIO_SETTINGS_STORAGE_KEY = 'ecogame.audioSettings';
 
 const PERSISTED_AUDIO_SETTINGS_KEYS = [

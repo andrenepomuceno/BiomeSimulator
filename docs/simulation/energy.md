@@ -127,6 +127,6 @@ Only species with `can_scavenge: true` in the species registry can scavenge. The
 
 - [Animal AI](ai.md) — how energy thresholds drive AI decisions
 - [Movement System](movement.md) — terrain energy multipliers
-- [HP & Combat](combat.md) — combat energy costs and kill rewards
+- [Animal Interactions: HP & Combat](animal-interactions.md#hp--combat) — combat energy costs and kill rewards
 - [Animal Species Registry](../engine/animal-species.md) — per-species energy values and recovery rates
 - [Plant Lifecycle](plants.md) — stage-based plant nutrition values

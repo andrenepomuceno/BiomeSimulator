@@ -127,7 +127,7 @@ Animals have a `nocturnal` flag in their species config. Activity penalties appl
 
 - [Movement System](movement.md) — how animals travel and terrain costs
 - [Energy & Needs](energy.md) — threshold values and energy costs
-- [HP & Combat](combat.md) — combat mechanics and damage
-- [Reproduction](reproduction.md) — mating conditions and population caps
+- [Animal Interactions: HP & Combat](animal-interactions.md#hp--combat) — combat mechanics and damage
+- [Animal Interactions: Reproduction](animal-interactions.md#reproduction) — mating conditions and population caps
 - [Animal Species Registry](../engine/animal-species.md) — species stats and thresholds
 - [Architecture: Tick Pipeline](../architecture.md#simulation-tick) — how AI fits in the tick loop

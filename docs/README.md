@@ -13,11 +13,18 @@ Technical documentation for the EcoGame ecosystem simulation. For the project ov
 |---------|-------------|
 | [Architecture](architecture.md) | High-level system design, layer boundaries, data flow, component tree, design decisions |
 | [Engine](engine/) | Config, species registries, world model, simulation engine, pathfinding, spatial hash |
-| [Simulation Rules](simulation/) | Animal AI, movement, energy, HP, combat, reproduction, plant lifecycle |
+| [Simulation Rules](simulation/) | Animal AI, movement, energy, interactions, plant lifecycle |
 | [Renderer](renderer/) | Pixi.js layer stack, camera, entity/plant/terrain rendering, emoji textures |
 | [Worker API](api/) | Main↔Worker message protocol: commands, responses, data types |
 
 For setup, build commands, and performance profiling, see [../frontend/README.md](../frontend/README.md).
+
+---
+
+## Documentation Layout
+
+- Folder `README.md` files stay short and act as navigation hubs.
+- Prefer expanding an existing topic page before creating a new standalone article under roughly 100 lines.
 
 ---
 
@@ -31,7 +38,8 @@ For setup, build commands, and performance profiling, see [../frontend/README.md
 1. [Animal AI Decision Tree](simulation/ai.md)
 2. [Movement System](simulation/movement.md)
 3. [Energy & Needs](simulation/energy.md)
-4. [Species config](engine/animal-species.md) for threshold tuning
+4. [Animal Interactions](simulation/animal-interactions.md) for HP, combat, and mating rules
+5. [Species config](engine/animal-species.md) for threshold tuning
 
 **Working on plant systems:**
 1. [Plant Lifecycle](simulation/plants.md)

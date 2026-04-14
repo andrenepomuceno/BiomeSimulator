@@ -26,6 +26,16 @@ function cellScale(idx) {
   return BASE_EMOJI_SCALE * (0.9 + h * 0.2);
 }
 
+/** Per-plant sway frame with varied phase & period so plants don't move in unison. */
+function swayFrame(tick, idx) {
+  const h = ((idx * 2654435761) >>> 0);
+  const phase = h & 0xFF;                // 0..255 tick phase offset
+  const period = 100 + ((h >>> 8) & 63); // 100..163 cycle length
+  const t = (tick + phase) % period;
+  const third = period / 3;
+  return t < third ? 0 : (t < third * 2 ? 1 : 2);
+}
+
 export class PlantLayer {
   constructor() {
     this.container = new PIXI.Container();
@@ -262,7 +272,7 @@ export class PlantLayer {
           // Plant changed — update texture if needed
           if (existing.baseKey !== baseKey) {
             const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
-            const animFrame = canSway ? ((t + cx * 3 + cy * 7) % 120 < 40 ? 0 : ((t + cx * 3 + cy * 7) % 120 < 80 ? 1 : 2)) : 0;
+            const animFrame = canSway ? swayFrame(t, idx) : 0;
             const key = `${baseKey}_${animFrame}`;
             const tex = this._plantTextures[key];
             if (tex) {
@@ -293,7 +303,7 @@ export class PlantLayer {
 
           const baseKey = `${ptype}_${stage}`;
           const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
-          const animFrame = canSway ? ((t + x * 3 + y * 7) % 120 < 40 ? 0 : ((t + x * 3 + y * 7) % 120 < 80 ? 1 : 2)) : 0;
+          const animFrame = canSway ? swayFrame(t, idx) : 0;
           const key = `${baseKey}_${animFrame}`;
           const tex = this._plantTextures[key];
           if (!tex) continue;
@@ -313,8 +323,7 @@ export class PlantLayer {
       // Frame-based sway: cycle through 3 frames using tick + spatial hash
       const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
       if (canSway) {
-        const hash = (t + cx * 3 + cy * 7) % 120;
-        const animFrame = hash < 40 ? 0 : (hash < 80 ? 1 : 2);
+        const animFrame = swayFrame(t, idx);
         const newKey = `${entry.baseKey}_${animFrame}`;
         if (newKey !== entry.texKey) {
           const tex = this._plantTextures[newKey];

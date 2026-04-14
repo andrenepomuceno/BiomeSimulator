@@ -336,7 +336,23 @@ export function decideAndAct(animal, world, spatialHash) {
     return;
   }
 
-  // 8. Idle or wander
+  // 8. Crowd dispersal — if most neighbors are occupied, walk away from the crowd
+  {
+    const tx = animal.x | 0, ty = animal.y | 0;
+    let occupied = 0;
+    for (let ndx = -1; ndx <= 1; ndx++) {
+      for (let ndy = -1; ndy <= 1; ndy++) {
+        if (ndx === 0 && ndy === 0) continue;
+        if (world.isTileOccupied(tx + ndx, ty + ndy)) occupied++;
+      }
+    }
+    if (occupied >= 4) {
+      _randomWalk(animal, world);
+      return;
+    }
+  }
+
+  // 9. Idle or wander
   if (animal.path.length && animal.pathIndex < animal.path.length) {
     _walkPath(animal, world);
   } else if (Math.random() < (animal._config.random_walk_chance ?? 0.3)) {
@@ -920,20 +936,30 @@ function _fleeFrom(animal, threat, world) {
     if (!moved) {
       const curDist = Math.abs(animal.x - threat.x) + Math.abs(animal.y - threat.y);
       let bestNx = -1, bestNy = -1, bestGain = -Infinity;
+      let fallbackNx = -1, fallbackNy = -1, fallbackGain = -Infinity;
       for (let ndx = -1; ndx <= 1; ndx++) {
         for (let ndy = -1; ndy <= 1; ndy++) {
           if (ndx === 0 && ndy === 0) continue;
           const ntx = baseTx + ndx;
           const nty = baseTy + ndy;
-          if (!world.isWalkableFor(ntx, nty, ws) || world.isTileOccupied(ntx, nty)) continue;
+          if (!world.isWalkableFor(ntx, nty, ws)) continue;
           const nx = ntx + 0.5;
           const ny = nty + 0.5;
           const gain = (Math.abs(nx - threat.x) + Math.abs(ny - threat.y)) - curDist;
-          if (gain > bestGain) { bestGain = gain; bestNx = nx; bestNy = ny; }
+          if (!world.isTileOccupied(ntx, nty)) {
+            if (gain > bestGain) { bestGain = gain; bestNx = nx; bestNy = ny; }
+          } else {
+            // Track best occupied tile as last-resort escape
+            if (gain > fallbackGain) { fallbackGain = gain; fallbackNx = nx; fallbackNy = ny; }
+          }
         }
       }
       if (bestNx >= 0) {
         _moveAnimal(animal, bestNx, bestNy, world);
+        moved = true;
+      } else if (fallbackNx >= 0 && fallbackGain > 0) {
+        // Cornered — allow moving into occupied tile to survive
+        _moveAnimal(animal, fallbackNx, fallbackNy, world);
         moved = true;
       }
     }
@@ -1136,9 +1162,10 @@ function _randomWalk(animal, world) {
         }
       }
 
-      // Home bias: when far from home, prefer direction toward home (60% chance)
+      // Home bias: when far from home, prefer direction toward home (30% chance)
+      // Also gradually shift home toward current position to allow territory migration
       const homeDist = Math.abs(animal.x - animal.homeX) + Math.abs(animal.y - animal.homeY);
-      if (homeDist > 15 && Math.random() < 0.6) {
+      if (homeDist > 30 && Math.random() < 0.3) {
         const hdx = Math.sign(animal.homeX - animal.x);
         const hdy = Math.sign(animal.homeY - animal.y);
         dirs.sort((a, b) => {
@@ -1146,6 +1173,11 @@ function _randomWalk(animal, world) {
           const sb = (b[0] === hdx ? -1 : 0) + (b[1] === hdy ? -1 : 0);
           return sa - sb;
         });
+      } else if (homeDist > 40) {
+        // Shift home toward current position to allow natural migration
+        animal.homeX += (animal.x - animal.homeX) * 0.1;
+        animal.homeY += (animal.y - animal.homeY) * 0.1;
+        shuffleInPlace(dirs);
       } else if (!(lastDdx | lastDdy) || Math.random() >= 0.5) {
         shuffleInPlace(dirs);
       }

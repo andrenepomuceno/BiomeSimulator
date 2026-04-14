@@ -20,7 +20,7 @@ describe('simulationConfigViewModel', () => {
       'supervisor',
     ]);
     expect(findRow(sections, 'max-animal-population')).toMatchObject({
-      value: '5,000 animals',
+      value: '10,000 animals',
       source: 'world',
     });
     expect(findRow(sections, 'supervisor-enabled')).toMatchObject({

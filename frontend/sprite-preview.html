@@ -124,10 +124,11 @@
 
     // ── Zoomed rendering helper ─────────────────────────────────────
     function renderZoomed(atlas, canvas, cols, rows, zoom, labels) {
-      const padTop = 16 * zoom;
-      const padLeft = labels ? 100 * zoom : 0;
-      canvas.width = atlas.width * zoom + padLeft;
-      canvas.height = atlas.height * zoom + padTop;
+      const labelScale = Math.max(zoom, 0.5); // keep labels legible at tiny zoom
+      const padTop = Math.round(16 * labelScale);
+      const padLeft = labels ? Math.round(100 * labelScale) : 0;
+      canvas.width = Math.round(atlas.width * zoom) + padLeft;
+      canvas.height = Math.round(atlas.height * zoom) + padTop;
       const zctx = canvas.getContext('2d');
       zctx.imageSmoothingEnabled = false;
       zctx.fillStyle = '#1a1a2e';
@@ -136,22 +137,23 @@
       zctx.strokeStyle = 'rgba(255,255,255,0.08)';
       zctx.lineWidth = 1;
       for (let c = 0; c <= cols; c++) {
-        const x = c * FRAME * zoom + padLeft;
+        const x = Math.round(c * FRAME * zoom) + padLeft;
         zctx.beginPath(); zctx.moveTo(x, padTop); zctx.lineTo(x, canvas.height); zctx.stroke();
       }
       for (let r = 0; r <= rows; r++) {
-        const y = r * FRAME * zoom + padTop;
+        const y = Math.round(r * FRAME * zoom) + padTop;
         zctx.beginPath(); zctx.moveTo(0, y); zctx.lineTo(canvas.width, y); zctx.stroke();
       }
       // Atlas
-      zctx.drawImage(atlas, padLeft, padTop, atlas.width * zoom, atlas.height * zoom);
+      zctx.drawImage(atlas, padLeft, padTop, Math.round(atlas.width * zoom), Math.round(atlas.height * zoom));
       // Labels
       if (labels) {
-        zctx.font = `${10 * zoom}px monospace`;
+        const fontSize = Math.max(8, Math.round(10 * labelScale));
+        zctx.font = `${fontSize}px monospace`;
         zctx.fillStyle = '#ffdd44';
         zctx.textBaseline = 'middle';
         for (let r = 0; r < labels.length; r++) {
-          zctx.fillText(labels[r], 4 * zoom, r * FRAME * zoom + FRAME * zoom / 2 + padTop);
+          zctx.fillText(labels[r], Math.round(4 * labelScale), Math.round(r * FRAME * zoom + FRAME * zoom / 2) + padTop);
         }
       }
     }

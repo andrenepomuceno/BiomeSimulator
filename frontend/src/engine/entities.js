@@ -32,6 +32,13 @@ export const ReproductionType = {
   METAMORPHOSIS: 'METAMORPHOSIS',
 };
 
+export const Direction = {
+  DOWN: 0,
+  LEFT: 1,
+  RIGHT: 2,
+  UP: 3,
+};
+
 // Pre-computed reverse lookup: stage number → stage key string
 const LIFE_STAGE_KEYS = Object.keys(LifeStage).reduce((acc, key) => {
   acc[LifeStage[key]] = key;
@@ -106,6 +113,9 @@ export class Animal {
     this._actionBufIdx = 0;
     this._actionBufFull = false;
     this._actionMaxSize = config.action_history_max_size || 100;
+
+    // Facing direction (0=DOWN, 1=LEFT, 2=RIGHT, 3=UP)
+    this.direction = 0;
 
     // Dirty tracking for incremental serialization
     this._dirty = true;
@@ -288,6 +298,7 @@ export class Animal {
       _eggMaxHp: this._eggMaxHp,
       parentA: this.parentA,
       parentB: this.parentB,
+      direction: this.direction,
       actionHistory: this.actionHistory,
     };
   }
@@ -317,6 +328,7 @@ export class Animal {
       _eggMaxHp: this._eggMaxHp,
       parentA: this.parentA,
       parentB: this.parentB,
+      direction: this.direction,
     };
   }
 
@@ -358,6 +370,7 @@ export class Animal {
       _eggMaxHp: this._eggMaxHp,
       parentA: this.parentA,
       parentB: this.parentB,
+      direction: this.direction,
       actionHistory: this.actionHistory,
     };
   }

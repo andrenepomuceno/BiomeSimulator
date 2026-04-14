@@ -65,6 +65,7 @@ function reconstructAnimal(ad, speciesConfig) {
     a.hp = ad.hp ?? a._eggMaxHp;
   }
   a.actionHistory = ad.actionHistory || [];
+  a.direction = ad.direction || 0;
   return a;
 }
 
@@ -163,6 +164,7 @@ self.onmessage = function (e) {
           _eggMaxHp: animal._eggMaxHp,
           parentA: animal.parentA,
           parentB: animal.parentB,
+          direction: animal.direction,
           actionHistory: animal.actionHistory,
         });
       }

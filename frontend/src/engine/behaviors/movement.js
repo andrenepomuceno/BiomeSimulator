@@ -1,4 +1,4 @@
-import { AnimalState } from '../entities.js';
+import { AnimalState, Direction } from '../entities.js';
 import { SUB_CELL_DIVISOR, SUB_CELL_STEP } from '../config.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from '../benchmarkProfiler.js';
 import { aStar } from '../pathfinding.js';
@@ -145,6 +145,12 @@ export function _followPath(animal, world) {
 
   _moveAnimal(animal, nx, ny, world);
   animal.state = AnimalState.WALKING;
+  // Update facing direction based on dominant axis
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    animal.direction = dx > 0 ? Direction.RIGHT : Direction.LEFT;
+  } else {
+    animal.direction = dy > 0 ? Direction.DOWN : Direction.UP;
+  }
   if (crossedTile) {
     const tMult = _terrainEnergyCost(world, newTx, newTy);
     const cost = animal.energyCost('WALK') * tMult;
@@ -265,6 +271,14 @@ export function _fleeFrom(animal, threat, world) {
   }
 
   animal.state = fly ? AnimalState.FLYING : AnimalState.FLEEING;
+  // Update facing direction away from threat
+  const flx = animal.x - threat.x;
+  const fly2 = animal.y - threat.y;
+  if (Math.abs(flx) >= Math.abs(fly2)) {
+    animal.direction = flx > 0 ? Direction.RIGHT : Direction.LEFT;
+  } else {
+    animal.direction = fly2 > 0 ? Direction.DOWN : Direction.UP;
+  }
   _applyEnergyCostWithModifier(animal, fly ? 'FLY' : 'FLEE', world.clock.isNight, world.config);
   animal.logAction(world.clock.tick, 'FLED', { from: threat.species, threatId: threat.id });
 }
@@ -337,6 +351,12 @@ export function _randomWalk(animal, world) {
         stepMoved = true;
         lastDdx = ddx;
         lastDdy = ddy;
+        // Update facing direction
+        if (Math.abs(ddx) >= Math.abs(ddy)) {
+          animal.direction = ddx > 0 ? Direction.RIGHT : Direction.LEFT;
+        } else {
+          animal.direction = ddy > 0 ? Direction.DOWN : Direction.UP;
+        }
         if (crossedTile) tileCrossings++;
         break;
       }

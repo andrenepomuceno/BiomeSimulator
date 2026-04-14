@@ -38,6 +38,8 @@ Ecogame is a browser-based 2D ecosystem simulation. Most implementation work liv
 - Use immutable Zustand updates: `set(state => ({ ...state, key: value }))`.
 - In React components and hooks, read store state through the Zustand hook. Outside React render flow, use imperative access like `useSimStore.getState()`.
 - Keep species and config modules data-driven. Prefer named constants plus builder functions that derive lookup tables from canonical definitions instead of duplicating hard-coded maps.
+- `ANIMAL_SPECIES` and `PLANT_SPECIES` are the single canonical sources of truth for species parameters. New parameters belong in those definition objects, not in ad-hoc maps elsewhere. Derived data (lookup tables, UI labels, initial counts) must come from builder functions (`buildAnimalSpeciesConfig`, `buildInitialAnimalCounts`, `buildSpeciesInfo`, `buildInitialPlantCounts`, etc.) that read the canonical definitions. Do not duplicate or hard-code species data outside these modules.
+- Preserve the defaults-plus-overrides pattern: species entries only specify values that differ from the shared defaults (e.g. `_mergeAnimalDefaults`). Keep default constants (`DEFAULT_DECISION_THRESHOLDS`, `DEFAULT_METABOLIC_MULTIPLIERS`, `DEFAULT_COMBAT`, etc.) colocated with the species definitions and merge them at build time.
 - Keep engine configuration centralized in `frontend/src/engine/config.js` and related constants modules.
 - Use event-driven callbacks for camera, viewport, tile editing, and other canvas interactions.
 - Preserve the worker boundary: engine and worker code should exchange plain serializable data, not class instances tied to DOM or Pixi objects.
@@ -54,3 +56,4 @@ Ecogame is a browser-based 2D ecosystem simulation. Most implementation work liv
 - After a large or important modification, end the response with a concise suggested commit message that summarizes the change.
 - When a change touches simulation, pathfinding, renderer hot paths, or worker message volume, validate the impact with the existing headless profiling workflow when practical and call out performance implications in the response.
 - Update documentation whenever the change affects behavior, architecture, configuration, controls, worker messages, or other user-facing or developer-facing workflows.
+- When a dev server or long-running process is started during a task, kill it before the response ends. Do not leave dev servers running in the background after the work is complete.

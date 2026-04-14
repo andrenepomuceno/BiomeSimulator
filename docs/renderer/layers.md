@@ -133,16 +133,19 @@ Base scale: `1.0 / FRAME_SIZE`, multiplied by species factor, energy factor (0.8
 
 Particle-based visual feedback for key simulation events.
 
-| Animation | Trigger | Particles | Shape |
-|-----------|---------|-----------|-------|
-| Attack | Combat hit | 5 stars | ⭐ burst |
-| Birth | Offspring spawned | 6 circles | Ring expand |
-| Death | Animal dies | 8 circles | Fade scatter |
-| Fruit Sparkle | Plant reaches Fruit stage | 4 sparkles | Rising glint |
-| Mating | Reproduction | 4 hearts | Float up |
-| Eating | Consuming food | 4 crumbs | Scatter down |
+| Animation | Trigger | Particles | Shape | Duration (frames) |
+|-----------|---------|-----------|-------|--------------------|
+| Attack | Combat hit | 7 stars | ⭐ burst | 24–36 |
+| Birth | Offspring spawned | 8 circles | Ring expand | 30–42 |
+| Death | Animal dies | 8 circles | Fade scatter + gravity | 36–50 |
+| Fruit Sparkle | Plant reaches Fruit stage | 3 sparkles | Rising glint | 30–44 |
+| Mating | Reproduction | 4 hearts | Float up | 36–50 |
+| Eating | Consuming food | 3 crumbs | Scatter down | 22–30 |
+| Drinking | Consuming water | 3 circles | Blue droplets rising | 22–32 |
+| Fleeing | Starts fleeing | 4 circles | Dust puff | 16–24 |
+| Sleeping | While asleep | 1 sparkle | Zzz drift up (1 per ~60 ticks) | 35–50 |
 
-- Max **600 particles** active (ring buffer allocation)
+- Max **800 particles** active (ring buffer allocation)
 - Runtime-generated textures: circle, star, heart, sparkle (canvas-drawn)
 - Per-particle physics: position, velocity, gravity, life, scale curves, alpha curves
 

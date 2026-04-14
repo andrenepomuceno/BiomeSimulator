@@ -9,9 +9,9 @@ import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
 import { MAX_ANIMAL_ENERGY } from '../engine/animalSpecies.js';
 import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 
-const ATTACK_JUMP_DURATION = 12;
+const ATTACK_JUMP_DURATION = 18;
 const ATTACK_JUMP_HEIGHT = 0.22;
-const HIT_WOBBLE_DURATION = 8;
+const HIT_WOBBLE_DURATION = 12;
 const HIT_WOBBLE_OFFSET = 0.08;
 const HIT_WOBBLE_ROTATION = 0.22;
 
@@ -245,6 +245,7 @@ export class EntityLayer {
           if (this._animationLayer) this._animationLayer.spawnEat(a.x, a.y);
           this._emitEffectEvent('eat', a.x, a.y, a.species, currentTick);
         } else if (a.state === 4) {
+          if (this._animationLayer) this._animationLayer.spawnDrink(a.x, a.y);
           this._emitEffectEvent('drink', a.x, a.y, a.species, currentTick);
         } else if (a.state === 7 && prevState !== 7) {
           // Flee spatial dedup: at most 1 per 8-tile bucket per tick
@@ -255,11 +256,17 @@ export class EntityLayer {
           const bucketKey = (Math.floor(a.x / 8) << 16) | (Math.floor(a.y / 8) & 0xffff);
           if (!this._fleeBuckets.has(bucketKey)) {
             this._fleeBuckets.add(bucketKey);
+            if (this._animationLayer) this._animationLayer.spawnFlee(a.x, a.y);
             this._emitEffectEvent('flee', a.x, a.y, a.species, currentTick);
           }
         }
       }
       this._prevStates.set(a.id, a.state);
+
+      // Sleeping Zzz particles — throttled to 1 per ~60 ticks per animal
+      if (a.state === 5 && this._animationLayer && currentTick > 0 && currentTick % 60 === 0) {
+        this._animationLayer.spawnSleep(a.x, a.y);
+      }
 
       const currentHp = Number.isFinite(a.hp) ? a.hp : null;
       if (

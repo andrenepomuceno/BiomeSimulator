@@ -13,9 +13,12 @@ const ANIM_DEATH = 2;
 const ANIM_FRUIT = 3;
 const ANIM_MATE = 4;
 const ANIM_EAT = 5;
+const ANIM_DRINK = 6;
+const ANIM_FLEE = 7;
+const ANIM_SLEEP = 8;
 
 // Pool limits
-const MAX_PARTICLES = 600;
+const MAX_PARTICLES = 800;
 
 // Pre-built particle textures (created once lazily)
 let _particleTextures = null;
@@ -138,15 +141,15 @@ export class AnimationLayer {
   spawnAttack(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 7; i++) {
       const p = this._acquire('star');
       if (!p) break;
-      const angle = (Math.PI * 2 * i) / 5 + Math.random() * 0.3;
-      const speed = 0.02 + Math.random() * 0.03;
+      const angle = (Math.PI * 2 * i) / 7 + Math.random() * 0.3;
+      const speed = 0.015 + Math.random() * 0.025;
       p.vx = Math.cos(angle) * speed;
       p.vy = Math.sin(angle) * speed;
       p.life = 0;
-      p.maxLife = 12 + Math.random() * 6;
+      p.maxLife = 24 + Math.random() * 12;
       p.scaleStart = 0.015 + Math.random() * 0.008;
       p.scaleEnd = 0.002;
       p.alphaStart = 1;
@@ -168,15 +171,15 @@ export class AnimationLayer {
     const cx = x;
     const cy = y;
     // Expanding ring of circles
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       const p = this._acquire('circle');
       if (!p) break;
-      const angle = (Math.PI * 2 * i) / 6;
-      const speed = 0.015 + Math.random() * 0.01;
+      const angle = (Math.PI * 2 * i) / 8;
+      const speed = 0.012 + Math.random() * 0.01;
       p.vx = Math.cos(angle) * speed;
       p.vy = Math.sin(angle) * speed;
       p.life = 0;
-      p.maxLife = 18 + Math.random() * 8;
+      p.maxLife = 30 + Math.random() * 12;
       p.scaleStart = 0.012;
       p.scaleEnd = 0.003;
       p.alphaStart = 0.9;
@@ -203,9 +206,9 @@ export class AnimationLayer {
       const speed = 0.01 + Math.random() * 0.025;
       p.vx = Math.cos(angle) * speed;
       p.vy = Math.sin(angle) * speed - 0.01;
-      p.gravity = 0.001;
+      p.gravity = 0.0007;
       p.life = 0;
-      p.maxLife = 20 + Math.random() * 10;
+      p.maxLife = 36 + Math.random() * 14;
       p.scaleStart = 0.01 + Math.random() * 0.006;
       p.scaleEnd = 0.001;
       p.alphaStart = 0.85;
@@ -231,7 +234,7 @@ export class AnimationLayer {
       p.vx = (Math.random() - 0.5) * 0.01;
       p.vy = -0.01 - Math.random() * 0.015;
       p.life = 0;
-      p.maxLife = 20 + Math.random() * 10;
+      p.maxLife = 30 + Math.random() * 14;
       p.scaleStart = 0.01 + Math.random() * 0.005;
       p.scaleEnd = 0.002;
       p.alphaStart = 1;
@@ -251,13 +254,13 @@ export class AnimationLayer {
   spawnMate(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       const p = this._acquire('heart');
       if (!p) break;
       p.vx = (Math.random() - 0.5) * 0.008;
-      p.vy = -0.015 - Math.random() * 0.01;
+      p.vy = -0.01 - Math.random() * 0.008;
       p.life = 0;
-      p.maxLife = 22 + Math.random() * 8;
+      p.maxLife = 36 + Math.random() * 14;
       p.scaleStart = 0.012 + Math.random() * 0.005;
       p.scaleEnd = 0.004;
       p.alphaStart = 1;
@@ -282,9 +285,9 @@ export class AnimationLayer {
       if (!p) break;
       p.vx = (Math.random() - 0.5) * 0.02;
       p.vy = -0.005 - Math.random() * 0.01;
-      p.gravity = 0.0015;
+      p.gravity = 0.0012;
       p.life = 0;
-      p.maxLife = 12 + Math.random() * 6;
+      p.maxLife = 22 + Math.random() * 8;
       p.scaleStart = 0.006 + Math.random() * 0.004;
       p.scaleEnd = 0.001;
       p.alphaStart = 0.9;
@@ -296,6 +299,81 @@ export class AnimationLayer {
       p.sprite.alpha = 0.9;
       this._particles.push(p);
     }
+  }
+
+  /**
+   * Drinking water droplet particles.
+   */
+  spawnDrink(x, y) {
+    const cx = x;
+    const cy = y;
+    for (let i = 0; i < 3; i++) {
+      const p = this._acquire('circle');
+      if (!p) break;
+      p.vx = (Math.random() - 0.5) * 0.008;
+      p.vy = -0.012 - Math.random() * 0.008;
+      p.life = 0;
+      p.maxLife = 22 + Math.random() * 10;
+      p.scaleStart = 0.006 + Math.random() * 0.004;
+      p.scaleEnd = 0.002;
+      p.alphaStart = 0.9;
+      p.alphaEnd = 0;
+      p.sprite.x = cx + (Math.random() - 0.5) * 0.3;
+      p.sprite.y = cy;
+      p.sprite.tint = 0x44aaff;
+      p.sprite.scale.set(p.scaleStart);
+      p.sprite.alpha = 0.9;
+      this._particles.push(p);
+    }
+  }
+
+  /**
+   * Fleeing dust puff particles.
+   */
+  spawnFlee(x, y) {
+    const cx = x;
+    const cy = y;
+    for (let i = 0; i < 4; i++) {
+      const p = this._acquire('circle');
+      if (!p) break;
+      p.vx = (Math.random() - 0.5) * 0.03;
+      p.vy = -0.005 - Math.random() * 0.008;
+      p.gravity = 0.0008;
+      p.life = 0;
+      p.maxLife = 16 + Math.random() * 8;
+      p.scaleStart = 0.008 + Math.random() * 0.005;
+      p.scaleEnd = 0.002;
+      p.alphaStart = 0.7;
+      p.alphaEnd = 0;
+      p.sprite.x = cx + (Math.random() - 0.5) * 0.3;
+      p.sprite.y = cy;
+      p.sprite.tint = 0xccbb99;
+      p.sprite.scale.set(p.scaleStart);
+      p.sprite.alpha = 0.7;
+      this._particles.push(p);
+    }
+  }
+
+  /**
+   * Sleeping Zzz sparkle (call sparingly — throttle externally).
+   */
+  spawnSleep(x, y) {
+    const p = this._acquire('sparkle');
+    if (!p) return;
+    p.vx = (Math.random() - 0.5) * 0.004;
+    p.vy = -0.006 - Math.random() * 0.004;
+    p.life = 0;
+    p.maxLife = 35 + Math.random() * 15;
+    p.scaleStart = 0.008 + Math.random() * 0.004;
+    p.scaleEnd = 0.002;
+    p.alphaStart = 0.75;
+    p.alphaEnd = 0;
+    p.sprite.x = x + (Math.random() - 0.5) * 0.2;
+    p.sprite.y = y - 0.3;
+    p.sprite.tint = 0xaaaaff;
+    p.sprite.scale.set(p.scaleStart);
+    p.sprite.alpha = 0.75;
+    this._particles.push(p);
   }
 
   /**

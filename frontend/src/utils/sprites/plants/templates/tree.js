@@ -6,6 +6,7 @@ import { rect, darken, lighten } from '../../helpers.js';
 
 export function drawTree(ctx, params, stage, frame) {
   const { trunk, trunkDark, leaf, leafDark, fruit, fruitAccent } = params;
+  const lh = params.leafHighlight || lighten(leaf, 0.25);
   // Shape params with defaults for backward compat
   const cw = params.canopyW || 16;   // full canopy width at stage 4-5
   const ch = params.canopyH || 11;   // full canopy height at stage 4-5
@@ -41,6 +42,9 @@ export function drawTree(ctx, params, stage, frame) {
     rect(ctx, cx - shw + 2 + swayOff, baseY - sh - sch, sw - 4, (sch * 0.3) | 0, leaf);
     rect(ctx, cx - shw + 1 + swayOff, baseY - sh + 2, sw - 2, 2, leafDark);
     rect(ctx, cx - shw + 2 + swayOff, baseY - sh - sch, sw - 4, 2, lighten(leaf, 0.2));
+    // Highlight patches
+    rect(ctx, cx - shw + 2 + swayOff, baseY - sh - (sch * 0.6) | 0, 3, 3, lh);
+    rect(ctx, cx + swayOff, baseY - sh - sch + 1, 3, 2, lh);
     rect(ctx, cx - 2, baseY, 8, 2, darken(trunk, 0.3));
   } else if (stage === 4) {
     rect(ctx, cx, baseY - th, 4, th, trunk);
@@ -51,6 +55,10 @@ export function drawTree(ctx, params, stage, frame) {
     rect(ctx, cx - hw + 3 + swayOff, baseY - th - ch, cw - 6, (ch * 0.3) | 0, leaf);
     rect(ctx, cx - hw + 1 + swayOff, baseY - th + 2, cw - 2, 2, leafDark);
     rect(ctx, cx - hw + 3 + swayOff, baseY - th - ch, cw - 6, 2, lighten(leaf, 0.2));
+    // Highlight patches — add visible bright spots
+    rect(ctx, cx - hw + 3 + swayOff, baseY - th - (ch * 0.6) | 0, 4, 3, lh);
+    rect(ctx, cx + 1 + swayOff, baseY - th - (ch * 0.8) | 0, 4, 3, lh);
+    rect(ctx, cx + hw - 6 + swayOff, baseY - th - (ch * 0.4) | 0, 3, 3, lh);
     rect(ctx, cx - 3, baseY, 10, 2, darken(trunk, 0.3));
   } else if (stage === 5) {
     rect(ctx, cx, baseY - th, 4, th, trunk);
@@ -59,6 +67,9 @@ export function drawTree(ctx, params, stage, frame) {
     rect(ctx, cx - hw + 1 + swayOff, baseY - th - (ch * 0.7) | 0, cw - 2, (ch * 0.45) | 0, leaf);
     rect(ctx, cx - hw + 3 + swayOff, baseY - th - ch, cw - 6, (ch * 0.3) | 0, leaf);
     rect(ctx, cx - hw + 1 + swayOff, baseY - th + 2, cw - 2, 2, leafDark);
+    // Highlight patches
+    rect(ctx, cx - hw + 3 + swayOff, baseY - th - (ch * 0.6) | 0, 4, 3, lh);
+    rect(ctx, cx + 1 + swayOff, baseY - th - (ch * 0.8) | 0, 4, 3, lh);
     // Fruit — larger, positioned within canopy
     const fy = baseY - th - (ch * 0.3) | 0;
     rect(ctx, cx - hw + 2 + swayOff, fy, 4, 4, fruit);

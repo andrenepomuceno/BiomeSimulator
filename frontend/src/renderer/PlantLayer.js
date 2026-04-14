@@ -17,7 +17,14 @@ import { buildSwayStages } from '../engine/plantSpecies.js';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const MAX_EMOJI_SPRITES = 8000;
-const EMOJI_SCALE = 1 / FRAME_SIZE; // atlas frame → ~1 tile
+const BASE_EMOJI_SCALE = 1.3 / FRAME_SIZE; // ~30% larger than 1 tile
+
+/** Deterministic per-cell scale jitter ±10%. */
+function cellScale(idx) {
+  // simple hash → 0..1
+  const h = ((idx * 2654435761) >>> 0) / 4294967296;
+  return BASE_EMOJI_SCALE * (0.9 + h * 0.2);
+}
 
 export class PlantLayer {
   constructor() {
@@ -332,12 +339,13 @@ export class PlantLayer {
 
       entry.sprite.x = cx + 0.5;
       entry.sprite.y = cy + 0.5;
-      entry.sprite.scale.set(EMOJI_SCALE * scaleMultiplier);
+      const sc = cellScale(idx);
+      entry.sprite.scale.set(sc * scaleMultiplier);
 
       if (entry.shadow) {
         const stage = this._stages[idx];
-        const ss = stage === 3 ? 0.014 : (stage >= 4 ? 0.022 : 0.018);
-        const sh = stage === 3 ? 0.007 : (stage >= 4 ? 0.011 : 0.009);
+        const ss = stage === 3 ? 0.016 : (stage >= 4 ? 0.026 : 0.020);
+        const sh = stage === 3 ? 0.008 : (stage >= 4 ? 0.013 : 0.010);
         entry.shadow.x = cx + 0.5;
         entry.shadow.y = cy + 0.85;
         entry.shadow.scale.set(ss * scaleMultiplier, sh);
@@ -362,10 +370,12 @@ export class PlantLayer {
 
   _addEntry(idx, x, y, ptype, stage, baseKey, texKey, tex, t, swayMap) {
     const sprite = this._acquireSprite(tex);
+    const sc = cellScale(idx);
 
     sprite.x = x + 0.5;
     sprite.y = y + 0.5;
-    sprite.scale.set(EMOJI_SCALE);
+    sprite.anchor.set(0.5, 0.7);
+    sprite.scale.set(sc);
     sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.6 : (stage === 3 ? 0.8 : (stage === 5 ? 0.9 : 1.0)));
 
     let shadow = null;
@@ -373,11 +383,10 @@ export class PlantLayer {
       shadow = this._acquireShadow();
       shadow.x = x + 0.5;
       shadow.y = y + 0.85;
-      // Shadow grows with stage
-      const ss = stage === 3 ? 0.014 : (stage >= 4 ? 0.022 : 0.018);
-      const sh = stage === 3 ? 0.007 : (stage >= 4 ? 0.011 : 0.009);
+      const ss = stage === 3 ? 0.016 : (stage >= 4 ? 0.026 : 0.020);
+      const sh = stage === 3 ? 0.008 : (stage >= 4 ? 0.013 : 0.010);
       shadow.scale.set(ss, sh);
-      shadow.alpha = 0.2;
+      shadow.alpha = 0.35;
     }
 
     this._spriteMap.set(idx, { sprite, shadow, baseKey, texKey });

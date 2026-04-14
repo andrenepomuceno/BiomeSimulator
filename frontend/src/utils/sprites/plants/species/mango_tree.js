@@ -7,6 +7,7 @@ export default {
   trunkDark: '#6a5428',
   leaf: '#68a820',
   leafDark: '#509010',
+  leafHighlight: '#90c838',
   fruit: '#f0b828',
   fruitAccent: '#f8d050',
   canopyW: 18,

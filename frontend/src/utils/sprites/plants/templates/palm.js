@@ -45,16 +45,17 @@ export function drawPalm(ctx, params, stage, frame) {
     rect(ctx, cx, baseY - 18, 4, 1, trunkDark);
     rect(ctx, cx, baseY - 14, 4, 1, trunkDark);
     rect(ctx, cx, baseY - 10, 4, 1, trunkDark);
-    // Fronds spreading out
-    rect(ctx, cx - 6 + swayOff, baseY - 24, 7, 2, leaf);
-    rect(ctx, cx + 3 + swayOff, baseY - 24, 7, 2, leaf);
-    rect(ctx, cx - 5 + swayOff, baseY - 25, 5, 2, leafDark);
-    rect(ctx, cx + 4 + swayOff, baseY - 25, 5, 2, leafDark);
-    rect(ctx, cx - 4 + swayOff, baseY - 22, 4, 2, leaf);
-    rect(ctx, cx + 4 + swayOff, baseY - 22, 4, 2, leaf);
-    // Top fronds
-    rect(ctx, cx + swayOff, baseY - 27, 4, 3, leaf);
-    rect(ctx, cx + 1 + swayOff, baseY - 28, 2, 2, lighten(leaf, 0.2));
+    // Fronds — wider drooping leaves
+    rect(ctx, cx - 8 + swayOff, baseY - 23, 9, 2, leaf);
+    rect(ctx, cx - 7 + swayOff, baseY - 21, 5, 2, leafDark);
+    rect(ctx, cx + 3 + swayOff, baseY - 23, 9, 2, leaf);
+    rect(ctx, cx + 6 + swayOff, baseY - 21, 5, 2, leafDark);
+    // Mid fronds angled
+    rect(ctx, cx - 5 + swayOff, baseY - 25, 6, 2, leaf);
+    rect(ctx, cx + 3 + swayOff, baseY - 25, 6, 2, leaf);
+    // Top crown
+    rect(ctx, cx - 1 + swayOff, baseY - 27, 6, 3, leaf);
+    rect(ctx, cx + swayOff, baseY - 28, 4, 2, lighten(leaf, 0.2));
     // Ground
     rect(ctx, cx - 2, baseY, 8, 2, darken(trunk, 0.3));
   } else if (stage === 5) {
@@ -64,12 +65,14 @@ export function drawPalm(ctx, params, stage, frame) {
     rect(ctx, cx, baseY - 18, 4, 1, trunkDark);
     rect(ctx, cx, baseY - 14, 4, 1, trunkDark);
     rect(ctx, cx, baseY - 10, 4, 1, trunkDark);
-    // Fronds
-    rect(ctx, cx - 6 + swayOff, baseY - 24, 7, 2, leaf);
-    rect(ctx, cx + 3 + swayOff, baseY - 24, 7, 2, leaf);
-    rect(ctx, cx - 5 + swayOff, baseY - 25, 5, 2, leafDark);
-    rect(ctx, cx + 4 + swayOff, baseY - 25, 5, 2, leafDark);
-    rect(ctx, cx + swayOff, baseY - 27, 4, 3, leaf);
+    // Fronds — same wide shape
+    rect(ctx, cx - 8 + swayOff, baseY - 23, 9, 2, leaf);
+    rect(ctx, cx - 7 + swayOff, baseY - 21, 5, 2, leafDark);
+    rect(ctx, cx + 3 + swayOff, baseY - 23, 9, 2, leaf);
+    rect(ctx, cx + 6 + swayOff, baseY - 21, 5, 2, leafDark);
+    rect(ctx, cx - 5 + swayOff, baseY - 25, 6, 2, leaf);
+    rect(ctx, cx + 3 + swayOff, baseY - 25, 6, 2, leaf);
+    rect(ctx, cx - 1 + swayOff, baseY - 27, 6, 3, leaf);
     // Coconuts hanging below fronds
     rect(ctx, cx - 1 + swayOff, baseY - 22, 3, 3, fruit);
     rect(ctx, cx + 2 + swayOff, baseY - 22, 3, 3, fruit);

@@ -1,13 +1,8 @@
 # EcoGame Project Specification
 
-Navigation: [Documentation Home](README.md) > [Project Specification](project-specification.md)
-Return to [Documentation Home](README.md).
-
-Related documentation: [Architecture](architecture.md), [Engine](engine/), [Simulation](simulation/), [Renderer](renderer/), [API](api/), [Frontend README](../frontend/README.md).
-
 ---
 
-This document defines the intended product behavior and technical shape of EcoGame. It is the master specification for stakeholders who need a single, navigable view of the project. Detailed pages under `docs/` remain the drill-down reference for subsystem formulas, registries, and message schemas.
+This document defines the intended product behavior and technical shape of EcoGame. It is the master specification for stakeholders who need a single, navigable view of the project. It is intended to stand on its own without requiring companion documents for core understanding.
 
 Implementation details may evolve, but the product behaviors, system boundaries, and acceptance criteria defined here are the expected baseline.
 
@@ -23,7 +18,7 @@ Implementation details may evolve, but the product behaviors, system boundaries,
 - [8. Technical Architecture](#8-technical-architecture)
 - [9. Non-Functional Requirements](#9-non-functional-requirements)
 - [10. Acceptance Criteria](#10-acceptance-criteria)
-- [11. Detailed References](#11-detailed-references)
+- [11. Specification Boundaries](#11-specification-boundaries)
 - [12. Glossary](#12-glossary)
 
 ---
@@ -51,7 +46,7 @@ EcoGame is a sandbox simulation rather than a mission-driven game. Its main valu
 - Preserve a clear technical separation between simulation logic, worker orchestration, state management, and rendering.
 - Allow reproducible scenarios through explicit configuration and seed-based world generation.
 - Maintain responsive controls and a readable UI while the simulation continues to evolve.
-- Provide a single-document overview without replacing the deeper technical pages in the existing documentation set.
+- Provide a single-document overview that remains understandable without companion documentation.
 
 ## 3. Core User Workflows
 
@@ -545,26 +540,16 @@ Renderer requirements:
 7. The product exposes both live metrics and historical reporting views.
 8. The current scenario can be saved to JSON and later restored.
 9. The architecture preserves the separation between UI, store, renderer, worker, and engine.
-10. The project retains detailed supporting documentation under `docs/` for subsystem drill-down.
+10. The specification remains internally coherent across product behavior, interface expectations, simulation rules, and architecture boundaries.
 
-## 11. Detailed References
+## 11. Specification Boundaries
 
-- [Architecture](architecture.md)
-- [Engine Overview](engine/README.md)
-- [Configuration](engine/config.md)
-- [World and Entities](engine/world.md)
-- [Animal Species Registry](engine/animal-species.md)
-- [Plant Species Registry](engine/plant-species.md)
-- [Simulation Engine](engine/simulation-engine.md)
-- [Animal AI](simulation/ai.md)
-- [Movement System](simulation/movement.md)
-- [Energy and Needs](simulation/energy.md)
-- [Animal Interactions](simulation/animal-interactions.md)
-- [Plant Lifecycle](simulation/plants.md)
-- [Renderer Overview](renderer/overview.md)
-- [Worker Commands](api/commands.md)
-- [Worker Messages](api/messages.md)
-- [Frontend README](../frontend/README.md)
+This specification is intentionally complete enough to be read on its own, while stopping short of reproducing every implementation-level table or low-level payload shape.
+
+- It defines intended product behavior, system boundaries, user-visible functionality, and acceptance expectations.
+- It does not attempt to enumerate every balancing constant, every species field, or every serialized message field in exhaustive detail.
+- Exact tuning values, internal data layouts, and optimization strategies may evolve as long as they continue to satisfy the behavior defined here.
+- Future supporting material should refine or elaborate this specification, not be required to make it understandable.
 
 ## 12. Glossary
 

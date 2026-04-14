@@ -47,6 +47,8 @@ block-beta
 | **Renderer** (`src/renderer/`) | Pixi.js only. No game logic. Reads data, draws frames. |
 | **Components** (`src/components/`) | React + Bootstrap UI. Read store, dispatch commands via hooks. |
 
+---
+
 ## Source Graph
 
 This file-level graph maps the main runtime handoff from React on the main thread to the worker-hosted simulation engine. Helper modules are grouped where expanding every file would make the graph unreadable.
@@ -189,7 +191,7 @@ sequenceDiagram
 
     W->>E: tickCleanup()
     E->>E: remove dead, adaptive cleanup, record stats
-  W->>W: serialize full or incremental state
+    W->>W: serialize full or incremental state
 
     W->>M: postMessage({type: 'tick', clock, animals, plantChanges, stats})
     M->>S: setAnimals() or mergeAnimalDeltas()
@@ -210,19 +212,19 @@ flowchart TD
     GR --> UE["useEditor.handleTileClick(x, y)"]
     UE --> Tool{Active Tool?}
 
-    Tool -->|SELECT| Q["postCmd('getTileInfo', {x,y})"]
+    Tool -->|SELECT| Q["worker.postMessage({cmd: 'getTileInfo', x, y})"]
     Q --> TI["Worker returns tileInfo"]
     TI --> Store["store.setSelectedEntity()\nor store.setSelectedTile()"]
     Store --> EI["EntityInspector re-renders"]
 
     Tool -->|PAINT_TERRAIN| Brush["Compute brush circle"]
     Brush --> Opt["renderer.terrainLayer.updateTiles()\n(optimistic)"]
-    Opt --> Edit["postCmd('editTerrain', {changes})"]
+    Opt --> Edit["worker.postMessage({cmd: 'editTerrain', changes})"]
 
-    Tool -->|PLACE_ENTITY| Place["postCmd('placeEntity',\n{entityType, x, y})"]
+    Tool -->|PLACE_ENTITY| Place["worker.postMessage({cmd: 'placeEntity',\nentityType, x, y})"]
 
     Tool -->|ERASE| Find["Find animal at tile"]
-    Find --> Rem["postCmd('removeEntity', {entityId})"]
+    Find --> Rem["worker.postMessage({cmd: 'removeEntity', entityId})"]
 ```
 
 ---

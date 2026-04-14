@@ -1,5 +1,5 @@
 import { REPRO_SEXUAL, SEX_FEMALE, SEX_MALE } from '../config.js';
-import { BASE_POP_TOTAL } from '../animalSpecies.js';
+import { getEffectiveAnimalPopulationCap } from '../animalSpecies.js';
 import { Animal, AnimalState, LifeStage, ReproductionType } from '../entities.js';
 import { benchmarkEnd, benchmarkStart } from '../benchmarkProfiler.js';
 import { _decisionThresholds } from './utils.js';
@@ -61,12 +61,8 @@ export function _doMate(animal, mate, world) {
 }
 
 function _checkPopulationCap(animal, world) {
-  const baseMax = animal._config.max_population;
-  if (!baseMax) return false;
-  const globalMax = world.config.max_animal_population;
-  const effectiveMax = globalMax > 0
-    ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
-    : baseMax;
+  const effectiveMax = getEffectiveAnimalPopulationCap(animal.species, world.config.max_animal_population);
+  if (!effectiveMax) return false;
   const count = world.getAliveSpeciesCount(animal.species);
   if (count >= effectiveMax) return true;
   const ratio = count / effectiveMax;
@@ -78,12 +74,8 @@ function _checkPopulationCap(animal, world) {
 }
 
 function _checkPopulationCapWithEggs(animal, world) {
-  const baseMax = animal._config.max_population;
-  if (!baseMax) return false;
-  const globalMax = world.config.max_animal_population;
-  const effectiveMax = globalMax > 0
-    ? Math.max(2, Math.round(baseMax * globalMax / BASE_POP_TOTAL))
-    : baseMax;
+  const effectiveMax = getEffectiveAnimalPopulationCap(animal.species, world.config.max_animal_population);
+  if (!effectiveMax) return false;
   const count = world.getAliveSpeciesCount(animal.species);
   if (count >= effectiveMax) return true;
   const ratio = count / effectiveMax;

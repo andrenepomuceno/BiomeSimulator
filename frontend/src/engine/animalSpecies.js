@@ -821,6 +821,42 @@ const ANIMAL_SPECIES = {
 export const BASE_POP_TOTAL = Object.values(ANIMAL_SPECIES)
   .reduce((sum, sp) => sum + (sp.max_population || 0), 0);
 
+function normalizeCountValue(value) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.round(value));
+}
+
+function scaleCountSubset(counts, keys, budget) {
+  const scaled = {};
+  for (const key of keys) scaled[key] = 0;
+  if (budget <= 0 || !keys.length) return scaled;
+
+  const total = keys.reduce((sum, key) => sum + normalizeCountValue(counts[key]), 0);
+  if (total <= budget) {
+    for (const key of keys) scaled[key] = normalizeCountValue(counts[key]);
+    return scaled;
+  }
+
+  const fractions = [];
+  let assigned = 0;
+  for (const key of keys) {
+    const requested = normalizeCountValue(counts[key]);
+    const raw = (requested * budget) / total;
+    const floor = Math.floor(raw);
+    scaled[key] = floor;
+    fractions.push([key, raw - floor]);
+    assigned += floor;
+  }
+
+  fractions.sort((a, b) => b[1] - a[1]);
+  for (let i = 0; i < budget - assigned && i < fractions.length; i++) {
+    const [key] = fractions[i];
+    scaled[key] += 1;
+  }
+
+  return scaled;
+}
+
 export const MAX_ANIMAL_ENERGY = Object.values(ANIMAL_SPECIES)
   .reduce((maxEnergy, sp) => Math.max(maxEnergy, sp.max_energy || 0), 0);
 
@@ -835,6 +871,59 @@ export const CARNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet =
 
 /** Only omnivore keys */
 export const OMNIVORE_IDS = ALL_ANIMAL_IDS.filter(k => ANIMAL_SPECIES[k].diet === 'OMNIVORE');
+
+export function getEffectiveAnimalPopulationCap(speciesId, globalBudget = 0) {
+  const baseCap = ANIMAL_SPECIES[speciesId]?.max_population || 0;
+  if (!baseCap) return 0;
+  if (!(globalBudget > 0)) return baseCap;
+  return Math.max(2, Math.round(baseCap * globalBudget / BASE_POP_TOTAL));
+}
+
+export function normalizeAnimalCountsToBudget(counts = {}, globalBudget = 0, options = {}) {
+  const lockedSpecies = Array.isArray(options.lockedSpecies) ? options.lockedSpecies : [];
+  const lockedSet = new Set(lockedSpecies.filter(speciesId => ALL_ANIMAL_IDS.includes(speciesId)));
+  const normalized = {};
+
+  for (const speciesId of ALL_ANIMAL_IDS) {
+    const requested = normalizeCountValue(counts[speciesId]);
+    const cap = getEffectiveAnimalPopulationCap(speciesId, globalBudget);
+    normalized[speciesId] = cap > 0 ? Math.min(requested, cap) : requested;
+  }
+
+  if (!(globalBudget > 0)) return normalized;
+
+  const currentTotal = ALL_ANIMAL_IDS.reduce((sum, speciesId) => sum + normalized[speciesId], 0);
+  if (currentTotal <= globalBudget) return normalized;
+
+  const result = Object.fromEntries(ALL_ANIMAL_IDS.map(speciesId => [speciesId, 0]));
+  let remainingBudget = globalBudget;
+
+  for (const speciesId of lockedSpecies) {
+    if (!lockedSet.has(speciesId) || remainingBudget <= 0) continue;
+    const assigned = Math.min(normalized[speciesId], remainingBudget);
+    result[speciesId] = assigned;
+    remainingBudget -= assigned;
+  }
+
+  if (remainingBudget <= 0) return result;
+
+  const unlockedIds = ALL_ANIMAL_IDS.filter(speciesId => !lockedSet.has(speciesId));
+  const unlockedTotal = unlockedIds.reduce((sum, speciesId) => sum + normalized[speciesId], 0);
+
+  if (unlockedTotal <= remainingBudget) {
+    for (const speciesId of unlockedIds) {
+      result[speciesId] = normalized[speciesId];
+    }
+    return result;
+  }
+
+  const scaledUnlocked = scaleCountSubset(normalized, unlockedIds, remainingBudget);
+  for (const speciesId of unlockedIds) {
+    result[speciesId] = scaledUnlocked[speciesId];
+  }
+
+  return result;
+}
 
 /**
  * Build the `animal_species` config object (without display-only fields).

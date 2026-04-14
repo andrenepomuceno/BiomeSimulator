@@ -22,7 +22,7 @@ import {
   S_ADULT,
 } from './flora.js';
 import { decideAndAct, giveBirth } from './behaviors.js';
-import { BASE_POP_TOTAL } from './animalSpecies.js';
+import { getEffectiveAnimalPopulationCap, normalizeAnimalCountsToBudget } from './animalSpecies.js';
 import {
   createBenchmarkCollector,
   resetBenchmarkCollector,
@@ -123,7 +123,10 @@ export class SimulationEngine {
 
   _spawnAnimals() {
     const w = this.world;
-    const counts = this.config.initial_animal_counts || {};
+    const counts = normalizeAnimalCountsToBudget(
+      this.config.initial_animal_counts || {},
+      this.config.max_animal_population,
+    );
 
     for (const [species, count] of Object.entries(counts)) {
       const speciesConfig = this.config.animal_species[species];
@@ -322,11 +325,9 @@ export class SimulationEngine {
         if (!sc) continue;
           if (w.isTileBlocked(bd.x, bd.y)) continue;
         // Enforce population cap at merge time
-        const bMax = sc.max_population;
-        if (bMax) {
-          const gMax = w.config.max_animal_population;
-          const eMax = gMax > 0 ? Math.max(2, Math.round(bMax * gMax / BASE_POP_TOTAL)) : bMax;
-          if (w.getAliveSpeciesCount(bd.species) >= eMax) continue;
+        const effectiveMax = getEffectiveAnimalPopulationCap(bd.species, w.config.max_animal_population);
+        if (effectiveMax && w.getAliveSpeciesCount(bd.species) >= effectiveMax) {
+          continue;
         }
         const baby = new Animal(w.nextId(), bd.x, bd.y, bd.species, sc);
         baby.energy = bd.energy;

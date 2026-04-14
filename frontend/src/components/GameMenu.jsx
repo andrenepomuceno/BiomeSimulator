@@ -1,14 +1,51 @@
 /**
  * GameMenu — Modal for New Game, Save, and Load.
  */
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import useSimStore from '../store/simulationStore';
-import ANIMAL_SPECIES, { buildInitialAnimalCounts } from '../engine/animalSpecies';
+import ANIMAL_SPECIES, {
+  ALL_ANIMAL_IDS,
+  CARNIVORE_IDS,
+  HERBIVORE_IDS,
+  OMNIVORE_IDS,
+  buildInitialAnimalCounts,
+  getEffectiveAnimalPopulationCap,
+  normalizeAnimalCountsToBudget,
+} from '../engine/animalSpecies';
 import PLANT_SPECIES, { ALL_PLANT_IDS, buildInitialPlantCounts, buildPlantMaxCounts } from '../engine/plantSpecies';
 
+const NUMBER_FORMATTER = new Intl.NumberFormat('en-US');
 const DEFAULT_ANIMAL_COUNTS = buildInitialAnimalCounts();
 const DEFAULT_PLANT_COUNTS = buildInitialPlantCounts();
 const PLANT_MAX_COUNTS = buildPlantMaxCounts();
+const DEFAULT_MAX_ANIMAL_POPULATION = 10000;
+
+const MAP_PRESETS = [
+  {
+    id: 'compact',
+    label: 'Compact',
+    description: 'Fast setup for a smaller world.',
+    values: { map_width: 300, map_height: 300, sea_level: 0.42, island_count: 4, island_size_factor: 0.34 },
+  },
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    description: 'Default sandbox with room to grow.',
+    values: { map_width: 500, map_height: 500, sea_level: 0.38, island_count: 5, island_size_factor: 0.3 },
+  },
+  {
+    id: 'frontier',
+    label: 'Frontier',
+    description: 'Larger map with broader habitats.',
+    values: { map_width: 1000, map_height: 1000, sea_level: 0.35, island_count: 8, island_size_factor: 0.28 },
+  },
+];
+
+const FAUNA_GROUPS = [
+  { id: 'HERBIVORE', label: 'Herbivores', icon: '🌿', speciesIds: HERBIVORE_IDS, defaultOpen: true },
+  { id: 'CARNIVORE', label: 'Carnivores', icon: '🥩', speciesIds: CARNIVORE_IDS, defaultOpen: false },
+  { id: 'OMNIVORE', label: 'Omnivores', icon: '🍽️', speciesIds: OMNIVORE_IDS, defaultOpen: false },
+];
 
 const FAUNA_PRESETS = {
   balanced: { herbivore: 1.0, carnivore: 1.0, omnivore: 1.0 },
@@ -22,40 +59,46 @@ const FLORA_PRESETS = {
   herbivores: 1.2,
 };
 
-function scaleCountsToBudget(counts, budget) {
-  if (!budget || budget <= 0) return counts;
-  const total = Object.values(counts).reduce((sum, n) => sum + (n || 0), 0);
-  if (total <= budget) return counts;
+const TABS = ['new', 'save', 'load'];
 
-  const scaled = {};
-  const fractions = [];
-  let assigned = 0;
-  for (const [key, value] of Object.entries(counts)) {
-    const raw = (value * budget) / total;
-    const floor = Math.floor(raw);
-    scaled[key] = floor;
-    fractions.push([key, raw - floor]);
-    assigned += floor;
-  }
+function formatNumber(value) {
+  return NUMBER_FORMATTER.format(Math.round(value || 0));
+}
 
-  fractions.sort((a, b) => b[1] - a[1]);
-  for (let i = 0; i < budget - assigned && i < fractions.length; i++) {
-    const [key] = fractions[i];
-    scaled[key] += 1;
-  }
+function sumValues(values = {}) {
+  return Object.values(values).reduce((sum, value) => sum + (value || 0), 0);
+}
 
-  return scaled;
+function getDisplayedAnimalBudget(globalBudget) {
+  if (globalBudget > 0) return globalBudget;
+  return ALL_ANIMAL_IDS.reduce((sum, speciesId) => sum + getEffectiveAnimalPopulationCap(speciesId, 0), 0);
+}
+
+function buildDefaultParams() {
+  return {
+    map_width: 500,
+    map_height: 500,
+    sea_level: 0.38,
+    island_count: 5,
+    island_size_factor: 0.3,
+    seed: '',
+    initial_animal_counts: normalizeAnimalCountsToBudget(DEFAULT_ANIMAL_COUNTS, DEFAULT_MAX_ANIMAL_POPULATION),
+    initial_plant_density: 0.1,
+    initial_plant_counts: { ...DEFAULT_PLANT_COUNTS },
+    max_animal_population: DEFAULT_MAX_ANIMAL_POPULATION,
+  };
 }
 
 function randomizeAnimalCounts(maxAnimalPopulation) {
   const counts = {};
   for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
-    const max = Math.max(1, Math.round(sp.max_population || sp.initial_count || 100));
+    const effectiveCap = getEffectiveAnimalPopulationCap(key, maxAnimalPopulation);
+    const max = Math.max(1, Math.round(effectiveCap || sp.max_population || sp.initial_count || 100));
     const lo = Math.max(0, Math.round(max * 0.18));
     const hi = Math.max(lo, Math.round(max * 0.7));
     counts[key] = lo + Math.floor(Math.random() * (hi - lo + 1));
   }
-  return scaleCountsToBudget(counts, maxAnimalPopulation);
+  return normalizeAnimalCountsToBudget(counts, maxAnimalPopulation);
 }
 
 function randomizePlantCounts() {
@@ -78,10 +121,11 @@ function applyPresetToAnimals(presetKey, maxAnimalPopulation) {
       : sp.diet === 'CARNIVORE'
         ? preset.carnivore
         : preset.omnivore;
+    const effectiveCap = getEffectiveAnimalPopulationCap(key, maxAnimalPopulation);
     const target = Math.round((sp.initial_count || 0) * multiplier);
-    counts[key] = Math.min(sp.max_population || target, Math.max(0, target));
+    counts[key] = Math.min(effectiveCap || sp.max_population || target, Math.max(0, target));
   }
-  return scaleCountsToBudget(counts, maxAnimalPopulation);
+  return normalizeAnimalCountsToBudget(counts, maxAnimalPopulation);
 }
 
 function applyPresetToPlants(presetKey) {
@@ -94,42 +138,101 @@ function applyPresetToPlants(presetKey) {
   return counts;
 }
 
-const defaultParams = {
-  map_width: 500,
-  map_height: 500,
-  sea_level: 0.38,
-  island_count: 5,
-  island_size_factor: 0.3,
-  seed: '',
-  initial_animal_counts: DEFAULT_ANIMAL_COUNTS,
-  initial_plant_density: 0.1,
-  initial_plant_counts: DEFAULT_PLANT_COUNTS,
-  max_animal_population: 10000,
-};
+function CollapsibleSection({ title, icon, meta, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
 
-const TABS = ['new', 'save', 'load'];
+  return (
+    <div className="gm-section-shell">
+      <button type="button" className="gm-section-toggle" onClick={() => setOpen(current => !current)}>
+        <span className="gm-section-title">{icon} {title}</span>
+        <span className="gm-section-meta">{meta} {open ? '▾' : '▸'}</span>
+      </button>
+      {open && <div className="gm-section-body">{children}</div>}
+    </div>
+  );
+}
 
 export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
+  const hasWorld = useSimStore(state => !!state.terrainData || !!state.worldReady || state.animals.length > 0);
   const [tab, setTab] = useState('new');
   const [newTab, setNewTab] = useState('map');
-  const [params, setParams] = useState(defaultParams);
+  const [params, setParams] = useState(() => buildDefaultParams());
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [loadFileName, setLoadFileName] = useState('');
+  const [faunaProfileLabel, setFaunaProfileLabel] = useState('Balanced baseline');
+  const [floraProfileLabel, setFloraProfileLabel] = useState('Balanced growth');
   const fileInputRef = useRef(null);
 
   if (!open) return null;
 
-  const set = (key, value) => setParams(p => ({ ...p, [key]: value }));
+  const totalAnimals = sumValues(params.initial_animal_counts);
+  const totalPlants = sumValues(params.initial_plant_counts);
+  const displayedAnimalBudget = getDisplayedAnimalBudget(params.max_animal_population);
+  const budgetUsage = displayedAnimalBudget > 0 ? Math.min(1, totalAnimals / displayedAnimalBudget) : 0;
+  const seedLabel = `${params.seed}`.trim() === '' ? 'Random seed' : `Seed ${params.seed}`;
 
-  const handleNewGame = () => {
-    const p = { ...params };
-    if (p.seed === '') delete p.seed;
-    else p.seed = Number(p.seed);
-    onNewGame(p);
+  const applyAnimalCounts = (nextCounts, profileLabel, normalizeOptions = undefined) => {
+    setParams(current => ({
+      ...current,
+      initial_animal_counts: normalizeAnimalCountsToBudget(nextCounts, current.max_animal_population, normalizeOptions),
+    }));
+    if (profileLabel) setFaunaProfileLabel(profileLabel);
+  };
+
+  const handleBudgetChange = (nextBudget) => {
+    setParams(current => ({
+      ...current,
+      max_animal_population: nextBudget,
+      initial_animal_counts: normalizeAnimalCountsToBudget(current.initial_animal_counts, nextBudget),
+    }));
+  };
+
+  const handleAnimalSliderChange = (speciesId, nextValue) => {
+    setParams(current => ({
+      ...current,
+      initial_animal_counts: normalizeAnimalCountsToBudget(
+        { ...current.initial_animal_counts, [speciesId]: nextValue },
+        current.max_animal_population,
+        { lockedSpecies: [speciesId] },
+      ),
+    }));
+    setFaunaProfileLabel('Custom mix');
+  };
+
+  const setParam = (key, value) => setParams(current => ({ ...current, [key]: value }));
+
+  const startNewGame = (nextParams = params) => {
+    if (hasWorld && !window.confirm('Start a new simulation? Unsaved progress will be lost.')) {
+      return;
+    }
+
+    const payload = {
+      ...nextParams,
+      initial_animal_counts: normalizeAnimalCountsToBudget(nextParams.initial_animal_counts, nextParams.max_animal_population),
+      initial_plant_counts: { ...nextParams.initial_plant_counts },
+    };
+
+    if (`${payload.seed}`.trim() === '') {
+      delete payload.seed;
+    } else {
+      payload.seed = Number(payload.seed);
+    }
+
+    onNewGame(payload);
     onClose();
   };
 
+  const handleQuickStart = () => {
+    const nextParams = buildDefaultParams();
+    setParams(nextParams);
+    setFaunaProfileLabel('Balanced baseline');
+    setFloraProfileLabel('Balanced growth');
+    startNewGame(nextParams);
+  };
+
   const handleSave = () => {
+    if (!hasWorld) return;
     setSaving(true);
     onSave((data) => {
       const json = JSON.stringify(data);
@@ -147,6 +250,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const handleFileSelect = (e) => {
     setLoadError('');
     const file = e.target.files[0];
+    setLoadFileName(file?.name || '');
     if (!file) return;
 
     const reader = new FileReader();
@@ -154,13 +258,13 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
       try {
         const data = JSON.parse(ev.target.result);
         if (!data.terrain || !data.animals || !data.width) {
-          setLoadError('Invalid save file.');
+          setLoadError('Invalid save file. Expected world terrain, width, and animals.');
           return;
         }
         onLoad(data);
         onClose();
       } catch {
-        setLoadError('Failed to parse save file.');
+        setLoadError('Failed to parse save file. Choose a valid Ecogame JSON export.');
       }
     };
     reader.readAsText(file);
@@ -170,257 +274,320 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
     <div className="game-menu-overlay" onClick={onClose}>
       <div className="game-menu-modal" onClick={e => e.stopPropagation()}>
         <div className="game-menu-header">
-          <h5>🌍 Ecosystem Simulator</h5>
-          <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose}>✕</button>
+          <h5>Ecosystem Simulator</h5>
+          <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose} aria-label="Close menu">✕</button>
         </div>
 
-        {/* Tabs */}
         <div className="game-menu-tabs">
-          {TABS.map(t => (
+          {TABS.map(currentTab => (
             <button
-              key={t}
-              className={`game-menu-tab ${tab === t ? 'active' : ''}`}
-              onClick={() => setTab(t)}
+              key={currentTab}
+              className={`game-menu-tab ${tab === currentTab ? 'active' : ''}`}
+              onClick={() => setTab(currentTab)}
             >
-              {t === 'new' ? '🆕 New Game' : t === 'save' ? '💾 Save' : '📂 Load'}
+              {currentTab === 'new' ? 'New Game' : currentTab === 'save' ? 'Save' : 'Load'}
             </button>
           ))}
         </div>
 
         <div className="game-menu-body">
-          {/* NEW GAME TAB */}
           {tab === 'new' && (
-            <div>
-              {/* Sub-tabs for new game sections */}
+            <div className="gm-stack">
+              <div className="gm-compact-summary">
+                <span>Map {formatNumber(params.map_width)} x {formatNumber(params.map_height)}</span>
+                <span>Fauna {formatNumber(totalAnimals)} / {formatNumber(displayedAnimalBudget)}</span>
+                <span>Flora {formatNumber(totalPlants)}</span>
+                <span>{seedLabel}</span>
+              </div>
+
               <div className="gm-subtabs">
-                {[['map', '🗺️ Map'], ['fauna', '🐾 Fauna'], ['flora', '🌿 Flora']].map(([k, label]) => (
+                {[['map', 'Map'], ['fauna', 'Fauna'], ['flora', 'Flora']].map(([key, label]) => (
                   <button
-                    key={k}
-                    className={`gm-subtab ${newTab === k ? 'active' : ''}`}
-                    onClick={() => setNewTab(k)}
-                  >{label}</button>
+                    key={key}
+                    className={`gm-subtab ${newTab === key ? 'active' : ''}`}
+                    onClick={() => setNewTab(key)}
+                  >
+                    {label}
+                  </button>
                 ))}
               </div>
 
-              {/* MAP SUB-TAB */}
               {newTab === 'map' && (
-                <div>
-                  <div className="gm-field">
-                    <label>Map Size: {params.map_width} × {params.map_height}</label>
-                    <input type="range" min={100} max={2000} step={100}
-                      value={params.map_width}
-                      onChange={e => { set('map_width', +e.target.value); set('map_height', +e.target.value); }} />
+                <div className="gm-stack">
+                  <div className="gm-panel">
+                    <h6>Map Presets</h6>
+                    <div className="gm-chip-list">
+                      {MAP_PRESETS.map(preset => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          className="gm-chip-button"
+                          onClick={() => setParams(current => ({ ...current, ...preset.values }))}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="gm-field">
-                    <label>Sea Level: {params.sea_level.toFixed(2)}</label>
-                    <input type="range" min={0.1} max={0.7} step={0.02}
-                      value={params.sea_level}
-                      onChange={e => set('sea_level', +e.target.value)} />
+                  <div className="gm-panel gm-field-grid">
+                    <div className="gm-field">
+                      <label>Map Size</label>
+                      <div className="gm-field-value">{params.map_width} x {params.map_height}</div>
+                      <input
+                        type="range"
+                        min={100}
+                        max={2000}
+                        step={100}
+                        value={params.map_width}
+                        onChange={e => {
+                          const value = +e.target.value;
+                          setParams(current => ({ ...current, map_width: value, map_height: value }));
+                        }}
+                      />
+                    </div>
+
+                    <div className="gm-field">
+                      <label>Sea Level</label>
+                      <div className="gm-field-value">{params.sea_level.toFixed(2)}</div>
+                      <input type="range" min={0.1} max={0.7} step={0.02} value={params.sea_level} onChange={e => setParam('sea_level', +e.target.value)} />
+                    </div>
+
+                    <div className="gm-field">
+                      <label>Island Count</label>
+                      <div className="gm-field-value">{params.island_count}</div>
+                      <input type="range" min={1} max={20} value={params.island_count} onChange={e => setParam('island_count', +e.target.value)} />
+                    </div>
+
+                    <div className="gm-field">
+                      <label>Island Size</label>
+                      <div className="gm-field-value">{params.island_size_factor.toFixed(2)}</div>
+                      <input type="range" min={0.1} max={0.8} step={0.05} value={params.island_size_factor} onChange={e => setParam('island_size_factor', +e.target.value)} />
+                    </div>
                   </div>
 
-                  <div className="gm-field">
-                    <label>Islands: {params.island_count}</label>
-                    <input type="range" min={1} max={20}
-                      value={params.island_count}
-                      onChange={e => set('island_count', +e.target.value)} />
-                  </div>
-
-                  <div className="gm-field">
-                    <label>Island Size: {params.island_size_factor.toFixed(2)}</label>
-                    <input type="range" min={0.1} max={0.8} step={0.05}
-                      value={params.island_size_factor}
-                      onChange={e => set('island_size_factor', +e.target.value)} />
-                  </div>
-
-                  <div className="gm-field">
-                    <label>Seed (empty = random)</label>
-                    <input type="text" className="form-control form-control-sm" placeholder="Random"
-                      value={params.seed}
-                      onChange={e => set('seed', e.target.value)} />
+                  <div className="gm-panel">
+                    <div className="gm-field" style={{ marginBottom: 0 }}>
+                      <label>Seed</label>
+                      <input
+                        type="number"
+                        className="form-control form-control-sm"
+                        placeholder="Leave empty for a random seed"
+                        value={params.seed}
+                        onChange={e => setParam('seed', e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* FAUNA SUB-TAB */}
               {newTab === 'fauna' && (
-                <div>
-                  <div className="gm-field">
-                    <label>🌐 Max Animal Population: {params.max_animal_population === 0 ? 'Default (per-species)' : params.max_animal_population}</label>
-                    <input type="range" min={0} max={50000} step={500}
-                      value={params.max_animal_population}
-                      onChange={e => set('max_animal_population', +e.target.value)} />
-                    <div style={{ fontSize: '0.7rem', color: '#777', marginTop: 2 }}>
-                      Budget distributed proportionally per species. 0 = use each species' default cap.
+                <div className="gm-stack">
+                  <div className="gm-panel">
+                    <div className="gm-panel-header gm-panel-header-inline gm-panel-header-tight">
+                      <h6>Fauna</h6>
+                      <span className="gm-status-pill">{faunaProfileLabel}</span>
                     </div>
-                  </div>
 
-                  <div className="d-flex align-items-center flex-wrap mb-2 mt-3" style={{ gap: 4 }}>
-                    <span style={{ fontSize: '0.75rem', color: '#999' }}>Set initial population for each species</span>
-                    <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="Fauna presets">
-                      <button
-                        className="btn btn-outline-secondary py-0 px-1"
-                        title="Balanced fauna"
-                        onClick={() => setParams(p => ({
-                          ...p,
-                          initial_animal_counts: applyPresetToAnimals('balanced', p.max_animal_population),
-                        }))}
-                      >Balanced</button>
-                      <button
-                        className="btn btn-outline-secondary py-0 px-1"
-                        title="Predator-heavy fauna"
-                        onClick={() => setParams(p => ({
-                          ...p,
-                          initial_animal_counts: applyPresetToAnimals('predators', p.max_animal_population),
-                        }))}
-                      >Predators</button>
-                      <button
-                        className="btn btn-outline-secondary py-0 px-1"
-                        title="Herbivore-heavy fauna"
-                        onClick={() => setParams(p => ({
-                          ...p,
-                          initial_animal_counts: applyPresetToAnimals('herbivores', p.max_animal_population),
-                        }))}
-                      >Herbivores</button>
-                    </div>
-                    <button
-                      className="btn btn-sm btn-outline-secondary ms-1 py-0 px-1"
-                      title="Randomize all animal counts"
-                      onClick={() => {
-                        setParams(p => ({
-                          ...p,
-                          initial_animal_counts: randomizeAnimalCounts(p.max_animal_population),
-                        }));
-                      }}
-                    >🎲</button>
-                    <button
-                      className="btn btn-sm btn-outline-secondary ms-1 py-0 px-1"
-                      title="Reset to defaults"
-                      onClick={() => setParams(p => ({ ...p, initial_animal_counts: buildInitialAnimalCounts() }))}
-                    >↺</button>
-                  </div>
-
-                  {['HERBIVORE', 'CARNIVORE', 'OMNIVORE'].map(diet => {
-                    const species = Object.entries(ANIMAL_SPECIES).filter(([, sp]) => sp.diet === diet);
-                    if (!species.length) return null;
-                    return (
-                      <div key={diet}>
-                        <h6 className="mt-2">{diet === 'HERBIVORE' ? '🌿 Herbivores' : diet === 'CARNIVORE' ? '🥩 Carnivores' : '🍽️ Omnivores'}</h6>
-                        {species.map(([key, sp]) => (
-                          <div className="gm-field" key={key}>
-                            <label>{sp.emoji} {sp.name}: {params.initial_animal_counts[key]} / {sp.max_population}</label>
-                            <input type="range" min={0} max={sp.max_population || 100}
-                              value={params.initial_animal_counts[key]}
-                              onChange={e => setParams(p => ({ ...p, initial_animal_counts: { ...p.initial_animal_counts, [key]: +e.target.value } }))} />
-                          </div>
-                        ))}
+                    <div className="gm-budget-row">
+                      <div>
+                        <div className="gm-budget-label">Initial animals</div>
+                        <div className="gm-budget-value">{formatNumber(totalAnimals)} / {formatNumber(displayedAnimalBudget)}</div>
                       </div>
+                      <div>
+                        <div className="gm-budget-label">Budget mode</div>
+                        <div className="gm-budget-value">{params.max_animal_population > 0 ? 'Global budget' : 'Per-species defaults'}</div>
+                      </div>
+                    </div>
+
+                    <div className="gm-progress-track">
+                      <div className="gm-progress-fill" style={{ width: `${budgetUsage * 100}%` }} />
+                    </div>
+
+                    <div className="gm-field" style={{ marginBottom: 0 }}>
+                      <label>Maximum Animal Population</label>
+                      <div className="gm-field-value">{params.max_animal_population > 0 ? formatNumber(params.max_animal_population) : 'Per-species defaults'}</div>
+                      <input type="range" min={0} max={50000} step={500} value={params.max_animal_population} onChange={e => handleBudgetChange(+e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="gm-panel">
+                    <div className="gm-panel-header gm-panel-header-inline gm-panel-header-tight">
+                      <h6>Profiles</h6>
+                      <div className="gm-actions-inline">
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('balanced', params.max_animal_population), 'Balanced baseline')}>Balanced</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('predators', params.max_animal_population), 'Predator pressure')}>Predators</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(applyPresetToAnimals('herbivores', params.max_animal_population), 'Herbivore bloom')}>Herbivores</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(randomizeAnimalCounts(params.max_animal_population), 'Randomized ecosystem')}>Randomize</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => applyAnimalCounts(DEFAULT_ANIMAL_COUNTS, 'Balanced baseline')}>Reset</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {FAUNA_GROUPS.map(group => {
+                    const groupTotal = group.speciesIds.reduce((sum, speciesId) => sum + (params.initial_animal_counts[speciesId] || 0), 0);
+                    const groupCap = group.speciesIds.reduce((sum, speciesId) => sum + getEffectiveAnimalPopulationCap(speciesId, params.max_animal_population), 0);
+                    return (
+                      <CollapsibleSection
+                        key={group.id}
+                        title={group.label}
+                        icon={group.icon}
+                        meta={`${formatNumber(groupTotal)} / ${formatNumber(groupCap)}`}
+                        defaultOpen={group.defaultOpen}
+                      >
+                        {group.speciesIds.map(speciesId => {
+                          const species = ANIMAL_SPECIES[speciesId];
+                          const effectiveCap = getEffectiveAnimalPopulationCap(speciesId, params.max_animal_population);
+                          return (
+                            <div className="gm-field" key={speciesId}>
+                              <label>{species.emoji} {species.name}</label>
+                              <div className="gm-field-value">{formatNumber(params.initial_animal_counts[speciesId])} / {formatNumber(effectiveCap)}</div>
+                              <input
+                                type="range"
+                                min={0}
+                                max={Math.max(1, effectiveCap)}
+                                value={params.initial_animal_counts[speciesId] || 0}
+                                onChange={e => handleAnimalSliderChange(speciesId, +e.target.value)}
+                              />
+                            </div>
+                          );
+                        })}
+                      </CollapsibleSection>
                     );
                   })}
                 </div>
               )}
 
-              {/* FLORA SUB-TAB */}
               {newTab === 'flora' && (
-                <div>
-                  <div className="gm-field">
-                    <label>🌿 Plant Density: {(params.initial_plant_density * 100).toFixed(0)}%</label>
-                    <input type="range" min={0} max={0.5} step={0.01}
-                      value={params.initial_plant_density}
-                      onChange={e => set('initial_plant_density', +e.target.value)} />
-                  </div>
-                  <div className="d-flex align-items-center flex-wrap mb-2 mt-2" style={{ gap: 4 }}>
-                    <span style={{ fontSize: '0.75rem', color: '#999' }}>Set initial seed targets by plant species</span>
-                    <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="Flora presets">
-                      <button
-                        className="btn btn-outline-secondary py-0 px-1"
-                        title="Balanced flora"
-                        onClick={() => setParams(p => ({ ...p, initial_plant_counts: applyPresetToPlants('balanced') }))}
-                      >Balanced</button>
-                      <button
-                        className="btn btn-outline-secondary py-0 px-1"
-                        title="Lower flora pressure"
-                        onClick={() => setParams(p => ({ ...p, initial_plant_counts: applyPresetToPlants('predators') }))}
-                      >Sparse</button>
-                      <button
-                        className="btn btn-outline-secondary py-0 px-1"
-                        title="Higher flora pressure"
-                        onClick={() => setParams(p => ({ ...p, initial_plant_counts: applyPresetToPlants('herbivores') }))}
-                      >Rich</button>
+                <div className="gm-stack">
+                  <div className="gm-panel">
+                    <div className="gm-panel-header gm-panel-header-inline gm-panel-header-tight">
+                      <h6>Flora</h6>
+                      <span className="gm-status-pill">{floraProfileLabel}</span>
                     </div>
-                    <button
-                      className="btn btn-sm btn-outline-secondary ms-1 py-0 px-1"
-                      title="Randomize all plant counts"
-                      onClick={() => setParams(p => ({ ...p, initial_plant_counts: randomizePlantCounts() }))}
-                    >🎲</button>
-                    <button
-                      className="btn btn-sm btn-outline-secondary ms-1 py-0 px-1"
-                      title="Reset plant defaults"
-                      onClick={() => setParams(p => ({ ...p, initial_plant_counts: buildInitialPlantCounts() }))}
-                    >↺</button>
+
+                    <div className="gm-field" style={{ marginBottom: 0 }}>
+                      <label>Plant Density</label>
+                      <div className="gm-field-value">{(params.initial_plant_density * 100).toFixed(0)}%</div>
+                      <input type="range" min={0} max={0.5} step={0.01} value={params.initial_plant_density} onChange={e => setParam('initial_plant_density', +e.target.value)} />
+                    </div>
                   </div>
-                  {ALL_PLANT_IDS.map(id => {
-                    const sp = PLANT_SPECIES[id];
-                    if (!sp) return null;
-                    const max = PLANT_MAX_COUNTS[id] || Math.max(80, (DEFAULT_PLANT_COUNTS[id] || 20) * 4);
-                    return (
-                      <div className="gm-field" key={id}>
-                        <label>{sp.fruitEmoji || sp.emoji?.adult || '🌿'} {sp.name}: {params.initial_plant_counts[id] ?? 0} / {max}</label>
-                        <input
-                          type="range"
-                          min={0}
-                          max={max}
-                          value={params.initial_plant_counts[id] ?? 0}
-                          onChange={e => setParams(p => ({
-                            ...p,
-                            initial_plant_counts: {
-                              ...p.initial_plant_counts,
-                              [id]: +e.target.value,
-                            },
-                          }))}
-                        />
+
+                  <div className="gm-panel">
+                    <div className="gm-panel-header gm-panel-header-inline gm-panel-header-tight">
+                      <h6>Profiles</h6>
+                      <div className="gm-actions-inline">
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => { setParam('initial_plant_counts', applyPresetToPlants('balanced')); setFloraProfileLabel('Balanced growth'); }}>Balanced</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => { setParam('initial_plant_counts', applyPresetToPlants('predators')); setFloraProfileLabel('Sparse coverage'); }}>Sparse</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => { setParam('initial_plant_counts', applyPresetToPlants('herbivores')); setFloraProfileLabel('Rich coverage'); }}>Rich</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => { setParam('initial_plant_counts', randomizePlantCounts()); setFloraProfileLabel('Randomized growth'); }}>Randomize</button>
+                        <button type="button" className="btn btn-outline-secondary py-0 px-2" onClick={() => { setParam('initial_plant_counts', { ...DEFAULT_PLANT_COUNTS }); setFloraProfileLabel('Balanced growth'); }}>Reset</button>
                       </div>
-                    );
-                  })}
-                  <p style={{ fontSize: '0.75rem', color: '#999', marginTop: 8 }}>
-                    Controls the percentage of eligible land tiles that will be seeded with plants on world generation.
-                    Species sliders define target seed counts and are normalized to the map capacity from density.
-                  </p>
+                    </div>
+                  </div>
+
+                  <div className="gm-panel">
+                    {ALL_PLANT_IDS.map(id => {
+                      const species = PLANT_SPECIES[id];
+                      if (!species) return null;
+                      const max = PLANT_MAX_COUNTS[id] || Math.max(80, (DEFAULT_PLANT_COUNTS[id] || 20) * 4);
+                      return (
+                        <div className="gm-field" key={id}>
+                          <label>{species.fruitEmoji || species.emoji?.adult || 'plant'} {species.name}</label>
+                          <div className="gm-field-value">{formatNumber(params.initial_plant_counts[id] ?? 0)} / {formatNumber(max)}</div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={max}
+                            value={params.initial_plant_counts[id] ?? 0}
+                            onChange={e => {
+                              const nextValue = +e.target.value;
+                              setParams(current => ({
+                                ...current,
+                                initial_plant_counts: {
+                                  ...current.initial_plant_counts,
+                                  [id]: nextValue,
+                                },
+                              }));
+                              setFloraProfileLabel('Custom growth');
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-
-              <button className="btn btn-sim w-100 mt-3" onClick={handleNewGame}>
-                🚀 Start New Simulation
-              </button>
             </div>
           )}
 
-          {/* SAVE TAB */}
           {tab === 'save' && (
-            <div className="text-center" style={{ padding: '30px 0' }}>
-              <p className="mb-3">Save the current simulation state to a file.</p>
-              <button className="btn btn-sim" onClick={handleSave} disabled={saving}>
-                {saving ? '⏳ Saving...' : '💾 Download Save File'}
-              </button>
+            <div className="gm-stack">
+              <div className="gm-panel">
+                <h6>Save File</h6>
+                {hasWorld && <div className="gm-footer-note">Save the current simulation to JSON.</div>}
+                {!hasWorld && <div className="gm-inline-note gm-inline-note-warning">There is no generated world to save yet.</div>}
+              </div>
             </div>
           )}
 
-          {/* LOAD TAB */}
           {tab === 'load' && (
-            <div className="text-center" style={{ padding: '30px 0' }}>
-              <p className="mb-3">Load a previously saved simulation from a JSON file.</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                style={{ display: 'none' }}
-                onChange={handleFileSelect}
-              />
-              <button className="btn btn-sim" onClick={() => fileInputRef.current?.click()}>
-                📂 Choose Save File
-              </button>
-              {loadError && <div className="text-danger mt-2" style={{ fontSize: '0.8rem' }}>{loadError}</div>}
+            <div className="gm-stack">
+              <div className="gm-panel">
+                <h6>Choose Save File</h6>
+                <div className="gm-footer-note">{loadFileName || 'No file selected'}</div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  style={{ display: 'none' }}
+                  onChange={handleFileSelect}
+                />
+                {loadError && <div className="gm-inline-note gm-inline-note-error">{loadError}</div>}
+              </div>
             </div>
+          )}
+        </div>
+
+        <div className="game-menu-footer">
+          {tab === 'new' && (
+            <>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => {
+                  const nextParams = buildDefaultParams();
+                  setParams(nextParams);
+                  setFaunaProfileLabel('Balanced baseline');
+                  setFloraProfileLabel('Balanced growth');
+                  setNewTab('map');
+                }}
+              >
+                Reset Defaults
+              </button>
+              <div className="gm-footer-actions">
+                <button type="button" className="btn btn-outline-secondary" onClick={handleQuickStart}>Quick Start</button>
+                <button type="button" className="btn btn-sim" onClick={() => startNewGame()}>Start New Simulation</button>
+              </div>
+            </>
+          )}
+
+          {tab === 'save' && (
+            <>
+              <div className="gm-footer-note">{hasWorld ? 'Ready to save.' : 'No world loaded.'}</div>
+              <button type="button" className="btn btn-sim" onClick={handleSave} disabled={!hasWorld || saving}>
+                {saving ? 'Saving...' : 'Download Save File'}
+              </button>
+            </>
+          )}
+
+          {tab === 'load' && (
+            <>
+              <div className="gm-footer-note">Load a JSON save.</div>
+              <button type="button" className="btn btn-sim" onClick={() => fileInputRef.current?.click()}>
+                Choose Save File
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -73,10 +73,7 @@ export default function HelpModal({ open, onClose }) {
     <div className="help-overlay" onClick={onClose}>
       <div className="help-modal" onClick={e => e.stopPropagation()}>
         <div className="help-header">
-          <div>
-            <div className="help-eyebrow">In-Game Guide</div>
-            <h5>{currentTab.title}</h5>
-          </div>
+          <h5>{currentTab.title}</h5>
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose} aria-label="Close guide">✕</button>
         </div>
 
@@ -95,22 +92,6 @@ export default function HelpModal({ open, onClose }) {
         </div>
 
         <div className="help-body">
-          <section className="help-hero">
-            <p className="help-intro">{currentTab.intro}</p>
-            <div className="help-chip-list">
-              {currentTab.chips.map(chip => (
-                <span key={chip} className="help-chip">{chip}</span>
-              ))}
-            </div>
-          </section>
-
-          {currentTab.callout ? (
-            <section className="help-callout">
-              <div className="help-callout-title">{currentTab.callout.title}</div>
-              <p>{currentTab.callout.body}</p>
-            </section>
-          ) : null}
-
           {currentTab.sections.map(section => (
             <HelpSection key={section.heading} section={section} />
           ))}

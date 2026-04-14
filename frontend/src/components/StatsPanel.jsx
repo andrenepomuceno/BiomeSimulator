@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import useSimStore from '../store/simulationStore';
 import { ANIMAL_HEX_COLORS, SPECIES_INFO } from '../utils/terrainColors';
-import ANIMAL_SPECIES, { BASE_POP_TOTAL } from '../engine/animalSpecies';
+import { getEffectiveAnimalPopulationCap } from '../engine/animalSpecies';
 import { Chart as ChartJS, LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { STATS_PANEL_HISTORY_LIMIT } from '../constants/simulation';
@@ -88,10 +88,7 @@ export default function StatsPanel() {
     const globalMax = gameConfig?.max_animal_population || 0;
     const caps = {};
     for (const k of speciesKeys) {
-      const base = ANIMAL_SPECIES[k]?.max_population || 0;
-      caps[k] = globalMax > 0
-        ? Math.max(2, Math.round(base * globalMax / BASE_POP_TOTAL))
-        : base;
+      caps[k] = getEffectiveAnimalPopulationCap(k, globalMax);
     }
     return caps;
   }, [gameConfig?.max_animal_population]);

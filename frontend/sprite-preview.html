@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fauna Sprite Atlas Preview</title>
+  <style>
+    body { margin: 0; background: #1a1a2e; color: #eee; font-family: monospace; display: flex; flex-direction: column; align-items: center; }
+    h1 { margin: 16px 0 4px; font-size: 18px; }
+    .info { font-size: 12px; opacity: 0.7; margin-bottom: 12px; }
+    canvas { border: 1px solid #444; image-rendering: pixelated; }
+    .controls { margin: 12px 0; display: flex; gap: 12px; }
+    button { padding: 8px 16px; font-family: monospace; cursor: pointer; background: #2a6e2a; color: #fff; border: none; border-radius: 4px; }
+    button:hover { background: #3a8e3a; }
+    .zoom-group label { margin-right: 6px; }
+    #atlas-zoomed { margin-bottom: 40px; }
+  </style>
+</head>
+<body>
+  <h1>Fauna Sprite Atlas</h1>
+  <div class="info" id="info"></div>
+  <div class="controls">
+    <button id="btn-download">Download PNG</button>
+    <div class="zoom-group">
+      <label>Zoom:</label>
+      <button id="z1">1×</button>
+      <button id="z2">2×</button>
+      <button id="z4">4×</button>
+      <button id="z8">8×</button>
+    </div>
+  </div>
+  <canvas id="atlas-zoomed"></canvas>
+
+  <script type="module">
+    import { drawSpeciesFrame, DIR_NAMES } from './src/utils/spriteGenerator.js';
+
+    const FRAME = 64;
+    const COLS = 12;
+    const SPECIES = [
+      'RABBIT','SQUIRREL','BEETLE','GOAT','DEER','FOX','WOLF','BOAR',
+      'BEAR','RACCOON','CROW','MOSQUITO','CATERPILLAR','CRICKET','LIZARD',
+      'SNAKE','HAWK','CROCODILE'
+    ];
+    const SPECIALS = ['SLEEPING','DEAD','EGG','PUPA'];
+    const ROWS = SPECIES.length + 1; // 18 species + 1 specials row
+
+    // Build the raw atlas canvas at 1× scale
+    const atlas = document.createElement('canvas');
+    atlas.width = COLS * FRAME;
+    atlas.height = ROWS * FRAME;
+    const actx = atlas.getContext('2d');
+    actx.imageSmoothingEnabled = false;
+
+    const cell = document.createElement('canvas');
+    cell.width = FRAME;
+    cell.height = FRAME;
+    const cctx = cell.getContext('2d');
+    cctx.imageSmoothingEnabled = false;
+
+    // Draw species rows
+    for (let r = 0; r < SPECIES.length; r++) {
+      const species = SPECIES[r];
+      let col = 0;
+      for (let d = 0; d < 4; d++) {
+        for (let f = 0; f < 3; f++) {
+          drawSpeciesFrame(cctx, species, d, f);
+          actx.drawImage(cell, col * FRAME, r * FRAME);
+          col++;
+        }
+      }
+    }
+    // Draw specials row
+    for (let s = 0; s < SPECIALS.length; s++) {
+      drawSpeciesFrame(cctx, SPECIALS[s], 0, 0);
+      actx.drawImage(cell, s * FRAME, SPECIES.length * FRAME);
+    }
+
+    // Info
+    const total = SPECIES.length * 12 + SPECIALS.length;
+    document.getElementById('info').textContent =
+      `${atlas.width}×${atlas.height} px | ${COLS} cols × ${ROWS} rows | ${total} frames | ` +
+      `Row format: DOWN₀ DOWN₁ DOWN₂  LEFT₀ LEFT₁ LEFT₂  RIGHT₀ RIGHT₁ RIGHT₂  UP₀ UP₁ UP₂`;
+
+    // Add row labels
+    function drawLabels(ctx, zoom) {
+      ctx.font = `${11 * zoom}px monospace`;
+      ctx.fillStyle = '#ffdd44';
+      ctx.textBaseline = 'middle';
+      for (let r = 0; r < SPECIES.length; r++) {
+        ctx.fillText(SPECIES[r], 4 * zoom, r * FRAME * zoom + FRAME * zoom / 2);
+      }
+      for (let s = 0; s < SPECIALS.length; s++) {
+        ctx.fillText(SPECIALS[s], (s * FRAME + 4) * zoom, SPECIES.length * FRAME * zoom + FRAME * zoom / 2);
+      }
+      // Direction headers
+      ctx.font = `${9 * zoom}px monospace`;
+      ctx.fillStyle = '#88aaff';
+      const dirs = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
+      for (let d = 0; d < 4; d++) {
+        const x = (d * 3 * FRAME + FRAME * 1.5) * zoom;
+        ctx.textAlign = 'center';
+        ctx.fillText(dirs[d], x, -4 * zoom + 10 * zoom);
+      }
+      ctx.textAlign = 'start';
+    }
+
+    // Render zoomed preview
+    const zoomedCanvas = document.getElementById('atlas-zoomed');
+    function renderZoomed(zoom) {
+      const padTop = 16 * zoom;
+      zoomedCanvas.width = atlas.width * zoom;
+      zoomedCanvas.height = atlas.height * zoom + padTop;
+      const zctx = zoomedCanvas.getContext('2d');
+      zctx.imageSmoothingEnabled = false;
+      zctx.fillStyle = '#1a1a2e';
+      zctx.fillRect(0, 0, zoomedCanvas.width, zoomedCanvas.height);
+      // Grid lines
+      zctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      zctx.lineWidth = 1;
+      for (let c = 0; c <= COLS; c++) {
+        const x = c * FRAME * zoom;
+        zctx.beginPath(); zctx.moveTo(x, padTop); zctx.lineTo(x, zoomedCanvas.height); zctx.stroke();
+      }
+      for (let r = 0; r <= ROWS; r++) {
+        const y = r * FRAME * zoom + padTop;
+        zctx.beginPath(); zctx.moveTo(0, y); zctx.lineTo(zoomedCanvas.width, y); zctx.stroke();
+      }
+      // Atlas
+      zctx.drawImage(atlas, 0, padTop, atlas.width * zoom, atlas.height * zoom);
+    }
+
+    renderZoomed(4);
+
+    // Zoom buttons
+    document.getElementById('z1').onclick = () => renderZoomed(1);
+    document.getElementById('z2').onclick = () => renderZoomed(2);
+    document.getElementById('z4').onclick = () => renderZoomed(4);
+    document.getElementById('z8').onclick = () => renderZoomed(8);
+
+    // Download
+    document.getElementById('btn-download').onclick = () => {
+      const link = document.createElement('a');
+      link.download = 'fauna-atlas.png';
+      link.href = atlas.toDataURL('image/png');
+      link.click();
+    };
+  </script>
+</body>
+</html>

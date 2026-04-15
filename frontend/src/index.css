@@ -611,6 +611,27 @@ html, body, #root {
   gap: 2px;
 }
 
+.stats-section-title {
+  margin: 4px 0 6px;
+  color: #8fd9de;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats-chart-block {
+  height: 220px;
+}
+
+.stats-chart-block + .stats-section-title {
+  margin-top: 8px;
+}
+
+.stats-chart-block-compact {
+  height: 180px;
+  margin-bottom: 8px;
+}
+
 /* Inspector badges & grid */
 .inspector-badge {
   display: inline-flex;

@@ -26,30 +26,64 @@ export default function StatsPanel() {
     profilingEnabled,
     profiling,
   } = useSimStore();
-  const speciesKeys = Object.keys(SPECIES_INFO);
+  const speciesKeys = useMemo(() => Object.keys(SPECIES_INFO), []);
+  const plantTypeKeys = useMemo(() => Object.keys(PLANT_COLORS).map(Number).sort((a, b) => a - b), []);
   const [statsTab, setStatsTab] = useState('population');
   const [history, setHistory] = useState(() => {
-    const h = { ticks: [] };
-    speciesKeys.forEach(k => h[k] = []);
-    h.plants = [];
+    const h = {
+      ticks: [],
+      plants: [],
+      performance: {
+        tickMs: [],
+        fps: [],
+      },
+      plantTypes: {},
+    };
+    speciesKeys.forEach(k => {
+      h[k] = [];
+    });
+    plantTypeKeys.forEach(typeId => {
+      h.plantTypes[typeId] = [];
+    });
     return h;
   });
 
   useEffect(() => {
     setHistory(prev => {
-      const newH = { ticks: [...prev.ticks, clock.tick].slice(-STATS_PANEL_HISTORY_LIMIT) };
+      const newH = {
+        ticks: [...prev.ticks, clock.tick].slice(-STATS_PANEL_HISTORY_LIMIT),
+        plants: [...(prev.plants || []), stats.plants_total || 0].slice(-STATS_PANEL_HISTORY_LIMIT),
+        performance: {
+          tickMs: [...(prev.performance?.tickMs || []), profiling?.engine?.tickMs || stats.tickMs || 0].slice(-STATS_PANEL_HISTORY_LIMIT),
+          fps: [...(prev.performance?.fps || []), profiling?.renderer?.fps || 0].slice(-STATS_PANEL_HISTORY_LIMIT),
+        },
+        plantTypes: {},
+      };
+
       speciesKeys.forEach(k => {
         newH[k] = [...(prev[k] || []), (stats.species && stats.species[k]) || 0].slice(-STATS_PANEL_HISTORY_LIMIT);
       });
-      newH.plants = [...prev.plants, stats.plants_total].slice(-STATS_PANEL_HISTORY_LIMIT);
+
+      const allPlantTypeKeys = new Set([
+        ...Object.keys(prev.plantTypes || {}),
+        ...Object.keys(stats.plant_types || {}),
+        ...plantTypeKeys.map(String),
+      ]);
+
+      allPlantTypeKeys.forEach(typeId => {
+        newH.plantTypes[typeId] = [
+          ...(prev.plantTypes?.[typeId] || []),
+          (stats.plant_types && stats.plant_types[typeId]) || 0,
+        ].slice(-STATS_PANEL_HISTORY_LIMIT);
+      });
+
       return newH;
     });
   }, [clock.tick]);
 
-  const chartData = {
+  const animalChartData = {
     labels: history.ticks.map(() => ''),
-    datasets: [
-      ...speciesKeys.map(k => ({
+    datasets: speciesKeys.map(k => ({
         label: SPECIES_INFO[k].name,
         data: history[k] || [],
         borderColor: ANIMAL_HEX_COLORS[k],
@@ -57,16 +91,27 @@ export default function StatsPanel() {
         pointRadius: 0,
         tension: 0.3,
       })),
-      {
-        label: 'Plants',
-        data: history.plants,
-        borderColor: '#88cc44',
-        borderWidth: 1,
-        pointRadius: 0,
-        tension: 0.3,
-        hidden: true,
-      },
-    ],
+  };
+
+  const plantPopulationChartData = {
+    labels: history.ticks.map(() => ''),
+    datasets: plantTypeKeys
+      .filter(typeId => {
+        const values = history.plantTypes?.[typeId] || [];
+        return values.some(v => v > 0);
+      })
+      .map(typeId => {
+        const species = getPlantByTypeId(typeId);
+        const color = PLANT_COLORS[typeId] || '#88cc44';
+        return {
+          label: species?.name || `Plant ${typeId}`,
+          data: history.plantTypes?.[typeId] || [],
+          borderColor: color,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+        };
+      }),
   };
 
   const chartOptions = {
@@ -83,6 +128,59 @@ export default function StatsPanel() {
       y: {
         ticks: { color: '#999', font: { size: 9 } },
         grid: { color: '#1a1a3e' },
+      },
+    },
+    animation: false,
+  };
+
+  const performanceChartData = {
+    labels: history.ticks.map(() => ''),
+    datasets: [
+      {
+        label: 'Tick ms',
+        data: history.performance.tickMs,
+        borderColor: '#7fc8ff',
+        borderWidth: 1.7,
+        pointRadius: 0,
+        tension: 0.3,
+        yAxisID: 'y',
+      },
+      {
+        label: 'FPS',
+        data: history.performance.fps,
+        borderColor: '#f6cc6a',
+        borderWidth: 1.7,
+        pointRadius: 0,
+        tension: 0.3,
+        yAxisID: 'y1',
+      },
+    ],
+  };
+
+  const performanceChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: '#ccc', font: { size: 10 } },
+      },
+    },
+    scales: {
+      x: { display: false },
+      y: {
+        type: 'linear',
+        position: 'left',
+        ticks: { color: '#7fc8ff', font: { size: 9 } },
+        grid: { color: '#1a1a3e' },
+        beginAtZero: true,
+      },
+      y1: {
+        type: 'linear',
+        position: 'right',
+        ticks: { color: '#f6cc6a', font: { size: 9 } },
+        grid: { drawOnChartArea: false },
+        beginAtZero: true,
       },
     },
     animation: false,
@@ -179,24 +277,35 @@ export default function StatsPanel() {
             <span className="stat-label">🍎 Fruits</span>
             <span className="stat-value" style={{ color: '#ff8844' }}>{stats.fruits || 0}</span>
           </div>
-          {Object.entries(stats.plant_types || {})
-            .filter(([, count]) => count > 0)
-            .sort(([, a], [, b]) => b - a)
-            .map(([typeIdStr, count]) => {
-              const typeId = Number(typeIdStr);
+          {plantTypeKeys
+            .map(typeId => {
+              const count = (stats.plant_types && stats.plant_types[typeId]) || 0;
+              return [typeId, count];
+            })
+            .sort((a, b) => b[1] - a[1])
+            .map(([typeId, count]) => {
               const sp = getPlantByTypeId(typeId);
               if (!sp) return null;
               const color = PLANT_COLORS[typeId] || '#88cc44';
               const emoji = PLANT_EMOJIS[typeId] || '🌱';
               const pct = stats.plants_total > 0 ? count / stats.plants_total : 0;
+              const tone = count > 0 ? 'success' : 'danger';
+              const barColor = getPopulationStatusColor(pct, color);
+              const statusLabel = count > 0 ? 'Alive' : 'Extinct';
               return (
                 <div key={typeId} className="stats-species-row">
                   <div className="stat-row">
                     <span className="stat-label">{emoji} {sp.name}</span>
-                    <span className="stat-value" style={{ color }}>{count}</span>
+                    <span className="stat-value" style={{ color }}>
+                      {count}<span style={{ color: '#666', fontSize: '0.7rem' }}>/{stats.plants_total || 0}</span>
+                    </span>
+                  </div>
+                  <div className="stats-species-meta">
+                    <span className="stats-status-badge" style={getBadgeToneStyle(tone)}>{statusLabel}</span>
+                    <span className="stats-species-percent">{Math.round(pct * 100)}%</span>
                   </div>
                   <div className="stats-progress-track">
-                    <div className="stats-progress-fill" style={{ width: `${Math.min(100, pct * 100)}%`, background: color }} />
+                    <div className="stats-progress-fill" style={{ width: `${Math.min(100, pct * 100)}%`, background: barColor }} />
                   </div>
                 </div>
               );
@@ -207,16 +316,25 @@ export default function StatsPanel() {
       {/* === Chart tab === */}
       {statsTab === 'chart' && (
         <div className="stats-tab-panel">
-          <div style={{ height: 280 }}>
-            <Line data={chartData} options={chartOptions} />
+          <h6 className="stats-section-title">Animal Population</h6>
+          <div className="stats-chart-block" style={{ marginBottom: 12 }}>
+            <Line data={animalChartData} options={chartOptions} />
           </div>
+          <h6 className="stats-section-title">Plant Population</h6>
+          {plantPopulationChartData.datasets.length > 0 ? (
+            <div className="stats-chart-block">
+              <Line data={plantPopulationChartData} options={chartOptions} />
+            </div>
+          ) : (
+            <p className="report-empty" style={{ padding: '10px 0 4px', textAlign: 'left' }}>No plant population history yet.</p>
+          )}
         </div>
       )}
 
       {/* === Settings tab === */}
       {statsTab === 'settings' && (
         <div className="stats-tab-panel">
-          <h6 style={{ marginTop: 4 }}>Rate Multipliers</h6>
+          <h6 className="stats-section-title">Rate Multipliers</h6>
       <div className="stat-row" style={{ flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="stat-label" style={{ minWidth: 50 }}>🍖 Hunger</span>
@@ -254,7 +372,7 @@ export default function StatsPanel() {
         </div>
       </div>
 
-      <h6 style={{ marginTop: 12 }}>Performance</h6>
+      <h6 className="stats-section-title" style={{ marginTop: 12 }}>Performance</h6>
       <div className="stat-row" style={{ marginBottom: 6 }}>
         <span className="stat-label">Profiling</span>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#aaa', fontSize: '0.82rem' }}>
@@ -269,6 +387,10 @@ export default function StatsPanel() {
           />
           High-res
         </label>
+      </div>
+
+      <div className="stats-chart-block-compact">
+        <Line data={performanceChartData} options={performanceChartOptions} />
       </div>
 
       <div className="stat-row">

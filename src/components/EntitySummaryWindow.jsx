@@ -7,14 +7,12 @@ import {
 import { buildAnimalEntry, buildPlantEntry } from './entitySummaryEntries';
 import { useModalA11y } from '../hooks/useModalA11y.js';
 
-// --- Virtualization constants ---
 // Items taller than this threshold get a virtual scroll body instead of full DOM render
 const VIRTUAL_THRESHOLD = 80;
-// Max plant tiles to build entries for (prevents O(N²) work on huge worlds)
-const MAX_PLANT_ENTRIES = 5000;
 // Fixed row height: min-height(58) + flex gap(8) = 66px
 const ITEM_HEIGHT = 66;
 const OVERSCAN = 3;
+const GROUP_BODY_GAP = 8;
 
 const TYPE_FILTERS = [
   { id: 'all', label: 'All' },
@@ -27,7 +25,11 @@ const ENTITY_TYPE_LABELS = {
   plant: 'Plant',
 };
 
-// --- Sub-components ---
+function handleActionKeyDown(event, action) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  action();
+}
 
 function EntityItem({ entry, active, onInspect }) {
   return (
@@ -46,12 +48,10 @@ function EntityItem({ entry, active, onInspect }) {
 }
 
 /**
- * VirtualGroupBody — renders only the visible slice of a large entry list.
- * Uses padding-top/bottom spacers so the scroll container has the correct total height
- * without rendering every DOM node.
+ * VirtualGroupBody renders only the visible slice of a large entry list.
+ * It uses spacer divs (instead of giant paddings) to avoid flex layout overflow bugs.
  */
 function VirtualGroupBody({ entries, selectedEntity, selectedTile, onInspect }) {
-  const ref = useRef(null);
   const [scrollTop, setScrollTop] = useState(0);
   // Safe constant: max-height from CSS is min(42vh, 520px). 520px is the upper bound.
   const CONTAINER_H = 520;
@@ -59,17 +59,17 @@ function VirtualGroupBody({ entries, selectedEntity, selectedTile, onInspect }) 
   const start = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
   const end = Math.min(entries.length, Math.ceil((scrollTop + CONTAINER_H) / ITEM_HEIGHT) + OVERSCAN);
   const visible = entries.slice(start, end);
-  const topPad = start * ITEM_HEIGHT;
-  const botPad = Math.max(0, (entries.length - end) * ITEM_HEIGHT);
+
+  const topSpace = Math.max(0, start * ITEM_HEIGHT - GROUP_BODY_GAP);
+  const bottomSpace = Math.max(0, (entries.length - end) * ITEM_HEIGHT - GROUP_BODY_GAP);
 
   return (
     <div
-      ref={ref}
       className="entity-summary-group-body"
       role="list"
-      style={{ paddingTop: topPad, paddingBottom: botPad }}
       onScroll={e => setScrollTop(e.currentTarget.scrollTop)}
     >
+      {topSpace > 0 && <div role="presentation" style={{ height: topSpace, flexShrink: 0 }} />}
       {visible.map(entry => (
         <EntityItem
           key={entry.key}
@@ -78,6 +78,7 @@ function VirtualGroupBody({ entries, selectedEntity, selectedTile, onInspect }) 
           onInspect={onInspect}
         />
       ))}
+      {bottomSpace > 0 && <div role="presentation" style={{ height: bottomSpace, flexShrink: 0 }} />}
     </div>
   );
 }
@@ -97,12 +98,6 @@ function FlatGroupBody({ entries, selectedEntity, selectedTile, onInspect }) {
   );
 }
 
-function handleActionKeyDown(event, action) {
-  if (event.key !== 'Enter' && event.key !== ' ') return;
-  event.preventDefault();
-  action();
-}
-
 export default function EntitySummaryWindow({ open, onClose, onInspect }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -120,10 +115,10 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
     return animals.map(buildAnimalEntry);
   }, [open, animals]);
 
-  const { plantEntries, plantTruncated } = useMemo(() => {
-    if (!open || mapWidth <= 0 || mapHeight <= 0) return { plantEntries: [], plantTruncated: false };
+  const plantEntries = useMemo(() => {
+    if (!open || mapWidth <= 0 || mapHeight <= 0) return [];
     const snapshot = plantSnapshot || worldReady;
-    if (!snapshot?.plantType || !snapshot?.plantStage) return { plantEntries: [], plantTruncated: false };
+    if (!snapshot?.plantType || !snapshot?.plantStage) return [];
 
     const plantType = snapshot.plantType;
     const plantStage = snapshot.plantStage;
@@ -133,15 +128,12 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
     for (let i = 0; i < count; i++) {
       const typeId = plantType[i];
       if (!typeId) continue;
-      if (entries.length >= MAX_PLANT_ENTRIES) {
-        return { plantEntries: entries, plantTruncated: true };
-      }
       const x = i % mapWidth;
       const y = (i / mapWidth) | 0;
       entries.push(buildPlantEntry(typeId, plantStage[i], x, y));
     }
 
-    return { plantEntries: entries, plantTruncated: false };
+    return entries;
   }, [open, worldReady, plantSnapshot, mapWidth, mapHeight]);
 
   const filteredEntries = useMemo(() => {
@@ -158,7 +150,6 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
     [filteredEntries, selectedEntity, selectedTile]
   );
 
-  // Auto-expand groups that contain the active selection
   const activeGroupKeys = useMemo(() => {
     const keys = new Set();
     for (const g of groupedEntries) {
@@ -173,7 +164,10 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
       let changed = false;
       const next = new Set(prev);
       for (const k of activeGroupKeys) {
-        if (!next.has(k)) { next.add(k); changed = true; }
+        if (!next.has(k)) {
+          next.add(k);
+          changed = true;
+        }
       }
       return changed ? next : prev;
     });
@@ -182,7 +176,8 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
   function toggleGroup(key) {
     setOpenGroups(prev => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -194,10 +189,18 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
 
   return (
     <div className="entity-summary-overlay" onClick={onClose}>
-      <div className="entity-summary-modal" ref={modalRef} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="entity-summary-title" tabIndex={-1}>
+      <div
+        className="entity-summary-modal"
+        ref={modalRef}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="entity-summary-title"
+        tabIndex={-1}
+      >
         <div className="entity-summary-header">
           <h5 id="entity-summary-title">Entity Summary</h5>
-          <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>✕</button>
+          <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>x</button>
         </div>
 
         <div className="entity-summary-controls">
@@ -219,14 +222,9 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
               </button>
             ))}
             <span className="entity-summary-counter">
-              {filteredEntries.length} / {totalEntries} entities · {groupedEntries.length} groups
+              {filteredEntries.length} / {totalEntries} entities - {groupedEntries.length} groups
             </span>
           </div>
-          {plantTruncated && (
-            <div className="entity-summary-truncation-note">
-              ⚠️ Plant list capped at {MAX_PLANT_ENTRIES.toLocaleString()} entries for performance. Use search or the Plants tab in the Stats panel for full counts.
-            </div>
-          )}
         </div>
 
         <div className="entity-summary-list" role="list">
@@ -250,7 +248,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
                     <span className="entity-summary-group-label">{group.emoji} {group.label}</span>
                     <span className="entity-summary-group-meta">
                       {ENTITY_TYPE_LABELS[group.entityType]}
-                      {group.hasActive ? ' · selected' : ''}
+                      {group.hasActive ? ' - selected' : ''}
                     </span>
                   </span>
                   <span className="entity-summary-group-badge">{group.count}</span>

@@ -306,12 +306,21 @@ export default function App() {
     if (isCompactLayout) {
       setActiveDrawer(null);
     }
+    if (item.entityType === 'animal' && item.raw) {
+      // Resolve the freshest copy from the store — the entry's raw object may be
+      // stale (mergeAnimalDeltas creates new copies each tick) and the animal
+      // may have moved since the entry was built. If the id is no longer in the
+      // store the animal was fully removed; skip navigation entirely.
+      const fresh = useSimStore.getState()._animalsById.get(item.raw.id);
+      if (!fresh) return;
+      if (Number.isFinite(fresh.x) && Number.isFinite(fresh.y) && rendererRef.current) {
+        rendererRef.current.centerOn(fresh.x, fresh.y);
+      }
+      useSimStore.getState().setSelectedEntity(fresh);
+      return;
+    }
     if (Number.isFinite(item.x) && Number.isFinite(item.y) && rendererRef.current) {
       rendererRef.current.centerOn(item.x, item.y);
-    }
-    if (item.entityType === 'animal' && item.raw) {
-      useSimStore.getState().setSelectedEntity(item.raw);
-      return;
     }
     if (item.entityType === 'plant' && Number.isFinite(item.x) && Number.isFinite(item.y)) {
       requestTileInfo(item.x, item.y);

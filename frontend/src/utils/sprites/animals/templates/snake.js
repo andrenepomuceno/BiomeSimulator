@@ -4,7 +4,7 @@
  *
  * Sinusoidal body segments with scale patterns, forked tongue, belly plates.
  */
-import { px, rect, darken, lighten, noise, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawSnake(ctx, params, dir, frame) {
   const { body, accent, pattern, belly, eye, headW, headH, segments, segW } = params;
@@ -22,21 +22,17 @@ export function drawSnake(ctx, params, dir, frame) {
   const sw = segW || 6;
   const segH = sw;
 
-  // Draw a single segment with scale detail
+  // Draw a single segment with scale detail and gradient
   function seg(sx, sy, w, h, primary, secondary) {
-    rect(ctx, sx, sy, w, h, primary);
+    gradientV(ctx, sx, sy, w, h, lighten(primary, 0.06), darken(primary, 0.06));
     // Belly stripe
     if (isVert) {
       rect(ctx, sx + 1, sy, 2, h, belly || accent);
     } else {
       rect(ctx, sx, sy + h - 2, w, 2, belly || accent);
     }
-    // Scale pattern
-    for (let dy = 0; dy < h; dy++) {
-      for (let dx = 0; dx < w; dx++) {
-        if (noise(sx + dx, sy + dy) > 0.78) px(ctx, sx + dx, sy + dy, secondary || shadow);
-      }
-    }
+    // Scale pattern (multi-tone)
+    speckle(ctx, sx, sy, w, h, [secondary || shadow, darken(primary, 0.10), lighten(primary, 0.04)], 0.22);
   }
 
   if (isVert) {
@@ -69,14 +65,11 @@ export function drawSnake(ctx, params, dir, frame) {
 
     // Head shape (slightly rounded)
     rect(ctx, hx + 1, headY, hw - 2, 1, body);
-    rect(ctx, hx, headY + 1, hw, hh - 2, body);
+    gradientV(ctx, hx, headY + 1, hw, hh - 2, body, shadow);
     rect(ctx, hx + 1, headY + hh - 1, hw - 2, 1, shadow);
+    rimLight(ctx, hx + 1, headY, hw - 2, 2, lighten(body, 0.10), 'top');
     // Scale texture on head
-    for (let dy = 0; dy < hh; dy++) {
-      for (let dx = 0; dx < hw; dx++) {
-        if (noise(hx + dx, headY + dy) > 0.8) px(ctx, hx + dx, headY + dy, shadow);
-      }
-    }
+    speckle(ctx, hx, headY, hw, hh, [shadow, darken(body, 0.10)], 0.18);
     // Eyes (slit pupil)
     if (dir === DOWN) {
       rect(ctx, hx + 2, headY + 2, 3, 3, eye);
@@ -132,11 +125,8 @@ export function drawSnake(ctx, params, dir, frame) {
     const hy = cy - Math.floor(hh / 2);
 
     for (let dx = 0; dx < hw; dx++) for (let dy = 0; dy < hh; dy++) px(ctx, f(headX + dx), hy + dy, body);
-    for (let dx = 0; dx < hw; dx++) {
-      for (let dy = 0; dy < hh; dy++) {
-        if (noise(headX + dx, hy + dy) > 0.8) px(ctx, f(headX + dx), hy + dy, shadow);
-      }
-    }
+    rimLight(ctx, headX, hy, hw, 2, lighten(body, 0.10), 'top');
+    speckle(ctx, headX, hy, hw, hh, [shadow, darken(body, 0.10)], 0.18);
     // Eye
     rect(ctx, f(headX + hw - 4), hy + 1, 3, 3, eye);
     px(ctx, f(headX + hw - 3), hy + 2, '#000000');

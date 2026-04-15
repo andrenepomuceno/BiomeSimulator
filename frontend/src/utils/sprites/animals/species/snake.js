@@ -1,6 +1,6 @@
 export default {
   template: 'snake',
-  body: '#508030', accent: '#70a050', eye: '#ff2222',
-  pattern: '#406020', belly: '#90b060',
+  body: '#4e8828', accent: '#6ea848', eye: '#ff2222',
+  pattern: '#40661a', belly: '#92b858',
   headW: 10, headH: 7, segments: 9, segW: 6,
 };

@@ -1,5 +1,5 @@
 export default {
   template: 'insect',
-  body: '#5a3a1a', accent: '#8a6a3a', eye: '#ffffff',
+  body: '#603a14', accent: '#926c32', eye: '#ffffff',
   w: 24, h: 16, antennae: true, jumpLegs: true,
 };

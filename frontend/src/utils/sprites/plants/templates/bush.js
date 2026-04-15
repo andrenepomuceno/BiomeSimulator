@@ -2,7 +2,7 @@
  * Bush template — bushy plants (strawberry, blueberry, tomato, chili pepper).
  * Stages 2-5 at 64×64 design grid, 3 animation frames for sway.
  */
-import { px, rect, darken, lighten, noise } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, rimLight, ao, speckle } from '../../helpers.js';
 
 export function drawBush(ctx, params, stage, frame) {
   const { stem, leaf, leafDark, fruit, fruitAccent } = params;
@@ -15,9 +15,7 @@ export function drawBush(ctx, params, stage, frame) {
   const hw = (bw / 2) | 0;
 
   function leafTex(x, y, w, h) {
-    for (let dy = 0; dy < h; dy++)
-      for (let dx = 0; dx < w; dx++)
-        if (noise(x + dx, y + dy) > 0.76) px(ctx, x + dx, y + dy, leafDark);
+    speckle(ctx, x, y, w, h, [leafDark, darken(leaf, 0.12), lighten(leaf, 0.06)], 0.24);
   }
 
   if (stage === 2) {

@@ -2,7 +2,7 @@
  * Tree template — round-canopy trees (apple, mango, oak, olive).
  * Stages 2-5 at 64×64 design grid, 3 animation frames for sway.
  */
-import { px, rect, darken, lighten, noise } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, gradientH, rimLight, ao, speckle } from '../../helpers.js';
 
 export function drawTree(ctx, params, stage, frame) {
   const { trunk, trunkDark, leaf, leafDark, fruit, fruitAccent } = params;
@@ -17,22 +17,18 @@ export function drawTree(ctx, params, stage, frame) {
   const hw = (cw / 2) | 0;
 
   function canopyTex(x, y, w, h) {
-    for (let dy = 0; dy < h; dy++)
-      for (let dx = 0; dx < w; dx++)
-        if (noise(x + dx, y + dy) > 0.74) px(ctx, x + dx, y + dy, leafDark);
+    speckle(ctx, x, y, w, h, [leafDark, darken(leaf, 0.12), lighten(leaf, 0.06)], 0.26);
   }
 
   function barkTex(x, y, w, h) {
-    for (let dy = 0; dy < h; dy++)
-      for (let dx = 0; dx < w; dx++)
-        if (noise(x + dx, y + dy) > 0.76) px(ctx, x + dx, y + dy, trunkDark);
+    speckle(ctx, x, y, w, h, [trunkDark, darken(trunk, 0.12), lighten(trunk, 0.04)], 0.24);
   }
 
   if (stage === 2) {
     const sh = (th * 0.6) | 0;
     const sw = (cw * 0.35) | 0;
     const sch = (ch * 0.45) | 0;
-    rect(ctx, cx + 2, baseY - sh, 4, sh, trunk);
+    gradientH(ctx, cx + 2, baseY - sh, 4, sh, trunk, trunkDark);
     rect(ctx, cx, baseY - sh, 2, (sh * 0.4) | 0, trunkDark);
     barkTex(cx, baseY - sh, 6, sh);
     rect(ctx, cx - (sw / 2 | 0) + swayOff, baseY - sh - sch + 2, sw, sch, leaf);
@@ -45,7 +41,7 @@ export function drawTree(ctx, params, stage, frame) {
     const sw = (cw * 0.7) | 0;
     const sch = (ch * 0.7) | 0;
     const shw = (sw / 2) | 0;
-    rect(ctx, cx + 2, baseY - sh, 6, sh, trunk);
+    gradientH(ctx, cx + 2, baseY - sh, 6, sh, trunk, trunkDark);
     rect(ctx, cx, baseY - (sh * 0.7) | 0, 2, (sh * 0.55) | 0, trunkDark);
     barkTex(cx, baseY - sh, 8, sh);
     rect(ctx, cx - shw + swayOff, baseY - sh - (sch * 0.5) | 0, sw, (sch * 0.55) | 0, leaf);
@@ -58,7 +54,7 @@ export function drawTree(ctx, params, stage, frame) {
     rect(ctx, cx + swayOff, baseY - sh - sch + 2, 6, 4, lh);
     rect(ctx, cx - 4, baseY, 16, 4, darken(trunk, 0.3));
   } else if (stage === 4) {
-    rect(ctx, cx, baseY - th, 8, th, trunk);
+    gradientH(ctx, cx, baseY - th, 8, th, trunk, trunkDark);
     rect(ctx, cx - 2, baseY - (th * 0.6) | 0, 4, (th * 0.5) | 0, trunkDark);
     barkTex(cx, baseY - th, 8, th);
     rect(ctx, cx - hw + swayOff, baseY - th - (ch * 0.35) | 0, cw, (ch * 0.7) | 0, leaf);
@@ -72,7 +68,7 @@ export function drawTree(ctx, params, stage, frame) {
     rect(ctx, cx + hw - 12 + swayOff, baseY - th - (ch * 0.4) | 0, 6, 6, lh);
     rect(ctx, cx - 6, baseY, 20, 4, darken(trunk, 0.3));
   } else if (stage === 5) {
-    rect(ctx, cx, baseY - th, 8, th, trunk);
+    gradientH(ctx, cx, baseY - th, 8, th, trunk, trunkDark);
     rect(ctx, cx - 2, baseY - (th * 0.6) | 0, 4, (th * 0.5) | 0, trunkDark);
     barkTex(cx, baseY - th, 8, th);
     rect(ctx, cx - hw + swayOff, baseY - th - (ch * 0.35) | 0, cw, (ch * 0.7) | 0, leaf);

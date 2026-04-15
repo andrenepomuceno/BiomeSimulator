@@ -2,7 +2,7 @@
  * Cactus template — segmented cactus with arms.
  * Stages 2-5 at 64×64 design grid, 3 frames (cacti are rigid, frames identical).
  */
-import { px, rect, darken, lighten, noise } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, gradientH, rimLight, ao, speckle } from '../../helpers.js';
 
 export function drawCactus(ctx, params, stage, frame) {
   const { body, bodyDark, highlight, flower, fruit } = params;
@@ -11,20 +11,18 @@ export function drawCactus(ctx, params, stage, frame) {
   const spine = '#c8c880';
 
   function ribTex(x, y, w, h) {
-    for (let dy = 0; dy < h; dy++)
-      for (let dx = 0; dx < w; dx++)
-        if (noise(x + dx, y + dy) > 0.78) px(ctx, x + dx, y + dy, bodyDark);
+    speckle(ctx, x, y, w, h, [bodyDark, darken(body, 0.12), lighten(body, 0.04)], 0.22);
   }
 
   if (stage === 2) {
-    rect(ctx, cx, baseY - 16, 8, 16, body);
+    gradientH(ctx, cx, baseY - 16, 8, 16, highlight, bodyDark);
     rect(ctx, cx, baseY - 16, 2, 16, highlight);
     rect(ctx, cx + 6, baseY - 16, 2, 16, bodyDark);
     ribTex(cx, baseY - 16, 8, 16);
     rect(ctx, cx + 2, baseY - 18, 4, 4, lighten(body, 0.1));
     rect(ctx, cx - 4, baseY, 16, 4, darken(body, 0.4));
   } else if (stage === 3) {
-    rect(ctx, cx, baseY - 28, 8, 28, body);
+    gradientH(ctx, cx, baseY - 28, 8, 28, highlight, bodyDark);
     rect(ctx, cx, baseY - 28, 2, 28, highlight);
     rect(ctx, cx + 6, baseY - 28, 2, 28, bodyDark);
     ribTex(cx, baseY - 28, 8, 28);
@@ -39,7 +37,7 @@ export function drawCactus(ctx, params, stage, frame) {
     px(ctx, cx - 2, baseY - 16, spine);
     rect(ctx, cx - 4, baseY, 20, 4, darken(body, 0.4));
   } else if (stage === 4) {
-    rect(ctx, cx, baseY - 36, 8, 36, body);
+    gradientH(ctx, cx, baseY - 36, 8, 36, highlight, bodyDark);
     rect(ctx, cx, baseY - 36, 2, 36, highlight);
     rect(ctx, cx + 6, baseY - 36, 2, 36, bodyDark);
     ribTex(cx, baseY - 36, 8, 36);
@@ -61,7 +59,7 @@ export function drawCactus(ctx, params, stage, frame) {
     px(ctx, cx - 10, baseY - 30, spine); px(ctx, cx + 16, baseY - 28, spine);
     rect(ctx, cx - 8, baseY, 28, 4, darken(body, 0.4));
   } else if (stage === 5) {
-    rect(ctx, cx, baseY - 36, 8, 36, body);
+    gradientH(ctx, cx, baseY - 36, 8, 36, highlight, bodyDark);
     rect(ctx, cx, baseY - 36, 2, 36, highlight);
     rect(ctx, cx + 6, baseY - 36, 2, 36, bodyDark);
     ribTex(cx, baseY - 36, 8, 36);

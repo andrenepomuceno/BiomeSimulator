@@ -4,7 +4,7 @@
  *
  * Feather texture, wing layering, detailed beak and eye ring.
  */
-import { px, rect, dither, darken, lighten, noise, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, dither, darken, lighten, noise, gradientV, rimLight, ao, speckle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawBird(ctx, params, dir, frame) {
   const { body, accent, eye, beak, w, h, wingSpan } = params;
@@ -22,12 +22,8 @@ export function drawBird(ctx, params, dir, frame) {
   const cy = 32;
   const wingUp = frame === 0 ? -3 : frame === 2 ? 3 : 0;
 
-  function featherRegion(x, y, rw, rh, base) {
-    for (let dy = 0; dy < rh; dy++) {
-      for (let dx = 0; dx < rw; dx++) {
-        if (noise(x + dx, y + dy) > 0.75) px(ctx, x + dx, y + dy, featherTex);
-      }
-    }
+  function featherRegion(x, y, rw, rh) {
+    speckle(ctx, x, y, rw, rh, [featherTex, darken(body, 0.10), lighten(body, 0.04)], 0.24);
   }
 
   if (dir === DOWN || dir === UP) {
@@ -37,18 +33,20 @@ export function drawBird(ctx, params, dir, frame) {
     // Body oval
     rect(ctx, bx + 3, by, w - 6, 3, body);
     rect(ctx, bx + 1, by + 2, w - 2, 2, body);
-    rect(ctx, bx, by + 4, w, h - 8, body);
+    gradientV(ctx, bx, by + 4, w, h - 8, body, shadow);
     rect(ctx, bx + 1, by + h - 4, w - 2, 2, shadow);
     rect(ctx, bx + 3, by + h - 2, w - 6, 2, shadow2);
     // Highlight ridge
     rect(ctx, cx - 2, by + 1, 4, 2, highlight2);
+    rimLight(ctx, bx + 3, by, w - 6, 3, highlight2, 'top');
     // Feather texture
-    featherRegion(bx + 2, by + 4, w - 4, h - 8, body);
+    featherRegion(bx + 2, by + 4, w - 4, h - 8);
     // Breast colour
     if (params.breast && dir === DOWN) {
       rect(ctx, bx + 3, by + h - 7, w - 6, 4, breastCol);
       dither(ctx, bx + 3, by + h - 8, w - 6, 1, body, breastCol);
     }
+    ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.08);
 
     // Head
     rect(ctx, cx - 4, by - 7, 8, 7, body);
@@ -111,10 +109,13 @@ export function drawBird(ctx, params, dir, frame) {
     for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + h - 2, shadow); px(ctx, f(bx + i), by + h - 1, shadow2); }
     // Back highlight
     for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 2, highlight); px(ctx, f(bx + i), by + 3, highlight2); }
-    // Feather texture
+    // Feather texture (multi-tone)
     for (let r = 4; r < h - 3; r++) {
       for (let c = 1; c < w - 1; c++) {
-        if (noise(bx + c, by + r) > 0.77) px(ctx, f(bx + c), by + r, featherTex);
+        const n = noise(bx + c, by + r);
+        if (n > 0.79) px(ctx, f(bx + c), by + r, featherTex);
+        else if (n > 0.75) px(ctx, f(bx + c), by + r, darken(body, 0.10));
+        else if (n < 0.10) px(ctx, f(bx + c), by + r, lighten(body, 0.04));
       }
     }
     // Breast

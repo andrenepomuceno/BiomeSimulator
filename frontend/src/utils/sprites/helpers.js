@@ -106,6 +106,142 @@ export function noise(x, y) {
   return (h & 0x7fff) / 0x7fff;
 }
 
+// ── HSL colour helpers ──────────────────────────────────────────────
+
+function _rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return [h, s, l];
+}
+
+function _hue2rgb(p, q, t) {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1 / 6) return p + (q - p) * 6 * t;
+  if (t < 1 / 2) return q;
+  if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+  return p;
+}
+
+function _hslToRgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return [
+    Math.round(_hue2rgb(p, q, h + 1 / 3) * 255),
+    Math.round(_hue2rgb(p, q, h) * 255),
+    Math.round(_hue2rgb(p, q, h - 1 / 3) * 255),
+  ];
+}
+
+/** Boost (or reduce) the saturation of a hex colour. amount=0.2 → +20%. */
+export function saturate(hex, amount) {
+  const [r, g, b] = _parseHex(hex);
+  const [h, s, l] = _rgbToHsl(r, g, b);
+  const ns = Math.min(1, Math.max(0, s * (1 + amount)));
+  const [nr, ng, nb] = _hslToRgb(h, ns, l);
+  return _toHex(nr, ng, nb);
+}
+
+// ── Advanced drawing tools ──────────────────────────────────────────
+
+/** Fill a rect with a vertical colour gradient (top→bottom). */
+export function gradientV(ctx, x, y, w, h, topColor, bottomColor) {
+  for (let dy = 0; dy < h; dy++) {
+    const t = h <= 1 ? 0 : dy / (h - 1);
+    rect(ctx, x, y + dy, w, 1, blend(topColor, bottomColor, t));
+  }
+}
+
+/** Fill a rect with a horizontal colour gradient (left→right). */
+export function gradientH(ctx, x, y, w, h, leftColor, rightColor) {
+  for (let dx = 0; dx < w; dx++) {
+    const t = w <= 1 ? 0 : dx / (w - 1);
+    rect(ctx, x + dx, y, 1, h, blend(leftColor, rightColor, t));
+  }
+}
+
+/** Draw a 1-2 px bright strip on one side of a region. side: 'top'|'left'|'right'|'bottom'. */
+export function rimLight(ctx, x, y, w, h, color, side = 'top') {
+  const dim = lighten(color, -0.15);
+  switch (side) {
+    case 'top':
+      rect(ctx, x, y, w, 1, color);
+      rect(ctx, x, y + 1, w, 1, dim);
+      break;
+    case 'bottom':
+      rect(ctx, x, y + h - 1, w, 1, color);
+      rect(ctx, x, y + h - 2, w, 1, dim);
+      break;
+    case 'left':
+      rect(ctx, x, y, 1, h, color);
+      rect(ctx, x + 1, y, 1, h, dim);
+      break;
+    case 'right':
+      rect(ctx, x + w - 1, y, 1, h, color);
+      rect(ctx, x + w - 2, y, 1, h, dim);
+      break;
+  }
+}
+
+/** Darken the inner border of a region to simulate ambient occlusion / depth. */
+export function ao(ctx, x, y, w, h, intensity = 0.12) {
+  const alpha = Math.round(intensity * 255);
+  const col = `rgba(0,0,0,${(alpha / 255).toFixed(2)})`;
+  // bottom edge (strongest)
+  ctx.fillStyle = col;
+  ctx.fillRect(x * _CM * SCALE, (y + h - 1) * _CM * SCALE, w * _CM * SCALE, _CM * SCALE);
+  // sides — thinner
+  const col2 = `rgba(0,0,0,${(alpha * 0.6 / 255).toFixed(2)})`;
+  ctx.fillStyle = col2;
+  ctx.fillRect(x * _CM * SCALE, y * _CM * SCALE, _CM * SCALE, h * _CM * SCALE);
+  ctx.fillRect((x + w - 1) * _CM * SCALE, y * _CM * SCALE, _CM * SCALE, h * _CM * SCALE);
+}
+
+/** Multi-color noise stipple. colors is an array of hex colours. density 0-1. */
+export function speckle(ctx, x, y, w, h, colors, density = 0.3) {
+  const len = colors.length;
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      const n = noise(x + dx + 7919, y + dy + 6271);
+      if (n < density) {
+        const ci = Math.floor(noise(x + dx + 3571, y + dy + 2393) * len) % len;
+        px(ctx, x + dx, y + dy, colors[ci]);
+      }
+    }
+  }
+}
+
+/** Filled circle with a radial gradient from centerColor to edgeColor. */
+export function softCircle(ctx, cx, cy, r, centerColor, edgeColor) {
+  for (let dy = -r; dy <= r; dy++) {
+    const hw = Math.round(Math.sqrt(r * r - dy * dy));
+    for (let dx = -hw; dx <= hw; dx++) {
+      const dist = Math.sqrt(dx * dx + dy * dy) / r;
+      px(ctx, cx + dx, cy + dy, blend(centerColor, edgeColor, Math.min(1, dist)));
+    }
+  }
+}
+
+/** Tapered feather / leaf shape with colour transition from base to tip, pointing upward. */
+export function feather(ctx, x, y, w, h, baseColor, tipColor) {
+  for (let dy = 0; dy < h; dy++) {
+    const t = h <= 1 ? 0 : dy / (h - 1);
+    const rowW = Math.max(1, Math.round(w * (1 - t * 0.7)));
+    const ox = Math.floor((w - rowW) / 2);
+    const col = blend(baseColor, tipColor, t);
+    rect(ctx, x + ox, y + dy, rowW, 1, col);
+  }
+}
+
 // ── Post-processing ─────────────────────────────────────────────────
 
 /**

@@ -4,7 +4,7 @@
  *
  * Shell sheen, translucent wings, segmented antennae, caterpillar prolegs.
  */
-import { px, rect, dither, darken, lighten, noise, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, dither, darken, lighten, noise, gradientV, rimLight, ao, speckle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawInsect(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -26,10 +26,10 @@ export function drawInsect(ctx, params, dir, frame) {
     const by = cy - Math.floor(h / 2);
 
     if (params.shell) {
-      // Shell body with sheen
+      // Shell body with sheen and gradient
       rect(ctx, bx + 3, by, w - 6, 3, accent);
       rect(ctx, bx + 1, by + 2, w - 2, 2, accent);
-      rect(ctx, bx, by + 4, w, h - 8, accent);
+      gradientV(ctx, bx, by + 4, w, h - 8, accent, darken(accent, 0.10));
       rect(ctx, bx + 1, by + h - 4, w - 2, 2, darken(accent, 0.1));
       rect(ctx, bx + 3, by + h - 2, w - 6, 2, darken(accent, 0.15));
       // Center line
@@ -40,12 +40,10 @@ export function drawInsect(ctx, params, dir, frame) {
         rect(ctx, bx + w - 6, by + 4, 2, 2, params.sheen);
         px(ctx, bx + 4, by + 6, lighten(params.sheen, 0.1));
       }
-      // Shell texture via noise
-      for (let r = 3; r < h - 3; r++) {
-        for (let c = 1; c < w - 1; c++) {
-          if (noise(bx + c, by + r) > 0.85) px(ctx, bx + c, by + r, darken(accent, 0.07));
-        }
-      }
+      rimLight(ctx, bx + 3, by, w - 6, 3, lighten(accent, 0.12), 'top');
+      // Shell texture via multi-color speckle
+      speckle(ctx, bx + 1, by + 3, w - 2, h - 6, [darken(accent, 0.07), darken(accent, 0.12), lighten(accent, 0.04)], 0.18);
+      ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.10);
     } else {
       // Non-shell body
       rect(ctx, bx + 3, by, w - 6, 3, body);
@@ -126,11 +124,8 @@ export function drawInsect(ctx, params, dir, frame) {
         rect(ctx, f(bx + 3), by + 3, 3, 3, params.sheen);
         px(ctx, f(bx + 4), by + 5, lighten(params.sheen, 0.1));
       }
-      for (let r = 2; r < h - 2; r++) {
-        for (let c = 1; c < w - 1; c++) {
-          if (noise(bx + c, by + r) > 0.85) px(ctx, f(bx + c), by + r, darken(accent, 0.07));
-        }
-      }
+      // Shell texture (multi-tone)
+      speckle(ctx, bx + 1, by + 2, w - 2, h - 4, [darken(accent, 0.07), darken(accent, 0.12), lighten(accent, 0.04)], 0.18);
     } else {
       for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
         px(ctx, f(bx + c), by + r, r < 3 ? body : (r >= h - 3 ? shadow : body));

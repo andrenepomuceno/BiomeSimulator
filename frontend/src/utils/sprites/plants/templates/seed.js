@@ -2,7 +2,7 @@
  * Seed template — universal stage 1 for all plant species.
  * 64×64 design grid.
  */
-import { px, rect, darken, lighten, noise } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, rimLight, speckle } from '../../helpers.js';
 
 export function drawSeed(ctx, params, frame) {
   const { seedColor, sproutColor } = params;
@@ -17,12 +17,8 @@ export function drawSeed(ctx, params, frame) {
   // Highlight
   rect(ctx, cx, cy, 4, 4, seedHi);
   px(ctx, cx + 1, cy + 1, lighten(seedHi, 0.1));
-  // Seed texture
-  for (let dy = 0; dy < 8; dy++) {
-    for (let dx = 0; dx < 8; dx++) {
-      if (noise(cx + dx, cy + dy) > 0.82) px(ctx, cx + dx, cy + dy, darken(seedColor, 0.12));
-    }
-  }
+  // Seed texture (multi-tone)
+  speckle(ctx, cx, cy, 8, 8, [darken(seedColor, 0.12), darken(seedColor, 0.08), lighten(seedColor, 0.04)], 0.20);
 
   // Tiny sprout emerging (frames 1-2 show more growth)
   if (frame >= 1) {

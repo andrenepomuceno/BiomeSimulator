@@ -8,7 +8,7 @@
  *   - Detailed eyes with sclera, iris, pupil, highlight
  *   - Inner-ear detail, paw pads, species-specific markings
  */
-import { px, rect, dither, darken, lighten, blend, noise, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, dither, darken, lighten, blend, noise, gradientV, rimLight, ao, speckle, softCircle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawQuadruped(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -27,14 +27,9 @@ export function drawQuadruped(ctx, params, dir, frame) {
   const cy = 36;
   const legShift = frame === 0 ? -3 : frame === 2 ? 3 : 0;
 
-  // Helper: add fur noise to a rectangular region
-  function furRegion(x, y, rw, rh, baseColor) {
-    for (let dy = 0; dy < rh; dy++) {
-      for (let dx = 0; dx < rw; dx++) {
-        const n = noise(x + dx, y + dy);
-        if (n > 0.78) px(ctx, x + dx, y + dy, furTex);
-      }
-    }
+  // Helper: multi-tone fur texture via speckle
+  function furRegion(x, y, rw, rh) {
+    speckle(ctx, x, y, rw, rh, [furTex, darken(body, 0.10), lighten(body, 0.05)], 0.22);
   }
 
   if (dir === DOWN) {
@@ -52,7 +47,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     // -- Body -- rounded with multi-tone shading --
     rect(ctx, bx + 4, by, w - 8, 3, highlight2);
     rect(ctx, bx + 2, by + 2, w - 4, 2, highlight);
-    rect(ctx, bx, by + 4, w, h - 8, body);
+    gradientV(ctx, bx, by + 4, w, h - 8, body, shadow);
     rect(ctx, bx + 2, by + h - 4, w - 4, 2, shadow);
     rect(ctx, bx + 4, by + h - 2, w - 8, 2, shadow2);
     // Left edge shadow
@@ -61,10 +56,14 @@ export function drawQuadruped(ctx, params, dir, frame) {
     for (let r = 4; r < h - 4; r++) px(ctx, bx + w - 1, by + r, shadow);
     // Top highlight stripe
     rect(ctx, bx + 6, by + 4, Math.max(4, w - 12), 2, highlight2);
+    // Rim light on back
+    rimLight(ctx, bx + 4, by, w - 8, 3, highlight2, 'top');
     // Belly accent
     rect(ctx, bx + 3, by + h - 6, w - 6, 3, bellyCol);
+    // Underside ambient occlusion
+    ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.08);
     // Fur texture
-    furRegion(bx + 3, by + 6, w - 6, h - 12, body);
+    furRegion(bx + 3, by + 6, w - 6, h - 12);
     // Spots (deer)
     if (params.spots) {
       rect(ctx, bx + 6, by + 6, 3, 3, accent);
@@ -212,12 +211,13 @@ export function drawQuadruped(ctx, params, dir, frame) {
     // -- Body --
     rect(ctx, bx + 4, by, w - 8, 3, body);
     rect(ctx, bx + 2, by + 2, w - 4, 2, body);
-    rect(ctx, bx, by + 4, w, h - 8, body);
+    gradientV(ctx, bx, by + 4, w, h - 8, body, shadow);
     rect(ctx, bx + 2, by + h - 4, w - 4, 2, shadow);
     rect(ctx, bx + 4, by + h - 2, w - 8, 2, shadow2);
     for (let r = 4; r < h - 4; r++) { px(ctx, bx, by + r, shadow); px(ctx, bx + 1, by + r, shadow); }
     rect(ctx, bx + 6, by + 4, Math.max(4, w - 12), 2, highlight);
-    furRegion(bx + 3, by + 6, w - 6, h - 12, body);
+    rimLight(ctx, bx + 4, by, w - 8, 3, highlight, 'top');
+    furRegion(bx + 3, by + 6, w - 6, h - 12);
     if (params.spots) {
       rect(ctx, bx + 6, by + 6, 3, 3, accent);
       rect(ctx, bx + w - 9, by + 10, 2, 2, accent);
@@ -306,10 +306,13 @@ export function drawQuadruped(ctx, params, dir, frame) {
       px(ctx, f(bx + i), by + h - 4, bellyCol);
       px(ctx, f(bx + i), by + h - 3, bellyCol);
     }
-    // Fur texture
+    // Fur texture (multi-tone)
     for (let r = 5; r < h - 5; r++) {
       for (let c = 2; c < w - 2; c++) {
-        if (noise(bx + c, by + r) > 0.8) px(ctx, f(bx + c), by + r, furTex);
+        const n = noise(bx + c, by + r);
+        if (n > 0.82) px(ctx, f(bx + c), by + r, furTex);
+        else if (n > 0.78) px(ctx, f(bx + c), by + r, darken(body, 0.10));
+        else if (n < 0.12) px(ctx, f(bx + c), by + r, lighten(body, 0.05));
       }
     }
     if (params.spots) {

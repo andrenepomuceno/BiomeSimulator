@@ -2,7 +2,7 @@
  * Mushroom template — mushroom (cap + stem).
  * Stages 2-5 at 64×64 design grid, 3 frames (slight cap wobble).
  */
-import { px, rect, darken, lighten, noise } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle } from '../../helpers.js';
 
 export function drawMushroom(ctx, params, stage, frame) {
   const { stem, stemDark, cap, capDark, spots, fruit } = params;
@@ -12,9 +12,7 @@ export function drawMushroom(ctx, params, stage, frame) {
   const wobble = frame === 1 ? 2 : (frame === 2 ? -2 : 0);
 
   function capTex(x, y, w, h) {
-    for (let dy = 0; dy < h; dy++)
-      for (let dx = 0; dx < w; dx++)
-        if (noise(x + dx, y + dy) > 0.78) px(ctx, x + dx, y + dy, capDark);
+    speckle(ctx, x, y, w, h, [capDark, darken(cap, 0.12), lighten(cap, 0.06)], 0.22);
   }
 
   if (stage === 2) {
@@ -40,11 +38,12 @@ export function drawMushroom(ctx, params, stage, frame) {
   } else if (stage === 4) {
     rect(ctx, cx + 2, baseY - 20, 6, 20, stem);
     rect(ctx, cx, baseY - 12, 2, 12, stemDark);
-    // Large cap
-    rect(ctx, cx - 8 + wobble, baseY - 32, 24, 14, cap);
+    // Large cap with gradient
+    gradientV(ctx, cx - 8 + wobble, baseY - 32, 24, 14, cap, capDark);
     rect(ctx, cx - 6 + wobble, baseY - 36, 20, 6, cap);
     rect(ctx, cx - 6 + wobble, baseY - 20, 20, 4, capDark);
     rect(ctx, cx - 4 + wobble, baseY - 36, 16, 4, lighten(cap, 0.2));
+    rimLight(ctx, cx - 4 + wobble, baseY - 36, 16, 2, lighten(cap, 0.15), 'top');
     capTex(cx - 8 + wobble, baseY - 36, 24, 20);
     if (spots) {
       rect(ctx, cx - 4 + wobble, baseY - 32, 4, 4, spots);
@@ -57,10 +56,11 @@ export function drawMushroom(ctx, params, stage, frame) {
   } else if (stage === 5) {
     rect(ctx, cx + 2, baseY - 20, 6, 20, stem);
     rect(ctx, cx, baseY - 12, 2, 12, stemDark);
-    rect(ctx, cx - 8 + wobble, baseY - 32, 24, 14, cap);
+    gradientV(ctx, cx - 8 + wobble, baseY - 32, 24, 14, cap, capDark);
     rect(ctx, cx - 6 + wobble, baseY - 36, 20, 6, cap);
     rect(ctx, cx - 6 + wobble, baseY - 20, 20, 4, capDark);
     rect(ctx, cx - 4 + wobble, baseY - 36, 16, 4, lighten(cap, 0.2));
+    rimLight(ctx, cx - 4 + wobble, baseY - 36, 16, 2, lighten(cap, 0.15), 'top');
     capTex(cx - 8 + wobble, baseY - 36, 24, 20);
     if (spots) {
       rect(ctx, cx - 4 + wobble, baseY - 32, 4, 4, spots);

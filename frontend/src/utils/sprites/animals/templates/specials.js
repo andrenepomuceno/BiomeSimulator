@@ -2,7 +2,7 @@
  * Special-state sprite helpers — 64x64 design grid.
  * drawSleeping, drawDead, drawEgg, drawPupa.
  */
-import { px, rect, darken, lighten, noise } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle, softCircle } from '../../helpers.js';
 
 /**
  * Draw a sleeping animal as a curled lump with Zzz.
@@ -15,21 +15,17 @@ export function drawSleeping(ctx, params = {}) {
   const cx = 32;
   const cy = 32;
 
-  // Curled body lump
+  // Curled body lump with gradient
   rect(ctx, cx - 10, cy - 4, 20, 2, highlight);
-  rect(ctx, cx - 12, cy - 2, 24, 4, body);
-  rect(ctx, cx - 13, cy + 2, 26, 4, body);
+  gradientV(ctx, cx - 12, cy - 2, 24, 4, body, shadow);
+  gradientV(ctx, cx - 13, cy + 2, 26, 4, body, shadow);
   rect(ctx, cx - 12, cy + 6, 24, 4, shadow);
   rect(ctx, cx - 10, cy + 10, 20, 2, shadow);
 
-  // Fur / texture
-  for (let dy = -4; dy < 12; dy++) {
-    for (let dx = -13; dx < 13; dx++) {
-      const ax = cx + dx;
-      const ay = cy + dy;
-      if (noise(ax, ay) > 0.78) px(ctx, ax, ay, shadow);
-    }
-  }
+  // Fur / texture (multi-tone)
+  speckle(ctx, cx - 13, cy - 4, 26, 16, [shadow, darken(body, 0.10), lighten(body, 0.05)], 0.20);
+  rimLight(ctx, cx - 10, cy - 4, 20, 2, highlight, 'top');
+  ao(ctx, cx - 12, cy + 8, 24, 4, 0.08);
 
   // Breathing highlight (only frame-dependent in animation, but static here)
   rect(ctx, cx - 4, cy + 1, 8, 2, highlight);
@@ -114,14 +110,16 @@ export function drawEgg(ctx, params = {}) {
   const cx = 32;
   const cy = 32;
 
-  // Egg shape (slightly tapered top)
+  // Egg shape (slightly tapered top) with gradient
   rect(ctx, cx - 4, cy - 10, 8, 2, shell);
   rect(ctx, cx - 6, cy - 8, 12, 3, shell);
-  rect(ctx, cx - 7, cy - 5, 14, 6, shell);
-  rect(ctx, cx - 8, cy + 1, 16, 6, shell);
+  gradientV(ctx, cx - 7, cy - 5, 14, 6, shell, shellSh);
+  gradientV(ctx, cx - 8, cy + 1, 16, 6, shell, shellSh);
   rect(ctx, cx - 7, cy + 7, 14, 3, shellSh);
   rect(ctx, cx - 6, cy + 10, 12, 2, shellSh);
   rect(ctx, cx - 4, cy + 12, 8, 2, shellSh);
+  rimLight(ctx, cx - 4, cy - 10, 8, 2, lighten(shell, 0.12), 'top');
+  ao(ctx, cx - 6, cy + 10, 12, 4, 0.06);
 
   // Highlight band
   rect(ctx, cx - 3, cy - 8, 4, 2, lighten(shell, 0.1));
@@ -155,14 +153,15 @@ export function drawPupa(ctx, params = {}) {
   const cx = 32;
   const cy = 32;
 
-  // Pupa shape (tapered both ends)
+  // Pupa shape (tapered both ends) with gradient
   rect(ctx, cx - 3, cy - 12, 6, 2, silk);
   rect(ctx, cx - 5, cy - 10, 10, 3, silk);
-  rect(ctx, cx - 6, cy - 7, 12, 5, silk);
-  rect(ctx, cx - 7, cy - 2, 14, 8, silk);
+  gradientV(ctx, cx - 6, cy - 7, 12, 5, silk, silkSh);
+  gradientV(ctx, cx - 7, cy - 2, 14, 8, silk, silkSh);
   rect(ctx, cx - 6, cy + 6, 12, 4, silkSh);
   rect(ctx, cx - 5, cy + 10, 10, 2, silkSh);
   rect(ctx, cx - 3, cy + 12, 6, 2, silkSh);
+  rimLight(ctx, cx - 3, cy - 12, 6, 2, silkHi, 'top');
 
   // Highlight shimmer
   rect(ctx, cx - 2, cy - 10, 3, 2, silkHi);

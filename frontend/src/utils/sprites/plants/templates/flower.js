@@ -2,7 +2,7 @@
  * Flower template — sunflower (tall stem + flower head).
  * Stages 2-5 at 64×64 design grid, 3 animation frames for sway.
  */
-import { px, rect, darken, lighten, noise } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, rimLight, ao, speckle } from '../../helpers.js';
 
 export function drawFlower(ctx, params, stage, frame) {
   const { stem, leaf, leafDark, petal, petalDark, center, fruit } = params;
@@ -12,9 +12,7 @@ export function drawFlower(ctx, params, stage, frame) {
   const swayOff = frame === 0 ? 0 : (frame === 1 ? 2 : -2);
 
   function petalTex(x, y, w, h) {
-    for (let dy = 0; dy < h; dy++)
-      for (let dx = 0; dx < w; dx++)
-        if (noise(x + dx, y + dy) > 0.78) px(ctx, x + dx, y + dy, petalDark || darken(petal, 0.15));
+    speckle(ctx, x, y, w, h, [petalDark || darken(petal, 0.15), darken(petal, 0.10), lighten(petal, 0.06)], 0.22);
   }
 
   if (stage === 2) {

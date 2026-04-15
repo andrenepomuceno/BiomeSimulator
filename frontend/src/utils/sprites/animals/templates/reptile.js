@@ -4,7 +4,7 @@
  *
  * Scale texture via noise, slit-pupil eyes, claw detail, belly plates.
  */
-import { px, rect, darken, lighten, noise, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawReptile(ctx, params, dir, frame) {
   const { body, accent, eye, w, h, tailLen } = params;
@@ -18,11 +18,7 @@ export function drawReptile(ctx, params, dir, frame) {
   const legShift = frame === 0 ? -3 : frame === 2 ? 3 : 0;
 
   function scaleRegion(x, y, rw, rh) {
-    for (let dy = 0; dy < rh; dy++) {
-      for (let dx = 0; dx < rw; dx++) {
-        if (noise(x + dx, y + dy) > 0.72) px(ctx, x + dx, y + dy, scaleTex);
-      }
-    }
+    speckle(ctx, x, y, rw, rh, [scaleTex, darken(body, 0.12), lighten(body, 0.04)], 0.28);
   }
 
   if (dir === DOWN || dir === UP) {
@@ -33,13 +29,15 @@ export function drawReptile(ctx, params, dir, frame) {
     // Body
     rect(ctx, bx + 3, by, w - 6, 3, body);
     rect(ctx, bx + 1, by + 2, w - 2, 2, body);
-    rect(ctx, bx, by + 4, w, h - 8, body);
+    gradientV(ctx, bx, by + 4, w, h - 8, body, shadow);
     rect(ctx, bx + 1, by + h - 4, w - 2, 2, shadow);
     rect(ctx, bx + 3, by + h - 2, w - 6, 2, shadow2);
     // Belly accent
     rect(ctx, bx + 3, by + 3, w - 6, h - 6, accent);
     // Scale texture
     scaleRegion(bx + 1, by + 2, w - 2, h - 4);
+    rimLight(ctx, bx + 3, by, w - 6, 3, lighten(body, 0.10), 'top');
+    ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.08);
     // Spine
     if (params.spine) for (let r = 0; r < h; r += 3) rect(ctx, cx, by + r, 2, 2, params.spine);
     // Scutes
@@ -115,10 +113,13 @@ export function drawReptile(ctx, params, dir, frame) {
     // Spine on top
     if (params.spine) for (let c = 0; c < w; c += 5) rect(ctx, f(bx + c), by, 2, 2, params.spine);
     if (params.scutes) for (let c = 3; c < w; c += 5) rect(ctx, f(bx + c), by, 2, 2, params.scutes);
-    // Scale texture
+    // Scale texture (multi-tone)
     for (let r = 2; r < h - 2; r++) {
       for (let c = 1; c < w - 1; c++) {
-        if (noise(bx + c, by + r) > 0.72) px(ctx, f(bx + c), by + r, scaleTex);
+        const n = noise(bx + c, by + r);
+        if (n > 0.74) px(ctx, f(bx + c), by + r, scaleTex);
+        else if (n > 0.70) px(ctx, f(bx + c), by + r, darken(body, 0.12));
+        else if (n < 0.10) px(ctx, f(bx + c), by + r, lighten(body, 0.04));
       }
     }
 

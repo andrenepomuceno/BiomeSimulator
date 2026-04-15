@@ -2,7 +2,7 @@
  * Dead template — universal stage 6 for all plant species.
  * 64×64 design grid.
  */
-import { px, rect, darken, noise } from '../../helpers.js';
+import { px, rect, darken, noise, speckle } from '../../helpers.js';
 
 export function drawDead(ctx, params, frame) {
   const brown = '#8a7a55';
@@ -13,10 +13,8 @@ export function drawDead(ctx, params, frame) {
   // Wilted stem
   rect(ctx, cx + 4, 32, 4, 16, darkBrown);
   rect(ctx, cx + 2, 40, 2, 8, darkBrown);
-  // Stem texture
-  for (let dy = 0; dy < 16; dy++) {
-    if (noise(cx + 5, 32 + dy) > 0.7) px(ctx, cx + 5, 32 + dy, brown);
-  }
+  // Stem texture (multi-tone)
+  speckle(ctx, cx + 4, 32, 4, 16, [brown, dryLeaf], 0.20);
 
   // Droopy leaves/branches
   rect(ctx, cx, 32, 4, 4, brown);

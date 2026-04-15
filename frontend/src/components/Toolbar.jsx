@@ -18,7 +18,7 @@ const SELECT_FILTERS = [
   { key: 'terrain', label: 'Terrain', icon: 'bi-grid-3x3-gap-fill' },
 ];
 
-export default function Toolbar({ appVersion, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onAudioToggle, onReportToggle, onEntitiesToggle, onToggleBackground }) {
+export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onAudioToggle, onReportToggle, onEntitiesToggle, onToggleBackground, onLeftSidebarToggle, onRightSidebarToggle }) {
   const { paused, running, tps, clock, tool, setTool, audioSettings, pauseOnBackground, selectionTargets, setSelectionTarget } = useSimStore();
   const audioIcon = audioSettings.muted
     ? 'bi-volume-mute-fill'
@@ -110,6 +110,22 @@ export default function Toolbar({ appVersion, onStart, onPause, onResume, onStep
         />
         <span>{tps} tps</span>
       </div>
+
+      {isCompactLayout && (
+        <>
+          <div className="toolbar-divider" aria-hidden="true" />
+          <div className="toolbar-group toolbar-group-drawers">
+            <button className={`btn btn-sim btn-sm ${activeDrawer === 'left' ? 'active' : ''}`} onClick={onLeftSidebarToggle} title="Open overview panel">
+              <i className="bi bi-compass-fill toolbar-icon" aria-hidden="true" />
+              <span>Overview</span>
+            </button>
+            <button className={`btn btn-sim btn-sm ${activeDrawer === 'right' ? 'active' : ''}`} onClick={onRightSidebarToggle} title="Open inspector panel">
+              <i className="bi bi-layout-text-sidebar-reverse toolbar-icon" aria-hidden="true" />
+              <span>Inspect</span>
+            </button>
+          </div>
+        </>
+      )}
 
       <div className="toolbar-divider" aria-hidden="true" />
 

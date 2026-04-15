@@ -29,6 +29,8 @@ const MODALS = {
   AUDIO: 'audio',
 };
 
+const DRAWER_BREAKPOINT = 1024;
+
 // Simple debounce implementation for speed slider
 function createDebounce(callback, delayMs) {
   let timeoutId = null;
@@ -49,6 +51,8 @@ export default function App() {
   const { handleTileClick } = useEditor(rendererRef);
   const { unlockAudio, updateListenerViewport, playUiClick, playWorldEffect, syncAmbience } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
+  const [activeDrawer, setActiveDrawer] = useState(null);
+  const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth < DRAWER_BREAKPOINT);
   const debouncedSpeedChangeRef = useRef(null);
   const autoPausedRef = useRef(false);
 
@@ -56,6 +60,18 @@ export default function App() {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
     clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile, isGeneratingWorld,
   } = useSimStore();
+
+  useEffect(() => {
+    const updateLayoutMode = () => {
+      const compact = window.innerWidth < DRAWER_BREAKPOINT;
+      setIsCompactLayout(compact);
+      if (!compact) setActiveDrawer(null);
+    };
+
+    updateLayoutMode();
+    window.addEventListener('resize', updateLayoutMode);
+    return () => window.removeEventListener('resize', updateLayoutMode);
+  }, []);
 
   // Initialize renderer
   useEffect(() => {
@@ -255,12 +271,16 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
+        if (isCompactLayout && activeDrawer) {
+          setActiveDrawer(null);
+          return;
+        }
         setActiveModal(current => (current ? null : MODALS.MENU));
       }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [activeDrawer, isCompactLayout]);
 
   // Auto-pause when browser tab is hidden
   useEffect(() => {
@@ -285,6 +305,9 @@ export default function App() {
   }, []);
 
   function _handleMinimapNavigate(x, y) {
+    if (isCompactLayout) {
+      setActiveDrawer(null);
+    }
     if (rendererRef.current) {
       rendererRef.current.centerOn(x, y);
     }
@@ -293,6 +316,9 @@ export default function App() {
   function _handleFocusEntity(entity) {
     if (!entity) return;
     if (!Number.isFinite(entity.x) || !Number.isFinite(entity.y)) return;
+    if (isCompactLayout) {
+      setActiveDrawer(null);
+    }
     if (rendererRef.current) {
       rendererRef.current.centerOn(entity.x, entity.y);
     }
@@ -300,6 +326,9 @@ export default function App() {
 
   function _handleInspectFromSummary(item) {
     if (!item) return;
+    if (isCompactLayout) {
+      setActiveDrawer(null);
+    }
     if (Number.isFinite(item.x) && Number.isFinite(item.y) && rendererRef.current) {
       rendererRef.current.centerOn(item.x, item.y);
     }
@@ -325,6 +354,7 @@ export default function App() {
 
   function _openModal(modalId) {
     playUiClick();
+    setActiveDrawer(null);
     if (modalId === MODALS.AUDIO) {
       void unlockAudio();
     }
@@ -341,6 +371,15 @@ export default function App() {
     const current = useSimStore.getState().pauseOnBackground;
     useSimStore.getState().setPauseOnBackground(!current);
     autoPausedRef.current = false;
+  }
+
+  function _handleDrawerToggle(side) {
+    playUiClick();
+    setActiveDrawer(current => (current === side ? null : side));
+  }
+
+  function _closeDrawer() {
+    setActiveDrawer(null);
   }
 
   function _handleUnlockAudio() {
@@ -372,6 +411,8 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Toolbar
           appVersion={appVersion}
+          activeDrawer={activeDrawer}
+          isCompactLayout={isCompactLayout}
           onStart={_handleStart}
           onPause={_handlePause}
           onResume={_handleResume}
@@ -385,14 +426,31 @@ export default function App() {
           onReportToggle={() => _openModal(MODALS.REPORT)}
           onEntitiesToggle={() => _openModal(MODALS.ENTITIES)}
           onToggleBackground={_handleToggleBackground}
+          onLeftSidebarToggle={() => _handleDrawerToggle('left')}
+          onRightSidebarToggle={() => _handleDrawerToggle('right')}
         />
         <div className="main-area">
-          <div className="sidebar sidebar-left">
+          {isCompactLayout && activeDrawer && (
+            <button className="sidebar-drawer-backdrop" aria-label="Close sidebar" onClick={_closeDrawer} />
+          )}
+          <div className={`sidebar sidebar-left${isCompactLayout ? ' sidebar-drawer' : ''}${activeDrawer === 'left' ? ' open' : ''}`}>
+            <div className="sidebar-drawer-header">
+              <span>Overview</span>
+              <button className="btn btn-sm btn-outline-secondary" onClick={_closeDrawer} aria-label="Close overview panel">
+                <i className="bi bi-x-lg" aria-hidden="true" />
+              </button>
+            </div>
             <Minimap onNavigate={_handleMinimapNavigate} />
             <StatsPanel />
           </div>
           <div className="canvas-area" ref={canvasContainerRef} />
-          <div className="sidebar sidebar-right">
+          <div className={`sidebar sidebar-right${isCompactLayout ? ' sidebar-drawer' : ''}${activeDrawer === 'right' ? ' open' : ''}`}>
+            <div className="sidebar-drawer-header">
+              <span>Inspector</span>
+              <button className="btn btn-sm btn-outline-secondary" onClick={_closeDrawer} aria-label="Close inspector panel">
+                <i className="bi bi-x-lg" aria-hidden="true" />
+              </button>
+            </div>
             <EntityInspector onFocusEntity={_handleFocusEntity} requestAnimalDetail={requestAnimalDetail} />
             <TerrainEditor />
           </div>

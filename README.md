@@ -1,4 +1,4 @@
-# BiomeSimulator — Ecosystem Simulation
+# BiomeSimulator
 
 Browser-based 2D ecosystem simulation with procedural terrain generation, plant lifecycle management, and autonomous animal AI. The simulation runs client-side in a Web Worker and is rendered in real time with Pixi.js.
 

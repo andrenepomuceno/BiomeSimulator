@@ -5,6 +5,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import useSimStore from '../store/simulationStore';
 import { TERRAIN_NAMES as TERRAIN_DISPLAY_NAMES, STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
+import { LifeStage } from '../engine/entities';
 import ANIMAL_SPECIES, { buildAnimalSpeciesConfig } from '../engine/animalSpecies';
 import PLANT_SPECIES, { buildFruitSpoilAges, buildStageAges, getPlantByTypeId } from '../engine/plantSpecies';
 import { ANIMAL_STATE_TONES, DIET_COLORS, getBadgeToneStyle } from '../constants/statusColors';
@@ -89,7 +90,10 @@ function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
 const STAGE_LABELS = ['Seed', 'Young Sprout', 'Adult Sprout', 'Adult', 'Fruit'];
 const WATER_AFFINITY_LABELS = { none: '🚫 None', low: '🏜️ Low', medium: '💧 Medium', high: '🌊 High' };
 const SEASON_LABELS = ['Spring', 'Summer', 'Autumn', 'Winter'];
-const ANIMAL_LIFE_STAGE_KEYS = ['BABY', 'YOUNG', 'YOUNG_ADULT', 'ADULT', 'PUPA'];
+const ANIMAL_LIFE_STAGE_KEYS = Object.entries(LifeStage)
+  .filter(([, value]) => Number.isInteger(value) && value >= 0)
+  .sort(([, a], [, b]) => a - b)
+  .map(([key]) => key);
 
 function formatPercent(value, digits = 0) {
   return `${(value * 100).toFixed(digits)}%`;

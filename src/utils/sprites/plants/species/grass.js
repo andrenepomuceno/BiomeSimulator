@@ -1,5 +1,5 @@
 export default {
-  template: 'herb',
+  template: 'grass',
   seedColor: '#a49266',
   seedHighlight: '#bdab6b',
   sproutColor: '#68b238',

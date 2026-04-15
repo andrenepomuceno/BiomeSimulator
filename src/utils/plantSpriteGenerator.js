@@ -14,6 +14,7 @@ import { DESIGN, SCALE, addOutline } from './sprites/helpers.js';
 import { drawSeed } from './sprites/plants/templates/seed.js';
 import { drawDead } from './sprites/plants/templates/dead.js';
 import { drawHerb } from './sprites/plants/templates/herb.js';
+import { drawGrass } from './sprites/plants/templates/grass.js';
 import { drawBush } from './sprites/plants/templates/bush.js';
 import { drawTree } from './sprites/plants/templates/tree.js';
 import { drawPalm } from './sprites/plants/templates/palm.js';
@@ -58,6 +59,7 @@ export const PLANT_SPECIES_PARAMS = {
 
 const TEMPLATE_DRAW = {
   herb: drawHerb,
+  grass: drawGrass,
   bush: drawBush,
   tree: drawTree,
   palm: drawPalm,

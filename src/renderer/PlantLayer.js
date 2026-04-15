@@ -290,9 +290,17 @@ export class PlantLayer {
               existing.texKey = key;
             }
           }
+        } else if (this._spriteMap.size < MAX_EMOJI_SPRITES) {
+          // New plant in viewport — create sprite immediately without waiting
+          // for a viewport change to trigger Phase 3.
+          const canSway = swayMap[ptype] && swayMap[ptype].has(stage);
+          const animFrame = canSway ? swayFrame(t, idx) : 0;
+          const key = `${baseKey}_${animFrame}`;
+          const tex = this._plantTextures[key];
+          if (tex) {
+            this._addEntry(idx, cx, cy, ptype, stage, baseKey, key, tex, t, swayMap);
+          }
         }
-        // New cells in dirty set that don't have sprites yet will be
-        // picked up in Phase 3 if they are in the viewport.
       }
       dirty.clear();
     }

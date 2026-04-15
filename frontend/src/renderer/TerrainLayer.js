@@ -379,6 +379,10 @@ export class TerrainLayer {
     this._cachedSprite = null;  // Sprite displaying the cached texture
     this._blendMesh = null;     // Post-process blend mesh
     this._blendShader = null;   // Post-process blend shader
+    this._blendOutW = 0;
+    this._blendOutH = 0;
+    this._edgeOutW = 0;
+    this._edgeOutH = 0;
     this._cacheEnabled = false; // Set by enableGPU()
     this._cacheDirty = false;   // Set when terrain changes
     this._cacheScale = 1;       // Pixels per tile in smooth cache
@@ -666,7 +670,12 @@ export class TerrainLayer {
     // --- Pass 2: adaptive domain-warp blend → organic borders ---
 
     // Create / update blend mesh
-    if (!this._blendMesh) {
+    const needsBlendRebuild = !this._blendMesh || this._blendOutW !== outW || this._blendOutH !== outH;
+    if (needsBlendRebuild) {
+      if (this._blendMesh) {
+        this._blendMesh.destroy(true);
+        this._blendMesh = null;
+      }
       this._blendShader = PIXI.Shader.from(BLEND_VERT_SRC, BLEND_FRAG_SRC, {
         u_rawTerrain: this._rawCacheRT,
         u_worldSize: [w, h],
@@ -676,6 +685,8 @@ export class TerrainLayer {
         .addAttribute('aTextureCoord', [0, 0, 1, 0, 1, 1, 0, 1], 2)
         .addIndex([0, 1, 2, 0, 2, 3]);
       this._blendMesh = new PIXI.Mesh(geo, this._blendShader);
+      this._blendOutW = outW;
+      this._blendOutH = outH;
     } else {
       this._blendShader.uniforms.u_rawTerrain = this._rawCacheRT;
       this._blendShader.uniforms.u_worldSize = [w, h];
@@ -695,7 +706,12 @@ export class TerrainLayer {
 
     // --- Pass 3: edge-aware anti-aliasing → soft biome borders ---
 
-    if (!this._edgeMesh) {
+    const needsEdgeRebuild = !this._edgeMesh || this._edgeOutW !== outW || this._edgeOutH !== outH;
+    if (needsEdgeRebuild) {
+      if (this._edgeMesh) {
+        this._edgeMesh.destroy(true);
+        this._edgeMesh = null;
+      }
       this._edgeShader = PIXI.Shader.from(BLEND_VERT_SRC, EDGE_SMOOTH_FRAG_SRC, {
         u_input: this._blendedRT,
         u_texelSize: [1.0 / outW, 1.0 / outH],
@@ -705,6 +721,8 @@ export class TerrainLayer {
         .addAttribute('aTextureCoord', [0, 0, 1, 0, 1, 1, 0, 1], 2)
         .addIndex([0, 1, 2, 0, 2, 3]);
       this._edgeMesh = new PIXI.Mesh(geo, this._edgeShader);
+      this._edgeOutW = outW;
+      this._edgeOutH = outH;
     } else {
       this._edgeShader.uniforms.u_input = this._blendedRT;
       this._edgeShader.uniforms.u_texelSize = [1.0 / outW, 1.0 / outH];
@@ -784,8 +802,12 @@ export class TerrainLayer {
     if (this._rawCacheRT) { this._rawCacheRT.destroy(true); this._rawCacheRT = null; }
     if (this._edgeMesh) { this._edgeMesh.destroy(true); this._edgeMesh = null; }
     this._edgeShader = null;
+    this._edgeOutW = 0;
+    this._edgeOutH = 0;
     if (this._blendMesh) { this._blendMesh.destroy(true); this._blendMesh = null; }
     this._blendShader = null;
+    this._blendOutW = 0;
+    this._blendOutH = 0;
     if (this.sprite) { this.sprite.destroy(true); this.sprite = null; }
     if (this._mesh) { this._mesh.destroy(true); this._mesh = null; }
     this._shader = null;

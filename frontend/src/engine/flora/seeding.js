@@ -8,6 +8,7 @@ export function seedInitialPlants(world) {
   const density = world.config.initial_plant_density ?? 0.15;
   const width = world.width;
   const height = world.height;
+  const stageAgesMap = world.config.plant_stage_ages || STAGE_AGES;
 
   const eligible = [];
   for (let i = 0; i < width * height; i++) {
@@ -21,7 +22,7 @@ export function seedInitialPlants(world) {
   shuffleInPlace(eligible);
 
   const seedPlantAt = (idx, ptype) => {
-    const ages = STAGE_AGES[ptype];
+    const ages = stageAgesMap[ptype];
     const { stage, age } = _pickInitialStageAndAge(ages, world);
 
     world.plantType[idx] = ptype;

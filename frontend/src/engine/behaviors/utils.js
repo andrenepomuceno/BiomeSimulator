@@ -1,8 +1,6 @@
 import { S_ADULT, S_FRUIT, S_SEED } from '../flora.js';
-import { buildDecisionIntervals, DIET } from '../animalSpecies.js';
+import { DIET } from '../animalSpecies.js';
 import { buildEdibleStagesMap } from '../plantSpecies.js';
-
-export const DECISION_INTERVALS = buildDecisionIntervals();
 
 const EDIBLE_STAGES = buildEdibleStagesMap();
 

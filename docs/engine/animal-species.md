@@ -3,13 +3,15 @@
 Navigation: [Documentation Home](../README.md) > [Engine](README.md) > [Current Document](animal-species.md)
 Return to [Documentation Home](../README.md).
 
-`animalSpecies.js` is the **single source of truth** for all animal data. `config.js` derives its fauna configuration from here via `buildAnimalSpeciesConfig()` and `buildInitialAnimalCounts()`.
+`animalSpecies.js` is the **single source of truth** for all animal data. Time values in the registry are now authored in **game minutes**. `config.js` derives tick-based fauna configuration from here via `buildAnimalSpeciesConfig()` and `buildInitialAnimalCounts()`.
 
 ---
 
 ## Species Table
 
 Speed values are **sub-cell steps per tick**. With `SUB_CELL_DIVISOR = 4`, a speed of 4 means 1 tile/tick, speed 8 = 2 tiles/tick, etc.
+
+The table below shows the **effective default tick values** produced when `ticks_per_day = 260`. The source registry itself now stores those timing fields in game-time units.
 
 | Species | Diet | Speed | Tiles/tick | Vision | Max Energy | Max HP | Max Age | Attack | Defense | Max Pop | Initial Count |
 |---------|------|-------|------------|--------|-----------|--------|---------|--------|---------|---------|---------------|
@@ -50,11 +52,11 @@ Speed values are **sub-cell steps per tick**. With `SUB_CELL_DIVISOR = 4`, a spe
   max_hp: 50,             // health points cap
   max_hunger: 100,        // hunger cap
   max_thirst: 100,        // thirst cap
-  max_age: 1400,          // ticks until death from old age
+  max_age: 7754,          // game minutes until death from old age
   max_population: 500,    // population cap per species (varies by tier)
-  mature_age: 80,         // ticks before eligible to mate
-  life_stage_ages: [30, 60, 80], // [baby→young, young→young_adult, young_adult→adult]
-  decision_interval: 2,   // ticks between AI decisions
+  mature_age: 443,        // game minutes before eligible to mate
+  life_stage_ages: [166, 332, 443], // [baby→young, young→young_adult, young_adult→adult] in game minutes
+  decision_interval: 11,  // game minutes between AI decisions before conversion to ticks
   attack_power: 1,        // damage dealt in combat
   defense: 2,             // reduces incoming damage
   walkable_terrain: ['SAND', 'DIRT', 'SOIL', 'FERTILE_SOIL', 'MUD'],
@@ -84,6 +86,6 @@ Speed values are **sub-cell steps per tick**. With `SUB_CELL_DIVISOR = 4`, a spe
 | `CARNIVORE_IDS` | Array | 5 carnivore species keys |
 | `OMNIVORE_IDS` | Array | 5 omnivore species keys |
 | `BASE_POP_TOTAL` | Number | Sum of all species' `max_population` (5690) |
-| `buildAnimalSpeciesConfig()` | Function | Returns sim-only params (strips display fields) |
+| `buildAnimalSpeciesConfig(ticksPerGameMinute)` | Function | Returns sim-only params with minute-based game-time fields converted to ticks |
 | `buildInitialAnimalCounts()` | Function | Returns `{RABBIT: 100, ...}` from registry |
-| `buildDecisionIntervals()` | Function | Returns `{RABBIT: 3, ...}` from registry |
+| `buildDecisionIntervals(ticksPerGameMinute)` | Function | Returns effective tick intervals derived from the authored minute-based registry |

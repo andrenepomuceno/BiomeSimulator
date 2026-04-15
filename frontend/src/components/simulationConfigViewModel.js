@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG } from '../engine/config.js';
+import { createSimulationConfig, DEFAULT_CONFIG } from '../engine/config.js';
 import { formatTimeOfDay, resolveTicksPerDay } from '../utils/time.js';
 
 const NUMBER_FORMATTER = new Intl.NumberFormat('en-US');
@@ -45,7 +45,7 @@ function formatClockLabel(clock, ticksPerDay) {
 }
 
 export function buildSimulationConfigSections(state = {}) {
-  const mergedConfig = { ...DEFAULT_CONFIG, ...(state.gameConfig || {}) };
+  const mergedConfig = createSimulationConfig(state.gameConfig || {});
   const clock = state.clock || {};
   const ticksPerDay = resolveTicksPerDay(mergedConfig.ticks_per_day);
   const liveTps = resolveNumber(state.tps, mergedConfig.ticks_per_second ?? DEFAULT_CONFIG.ticks_per_second);

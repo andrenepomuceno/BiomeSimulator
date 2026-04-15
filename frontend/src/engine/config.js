@@ -2,7 +2,9 @@
  * Default simulation configuration.
  */
 import { buildAnimalSpeciesConfig, buildProportionalAnimalCounts, normalizeAnimalCountsToBudget } from './animalSpecies.js';
-import { buildInitialPlantCounts } from './plantSpecies.js';
+import { buildFruitSpoilAges, buildInitialPlantCounts, buildStageAges } from './plantSpecies.js';
+import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
+import { gameMinutesToTicks, resolveTicksPerGameMinute } from '../utils/gameTime.js';
 
 // Sex types
 export const SEX_MALE = 'MALE';
@@ -19,7 +21,14 @@ export const REPRO_HERMAPHRODITE = 'HERMAPHRODITE'; // any two can mate
 export const SUB_CELL_DIVISOR = 4;
 export const SUB_CELL_STEP = 1 / SUB_CELL_DIVISOR;  // 0.25
 
-export const DEFAULT_CONFIG = {
+const PATHFINDING_CACHE_TTL = 83;
+const THREAT_CACHE_TTL = 22;
+const THREAT_SCAN_COOLDOWN = 11;
+const SCAVENGE_DECAY_WINDOW = 554;
+const SUPERVISOR_FULL_AUDIT_INTERVAL = 166;
+const SUPERVISOR_LOG_COOLDOWN = 665;
+
+const BASE_CONFIG = {
   // Map generation
   map_width: 500,
   map_height: 500,
@@ -30,18 +39,14 @@ export const DEFAULT_CONFIG = {
 
   // Simulation
   ticks_per_second: 20,
-  ticks_per_day: 260,
+  ticks_per_day: DEFAULT_TICKS_PER_DAY,
   day_fraction: 0.6,
-  pathfinding_cache_ttl: 15,
-  threat_cache_ttl: 4,
-  threat_scan_cooldown_ticks: 2,
   animal_global_vision_multiplier: 1.2,
   night_vision_reduction_factor: 0.65,
   nocturnal_day_vision_factor: 0.8,
-  sleep_threshold_offset_wrong_period: 10,  // Additional energy threshold during wrong time of day (diurnal at night, nocturnal at day)
-  activity_energy_penalty_wrong_period: 1.3, // Multiplier for energy costs during wrong time of day
-  scavenge_decay_ticks: 100,
-  movement_sub_ticks: 5, // Number of movement sub-ticks per simulation tick (1, 2, 3, or 4). Increases movement granularity without affecting decision frequency. 1 = no sub-ticks (legacy).
+  sleep_threshold_offset_wrong_period: 10,
+  activity_energy_penalty_wrong_period: 1.3,
+  movement_sub_ticks: 5,
 
   // Flora
   initial_plant_density: 0.10,
@@ -106,17 +111,39 @@ export const DEFAULT_CONFIG = {
   hunger_multiplier: 1.6,
   thirst_multiplier: 1.6,
   supervisor_enabled: true,
-  supervisor_full_audit_interval_ticks: 30,
   supervisor_sample_limit: 5,
-  supervisor_log_cooldown_ticks: 120,
 
   // Fauna — derived from animalSpecies.js
   initial_animal_counts: normalizeAnimalCountsToBudget(
     buildProportionalAnimalCounts(0.1 * 10000, 10000),
     10000,
   ),
-  animal_species: buildAnimalSpeciesConfig(),
 };
+
+export function createSimulationConfig(overrides = {}) {
+  const merged = { ...BASE_CONFIG, ...overrides };
+  const ticksPerDay = Number.isFinite(merged.ticks_per_day) && merged.ticks_per_day > 0
+    ? merged.ticks_per_day
+    : DEFAULT_TICKS_PER_DAY;
+  const ticksPerGameMinute = resolveTicksPerGameMinute(ticksPerDay);
+
+  return {
+    ...merged,
+    ticks_per_day: ticksPerDay,
+    ticks_per_game_minute: ticksPerGameMinute,
+    pathfinding_cache_ttl: merged.pathfinding_cache_ttl ?? gameMinutesToTicks(PATHFINDING_CACHE_TTL, ticksPerGameMinute),
+    threat_cache_ttl: merged.threat_cache_ttl ?? gameMinutesToTicks(THREAT_CACHE_TTL, ticksPerGameMinute),
+    threat_scan_cooldown_ticks: merged.threat_scan_cooldown_ticks ?? gameMinutesToTicks(THREAT_SCAN_COOLDOWN, ticksPerGameMinute),
+    scavenge_decay_ticks: merged.scavenge_decay_ticks ?? gameMinutesToTicks(SCAVENGE_DECAY_WINDOW, ticksPerGameMinute),
+    supervisor_full_audit_interval_ticks: merged.supervisor_full_audit_interval_ticks ?? gameMinutesToTicks(SUPERVISOR_FULL_AUDIT_INTERVAL, ticksPerGameMinute),
+    supervisor_log_cooldown_ticks: merged.supervisor_log_cooldown_ticks ?? gameMinutesToTicks(SUPERVISOR_LOG_COOLDOWN, ticksPerGameMinute),
+    animal_species: merged.animal_species ?? buildAnimalSpeciesConfig(ticksPerGameMinute),
+    plant_stage_ages: merged.plant_stage_ages ?? buildStageAges(ticksPerGameMinute),
+    plant_fruit_spoil_ages: merged.plant_fruit_spoil_ages ?? buildFruitSpoilAges(ticksPerGameMinute),
+  };
+}
+
+export const DEFAULT_CONFIG = createSimulationConfig();
 
 /**
  * Renderer configuration (separate from simulation to keep engine worker-safe).

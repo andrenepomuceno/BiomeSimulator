@@ -24,7 +24,7 @@
  */
 
 import { SimulationEngine } from '../engine/simulation.js';
-import { DEFAULT_CONFIG } from '../engine/config.js';
+import { createSimulationConfig, DEFAULT_CONFIG } from '../engine/config.js';
 import { TERRAIN_NAMES, World } from '../engine/world.js';
 import { Animal } from '../engine/entities.js';
 
@@ -358,7 +358,7 @@ self.onmessage = function (e) {
       paused = true;
       pendingPause = false;
 
-      const config = { ...DEFAULT_CONFIG, ...e.data.config };
+      const config = createSimulationConfig(e.data.config);
       engine = new SimulationEngine(config);
       engine.setProfilingEnabled(profilingEnabled);
       const seed = engine.generateWorld();
@@ -605,7 +605,7 @@ self.onmessage = function (e) {
     case 'loadState': {
       const d = e.data.state;
       if (!d) break;
-      const loadConfig = d.config || DEFAULT_CONFIG;
+      const loadConfig = createSimulationConfig(d.config || DEFAULT_CONFIG);
       engine = new SimulationEngine(loadConfig);
       engine.setProfilingEnabled(profilingEnabled);
 

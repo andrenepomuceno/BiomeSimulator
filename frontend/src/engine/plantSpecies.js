@@ -6,6 +6,8 @@
  *
  */
 import { TERRAIN_IDS } from './world.js';
+import { DEFAULT_TICKS_PER_GAME_MINUTE } from '../constants/simulation.js';
+import { gameMinuteArrayToTicks, gameMinutesToTicks } from '../utils/gameTime.js';
 
 const PLANT_SPECIES = {
   GRASS: {
@@ -17,8 +19,8 @@ const PLANT_SPECIES = {
     sex: 'ASEXUAL',
     reproduction: 'SEED',
     productionChance: 0.035,
-    stageAges: [5, 18, 35, 180],
-    fruitSpoilAge: 80,    edibleStages: [1, 4],    colors: {
+    stageAges: [28, 100, 194, 997],
+    fruitSpoilAge: 443,    edibleStages: [1, 4],    colors: {
       seed:        [130, 170, 80,  40],
       youngSprout: [90,  165, 60,  100],
       adultSprout: [55,  145, 35,  170],
@@ -40,8 +42,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
     productionChance: 0.018,
-    stageAges: [10, 40, 100, 400],
-    fruitSpoilAge: 100,
+    stageAges: [55, 222, 554, 2215],
+    fruitSpoilAge: 554,
     edibleStages: [1, 5],
     colors: {
       seed:        [110, 160, 80,  45],
@@ -65,8 +67,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
     productionChance: 0.016,
-    stageAges: [15, 55, 140, 550],
-    fruitSpoilAge: 110,
+    stageAges: [83, 305, 775, 3046],
+    fruitSpoilAge: 609,
     edibleStages: [1, 5],
     colors: {
       seed:        [100, 140, 110, 45],
@@ -90,8 +92,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
     productionChance: 0.012,
-    stageAges: [35, 140, 350, 1600],
-    fruitSpoilAge: 120,
+    stageAges: [194, 775, 1938, 8862],
+    fruitSpoilAge: 665,
     edibleStages: [1, 5],
     colors: {
       seed:        [80,  110, 55,  35],
@@ -115,8 +117,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
     productionChance: 0.012,
-    stageAges: [40, 180, 420, 1800],
-    fruitSpoilAge: 120,
+    stageAges: [222, 997, 2326, 9969],
+    fruitSpoilAge: 665,
     edibleStages: [1, 5],
     colors: {
       seed:        [85,  120, 50,  35],
@@ -140,8 +142,8 @@ const PLANT_SPECIES = {
     sex: 'ASEXUAL',
     reproduction: 'SEED',
     productionChance: 0.02,
-    stageAges: [8, 35, 80, 350],
-    fruitSpoilAge: 140,
+    stageAges: [44, 194, 443, 1938],
+    fruitSpoilAge: 775,
     edibleStages: [1, 4],
     colors: {
       seed:        [140, 150, 90,  40],
@@ -165,8 +167,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'SEED',
     productionChance: 0.015,
-    stageAges: [8, 38, 100, 500],
-    fruitSpoilAge: 100,
+    stageAges: [44, 210, 554, 2769],
+    fruitSpoilAge: 554,
     edibleStages: [1, 4],
     colors: {
       seed:        [150, 160, 70,  40],
@@ -190,8 +192,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
     productionChance: 0.014,
-    stageAges: [10, 45, 120, 450],
-    fruitSpoilAge: 90,
+    stageAges: [55, 249, 665, 2492],
+    fruitSpoilAge: 498,
     edibleStages: [1, 5],
     colors: {
       seed:        [120, 155, 80,  45],
@@ -215,8 +217,8 @@ const PLANT_SPECIES = {
     sex: 'ASEXUAL',
     reproduction: 'SEED',
     productionChance: 0.022,
-    stageAges: [6, 22, 50, 220],
-    fruitSpoilAge: 70,
+    stageAges: [33, 122, 277, 1218],
+    fruitSpoilAge: 388,
     edibleStages: [1, 4],
     colors: {
       seed:        [160, 130, 100, 35],
@@ -240,8 +242,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'SEED',
     productionChance: 0.008,
-    stageAges: [50, 220, 500, 2500],
-    fruitSpoilAge: 150,
+    stageAges: [277, 1218, 2769, 13846],
+    fruitSpoilAge: 831,
     edibleStages: [1],
     colors: {
       seed:        [75,  105, 50,  35],
@@ -265,8 +267,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'SEED',
     productionChance: 0.004,
-    stageAges: [30, 120, 300, 1600],
-    fruitSpoilAge: 200,
+    stageAges: [166, 665, 1662, 8862],
+    fruitSpoilAge: 1108,
     edibleStages: [1],
     colors: {
       seed:        [130, 160, 80,  35],
@@ -290,8 +292,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
     productionChance: 0.005,
-    stageAges: [60, 260, 580, 2400],
-    fruitSpoilAge: 160,
+    stageAges: [332, 1440, 3212, 13292],
+    fruitSpoilAge: 886,
     edibleStages: [1, 5],
     colors: {
       seed:        [90,  120, 55,  35],
@@ -315,8 +317,8 @@ const PLANT_SPECIES = {
     sex: 'ASEXUAL',
     reproduction: 'SEED',
     productionChance: 0.019,
-    stageAges: [12, 42, 95, 420],
-    fruitSpoilAge: 130,
+    stageAges: [66, 233, 526, 2326],
+    fruitSpoilAge: 720,
     edibleStages: [1, 4],
     colors: {
       seed:        [125, 150, 90,  40],
@@ -340,8 +342,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
     productionChance: 0.013,
-    stageAges: [11, 46, 125, 500],
-    fruitSpoilAge: 95,
+    stageAges: [61, 255, 692, 2769],
+    fruitSpoilAge: 526,
     edibleStages: [1, 5],
     colors: {
       seed:        [130, 150, 80,  40],
@@ -365,8 +367,8 @@ const PLANT_SPECIES = {
     sex: 'HERMAPHRODITE',
     reproduction: 'FRUIT',
     productionChance: 0.007,
-    stageAges: [55, 240, 560, 2600],
-    fruitSpoilAge: 155,
+    stageAges: [305, 1329, 3102, 14400],
+    fruitSpoilAge: 858,
     edibleStages: [1, 5],
     colors: {
       seed:        [90,  115, 60,  35],
@@ -451,10 +453,10 @@ export function getPlantByTypeId(typeId) {
  * Build the STAGE_AGES map indexed by typeId for flora.js.
  * Returns { 1: [10,40,80,300], 2: [15,60,150,500], ... }
  */
-export function buildStageAges() {
+export function buildStageAges(ticksPerGameMinute = DEFAULT_TICKS_PER_GAME_MINUTE) {
   const map = {};
   for (const sp of Object.values(PLANT_SPECIES)) {
-    map[sp.typeId] = sp.stageAges;
+    map[sp.typeId] = gameMinuteArrayToTicks(sp.stageAges, ticksPerGameMinute);
   }
   return map;
 }
@@ -487,10 +489,10 @@ export function buildPlantTypeSex() {
  * Build the FRUIT_SPOIL_AGE map indexed by typeId for flora.js.
  * Returns { 1: 60, 2: 80, ... }
  */
-export function buildFruitSpoilAges() {
+export function buildFruitSpoilAges(ticksPerGameMinute = DEFAULT_TICKS_PER_GAME_MINUTE) {
   const map = {};
   for (const sp of Object.values(PLANT_SPECIES)) {
-    map[sp.typeId] = sp.fruitSpoilAge;
+    map[sp.typeId] = gameMinutesToTicks(sp.fruitSpoilAge, ticksPerGameMinute);
   }
   return map;
 }

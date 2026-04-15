@@ -6,11 +6,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import useSimStore from '../store/simulationStore';
 import { TERRAIN_NAMES as TERRAIN_DISPLAY_NAMES, STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
 import ANIMAL_SPECIES, { buildAnimalSpeciesConfig } from '../engine/animalSpecies';
-import PLANT_SPECIES, { getPlantByTypeId } from '../engine/plantSpecies';
+import PLANT_SPECIES, { buildFruitSpoilAges, buildStageAges, getPlantByTypeId } from '../engine/plantSpecies';
 import { ANIMAL_STATE_TONES, DIET_COLORS, getBadgeToneStyle } from '../constants/statusColors';
-import { formatTickTimestamp, resolveTicksPerDay, ticksToDay } from '../utils/time';
-
-const ANIMAL_SPECIES_CONFIG = buildAnimalSpeciesConfig();
+import { formatGameDuration, formatTickTimestamp, resolveTicksPerDay, ticksToDay } from '../utils/time';
+import { resolveTicksPerGameMinute, ticksToGameMinutes } from '../utils/gameTime.js';
 
 // Direction labels
 const DIRECTION_LABELS = { 0: '↓ Down', 1: '← Left', 2: '→ Right', 3: '↑ Up' };
@@ -102,6 +101,10 @@ function resolveSeasonIndex(clock, gameConfig) {
   return Math.floor(day / seasonLengthDays) % 4;
 }
 
+function formatTickDurationLabel(ticks, ticksPerDay) {
+  return `${ticks} ticks (${formatGameDuration(ticksToGameMinutes(ticks, ticksPerDay))})`;
+}
+
 // --- Plant Attributes (species config) ---
 
 function PlantAttributes({ typeId, terrain, stage, clock, gameConfig }) {
@@ -123,7 +126,7 @@ function PlantAttributes({ typeId, terrain, stage, clock, gameConfig }) {
       <div className="stat-row"><span className="stat-label">Reproduction</span><span className="stat-value">{sp.reproduction} ({sp.sex})</span></div>
       <div className="stat-row"><span className="stat-label">Water Affinity</span><span className="stat-value">{WATER_AFFINITY_LABELS[sp.waterAffinity] || sp.waterAffinity}</span></div>
       <div className="stat-row"><span className="stat-label">Production Chance</span><span className="stat-value">{(sp.productionChance * 100).toFixed(1)}%/tick</span></div>
-      <div className="stat-row"><span className="stat-label">Fruit Spoil Age</span><span className="stat-value">{sp.fruitSpoilAge} ticks</span></div>
+      <div className="stat-row"><span className="stat-label">Fruit Spoil Age</span><span className="stat-value">{formatGameDuration(sp.fruitSpoilAge)}</span></div>
       <div className="stat-row"><span className="stat-label">Edible Stages</span><span className="stat-value">{edibleStageLabels.length > 0 ? edibleStageLabels.join(', ') : 'None'}</span></div>
       <div className="stat-row"><span className="stat-label">Current Stage</span><span className="stat-value" style={{ color: isCurrentStageEdible ? '#88cc44' : '#999' }}>{isCurrentStageEdible ? 'Edible' : 'Not edible'}</span></div>
       <div className="stat-row"><span className="stat-label">Terrain Growth</span><span className="stat-value" style={{ color: currentTerrainGrowth > 1 ? '#88cc44' : currentTerrainGrowth === 0 ? '#ff6b6b' : '#ddd' }}>{currentTerrainGrowth != null ? `${currentTerrainGrowth.toFixed(2)}x on ${terrainKey}` : `n/a on ${terrainKey || '?'}`}</span></div>
@@ -136,7 +139,7 @@ function PlantAttributes({ typeId, terrain, stage, clock, gameConfig }) {
         {sp.stageAges.map((age, i) => (
           <div key={i} className="d-flex justify-content-between">
             <span className="text-muted">{STAGE_LABELS[i]} → {STAGE_LABELS[i + 1] || 'Dead'}</span>
-            <span>{age} ticks</span>
+            <span>{formatGameDuration(age)}</span>
           </div>
         ))}
       </div>
@@ -158,8 +161,8 @@ function PlantAttributes({ typeId, terrain, stage, clock, gameConfig }) {
 
 // --- Animal Species Attributes (Species tab content) ---
 
-function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
-  const sp = ANIMAL_SPECIES_CONFIG[species];
+function SpeciesAttributes({ species, lifeStage, clock, gameConfig, speciesConfig }) {
+  const sp = speciesConfig;
   const rawSpecies = ANIMAL_SPECIES[species];
   if (!sp || !rawSpecies) return null;
 
@@ -192,8 +195,8 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
         <div className="stat-row"><span className="stat-label">❤️ Max HP</span><span className="stat-value">{sp.max_hp}</span></div>
         <div className="stat-row"><span className="stat-label">🍖 Max Hunger</span><span className="stat-value">{sp.max_hunger}</span></div>
         <div className="stat-row"><span className="stat-label">💧 Max Thirst</span><span className="stat-value">{sp.max_thirst}</span></div>
-        <div className="stat-row"><span className="stat-label">⏳ Max Age</span><span className="stat-value">{sp.max_age}</span></div>
-        <div className="stat-row"><span className="stat-label">🌱 Mature Age</span><span className="stat-value">{sp.mature_age}</span></div>
+        <div className="stat-row"><span className="stat-label">⏳ Max Age</span><span className="stat-value">{formatGameDuration(rawSpecies.max_age)}</span></div>
+        <div className="stat-row"><span className="stat-label">🌱 Mature Age</span><span className="stat-value">{formatGameDuration(rawSpecies.mature_age)}</span></div>
         <div className="stat-row"><span className="stat-label">⚔️ Attack</span><span className="stat-value">{sp.attack_power}</span></div>
         <div className="stat-row"><span className="stat-label">🛡️ Defense</span><span className="stat-value">{sp.defense}</span></div>
         <div className="stat-row"><span className="stat-label">🍖 Hunger Rate</span><span className="stat-value">{sp.hunger_rate}/tick</span></div>
@@ -203,10 +206,10 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
           <div className="stat-row"><span className="stat-label">🤰 Type</span><span className="stat-value" style={{ textTransform: 'capitalize' }}>{rawSpecies.reproduction_type}</span></div>
         )}
         {rawSpecies.gestation_period > 0 && (
-          <div className="stat-row"><span className="stat-label">🤰 Gestation</span><span className="stat-value">{rawSpecies.gestation_period} ticks</span></div>
+          <div className="stat-row"><span className="stat-label">🤰 Gestation</span><span className="stat-value">{formatGameDuration(rawSpecies.gestation_period)}</span></div>
         )}
         {rawSpecies.incubation_period > 0 && (
-          <div className="stat-row"><span className="stat-label">🥚 Incubation</span><span className="stat-value">{rawSpecies.incubation_period} ticks</span></div>
+          <div className="stat-row"><span className="stat-label">🥚 Incubation</span><span className="stat-value">{formatGameDuration(rawSpecies.incubation_period)}</span></div>
         )}
         {rawSpecies.clutch_size && (
           <div className="stat-row"><span className="stat-label">🐣 Clutch Size</span><span className="stat-value">{rawSpecies.clutch_size[0]}–{rawSpecies.clutch_size[1]}</span></div>
@@ -219,9 +222,9 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
         <>
           <h6 className="mt-2 mb-1 inspector-subtitle">🎂 Life Stage Ages</h6>
           <div className="inspector-detail-list">
-            <div className="d-flex justify-content-between"><span className="text-muted">Baby → Young</span><span>{sp.life_stage_ages[0]} ticks</span></div>
-            <div className="d-flex justify-content-between"><span className="text-muted">Young → Young Adult</span><span>{sp.life_stage_ages[1]} ticks</span></div>
-            <div className="d-flex justify-content-between"><span className="text-muted">Young Adult → Adult</span><span>{sp.life_stage_ages[2]} ticks</span></div>
+            <div className="d-flex justify-content-between"><span className="text-muted">Baby → Young</span><span>{formatGameDuration(rawSpecies.life_stage_ages[0])}</span></div>
+            <div className="d-flex justify-content-between"><span className="text-muted">Young → Young Adult</span><span>{formatGameDuration(rawSpecies.life_stage_ages[1])}</span></div>
+            <div className="d-flex justify-content-between"><span className="text-muted">Young Adult → Adult</span><span>{formatGameDuration(rawSpecies.life_stage_ages[2])}</span></div>
           </div>
         </>
       )}
@@ -282,8 +285,8 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
 
 // --- Animal Diet Info (Diet tab content) ---
 
-function DietInfo({ species }) {
-  const sp = ANIMAL_SPECIES_CONFIG[species];
+function DietInfo({ species, speciesConfig }) {
+  const sp = speciesConfig;
   const rawSpecies = ANIMAL_SPECIES[species];
   if (!sp || !rawSpecies) return null;
   const hasPlants = rawSpecies.edible_plants && rawSpecies.edible_plants.length > 0;
@@ -558,14 +561,14 @@ function TileNeighborhood({ neighbors, waterAdjacent, adjacentPlants }) {
 
 // --- Plant stage progress & water stress ---
 
-function PlantStageProgress({ plant, plantSp, waterProximity, adjacentPlants, clock, gameConfig }) {
+function PlantStageProgress({ plant, plantSp, waterProximity, adjacentPlants, clock, gameConfig, stageAges, fruitSpoilAge, ticksPerDay }) {
   if (!plant || !plantSp) return null;
   const stage = plant.stage;
   const age = plant.age;
 
   const stageIdx = stage - 1;
-  const nextThreshold = stageIdx >= 0 && stageIdx < plantSp.stageAges.length ? plantSp.stageAges[stageIdx] : null;
-  const prevThreshold = stageIdx > 0 ? plantSp.stageAges[stageIdx - 1] : 0;
+  const nextThreshold = stageIdx >= 0 && stageIdx < stageAges.length ? stageAges[stageIdx] : null;
+  const prevThreshold = stageIdx > 0 ? stageAges[stageIdx - 1] : 0;
 
   const seasonIndex = resolveSeasonIndex(clock, gameConfig);
   const seasonGrowthMult = gameConfig?.season_growth_multiplier?.[seasonIndex] ?? [1.2, 1.0, 0.8, 0.5][seasonIndex] ?? 1;
@@ -602,7 +605,6 @@ function PlantStageProgress({ plant, plantSp, waterProximity, adjacentPlants, cl
   const isSevereStress = waterProximity != null && waterProximity > waterStressSevereThreshold;
 
   const isFruiting = stage === 5;
-  const fruitSpoilAge = plantSp.fruitSpoilAge;
 
   return (
     <CollapsibleSection title="Growth Status" icon="📈" defaultOpen={true}>
@@ -610,7 +612,7 @@ function PlantStageProgress({ plant, plantSp, waterProximity, adjacentPlants, cl
         <div className="mb-1">
           <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
             <span className="text-muted">📊 Stage Progress</span>
-            <span>{age} / {nextThreshold} ticks</span>
+            <span>{formatTickDurationLabel(age, ticksPerDay)} / {formatTickDurationLabel(nextThreshold, ticksPerDay)}</span>
           </div>
           <div className="entity-bar">
             <div className="entity-bar-fill" style={{
@@ -624,7 +626,7 @@ function PlantStageProgress({ plant, plantSp, waterProximity, adjacentPlants, cl
         <div className="mb-1">
           <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
             <span className="text-muted">🍂 Spoil Timer</span>
-            <span>{age} / {fruitSpoilAge} ticks</span>
+            <span>{formatTickDurationLabel(age, ticksPerDay)} / {formatTickDurationLabel(fruitSpoilAge, ticksPerDay)}</span>
           </div>
           <div className="entity-bar">
             <div className="entity-bar-fill" style={{
@@ -688,6 +690,19 @@ const ANIMAL_TABS = [
 export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) {
   const { selectedEntity, selectedTile, clearSelection, setSelectedEntity, clock, gameConfig } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
+  const ticksPerGameMinute = resolveTicksPerGameMinute(ticksPerDay);
+  const effectiveAnimalSpeciesConfig = useMemo(
+    () => gameConfig?.animal_species || buildAnimalSpeciesConfig(ticksPerGameMinute),
+    [gameConfig?.animal_species, ticksPerGameMinute],
+  );
+  const effectivePlantStageAges = useMemo(
+    () => gameConfig?.plant_stage_ages || buildStageAges(ticksPerGameMinute),
+    [gameConfig?.plant_stage_ages, ticksPerGameMinute],
+  );
+  const effectivePlantFruitSpoilAges = useMemo(
+    () => gameConfig?.plant_fruit_spoil_ages || buildFruitSpoilAges(ticksPerGameMinute),
+    [gameConfig?.plant_fruit_spoil_ages, ticksPerGameMinute],
+  );
   const [animalTab, setAnimalTab] = useState('status');
   const [tileTab, setTileTab] = useState('terrain');
   const [plantTab, setPlantTab] = useState('info');
@@ -710,7 +725,7 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
   if (selectedEntity) {
     const e = selectedEntity;
     const info = SPECIES_INFO[e.species] || { emoji: '❓', name: e.species, diet: e.diet || '?' };
-    const sp = ANIMAL_SPECIES_CONFIG[e.species];
+    const sp = effectiveAnimalSpeciesConfig[e.species];
     const maxHunger = sp?.max_hunger || 100;
     const maxThirst = sp?.max_thirst || 100;
     const maxEnergy = sp?.max_energy || 100;
@@ -816,7 +831,7 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
                 <div className="mt-1">
                   <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
                     <span className="text-muted">🕐 Incubation</span>
-                    <span>{e.age} / {e._incubationPeriod} ticks</span>
+                    <span>{formatTickDurationLabel(e.age, ticksPerDay)} / {formatTickDurationLabel(e._incubationPeriod, ticksPerDay)}</span>
                   </div>
                   <div className="entity-bar">
                     <div className="entity-bar-fill" style={{ width: `${Math.min(100, (e.age / e._incubationPeriod) * 100)}%`, background: e.age >= e._incubationPeriod ? '#88cc44' : '#ffaa33' }} />
@@ -884,13 +899,13 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
                 {e.mateCooldown > 0 && (
                   <div className="stat-row">
                     <span className="stat-label">💕 Mate</span>
-                    <span className="stat-value" style={{ color: '#ff66aa' }}>{e.mateCooldown} ticks</span>
+                    <span className="stat-value" style={{ color: '#ff66aa' }}>{formatTickDurationLabel(e.mateCooldown, ticksPerDay)}</span>
                   </div>
                 )}
                 {e.attackCooldown > 0 && (
                   <div className="stat-row">
                     <span className="stat-label">⚔️ Attack</span>
-                    <span className="stat-value" style={{ color: '#ff4444' }}>{e.attackCooldown} ticks</span>
+                    <span className="stat-value" style={{ color: '#ff4444' }}>{formatTickDurationLabel(e.attackCooldown, ticksPerDay)}</span>
                   </div>
                 )}
                 {e.pregnant && (
@@ -918,14 +933,14 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
         {/* === Species tab === */}
         {animalTab === 'species' && (
           <div className="inspector-tab-panel">
-            <SpeciesAttributes species={e.species} lifeStage={e.lifeStage} clock={clock} gameConfig={gameConfig} />
+            <SpeciesAttributes species={e.species} lifeStage={e.lifeStage} clock={clock} gameConfig={gameConfig} speciesConfig={sp} />
           </div>
         )}
 
         {/* === Diet tab === */}
         {animalTab === 'diet' && (
           <div className="inspector-tab-panel">
-            <DietInfo species={e.species} />
+            <DietInfo species={e.species} speciesConfig={sp} />
           </div>
         )}
 
@@ -961,7 +976,7 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
         : t.plant.stage === 5 ? plantSp.emoji.fruit
         : '🌿')
       : '🌿';
-    const maxPlantAge = hasPlant && plantSp ? plantSp.stageAges[plantSp.stageAges.length - 1] : 1;
+    const maxPlantAge = hasPlant && plantSp ? (effectivePlantStageAges[t.plant.type]?.[effectivePlantStageAges[t.plant.type].length - 1] || 1) : 1;
 
     const handleSelectAnimal = (animal) => {
       setSelectedEntity(animal);
@@ -1105,6 +1120,9 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
                 adjacentPlants={t.adjacentPlants}
                 clock={clock}
                 gameConfig={gameConfig}
+                stageAges={effectivePlantStageAges[t.plant.type] || []}
+                fruitSpoilAge={effectivePlantFruitSpoilAges[t.plant.type] || 0}
+                ticksPerDay={ticksPerDay}
               />
             )}
 

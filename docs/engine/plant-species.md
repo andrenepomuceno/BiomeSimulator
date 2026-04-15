@@ -3,11 +3,13 @@
 Navigation: [Documentation Home](../README.md) > [Engine](README.md) > [Current Document](plant-species.md)
 Return to [Documentation Home](../README.md).
 
-`plantSpecies.js` is the **single source of truth** for all plant data. `flora.js` derives its stage thresholds, production chances, and reproduction modes from here.
+`plantSpecies.js` is the **single source of truth** for all plant data. Stage timing fields are authored in **game minutes**, and `flora.js` consumes tick-based lookup tables derived from those values.
 
 ---
 
 ## Species Table
+
+The table below shows the **effective default tick thresholds** produced when `ticks_per_day = 260`. The source registry now authors stage timing in game-time units and converts those values during config build.
 
 | Species | TypeId | Reproduction | Water Affinity | Edible Stages | Stage Ages (seed→young→adult→max) |
 |---------|--------|-------------|----------------|---------------|-----------------------------------|
@@ -36,8 +38,8 @@ Return to [Documentation Home](../README.md).
 | `PLANT_SPECIES` | Object | Full registry keyed by species ID |
 | `ALL_PLANT_IDS` | Array | All 15 plant species keys |
 | `getPlantByTypeId(typeId)` | Function | Lookup plant data by numeric typeId |
-| `buildStageAges()` | Function | Returns `{1: [5,18,35,180], ...}` per typeId |
-| `buildFruitSpoilAges()` | Function | Returns fruit decay thresholds per typeId |
+| `buildStageAges(ticksPerGameMinute)` | Function | Returns effective tick thresholds per typeId from the authored minute-based registry |
+| `buildFruitSpoilAges(ticksPerGameMinute)` | Function | Returns fruit decay thresholds in ticks per typeId |
 | `buildPlantColors()` | Function | Returns stage→RGBA colors per typeId |
 | `buildPlantEmojiMap()` | Function | Returns stage→emoji per typeId |
 | `buildProductionChances()` | Function | Returns seed spreading chance per typeId |

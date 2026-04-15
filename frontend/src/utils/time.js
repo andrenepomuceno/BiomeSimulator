@@ -1,4 +1,5 @@
 import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
+import { formatGameMinutes } from './gameTime.js';
 
 export function resolveTicksPerDay(ticksPerDay) {
   return Number.isFinite(ticksPerDay) && ticksPerDay > 0
@@ -59,4 +60,8 @@ export function formatTimeOfDay(tickInDay = 0, ticksPerDay = 260) {
   const minutes = Math.floor(totalMinutes % 60);
 
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+export function formatGameDuration(gameMinutes = 0) {
+  return formatGameMinutes(gameMinutes);
 }

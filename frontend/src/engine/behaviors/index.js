@@ -9,7 +9,7 @@ import { _computePath, _fleeFrom, _randomWalk, _reusePathIfValid, _walkPath } fr
 import { _findMate, _doMate, giveBirth } from './reproduce.js';
 import { _seekOmnivoreFood, _seekPlantFood, _seekPrey, _seekWater } from './seek.js';
 import { _doDrink, _doEat, _doSleep } from './states.js';
-import { DECISION_INTERVALS, _calculateEffectiveSleepThreshold, _canEatPlant, _decisionThresholds, _idleRecover, _isEdibleStage } from './utils.js';
+import { _calculateEffectiveSleepThreshold, _canEatPlant, _decisionThresholds, _idleRecover, _isEdibleStage } from './utils.js';
 
 export { giveBirth };
 
@@ -89,7 +89,7 @@ export function decideAndAct(animal, world, spatialHash) {
       ? (isNight ? scaledBaseVision : Math.floor(scaledBaseVision * nocturnalDayVisionFactor))
       : (isNight ? Math.floor(scaledBaseVision * nightVisionReduction) : scaledBaseVision));
 
-    const interval = DECISION_INTERVALS[animal.species] || 2;
+    const interval = Math.max(1, animal._config.decision_interval || 2);
     if (animal.id % interval !== world.clock.tick % interval) {
       benchmarkAdd(collector, 'decisionStaggerSkips', 1);
       benchmarkAddKeyed(collector, 'speciesDecisionStaggerSkips', animal.species, 1);

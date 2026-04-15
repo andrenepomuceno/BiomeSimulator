@@ -19,6 +19,8 @@ export function processPlants(world) {
 
   const season = getSeason(world);
   world.currentSeason = season;
+  const stageAgesMap = world.config.plant_stage_ages || STAGE_AGES;
+  const fruitSpoilAges = world.config.plant_fruit_spoil_ages || FRUIT_SPOIL_AGES;
   const seasonGrowth = _seasonGrowthMult(world)[season] ?? 1;
   const seasonDeath = _seasonDeathMult(world)[season] ?? 1;
   const dirtDeathChanceByStage = _dirtDeathChance(world);
@@ -62,7 +64,7 @@ export function processPlants(world) {
     const affinity = WATER_AFFINITY[ptype];
 
     if (stage === S_FRUIT) {
-      const spoilAge = FRUIT_SPOIL_AGES[ptype] || 80;
+      const spoilAge = fruitSpoilAges[ptype] || 80;
       if (world.plantAge[idx] >= spoilAge) {
         world.plantStage[idx] = S_SEED;
         world.plantAge[idx] = 0;
@@ -108,7 +110,7 @@ export function processPlants(world) {
     const crowdingMult = crowding >= crowdingThreshold ? (world.config.plant_crowding_growth_penalty ?? 0.7) : 1.0;
 
     const effectiveAge = Math.floor(world.plantAge[idx] * waterMult * terrainMult * seasonGrowth * crowdingMult);
-    const ages = STAGE_AGES[ptype];
+    const ages = stageAgesMap[ptype];
     let newStage = stage;
 
     if (stage === S_SEED && effectiveAge >= ages[0]) {

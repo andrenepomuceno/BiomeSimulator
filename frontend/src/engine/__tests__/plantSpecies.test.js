@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import PLANT_SPECIES, {
   ALL_PLANT_IDS,
+  buildFruitSpoilAges,
   PLANT_IDS,
   getPlantByTypeId,
   buildStageAges,
   buildPlantTypeNames,
   buildPlantTypeSex,
-  buildFruitSpoilAges,
   buildPlantColors,
   buildFruitColors,
   buildProductionChances,
@@ -20,6 +20,11 @@ import PLANT_SPECIES, {
   buildInitialPlantCounts,
   buildSwayStages,
 } from '../plantSpecies.js';
+import { DEFAULT_TICKS_PER_GAME_MINUTE } from '../../constants/simulation.js';
+
+function toTicks(gameMinutes) {
+  return Math.round(gameMinutes * DEFAULT_TICKS_PER_GAME_MINUTE);
+}
 
 describe('PLANT_SPECIES registry', () => {
   it('has unique typeIds across all species', () => {
@@ -74,7 +79,7 @@ describe('plant builder functions', () => {
   it('buildStageAges has an entry for every species', () => {
     const map = buildStageAges();
     for (const sp of Object.values(PLANT_SPECIES)) {
-      expect(map[sp.typeId]).toEqual(sp.stageAges);
+      expect(map[sp.typeId]).toEqual(sp.stageAges.map(toTicks));
     }
   });
 
@@ -96,7 +101,7 @@ describe('plant builder functions', () => {
   it('buildFruitSpoilAges returns positive values', () => {
     const map = buildFruitSpoilAges();
     for (const sp of Object.values(PLANT_SPECIES)) {
-      expect(map[sp.typeId]).toBeGreaterThan(0);
+      expect(map[sp.typeId]).toBe(toTicks(sp.fruitSpoilAge));
     }
   });
 

@@ -247,6 +247,10 @@ export const HELP_TABS = [
     },
     sections: [
       {
+        heading: 'What is BiomeSimulator?',
+        body: 'BiomeSimulator is a sandbox ecosystem game where animals, plants, and terrain interact in real time. Species survive by balancing energy, hunger, thirst, safety, and reproduction while the food chain shifts around them. You play as an observer and world shaper: run the simulation, inspect behavior, and edit the map to see how the ecosystem responds.',
+      },
+      {
         heading: 'Quick loop',
         bullets: [
           'Open the menu and generate a world if you want a fresh ecosystem.',

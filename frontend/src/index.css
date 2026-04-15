@@ -2110,6 +2110,17 @@ html, body, #root {
   color: #e0e0e0;
 }
 
+.entity-summary-truncation-note {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 170, 51, 0.1);
+  border: 1px solid rgba(255, 170, 51, 0.22);
+  color: #ffe29a;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
 .entity-summary-filter-row {
   margin-top: 8px;
   display: flex;
@@ -2178,18 +2189,18 @@ html, body, #root {
   display: none;
 }
 
-.entity-summary-group[open] .entity-summary-group-summary {
+.entity-summary-group.open .entity-summary-group-summary {
   border-bottom: 1px solid var(--sim-border);
 }
 
 .entity-summary-group-summary::before {
-  content: '▸';
+  content: '\25B8';
   color: var(--sim-accent);
   margin-right: 8px;
 }
 
-.entity-summary-group[open] .entity-summary-group-summary::before {
-  content: '▾';
+.entity-summary-group.open .entity-summary-group-summary::before {
+  content: '\25BE';
 }
 
 .entity-summary-group-main {

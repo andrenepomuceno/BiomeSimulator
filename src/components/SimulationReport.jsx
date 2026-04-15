@@ -248,7 +248,7 @@ export default function SimulationReport({ open, onClose }) {
     return (
       <>
         <div className="report-chart-section">
-          <h6>Plant Population Over Time</h6>
+          <h6>Total Plant Population</h6>
           <div className="report-chart-container" style={{ height: 260 }}>
             <Line data={floraChart} options={CHART_BASE} />
           </div>
@@ -256,7 +256,7 @@ export default function SimulationReport({ open, onClose }) {
 
         {/* Per-species plant population over time */}
         <div className="report-chart-section">
-          <h6>Plant Species Over Time</h6>
+          <h6>Species Population Over Time</h6>
           <div className="report-chart-container" style={{ height: 320 }}>
             <Line data={{
               labels: data.tickLabels,

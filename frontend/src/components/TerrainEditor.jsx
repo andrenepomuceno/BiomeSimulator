@@ -35,7 +35,7 @@ export default function TerrainEditor() {
           <input type="range" className="form-range form-range-sm" min={1} max={10}
             value={brushSize} onChange={e => setBrushSize(+e.target.value)} />
         </div>
-        <div className="small text-muted">Click/drag on map to paint terrain</div>
+        <div className="small text-muted">Hover to preview the brush footprint, then click on the map to paint terrain</div>
       </div>
     );
   }

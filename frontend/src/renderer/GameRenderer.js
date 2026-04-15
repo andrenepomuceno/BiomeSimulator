@@ -9,6 +9,7 @@ import { EntityLayer } from './EntityLayer.js';
 import { AnimationLayer } from './AnimationLayer.js';
 import useSimStore from '../store/simulationStore.js';
 import { RENDERER_CONFIG } from '../engine/config.js';
+import { TERRAIN_COLORS } from '../utils/terrainColors.js';
 
 export class GameRenderer {
   constructor(container, onViewportChange, onTileClick, onEffectEvent) {
@@ -75,6 +76,14 @@ export class GameRenderer {
     this._tileSelectionTick = 0;
     this.worldContainer.addChild(this._tileSelectionGfx);
 
+    // Brush preview marker for terrain painting
+    this._brushPreviewGfx = new PIXI.Graphics();
+    this._brushPreviewGfx.visible = false;
+    this.worldContainer.addChild(this._brushPreviewGfx);
+    this._hoverTile = null;
+    this._brushPreviewSignature = '';
+    this._isDragging = false;
+
     // Camera
     this.camera = new Camera(this.worldContainer, this.app.screen, () => {
       this._onViewportChanged();
@@ -117,6 +126,7 @@ export class GameRenderer {
 
       this.entityLayer._updateSelectionMarker();
       this._updateTileSelectionMarker();
+      this._updateBrushPreview();
 
       // Skip environment animations when simulation is paused
       const { paused, running } = useSimStore.getState();
@@ -232,6 +242,41 @@ export class GameRenderer {
     this._selectedTile = null;
   }
 
+  _updateBrushPreview() {
+    const gfx = this._brushPreviewGfx;
+    const state = useSimStore.getState();
+    if (!this._hoverTile || this._isDragging || state.tool !== 'PAINT_TERRAIN') {
+      gfx.visible = false;
+      this._brushPreviewSignature = '';
+      return;
+    }
+
+    const brushSize = Math.max(1, state.brushSize || 1);
+    const terrainType = state.paintTerrain || 0;
+    const signature = `${this._hoverTile.x}:${this._hoverTile.y}:${brushSize}:${terrainType}`;
+    if (signature === this._brushPreviewSignature && gfx.visible) {
+      return;
+    }
+
+    const terrainColor = TERRAIN_COLORS[terrainType] || [83, 168, 182, 255];
+    const fillColor = PIXI.utils.rgb2hex([
+      terrainColor[0] / 255,
+      terrainColor[1] / 255,
+      terrainColor[2] / 255,
+    ]);
+    const startX = this._hoverTile.x - brushSize + 1;
+    const startY = this._hoverTile.y - brushSize + 1;
+    const size = brushSize * 2 - 1;
+
+    gfx.clear();
+    gfx.beginFill(fillColor, 0.2);
+    gfx.lineStyle(0.08, 0xeef8ff, 0.85);
+    gfx.drawRect(startX, startY, size, size);
+    gfx.endFill();
+    gfx.visible = true;
+    this._brushPreviewSignature = signature;
+  }
+
   _updateTileSelectionMarker() {
     const gfx = this._tileSelectionGfx;
     if (!this._selectedTile) {
@@ -344,6 +389,7 @@ export class GameRenderer {
     this._onDragPointerDown = (e) => {
       if (e.button === 0 || e.button === 1) {
         dragging = true;
+        this._isDragging = true;
         lastX = e.clientX;
         lastY = e.clientY;
       }
@@ -362,6 +408,7 @@ export class GameRenderer {
 
     this._onPointerUp = () => {
       dragging = false;
+      this._isDragging = false;
     };
     window.addEventListener('pointerup', this._onPointerUp);
   }
@@ -390,6 +437,27 @@ export class GameRenderer {
       }
     };
     this.app.view.addEventListener('pointerup', this._onClickPointerUp);
+
+    this._onHoverPointerMove = (e) => {
+      if (!this.mapWidth || !this.mapHeight) return;
+      const rect = this.app.view.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const tileCoords = this.camera.screenToTile(screenX, screenY);
+      if (tileCoords.x >= 0 && tileCoords.y >= 0 && tileCoords.x < this.mapWidth && tileCoords.y < this.mapHeight) {
+        this._hoverTile = tileCoords;
+      } else {
+        this._hoverTile = null;
+      }
+    };
+    this.app.view.addEventListener('pointermove', this._onHoverPointerMove);
+
+    this._onPointerLeaveCanvas = () => {
+      this._hoverTile = null;
+      this._brushPreviewSignature = '';
+      this._brushPreviewGfx.visible = false;
+    };
+    this.app.view.addEventListener('pointerleave', this._onPointerLeaveCanvas);
   }
 
   getViewportTiles() {
@@ -435,6 +503,12 @@ export class GameRenderer {
     }
     if (this._onClickPointerUp) {
       this.app.view.removeEventListener('pointerup', this._onClickPointerUp);
+    }
+    if (this._onHoverPointerMove) {
+      this.app.view.removeEventListener('pointermove', this._onHoverPointerMove);
+    }
+    if (this._onPointerLeaveCanvas) {
+      this.app.view.removeEventListener('pointerleave', this._onPointerLeaveCanvas);
     }
     window.removeEventListener('pointermove', this._onPointerMove);
     window.removeEventListener('pointerup', this._onPointerUp);

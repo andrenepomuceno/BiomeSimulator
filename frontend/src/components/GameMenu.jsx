@@ -19,6 +19,22 @@ import {
   TABS,
 } from './menu/gameMenuConstants.js';
 
+const MAX_RANDOM_SEED = 2147483646;
+
+function buildRandomSeed() {
+  return 1 + Math.floor(Math.random() * MAX_RANDOM_SEED);
+}
+
+function resolveSeedValue(rawSeed) {
+  const normalized = `${rawSeed}`.trim();
+  if (normalized === '') return buildRandomSeed();
+
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) return buildRandomSeed();
+
+  return Math.floor(parsed);
+}
+
 export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const hasWorld = useSimStore((state) => !!state.terrainData || !!state.worldReady || state.animals.length > 0);
   const modalRef = useRef(null);
@@ -94,13 +110,8 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
       ...nextParams,
       initial_animal_counts: normalizeAnimalCountsToBudget(nextParams.initial_animal_counts, nextParams.max_animal_population),
       initial_plant_counts: { ...nextParams.initial_plant_counts },
+      seed: resolveSeedValue(nextParams.seed),
     };
-
-    if (`${payload.seed}`.trim() === '') {
-      delete payload.seed;
-    } else {
-      payload.seed = Number(payload.seed);
-    }
 
     return payload;
   };

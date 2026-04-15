@@ -6,6 +6,61 @@ export const STATUS_COLORS_HEX = {
   omnivore: '#cc8844',
 };
 
+export const BADGE_TONE_STYLES = {
+  neutral: {
+    background: 'rgba(122, 138, 160, 0.18)',
+    borderColor: 'rgba(161, 177, 200, 0.28)',
+    color: '#edf4f8',
+  },
+  info: {
+    background: 'rgba(77, 150, 255, 0.2)',
+    borderColor: 'rgba(116, 180, 255, 0.34)',
+    color: '#edf7ff',
+  },
+  success: {
+    background: 'rgba(102, 204, 102, 0.2)',
+    borderColor: 'rgba(144, 226, 144, 0.34)',
+    color: '#effff0',
+  },
+  warning: {
+    background: 'rgba(255, 170, 51, 0.22)',
+    borderColor: 'rgba(255, 196, 116, 0.34)',
+    color: '#fff7ec',
+  },
+  danger: {
+    background: 'rgba(255, 86, 86, 0.2)',
+    borderColor: 'rgba(255, 126, 126, 0.34)',
+    color: '#fff0f0',
+  },
+  accent: {
+    background: 'rgba(170, 136, 204, 0.2)',
+    borderColor: 'rgba(198, 170, 226, 0.34)',
+    color: '#f8f1ff',
+  },
+  pink: {
+    background: 'rgba(255, 102, 170, 0.2)',
+    borderColor: 'rgba(255, 153, 202, 0.34)',
+    color: '#fff0f7',
+  },
+};
+
+export const ANIMAL_STATE_TONES = {
+  0: 'neutral',
+  1: 'info',
+  2: 'warning',
+  3: 'success',
+  4: 'info',
+  5: 'accent',
+  6: 'danger',
+  7: 'warning',
+  8: 'pink',
+  10: 'info',
+};
+
+export function getBadgeToneStyle(tone = 'neutral') {
+  return BADGE_TONE_STYLES[tone] || BADGE_TONE_STYLES.neutral;
+}
+
 export const STATUS_COLORS_INT = {
   critical: 0xdd4444,
   warning: 0xddaa33,

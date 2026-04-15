@@ -7,7 +7,7 @@ import useSimStore from '../store/simulationStore';
 import { TERRAIN_NAMES as TERRAIN_DISPLAY_NAMES, STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
 import ANIMAL_SPECIES, { buildAnimalSpeciesConfig } from '../engine/animalSpecies';
 import PLANT_SPECIES, { getPlantByTypeId } from '../engine/plantSpecies';
-import { DIET_COLORS } from '../constants/statusColors';
+import { ANIMAL_STATE_TONES, DIET_COLORS, getBadgeToneStyle } from '../constants/statusColors';
 import { formatTickTimestamp, resolveTicksPerDay, ticksToDay } from '../utils/time';
 
 const ANIMAL_SPECIES_CONFIG = buildAnimalSpeciesConfig();
@@ -329,21 +329,12 @@ function DietInfo({ species }) {
 // --- Animal status badge ---
 
 function AnimalStatusBadge({ state, alive }) {
-  if (!alive) return <span className="inspector-badge badge-dead">💀 Dead</span>;
-  const stateColors = {
-    0: '#777',    // Idle
-    1: '#53a8b6', // Walking
-    2: '#ffaa33', // Running
-    3: '#66cc66', // Eating
-    4: '#4d96ff', // Drinking
-    5: '#aa88cc', // Sleeping
-    6: '#ff4444', // Attacking
-    7: '#ff8833', // Fleeing
-    8: '#ff66aa', // Mating
-    10: '#6699cc', // Flying
-  };
+  if (!alive) {
+    return <span className="inspector-badge" style={getBadgeToneStyle('neutral')}>💀 Dead</span>;
+  }
+  const tone = ANIMAL_STATE_TONES[state] || 'neutral';
   return (
-    <span className="inspector-badge" style={{ background: stateColors[state] || '#555' }}>
+    <span className="inspector-badge" style={getBadgeToneStyle(tone)}>
       {STATE_NAMES[state] || 'Unknown'}
     </span>
   );
@@ -357,24 +348,24 @@ function AnimalStatusChips({ entity, speciesConfig, clock }) {
   const chips = [];
 
   // Can fly
-  if (sp.can_fly) chips.push({ label: '🕊️ Can Fly', color: '#6699cc' });
+  if (sp.can_fly) chips.push({ label: '🕊️ Can Fly', tone: 'info' });
 
   // Nocturnal / Diurnal + active period
   const isNight = !!clock?.is_night;
   if (sp.nocturnal) {
-    chips.push({ label: isNight ? '🌙 Active (Nocturnal)' : '😴 Resting (Nocturnal)', color: isNight ? '#88cc44' : '#aa88cc' });
+    chips.push({ label: isNight ? '🌙 Active (Nocturnal)' : '😴 Resting (Nocturnal)', tone: isNight ? 'success' : 'accent' });
   }
 
   // Critical hunger
   const critHunger = sp.decision_thresholds?.critical_hunger;
   if (critHunger != null && entity.hunger >= critHunger) {
-    chips.push({ label: '🍖 Critical Hunger', color: '#ff4444' });
+    chips.push({ label: '🍖 Critical Hunger', tone: 'danger' });
   }
 
   // Critical thirst
   const critThirst = sp.decision_thresholds?.critical_thirst;
   if (critThirst != null && entity.thirst >= critThirst) {
-    chips.push({ label: '💧 Critical Thirst', color: '#4d96ff' });
+    chips.push({ label: '💧 Critical Thirst', tone: 'info' });
   }
 
   // Can mate right now?
@@ -384,17 +375,17 @@ function AnimalStatusChips({ entity, speciesConfig, clock }) {
     const mateEnergyMin = sp.decision_thresholds?.mate_energy_min ?? 50;
     if (entity.energy < mateEnergyMin) reasons.push(`Low energy (${Math.round(entity.energy)}/${mateEnergyMin})`);
     if (reasons.length === 0) {
-      chips.push({ label: '💕 Can Mate', color: '#88cc44' });
+      chips.push({ label: '💕 Can Mate', tone: 'success' });
     } else {
-      chips.push({ label: `💕 Can't Mate: ${reasons.join(', ')}`, color: '#666' });
+      chips.push({ label: `💕 Can't Mate: ${reasons.join(', ')}`, tone: 'neutral' });
     }
   }
 
   if (chips.length === 0) return null;
   return (
-    <div className="d-flex flex-wrap gap-1 mb-2" style={{ fontSize: '0.62rem' }}>
+    <div className="inspector-chip-row">
       {chips.map((c, i) => (
-        <span key={i} className="inspector-badge" style={{ background: c.color, fontSize: '0.6rem', padding: '1px 5px' }}>
+        <span key={i} className="inspector-badge inspector-badge-compact" style={getBadgeToneStyle(c.tone)}>
           {c.label}
         </span>
       ))}
@@ -739,7 +730,7 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
         {/* Status badges */}
         <div className="mb-2">
           {isEggStage
-            ? <span className="inspector-badge" style={{ background: '#ffaa33' }}>🥚 Incubating</span>
+            ? <span className="inspector-badge" style={getBadgeToneStyle('warning')}>🥚 Incubating</span>
             : <AnimalStatusBadge state={e.state} alive={e.alive} />
           }
         </div>

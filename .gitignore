@@ -17,7 +17,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # === Build outputs ===
-frontend/dist/
+dist/
 
 # === Vite ===
 .vite/
+
+# === Local artifacts ===
+*.local
+perf-reports/
+captures/

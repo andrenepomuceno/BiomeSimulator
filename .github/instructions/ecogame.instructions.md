@@ -26,12 +26,12 @@ BiomeSimulator is a browser-based 2D ecosystem simulation. Most implementation w
 
 ## Architecture
 
-- `frontend/src/engine/`: simulation logic only. Keep it class-based and free of React, DOM, and browser rendering APIs so it remains worker-safe.
-- `frontend/src/renderer/`: Pixi.js rendering only. Keep simulation rules and state mutations out of renderer classes.
-- `frontend/src/store/simulationStore.js`: the single Zustand store. Extend this store instead of creating new stores.
-- `frontend/src/hooks/`: bridge React, the store, and worker or renderer lifecycle code.
-- `frontend/src/components/`: Bootstrap-based UI components. Keep canvas and simulation logic out of components.
-- `frontend/src/worker/`: worker entry points and message plumbing. Keep payloads serializable.
+- `src/engine/`: simulation logic only. Keep it class-based and free of React, DOM, and browser rendering APIs so it remains worker-safe.
+- `src/renderer/`: Pixi.js rendering only. Keep simulation rules and state mutations out of renderer classes.
+- `src/store/simulationStore.js`: the single Zustand store. Extend this store instead of creating new stores.
+- `src/hooks/`: bridge React, the store, and worker or renderer lifecycle code.
+- `src/components/`: Bootstrap-based UI components. Keep canvas and simulation logic out of components.
+- `src/worker/`: worker entry points and message plumbing. Keep payloads serializable.
 
 ## Patterns
 
@@ -40,7 +40,7 @@ BiomeSimulator is a browser-based 2D ecosystem simulation. Most implementation w
 - Keep species and config modules data-driven. Prefer named constants plus builder functions that derive lookup tables from canonical definitions instead of duplicating hard-coded maps.
 - `ANIMAL_SPECIES` and `PLANT_SPECIES` are the single canonical sources of truth for species parameters. New parameters belong in those definition objects, not in ad-hoc maps elsewhere. Derived data (lookup tables, UI labels, initial counts) must come from builder functions (`buildAnimalSpeciesConfig`, `buildInitialAnimalCounts`, `buildSpeciesInfo`, `buildInitialPlantCounts`, etc.) that read the canonical definitions. Do not duplicate or hard-code species data outside these modules.
 - Preserve the defaults-plus-overrides pattern: species entries only specify values that differ from the shared defaults (e.g. `_mergeAnimalDefaults`). Keep default constants (`DEFAULT_DECISION_THRESHOLDS`, `DEFAULT_METABOLIC_MULTIPLIERS`, `DEFAULT_COMBAT`, etc.) colocated with the species definitions and merge them at build time.
-- Keep engine configuration centralized in `frontend/src/engine/config.js` and related constants modules.
+- Keep engine configuration centralized in `src/engine/config.js` and related constants modules.
 - Use event-driven callbacks for camera, viewport, tile editing, and other canvas interactions.
 - Preserve the worker boundary: engine and worker code should exchange plain serializable data, not class instances tied to DOM or Pixi objects.
 

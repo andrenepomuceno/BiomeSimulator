@@ -55,7 +55,7 @@ This file-level graph maps the main runtime handoff from React on the main threa
 
 ```mermaid
 flowchart TB
-  subgraph MainThread["Main Thread (frontend/src/)"]
+  subgraph MainThread["Main Thread (src/)"]
     direction LR
 
     subgraph UI["React UI"]
@@ -82,13 +82,13 @@ flowchart TB
     end
   end
 
-  subgraph WorkerBoundary["Worker Boundary (frontend/src/worker/)"]
+  subgraph WorkerBoundary["Worker Boundary (src/worker/)"]
     direction LR
     SimWorker["simWorker.js<br/>command handler, tick loop,<br/>incremental/full serialization"]
     FaunaPool["faunaWorker.js x N<br/>parallel animal AI chunks"]
   end
 
-  subgraph Engine["Pure Engine (frontend/src/engine/)"]
+  subgraph Engine["Pure Engine (src/engine/)"]
     direction LR
     SimEngine["simulation.js<br/>SimulationEngine"]
     World["world.js<br/>World, Clock, typed arrays"]

@@ -3,7 +3,7 @@
 Navigation: [Documentation Home](../README.md) > [Engine](README.md) > [Current Document](README.md)
 Return to [Documentation Home](../README.md).
 
-The engine layer (`frontend/src/engine/`) contains all simulation logic. It has zero DOM or React dependencies and is designed to run inside a Web Worker.
+The engine layer (`src/engine/`) contains all simulation logic. It has zero DOM or React dependencies and is designed to run inside a Web Worker.
 
 ## Contents
 
@@ -37,9 +37,9 @@ See [Simulation Rules](../simulation/) for runtime behavior and [Architecture](.
 | `mapGenerator.js` | Procedural terrain via Perlin noise + island masks |
 | `benchmarkProfiler.js` | In-engine tick timing and perf metrics |
 
-Internal folders such as `frontend/src/engine/flora/` and `frontend/src/engine/behaviors/` hold the extracted implementation details while the top-level facade files preserve import stability for `simulation.js`, workers, and other engine consumers.
+Internal folders such as `src/engine/flora/` and `src/engine/behaviors/` hold the extracted implementation details while the top-level facade files preserve import stability for `simulation.js`, workers, and other engine consumers.
 
-### Worker Files (`frontend/src/worker/`)
+### Worker Files (`src/worker/`)
 
 | File | Purpose |
 |------|---------|

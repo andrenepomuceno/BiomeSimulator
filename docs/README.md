@@ -17,7 +17,7 @@ Technical documentation for the BiomeSimulator ecosystem simulation. For the pro
 | [Renderer](renderer/) | Pixi.js layer stack, camera, entity/plant/terrain rendering, emoji textures |
 | [Worker API](api/) | Main↔Worker message protocol: commands, responses, data types |
 
-For setup, build commands, and performance profiling, see [../frontend/README.md](../frontend/README.md).
+For setup, build commands, and performance profiling, see [../README.md](../README.md).
 
 ---
 
@@ -48,7 +48,7 @@ For setup, build commands, and performance profiling, see [../frontend/README.md
 **Working on rendering:**
 1. [Renderer Overview & Camera](renderer/overview.md)
 2. [Rendering Layers](renderer/layers.md)
-3. [Frontend editor controls](../frontend/README.md#editor-controls)
+3. [Frontend editor controls](../README.md#editor-controls)
 
 **Extending the Worker API:**
 1. [Commands reference](api/commands.md)

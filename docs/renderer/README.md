@@ -3,7 +3,7 @@
 Navigation: [Documentation Home](../README.md) > [Renderer](README.md) > [Current Document](README.md)
 Return to [Documentation Home](../README.md).
 
-The renderer layer (`frontend/src/renderer/`) handles all visual output using Pixi.js 7. It is strictly presentation — no game logic.
+The renderer layer (`src/renderer/`) handles all visual output using Pixi.js 7. It is strictly presentation — no game logic.
 
 ## Contents
 

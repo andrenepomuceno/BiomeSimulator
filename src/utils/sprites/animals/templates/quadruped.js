@@ -116,11 +116,13 @@ export function drawQuadruped(ctx, params, dir, frame) {
     if (params.earH) {
       const earH = params.earH;
       for (let e = 0; e < earH; e++) {
-        const ew = e < earH - 2 ? 3 : 2;
+        const ew = params.pointedEars
+          ? Math.max(1, 3 - Math.floor(e * 2 / Math.max(1, earH - 1)))
+          : (e < earH - 2 ? 3 : 2);
         rect(ctx, hx, hy - 1 - e, ew, 1, body);
         rect(ctx, hx + headW - ew, hy - 1 - e, ew, 1, body);
       }
-      if (params.earInner && earH >= 6) {
+      if (!params.pointedEars && params.earInner && earH >= 6) {
         for (let e = 1; e < earH - 2; e++) {
           px(ctx, hx + 1, hy - 1 - e, params.earInner);
           px(ctx, hx + headW - 2, hy - 1 - e, params.earInner);
@@ -235,7 +237,9 @@ export function drawQuadruped(ctx, params, dir, frame) {
     if (params.earH) {
       const earH = params.earH;
       for (let e = 0; e < earH; e++) {
-        const ew = e < earH - 2 ? 3 : 2;
+        const ew = params.pointedEars
+          ? Math.max(1, 3 - Math.floor(e * 2 / Math.max(1, earH - 1)))
+          : (e < earH - 2 ? 3 : 2);
         rect(ctx, hx, hy - 1 - e, ew, 1, body);
         rect(ctx, hx + headW - ew, hy - 1 - e, ew, 1, body);
       }
@@ -349,11 +353,12 @@ export function drawQuadruped(ctx, params, dir, frame) {
       const earX = headX + 3;
       const earH = params.earH;
       for (let e = 0; e < earH; e++) {
-        px(ctx, f(earX), headY - 2 - e, body);
-        px(ctx, f(earX + 1), headY - 2 - e, body);
-        px(ctx, f(earX + 2), headY - 2 - e, body);
+        const ew = params.pointedEars
+          ? Math.max(1, 3 - Math.floor(e * 2 / Math.max(1, earH - 1)))
+          : 3;
+        for (let i = 0; i < ew; i++) px(ctx, f(earX + i), headY - 2 - e, body);
       }
-      if (params.earInner && earH >= 6) {
+      if (!params.pointedEars && params.earInner && earH >= 6) {
         for (let e = 1; e < earH - 2; e++) {
           px(ctx, f(earX + 1), headY - 2 - e, params.earInner);
           px(ctx, f(earX + 2), headY - 2 - e, params.earInner);

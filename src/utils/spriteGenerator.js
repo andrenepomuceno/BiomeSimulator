@@ -13,6 +13,8 @@ import { DESIGN, SCALE, addOutline } from './sprites/helpers.js';
 import { drawQuadruped } from './sprites/animals/templates/quadruped.js';
 import { drawBird } from './sprites/animals/templates/bird.js';
 import { drawInsect } from './sprites/animals/templates/insect.js';
+import { drawBeetle } from './sprites/animals/templates/beetle.js';
+import { drawMosquito } from './sprites/animals/templates/mosquito.js';
 import { drawReptile } from './sprites/animals/templates/reptile.js';
 import { drawSnake } from './sprites/animals/templates/snake.js';
 import { drawSleeping, drawDead, drawEgg, drawPupa } from './sprites/animals/templates/specials.js';
@@ -61,6 +63,8 @@ const TEMPLATE_DRAW = {
   quadruped: drawQuadruped,
   bird: drawBird,
   insect: drawInsect,
+  beetle: drawBeetle,
+  mosquito: drawMosquito,
   reptile: drawReptile,
   snake: drawSnake,
 };

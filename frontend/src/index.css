@@ -573,7 +573,7 @@ html, body, #root {
 /* Stats panel tabs */
 .stats-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 3px;
   padding: 3px;
   margin-bottom: 8px;

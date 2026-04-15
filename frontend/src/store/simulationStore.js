@@ -104,6 +104,8 @@ const useSimStore = create((set, get) => ({
   isGeneratingWorld: false,
   terrainUndoStack: [],
   terrainRedoStack: [],
+  _actionSeq: 0,
+  entityUndoStack: [],
   setTerrain: (data, w, h) => set({ terrainData: data, mapWidth: w, mapHeight: h }),
   setGeneratingWorld: (isGeneratingWorld) => set({ isGeneratingWorld: !!isGeneratingWorld }),
   applyTerrainChanges: (changes) => set((state) => {
@@ -122,8 +124,10 @@ const useSimStore = create((set, get) => ({
   }),
   pushTerrainHistoryEntry: (entry) => set((state) => {
     if (!entry?.undo?.length || !entry?.redo?.length) return {};
+    const seq = state._actionSeq + 1;
     return {
-      terrainUndoStack: [...state.terrainUndoStack, entry].slice(-TERRAIN_HISTORY_LIMIT),
+      _actionSeq: seq,
+      terrainUndoStack: [...state.terrainUndoStack, { ...entry, _seq: seq }].slice(-TERRAIN_HISTORY_LIMIT),
       terrainRedoStack: [],
     };
   }),
@@ -147,7 +151,22 @@ const useSimStore = create((set, get) => ({
     });
     return entry;
   },
-  clearTerrainHistory: () => set({ terrainUndoStack: [], terrainRedoStack: [] }),
+  pushEntityUndoEntry: (entry) => set((state) => {
+    if (!entry?.kind) return {};
+    const seq = state._actionSeq + 1;
+    return {
+      _actionSeq: seq,
+      entityUndoStack: [...state.entityUndoStack, { ...entry, _seq: seq }].slice(-TERRAIN_HISTORY_LIMIT),
+    };
+  }),
+  popEntityUndoEntry: () => {
+    const state = get();
+    if (state.entityUndoStack.length === 0) return null;
+    const entry = state.entityUndoStack[state.entityUndoStack.length - 1];
+    set({ entityUndoStack: state.entityUndoStack.slice(0, -1) });
+    return entry;
+  },
+  clearTerrainHistory: () => set({ terrainUndoStack: [], terrainRedoStack: [], entityUndoStack: [], _actionSeq: 0 }),
 
   // Simulation state
   running: false,

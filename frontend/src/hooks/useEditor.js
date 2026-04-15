@@ -60,6 +60,13 @@ export function useEditor(rendererRef) {
             ? selectedEntity
             : animals.find(a => a.alive && isOnTile(a));
         if (target) {
+          state.pushEntityUndoEntry({
+            kind: 'erasedAnimal',
+            entityId: target.id,
+            species: target.species,
+            x: target.x | 0,
+            y: target.y | 0,
+          });
           worker.postMessage({ cmd: 'removeEntity', entityId: target.id });
         }
         break;

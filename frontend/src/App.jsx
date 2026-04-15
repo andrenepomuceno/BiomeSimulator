@@ -278,7 +278,7 @@ export default function App() {
         const key = e.key.toLowerCase();
         if (key === 'z' && !e.shiftKey) {
           e.preventDefault();
-          _handleTerrainUndo();
+          _handleUndo();
           return;
         }
         if (key === 'y' || (key === 'z' && e.shiftKey)) {
@@ -416,17 +416,31 @@ export default function App() {
     autoPausedRef.current = false;
   }
 
-  function _handleTerrainUndo() {
+  function _handleUndo() {
     const store = useSimStore.getState();
-    const entry = store.popTerrainUndoEntry();
-    if (!entry) return;
-    playUiClick();
-    store.applyTerrainChanges(entry.undo);
-    if (store.worker) {
-      store.worker.postMessage({ cmd: 'editTerrain', changes: entry.undo });
-    }
-    if (rendererRef.current) {
-      rendererRef.current.terrainLayer.updateTiles(entry.undo);
+    // Pick the most recently pushed action from either stack (by _seq)
+    const terrainTop = store.terrainUndoStack[store.terrainUndoStack.length - 1];
+    const entityTop = store.entityUndoStack[store.entityUndoStack.length - 1];
+    if (!terrainTop && !entityTop) return;
+    const useEntity = entityTop && (!terrainTop || (entityTop._seq || 0) > (terrainTop._seq || 0));
+    if (useEntity) {
+      const entry = store.popEntityUndoEntry();
+      if (!entry) return;
+      playUiClick();
+      if (entry.kind === 'placedAnimal') {
+        if (store.worker) store.worker.postMessage({ cmd: 'removeEntity', entityId: entry.entityId });
+        const sel = store.selectedEntity;
+        if (sel && sel.id === entry.entityId) store.clearSelection();
+      } else if (entry.kind === 'erasedAnimal') {
+        if (store.worker) store.worker.postMessage({ cmd: 'placeEntity', entityType: entry.species, x: entry.x, y: entry.y });
+      }
+    } else {
+      const entry = store.popTerrainUndoEntry();
+      if (!entry) return;
+      playUiClick();
+      store.applyTerrainChanges(entry.undo);
+      if (store.worker) store.worker.postMessage({ cmd: 'editTerrain', changes: entry.undo });
+      if (rendererRef.current) rendererRef.current.terrainLayer.updateTiles(entry.undo);
     }
   }
 

@@ -9,6 +9,10 @@ import { Chart as ChartJS, LineElement, PointElement, LinearScale, CategoryScale
 import { Line } from 'react-chartjs-2';
 import { STATS_PANEL_HISTORY_LIMIT } from '../constants/simulation';
 import { getBadgeToneStyle, getPopulationStatusColor, getPopulationStatusTone } from '../constants/statusColors';
+import { buildPlantChartColors, buildPlantChartEmojis, getPlantByTypeId } from '../engine/plantSpecies.js';
+
+const PLANT_COLORS = buildPlantChartColors();  // typeId → hex color
+const PLANT_EMOJIS = buildPlantChartEmojis();  // typeId → emoji
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
@@ -104,7 +108,15 @@ export default function StatsPanel() {
           role="tab"
           aria-selected={statsTab === 'population'}
         >
-          Population
+          Animals
+        </button>
+        <button
+          className={`stats-tab${statsTab === 'plants' ? ' active' : ''}`}
+          onClick={() => setStatsTab('plants')}
+          role="tab"
+          aria-selected={statsTab === 'plants'}
+        >
+          Plants
         </button>
         <button
           className={`stats-tab${statsTab === 'chart' ? ' active' : ''}`}
@@ -153,14 +165,42 @@ export default function StatsPanel() {
           </div>
         );
       })}
-      <div className="stat-row">
-        <span className="stat-label">🌿 Plants</span>
-        <span className="stat-value" style={{ color: '#88cc44' }}>{stats.plants_total}</span>
-      </div>
-      <div className="stat-row">
-        <span className="stat-label">🍎 Fruits</span>
-        <span className="stat-value" style={{ color: '#ff8844' }}>{stats.fruits}</span>
-      </div>
+        </div>
+      )}
+
+      {/* === Plants tab === */}
+      {statsTab === 'plants' && (
+        <div className="stats-tab-panel">
+          <div className="stat-row" style={{ marginBottom: 4 }}>
+            <span className="stat-label">🌿 Total plants</span>
+            <span className="stat-value" style={{ color: '#88cc44' }}>{stats.plants_total || 0}</span>
+          </div>
+          <div className="stat-row" style={{ marginBottom: 10 }}>
+            <span className="stat-label">🍎 Fruits</span>
+            <span className="stat-value" style={{ color: '#ff8844' }}>{stats.fruits || 0}</span>
+          </div>
+          {Object.entries(stats.plant_types || {})
+            .filter(([, count]) => count > 0)
+            .sort(([, a], [, b]) => b - a)
+            .map(([typeIdStr, count]) => {
+              const typeId = Number(typeIdStr);
+              const sp = getPlantByTypeId(typeId);
+              if (!sp) return null;
+              const color = PLANT_COLORS[typeId] || '#88cc44';
+              const emoji = PLANT_EMOJIS[typeId] || '🌱';
+              const pct = stats.plants_total > 0 ? count / stats.plants_total : 0;
+              return (
+                <div key={typeId} className="stats-species-row">
+                  <div className="stat-row">
+                    <span className="stat-label">{emoji} {sp.name}</span>
+                    <span className="stat-value" style={{ color }}>{count}</span>
+                  </div>
+                  <div className="stats-progress-track">
+                    <div className="stats-progress-fill" style={{ width: `${Math.min(100, pct * 100)}%`, background: color }} />
+                  </div>
+                </div>
+              );
+            })}
         </div>
       )}
 

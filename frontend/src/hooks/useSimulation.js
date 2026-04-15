@@ -163,9 +163,19 @@ export function useSimulation() {
           }
           break;
 
-        case 'entityPlaced':
-          // No-op; entity will appear in next tick
+        case 'entityPlaced': {
+          const placed = msg.entity;
+          if (placed && placed.id != null) {
+            store.pushEntityUndoEntry({
+              kind: 'placedAnimal',
+              entityId: placed.id,
+              species: placed.species,
+              x: placed.x | 0,
+              y: placed.y | 0,
+            });
+          }
           break;
+        }
 
         case 'entityRemoved':
           // No-op; entity will disappear in next tick

@@ -689,10 +689,22 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
   const { selectedEntity, selectedTile, clearSelection, setSelectedEntity, clock, gameConfig } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
   const [animalTab, setAnimalTab] = useState('status');
+  const [tileTab, setTileTab] = useState('terrain');
+  const [plantTab, setPlantTab] = useState('info');
 
   // Reset tab when selected entity changes
   const entityId = selectedEntity?.id;
   useEffect(() => { setAnimalTab('status'); }, [entityId]);
+
+  // Reset tile+plant tabs when clicked tile changes
+  const tileKey = selectedTile ? `${selectedTile.x}:${selectedTile.y}` : null;
+  useEffect(() => {
+    if (!selectedTile) return;
+    const hasP = selectedTile.plant && selectedTile.plant.type !== 0 && selectedTile.plant.type !== 'none';
+    const hasA = selectedTile.animals && selectedTile.animals.length > 0;
+    setTileTab(hasP ? 'plant' : hasA ? 'animals' : 'terrain');
+    setPlantTab('info');
+  }, [tileKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Animal Inspector ---
   if (selectedEntity) {
@@ -939,6 +951,7 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
   if (selectedTile) {
     const t = selectedTile;
     const hasPlant = t.plant && t.plant.type !== 0 && t.plant.type !== 'none';
+    const hasAnimals = t.animals && t.animals.length > 0;
     const plantSp = hasPlant ? getPlantByTypeId(t.plant.type) : null;
     const plantEmoji = hasPlant && plantSp && plantSp.emoji
       ? (t.plant.stage === 1 ? plantSp.emoji.seed
@@ -955,6 +968,21 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
       if (requestAnimalDetail) requestAnimalDetail(animal.id);
     };
 
+    // Build top-level tile tabs dynamically
+    const tileTabs = [
+      { key: 'terrain', label: '🗺️ Terrain' },
+      ...(hasPlant ? [{ key: 'plant', label: `${plantEmoji} Plant` }] : []),
+      ...(hasAnimals ? [{ key: 'animals', label: `🐾 (${t.animals.length})` }] : []),
+    ];
+
+    // Plant sub-tabs
+    const plantSubTabs = [
+      { key: 'info', label: 'Info' },
+      { key: 'growth', label: 'Growth' },
+      { key: 'consumers', label: 'Consumers' },
+      ...(t.plant?.log?.length > 0 ? [{ key: 'log', label: 'Log' }] : []),
+    ];
+
     return (
       <div className="sidebar-section entity-info">
         <div className="d-flex justify-content-between align-items-center mb-2">
@@ -962,104 +990,145 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
         </div>
 
-        {/* Terrain */}
-        <CollapsibleSection title="Terrain" icon="🗺️" defaultOpen={true}>
-          <div className="stat-row">
-            <span className="stat-label">Type</span>
-            <span className="stat-value" style={{ textTransform: 'capitalize' }}>{t.terrain}</span>
+        {/* Top-level tab bar — only when more than one section available */}
+        {tileTabs.length > 1 && (
+          <div
+            className="inspector-tabs"
+            role="tablist"
+            aria-label="Tile sections"
+            style={{ gridTemplateColumns: `repeat(${tileTabs.length}, minmax(0, 1fr))` }}
+          >
+            {tileTabs.map(tab => (
+              <button
+                key={tab.key}
+                className={`inspector-tab${tileTab === tab.key ? ' active' : ''}`}
+                onClick={() => setTileTab(tab.key)}
+                role="tab"
+                aria-selected={tileTab === tab.key}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <div className="stat-row">
-            <span className="stat-label">Water Distance</span>
-            <span className="stat-value">{t.waterProximity} tiles</span>
-          </div>
-          {t.waterAdjacent != null && (
-            <div className="stat-row">
-              <span className="stat-label">Water Adjacent</span>
-              <span className="stat-value" style={{ color: t.waterAdjacent ? '#4d96ff' : '#666' }}>{t.waterAdjacent ? 'Yes' : 'No'}</span>
-            </div>
-          )}
-        </CollapsibleSection>
-
-        {/* Neighborhood */}
-        <TileNeighborhood neighbors={t.neighbors} waterAdjacent={t.waterAdjacent} adjacentPlants={t.adjacentPlants} />
-
-        {/* Occupants */}
-        <TileOccupants animals={t.animals} onSelectAnimal={handleSelectAnimal} />
-
-        {/* Plant */}
-        {hasPlant && (
-          <>
-            <CollapsibleSection title={`${plantEmoji} ${PLANT_TYPE_NAMES[t.plant.type] || 'Plant'}`} icon="" defaultOpen={true}>
-              <div className="stat-row">
-                <span className="stat-label">Type</span>
-                <span className="stat-value">{PLANT_TYPE_NAMES[t.plant.type] || t.plant.type}</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">Sex</span>
-                <span className="stat-value">{PLANT_SEX_NAMES[PLANT_TYPE_SEX[t.plant.type]] || 'Unknown'}</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">Stage</span>
-                <span className="stat-value">{PLANT_STAGE_NAMES[t.plant.stage] || t.plant.stage}</span>
-              </div>
-              <div className="mt-1">
-                <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
-                  <span className="text-muted">⏳ Age</span>
-                  <span>{t.plant.age} ticks</span>
-                </div>
-                <div className="entity-bar">
-                  <div className="entity-bar-fill" style={{
-                    width: `${Math.min(100, (t.plant.age / maxPlantAge) * 100)}%`,
-                    background: t.plant.stage === 6 ? '#666' : '#88cc44',
-                  }} />
-                </div>
-              </div>
-              {t.plant.stage === 5 && (
-                <div className="stat-row">
-                  <span className="stat-label">Status</span>
-                  <span className="stat-value" style={{ color: '#ff8844' }}>🍎 Fruiting</span>
-                </div>
-              )}
-              {t.plant.stage === 6 && (
-                <div className="stat-row">
-                  <span className="stat-label">Status</span>
-                  <span className="stat-value" style={{ color: '#666' }}>💀 Dead</span>
-                </div>
-              )}
-            </CollapsibleSection>
-
-            {/* Plant growth status & multipliers */}
-            <PlantStageProgress
-              plant={t.plant}
-              plantSp={plantSp}
-              waterProximity={t.waterProximity}
-              adjacentPlants={t.adjacentPlants}
-              clock={clock}
-              gameConfig={gameConfig}
-            />
-
-            {/* Plant consumers */}
-            <PlantConsumers plantTypeId={t.plant.type} plantStage={t.plant.stage} />
-
-            {/* Plant species attributes */}
-            <PlantAttributes typeId={t.plant.type} terrain={t.terrain} stage={t.plant.stage} clock={clock} gameConfig={gameConfig} />
-
-            {/* Plant event log */}
-            {t.plant.log && t.plant.log.length > 0 && (
-              <CollapsibleSection title="Event Log" icon="📜" defaultOpen={false}>
-                <div className="inspector-log-list" style={{ maxHeight: 200, overflowY: 'auto' }}>
-                  {[...t.plant.log].reverse().map((ev, i) => (
-                    <PlantLogEntry key={i} event={ev} ticksPerDay={ticksPerDay} />
-                  ))}
-                </div>
-              </CollapsibleSection>
-            )}
-          </>
         )}
 
-        {/* Empty tile message */}
-        {!hasPlant && (!t.animals || t.animals.length === 0) && (
-          <div className="mt-2 small text-muted" style={{ fontStyle: 'italic' }}>No plants or animals on this tile.</div>
+        {/* === Terrain tab === */}
+        {(tileTab === 'terrain' || tileTabs.length === 1) && (
+          <div className="inspector-tab-panel">
+            <div className="stat-row mt-1">
+              <span className="stat-label">Type</span>
+              <span className="stat-value" style={{ textTransform: 'capitalize' }}>{t.terrain}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Water Distance</span>
+              <span className="stat-value">{t.waterProximity} tiles</span>
+            </div>
+            {t.waterAdjacent != null && (
+              <div className="stat-row">
+                <span className="stat-label">Water Adjacent</span>
+                <span className="stat-value" style={{ color: t.waterAdjacent ? '#4d96ff' : '#666' }}>{t.waterAdjacent ? 'Yes' : 'No'}</span>
+              </div>
+            )}
+            <TileNeighborhood neighbors={t.neighbors} waterAdjacent={t.waterAdjacent} adjacentPlants={t.adjacentPlants} />
+            {!hasPlant && !hasAnimals && (
+              <div className="mt-2 small text-muted" style={{ fontStyle: 'italic' }}>No plants or animals on this tile.</div>
+            )}
+          </div>
+        )}
+
+        {/* === Plant tab (with sub-tabs: Info | Growth | Consumers | Log) === */}
+        {tileTab === 'plant' && hasPlant && (
+          <div className="inspector-tab-panel">
+            {/* Plant sub-tab bar */}
+            <div
+              className="inspector-tabs"
+              role="tablist"
+              aria-label="Plant sections"
+              style={{ gridTemplateColumns: `repeat(${plantSubTabs.length}, minmax(0, 1fr))`, marginTop: 4 }}
+            >
+              {plantSubTabs.map(sub => (
+                <button
+                  key={sub.key}
+                  className={`inspector-tab${plantTab === sub.key ? ' active' : ''}`}
+                  onClick={() => setPlantTab(sub.key)}
+                  role="tab"
+                  aria-selected={plantTab === sub.key}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Info sub-tab */}
+            {plantTab === 'info' && (
+              <>
+                <div className="stat-row mt-1">
+                  <span className="stat-label">Species</span>
+                  <span className="stat-value">{PLANT_TYPE_NAMES[t.plant.type] || t.plant.type}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Sex</span>
+                  <span className="stat-value">{PLANT_SEX_NAMES[PLANT_TYPE_SEX[t.plant.type]] || 'Unknown'}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Stage</span>
+                  <span className="stat-value">{PLANT_STAGE_NAMES[t.plant.stage] || t.plant.stage}</span>
+                </div>
+                <div className="mt-1">
+                  <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
+                    <span className="text-muted">⏳ Age</span>
+                    <span>{t.plant.age} ticks</span>
+                  </div>
+                  <div className="entity-bar">
+                    <div className="entity-bar-fill" style={{
+                      width: `${Math.min(100, (t.plant.age / maxPlantAge) * 100)}%`,
+                      background: t.plant.stage === 6 ? '#666' : '#88cc44',
+                    }} />
+                  </div>
+                </div>
+                {t.plant.stage === 5 && (
+                  <div className="stat-row"><span className="stat-label">Status</span><span className="stat-value" style={{ color: '#ff8844' }}>🍎 Fruiting</span></div>
+                )}
+                {t.plant.stage === 6 && (
+                  <div className="stat-row"><span className="stat-label">Status</span><span className="stat-value" style={{ color: '#666' }}>💀 Dead</span></div>
+                )}
+                <PlantAttributes typeId={t.plant.type} terrain={t.terrain} stage={t.plant.stage} clock={clock} gameConfig={gameConfig} />
+              </>
+            )}
+
+            {/* Growth sub-tab */}
+            {plantTab === 'growth' && (
+              <PlantStageProgress
+                plant={t.plant}
+                plantSp={plantSp}
+                waterProximity={t.waterProximity}
+                adjacentPlants={t.adjacentPlants}
+                clock={clock}
+                gameConfig={gameConfig}
+              />
+            )}
+
+            {/* Consumers sub-tab */}
+            {plantTab === 'consumers' && (
+              <PlantConsumers plantTypeId={t.plant.type} plantStage={t.plant.stage} />
+            )}
+
+            {/* Log sub-tab */}
+            {plantTab === 'log' && t.plant.log && t.plant.log.length > 0 && (
+              <div className="inspector-log-list mt-1" style={{ maxHeight: 200, overflowY: 'auto' }}>
+                {[...t.plant.log].reverse().map((ev, i) => (
+                  <PlantLogEntry key={i} event={ev} ticksPerDay={ticksPerDay} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* === Animals tab === */}
+        {tileTab === 'animals' && (
+          <div className="inspector-tab-panel">
+            <TileOccupants animals={t.animals} onSelectAnimal={handleSelectAnimal} />
+          </div>
         )}
       </div>
     );

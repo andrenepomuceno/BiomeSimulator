@@ -48,6 +48,7 @@ For setup, build commands, and performance profiling, see [../frontend/README.md
 **Working on rendering:**
 1. [Renderer Overview & Camera](renderer/overview.md)
 2. [Rendering Layers](renderer/layers.md)
+3. [Frontend editor controls](../frontend/README.md#editor-controls)
 
 **Extending the Worker API:**
 1. [Commands reference](api/commands.md)

@@ -29,8 +29,14 @@ const renderer = new GameRenderer(container, onViewportChange, onTileClick);
 | Input | Action |
 |-------|--------|
 | Mouse wheel | Zoom in/out (factor 1.15× per step) |
-| Click + drag | Pan the viewport |
+| Click + drag | Pan the viewport (default behavior) |
+| Left-click + drag in PLACE_ENTITY tool | Paint entities tile-by-tile via repeated `onTileClick(x, y)` on tile changes |
 | Click (no drag) | Converts screen→tile coordinates, fires `onTileClick(x, y)` |
+
+Entity brush notes:
+
+- Duplicate placement on the same tile is suppressed while dragging.
+- The pointer-up click fallback is skipped when the brush already placed during the same gesture.
 
 ---
 

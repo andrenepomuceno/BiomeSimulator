@@ -28,6 +28,20 @@ For UI-only help changes, pair `npm run build` with a quick manual smoke test of
 
 ---
 
+## Editor Controls
+
+- `1` Select tool
+- `2` Terrain paint tool
+- `3` Entity placement tool
+- `4` Erase tool
+- `Ctrl/Cmd+Z` Undo latest edit (terrain or entity), using chronological order across stacks
+- `Ctrl/Cmd+Y` or `Ctrl/Cmd+Shift+Z` Redo latest undone edit (terrain or entity)
+
+Entity placement supports click-to-place and drag brush placement.
+While dragging in PLACE_ENTITY mode, placement is emitted once per tile transition to avoid duplicate spawns on the same tile.
+
+---
+
 ## Scripts
 
 | Command | Description |

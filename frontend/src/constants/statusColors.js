@@ -94,3 +94,15 @@ export function getPopulationStatusColor(ratio, defaultColor = STATUS_COLORS_HEX
   if (ratio > POPULATION_STATUS_THRESHOLDS.warning) return STATUS_COLORS_HEX.warning;
   return defaultColor;
 }
+
+export function getPopulationStatusTone(ratio) {
+  if (ratio > POPULATION_STATUS_THRESHOLDS.critical) return 'danger';
+  if (ratio > POPULATION_STATUS_THRESHOLDS.warning) return 'warning';
+  return 'success';
+}
+
+export function getPresenceStatusTone({ current = 0, peak = 0 }) {
+  if (peak === 0) return 'neutral';
+  if (current === 0) return 'danger';
+  return 'success';
+}

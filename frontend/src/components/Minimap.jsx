@@ -3,9 +3,15 @@
  */
 import React, { useRef, useEffect, useCallback } from 'react';
 import useSimStore from '../store/simulationStore';
-import { TERRAIN_COLORS } from '../utils/terrainColors';
+import { DEEP_WATER, MOUNTAIN, SAND, SOIL, TERRAIN_COLORS, TERRAIN_NAMES, WATER } from '../utils/terrainColors';
 
 const MINIMAP_SIZE = 200;
+const LEGEND_TERRAINS = [DEEP_WATER, WATER, SAND, SOIL, MOUNTAIN];
+
+function rgbaToCss(color = []) {
+  const [r = 0, g = 0, b = 0, a = 255] = color;
+  return `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+}
 
 export default function Minimap({ onNavigate }) {
   const canvasRef = useRef(null);
@@ -76,15 +82,63 @@ export default function Minimap({ onNavigate }) {
     onNavigate(tx, ty);
   }, [mapWidth, mapHeight, onNavigate]);
 
+  const handleKeyDown = useCallback((event) => {
+    if (!mapWidth || !mapHeight || !onNavigate) return;
+
+    const horizontalStep = Math.max(8, Math.floor(viewport.w * 0.5));
+    const verticalStep = Math.max(8, Math.floor(viewport.h * 0.5));
+    const centerX = Math.floor(viewport.x + viewport.w / 2);
+    const centerY = Math.floor(viewport.y + viewport.h / 2);
+
+    let nextX = centerX;
+    let nextY = centerY;
+
+    if (event.key === 'ArrowLeft') nextX -= horizontalStep;
+    else if (event.key === 'ArrowRight') nextX += horizontalStep;
+    else if (event.key === 'ArrowUp') nextY -= verticalStep;
+    else if (event.key === 'ArrowDown') nextY += verticalStep;
+    else if (event.key === 'Home') {
+      nextX = Math.floor(viewport.w / 2);
+      nextY = Math.floor(viewport.h / 2);
+    } else if (event.key === 'End') {
+      nextX = mapWidth - Math.ceil(viewport.w / 2);
+      nextY = mapHeight - Math.ceil(viewport.h / 2);
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    onNavigate(
+      Math.max(0, Math.min(mapWidth - 1, nextX)),
+      Math.max(0, Math.min(mapHeight - 1, nextY)),
+    );
+  }, [mapWidth, mapHeight, onNavigate, viewport.h, viewport.w, viewport.x, viewport.y]);
+
   return (
     <div className="minimap-container">
+      <div className="minimap-header">
+        <span className="minimap-title">World Overview</span>
+        <span className="minimap-hint">Click or use arrow keys</span>
+      </div>
       <canvas
         ref={canvasRef}
         className="minimap-canvas"
         width={MINIMAP_SIZE}
         height={MINIMAP_SIZE}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="button"
+        aria-label="Minimap. Click to recenter the camera, or use arrow keys to move the viewport."
       />
+      <div className="minimap-legend" aria-label="Terrain legend">
+        {LEGEND_TERRAINS.map((terrainId) => (
+          <span key={terrainId} className="minimap-legend-item">
+            <span className="minimap-legend-swatch" style={{ background: rgbaToCss(TERRAIN_COLORS[terrainId]) }} aria-hidden="true" />
+            <span>{TERRAIN_NAMES[terrainId]}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

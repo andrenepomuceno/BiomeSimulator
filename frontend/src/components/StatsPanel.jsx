@@ -8,7 +8,7 @@ import { getEffectiveAnimalPopulationCap } from '../engine/animalSpecies';
 import { Chart as ChartJS, LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { STATS_PANEL_HISTORY_LIMIT } from '../constants/simulation';
-import { getPopulationStatusColor } from '../constants/statusColors';
+import { getBadgeToneStyle, getPopulationStatusColor, getPopulationStatusTone } from '../constants/statusColors';
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
@@ -133,16 +133,22 @@ export default function StatsPanel() {
         const pct = cap > 0 ? count / cap : 0;
         const speciesColor = ANIMAL_HEX_COLORS[k] || '#66cc66';
         const barColor = getPopulationStatusColor(pct, speciesColor);
+        const tone = getPopulationStatusTone(pct);
+        const statusLabel = tone === 'danger' ? 'High pressure' : tone === 'warning' ? 'Watch' : 'Stable';
         return (
-          <div key={k} style={{ marginBottom: 2 }}>
+          <div key={k} className="stats-species-row">
             <div className="stat-row">
               <span className="stat-label">{SPECIES_INFO[k].emoji} {SPECIES_INFO[k].name}</span>
               <span className="stat-value" style={{ color: speciesColor }}>
                 {count}<span style={{ color: '#666', fontSize: '0.7rem' }}>/{cap}</span>
               </span>
             </div>
-            <div style={{ height: 3, background: '#1a1a3e', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${Math.min(100, pct * 100)}%`, background: barColor, transition: 'width 0.3s' }} />
+            <div className="stats-species-meta">
+              <span className="stats-status-badge" style={getBadgeToneStyle(tone)}>{statusLabel}</span>
+              <span className="stats-species-percent">{Math.round(pct * 100)}%</span>
+            </div>
+            <div className="stats-progress-track">
+              <div className="stats-progress-fill" style={{ width: `${Math.min(100, pct * 100)}%`, background: barColor }} />
             </div>
           </div>
         );

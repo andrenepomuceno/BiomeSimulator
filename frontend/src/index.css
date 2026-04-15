@@ -403,12 +403,61 @@ html, body, #root {
 .minimap-container {
   padding: 8px;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
   justify-content: center;
+}
+
+.minimap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+}
+
+.minimap-title {
+  color: #dff8ff;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.minimap-hint {
+  color: #89a8b6;
+  font-size: 0.68rem;
 }
 
 .minimap-canvas {
   border: 1px solid #0f3460;
   cursor: pointer;
+  align-self: center;
+}
+
+.minimap-canvas:focus-visible {
+  outline: 2px solid #53a8b6;
+  outline-offset: 2px;
+}
+
+.minimap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.minimap-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #b8ced8;
+  font-size: 0.68rem;
+}
+
+.minimap-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .entity-info {
@@ -610,6 +659,49 @@ html, body, #root {
 
 .inspector-log-list {
   font-size: 0.72rem;
+}
+
+.stats-species-row {
+  margin-bottom: 6px;
+}
+
+.stats-species-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 0 4px;
+}
+
+.stats-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.stats-species-percent {
+  color: #90a8b6;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.stats-progress-track {
+  height: 4px;
+  background: #1a1a3e;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.stats-progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
 }
 
 /* ── Game Menu Modal ── */
@@ -1642,9 +1734,30 @@ html, body, #root {
 .report-card {
   background: #1a1a3e;
   border: 1px solid #0f3460;
+  border-top: 3px solid #2a4f78;
   border-radius: 8px;
   padding: 14px 16px;
   text-align: center;
+}
+
+.report-card-neutral {
+  border-top-color: #7a8aa0;
+}
+
+.report-card-info {
+  border-top-color: #53a8b6;
+}
+
+.report-card-success {
+  border-top-color: #66cc66;
+}
+
+.report-card-warning {
+  border-top-color: #ffaa33;
+}
+
+.report-card-accent {
+  border-top-color: #aa88cc;
 }
 
 .report-card-label {
@@ -1695,16 +1808,22 @@ html, body, #root {
   opacity: 0.5;
 }
 
-.report-species-row .text-danger {
-  color: #dd4444;
+.report-diet-label {
+  font-weight: 600;
 }
 
-.report-species-row .text-success {
-  color: #66cc66;
-}
-
-.report-species-row .text-muted {
-  color: #555;
+.report-status-pill {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  min-width: 96px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 /* Extinction events */

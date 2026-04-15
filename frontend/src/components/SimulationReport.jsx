@@ -12,7 +12,7 @@ import {
   Legend, Tooltip, Filler, Title,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { DIET_COLORS } from '../constants/statusColors';
+import { DIET_COLORS, getBadgeToneStyle, getPresenceStatusTone } from '../constants/statusColors';
 import { resolveTicksPerDay, ticksToDay } from '../utils/time';
 import { useModalA11y } from '../hooks/useModalA11y.js';
 
@@ -149,6 +149,8 @@ export default function SimulationReport({ open, onClose }) {
               const extinct = data.peaks[k] > 0 && current === 0;
               const diet = Object.entries(DIET_GROUPS).find(([, list]) => list.includes(k));
               const dietName = diet ? diet[0] : '\u2014';
+              const statusTone = getPresenceStatusTone({ current, peak: data.peaks[k] });
+              const statusLabel = data.peaks[k] === 0 ? 'Never spawned' : extinct ? 'Extinct' : 'Alive';
               return (
                 <div key={k} className={`report-species-row ${extinct ? 'extinct' : ''}`}>
                   <span>
@@ -158,9 +160,9 @@ export default function SimulationReport({ open, onClose }) {
                   <span>{current}</span>
                   <span>{data.peaks[k]}</span>
                   <span>{data.mins[k]}</span>
-                  <span style={{ color: DIET_COLORS[dietName] || '#ccc' }}>{dietName}</span>
-                  <span className={extinct ? 'text-danger' : current > 0 ? 'text-success' : 'text-muted'}>
-                    {data.peaks[k] === 0 ? 'Never spawned' : extinct ? 'Extinct' : 'Alive'}
+                  <span className="report-diet-label" style={{ color: DIET_COLORS[dietName] || '#ccc' }}>{dietName}</span>
+                  <span className="report-status-pill" style={getBadgeToneStyle(statusTone)}>
+                    {statusLabel}
                   </span>
                 </div>
               );
@@ -291,6 +293,8 @@ export default function SimulationReport({ open, onClose }) {
               const peak = data.plantPeaks[k];
               const min = data.plantMins[k];
               const extinct = peak > 0 && current === 0;
+              const statusTone = getPresenceStatusTone({ current, peak });
+              const statusLabel = peak === 0 ? 'Never seeded' : extinct ? 'Extinct' : 'Growing';
               return (
                 <div key={k} className={`report-species-row ${extinct ? 'extinct' : ''}`}>
                   <span>
@@ -300,8 +304,8 @@ export default function SimulationReport({ open, onClose }) {
                   <span>{current.toLocaleString()}</span>
                   <span>{peak.toLocaleString()}</span>
                   <span>{min.toLocaleString()}</span>
-                  <span className={extinct ? 'text-danger' : current > 0 ? 'text-success' : 'text-muted'}>
-                    {peak === 0 ? 'Never seeded' : extinct ? 'Extinct' : 'Growing'}
+                  <span className="report-status-pill" style={getBadgeToneStyle(statusTone)}>
+                    {statusLabel}
                   </span>
                 </div>
               );
@@ -332,32 +336,32 @@ export default function SimulationReport({ open, onClose }) {
     return (
       <div className="report-summary">
         <div className="report-cards">
-          <div className="report-card">
+          <div className="report-card report-card-neutral">
             <div className="report-card-label">Simulation Time</div>
             <div className="report-card-value">{daysElapsed} days</div>
             <div className="report-card-sub">{totalTicks.toLocaleString()} ticks</div>
           </div>
-          <div className="report-card">
+          <div className="report-card report-card-info">
             <div className="report-card-label">Total Animals</div>
             <div className="report-card-value">{currentTotal}</div>
             <div className="report-card-sub">Peak: {peakTotal}</div>
           </div>
-          <div className="report-card">
+          <div className="report-card report-card-success">
             <div className="report-card-label">Living Plants</div>
             <div className="report-card-value">{currentPlants.toLocaleString()}</div>
             <div className="report-card-sub">Peak: {peakPlants.toLocaleString()}</div>
           </div>
-          <div className="report-card">
+          <div className="report-card report-card-info">
             <div className="report-card-label">Biodiversity</div>
             <div className="report-card-value">{currentDiversity.toFixed(2)}</div>
             <div className="report-card-sub">Peak: {peakDiversity.toFixed(2)}</div>
           </div>
-          <div className="report-card">
+          <div className="report-card report-card-warning">
             <div className="report-card-label">Active Species</div>
             <div className="report-card-value">{activeSpecies.length} / {data.speciesKeys.length}</div>
             <div className="report-card-sub">Extinctions: {data.extinctions.length}</div>
           </div>
-          <div className="report-card">
+          <div className="report-card report-card-accent">
             <div className="report-card-label">Fruiting Plants</div>
             <div className="report-card-value">{(data.fruits[data.fruits.length - 1] || 0).toLocaleString()}</div>
             <div className="report-card-sub">Food sources</div>

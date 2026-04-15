@@ -83,6 +83,8 @@ export class GameRenderer {
     this._hoverTile = null;
     this._brushPreviewSignature = '';
     this._isDragging = false;
+    this._isEntityBrushing = false;
+    this._lastEntityBrushTile = null;
 
     // Camera
     this.camera = new Camera(this.worldContainer, this.app.screen, () => {
@@ -388,6 +390,16 @@ export class GameRenderer {
 
     this._onDragPointerDown = (e) => {
       if (e.button === 0 || e.button === 1) {
+        const tool = useSimStore.getState().tool;
+        if (e.button === 0 && tool === 'PLACE_ENTITY') {
+          // Entity brush: capture drag to place entities tile-by-tile instead of panning
+          dragging = true;
+          this._isEntityBrushing = true;
+          this._lastEntityBrushTile = null;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          return;
+        }
         dragging = true;
         this._isDragging = true;
         lastX = e.clientX;
@@ -398,6 +410,20 @@ export class GameRenderer {
 
     this._onPointerMove = (e) => {
       if (!dragging) return;
+      if (this._isEntityBrushing) {
+        const rect = this.app.view.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const tile = this.camera.screenToTile(screenX, screenY);
+        if (tile.x >= 0 && tile.y >= 0 && tile.x < this.mapWidth && tile.y < this.mapHeight) {
+          const key = `${tile.x}:${tile.y}`;
+          if (this._lastEntityBrushTile !== key) {
+            this._lastEntityBrushTile = key;
+            this.onTileClick?.(tile.x, tile.y);
+          }
+        }
+        return;
+      }
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
       lastX = e.clientX;
@@ -409,6 +435,7 @@ export class GameRenderer {
     this._onPointerUp = () => {
       dragging = false;
       this._isDragging = false;
+      this._isEntityBrushing = false;
     };
     window.addEventListener('pointerup', this._onPointerUp);
   }
@@ -423,9 +450,9 @@ export class GameRenderer {
     this.app.view.addEventListener('pointerdown', this._onClickPointerDown);
 
     this._onClickPointerUp = (e) => {
-      // Only count as click if didn't drag
+      // Only count as click if didn't drag; also skip if entity brush already fired a tile click
       const dist = Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY);
-      if (dist < 5 && this.onTileClick) {
+      if (dist < 5 && this.onTileClick && !this._lastEntityBrushTile) {
         const rect = this.app.view.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;

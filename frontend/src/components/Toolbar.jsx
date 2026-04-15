@@ -30,17 +30,17 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
         </button>
 
         {!running || paused ? (
-          <button className="btn btn-sim btn-sm" onClick={running ? onResume : onStart}>
+          <button className="btn btn-sim btn-sm" onClick={running ? onResume : onStart} title={running ? 'Resume (Space)' : 'Start (Space)'}>
             <i className={`bi ${running ? 'bi-play-fill' : 'bi-play-circle-fill'} toolbar-icon`} aria-hidden="true" />
             <span>{running ? 'Resume' : 'Start'}</span>
           </button>
         ) : (
-          <button className="btn btn-sim btn-sm active" onClick={onPause}>
+          <button className="btn btn-sim btn-sm active" onClick={onPause} title="Pause (Space)">
             <i className="bi bi-pause-fill toolbar-icon" aria-hidden="true" />
             <span>Pause</span>
           </button>
         )}
-        <button className="btn btn-sim btn-sm" onClick={onStep} disabled={!paused && running}>
+        <button className="btn btn-sim btn-sm" onClick={onStep} disabled={!paused && running} title="Step (N)">
           <i className="bi bi-skip-forward-fill toolbar-icon" aria-hidden="true" />
           <span>Step</span>
         </button>
@@ -94,13 +94,14 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
 
       <div className="toolbar-divider toolbar-divider-spacer" aria-hidden="true" />
 
-      <div className="toolbar-group speed-control">
+      <div className="toolbar-group speed-control" title="Adjust simulation speed ([ / ])">
         <span>Speed:</span>
         <input
           type="range"
           min={1}
           max={60}
           value={tps}
+          title="Adjust simulation speed ([ / ])"
           onChange={(e) => onSpeedChange(Number(e.target.value))}
         />
         <span>{tps} tps</span>
@@ -125,19 +126,19 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
       <div className="toolbar-divider" aria-hidden="true" />
 
       <div className="toolbar-group toolbar-group-panels">
-        <button className="btn btn-sim btn-sm" onClick={onReportToggle} title="Simulation Report">
+        <button className="btn btn-sim btn-sm" onClick={onReportToggle} title="Simulation Report (R)">
           <i className="bi bi-graph-up-arrow toolbar-icon" aria-hidden="true" />
           <span>Report</span>
         </button>
-        <button className="btn btn-sim btn-sm" onClick={onConfigToggle} title="Simulation Configuration">
+        <button className="btn btn-sim btn-sm" onClick={onConfigToggle} title="Simulation Configuration (C)">
           <i className="bi bi-sliders toolbar-icon" aria-hidden="true" />
           <span>Config</span>
         </button>
-        <button className="btn btn-sim btn-sm" onClick={onGuideToggle} title="In-Game Guide">
+        <button className="btn btn-sim btn-sm" onClick={onGuideToggle} title="In-Game Guide (G)">
           <i className="bi bi-question-circle-fill toolbar-icon" aria-hidden="true" />
           <span>Guide</span>
         </button>
-        <button className="btn btn-sim btn-sm" onClick={onEntitiesToggle} title="Entity Summary">
+        <button className="btn btn-sim btn-sm" onClick={onEntitiesToggle} title="Entity Summary (E)">
           <i className="bi bi-card-list toolbar-icon" aria-hidden="true" />
           <span>Entities</span>
         </button>

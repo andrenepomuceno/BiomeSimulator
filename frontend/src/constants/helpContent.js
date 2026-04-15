@@ -41,14 +41,44 @@ const SHORTCUT_REFERENCE = [
     note: 'This is the fastest way to move between observing and editing.',
   },
   {
+    label: 'N',
+    value: 'Advance the simulation by one tick while paused.',
+    note: 'Use this when you want to inspect a single decision, movement, or interaction at a time.',
+  },
+  {
+    label: '[ / ]',
+    value: 'Decrease or increase the simulation speed in 5 TPS steps.',
+    note: 'Keyboard speed changes use the same 1 to 60 TPS range as the toolbar slider.',
+  },
+  {
     label: 'Escape',
     value: 'Close the current major modal, or open the menu if no modal is active.',
     note: 'Works for the menu, guide, config (including its audio tab), report, and entity summary window.',
   },
   {
+    label: 'G / R / C / E',
+    value: 'Toggle the Guide, Report, Config, and Entity Summary panels directly.',
+    note: 'These modal shortcuts still work while another major modal is open so you can switch context quickly.',
+  },
+  {
+    label: 'M',
+    value: 'Mute or unmute audio output instantly.',
+    note: 'This toggles the same persisted mute setting used by the configuration modal.',
+  },
+  {
     label: '1 / 2 / 3 / 4',
     value: 'Switch directly between Select, Paint, Place, and Erase.',
     note: 'Tool shortcuts are disabled while a major modal is open so typing and navigation stay predictable.',
+  },
+  {
+    label: 'W / A / S / D or Arrow Keys',
+    value: 'Pan the camera continuously while the key is held.',
+    note: 'This gives you keyboard navigation without needing to drag the canvas.',
+  },
+  {
+    label: '+ / -',
+    value: 'Zoom the camera in or out from the current view.',
+    note: 'Keyboard zoom uses the same 1.15x step as the mouse wheel.',
   },
   {
     label: 'Ctrl/Cmd + Z / Y',

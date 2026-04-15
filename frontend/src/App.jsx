@@ -7,6 +7,7 @@ import useSimStore from './store/simulationStore';
 import { useSimulation } from './hooks/useSimulation';
 import { useEditor } from './hooks/useEditor';
 import { useAudio } from './hooks/useAudio';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { GameRenderer } from './renderer/GameRenderer';
 import Toolbar from './components/Toolbar';
 import GameMenu from './components/GameMenu';
@@ -25,13 +26,6 @@ const MODALS = {
   CONFIG: 'config',
   REPORT: 'report',
   ENTITIES: 'entities',
-};
-
-const TOOL_SHORTCUTS = {
-  Digit1: 'SELECT',
-  Digit2: 'PAINT_TERRAIN',
-  Digit3: 'PLACE_ENTITY',
-  Digit4: 'ERASE',
 };
 
 const DRAWER_BREAKPOINT = 1024;
@@ -265,64 +259,6 @@ export default function App() {
     useSimStore.getState().clearTerrainHistory();
   }, [worldReady?.seed, mapWidth, mapHeight]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    function onKeyDown(e) {
-      // Ignore when typing in inputs
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-      const modifierPressed = e.ctrlKey || e.metaKey;
-      if (modifierPressed && !e.altKey) {
-        const key = e.key.toLowerCase();
-        if (key === 'z' && !e.shiftKey) {
-          e.preventDefault();
-          _handleUndo();
-          return;
-        }
-        if (key === 'y' || (key === 'z' && e.shiftKey)) {
-          e.preventDefault();
-          _handleRedo();
-          return;
-        }
-      }
-
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      if (e.code === 'Space') {
-        e.preventDefault();
-        const { running, paused } = useSimStore.getState();
-        if (!running) _handleStart();
-        else if (paused) _handleResume();
-        else _handlePause();
-      }
-
-      if (e.code === 'Escape') {
-        if (isCompactLayout && activeDrawer) {
-          setActiveDrawer(null);
-          return;
-        }
-        setActiveModal(current => (current ? null : MODALS.MENU));
-        return;
-      }
-
-      if (activeModal) {
-        return;
-      }
-
-      const nextTool = TOOL_SHORTCUTS[e.code];
-      if (nextTool) {
-        e.preventDefault();
-        const store = useSimStore.getState();
-        if (store.tool !== nextTool) {
-          playUiClick();
-          store.setTool(nextTool);
-        }
-      }
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeDrawer, activeModal, isCompactLayout, playUiClick]);
-
   // Auto-pause when browser tab is hidden
   useEffect(() => {
     function onVisibilityChange() {
@@ -490,6 +426,24 @@ export default function App() {
   function _handleUnlockAudio() {
     void unlockAudio();
   }
+
+  useKeyboardShortcuts({
+    rendererRef,
+    activeModal,
+    activeDrawer,
+    isCompactLayout,
+    setActiveModal,
+    setActiveDrawer,
+    modals: MODALS,
+    playUiClick,
+    onStart: _handleStart,
+    onPause: _handlePause,
+    onResume: _handleResume,
+    onStep: _handleStep,
+    onSpeedChange: _handleSpeedChange,
+    onUndo: _handleUndo,
+    onRedo: _handleRedo,
+  });
 
   return (
     <div className="app-container">

@@ -43,7 +43,7 @@ const SHORTCUT_REFERENCE = [
   {
     label: 'Escape',
     value: 'Close the current major modal, or open the menu if no modal is active.',
-    note: 'Works for the menu, guide, config, report, audio, and entity summary window.',
+    note: 'Works for the menu, guide, config (including its audio tab), report, and entity summary window.',
   },
   {
     label: '1 / 2 / 3 / 4',
@@ -84,14 +84,9 @@ const SIMULATION_CONTROL_REFERENCE = [
     note: 'Lower speeds are better for learning. Higher speeds are better for long trends.',
   },
   {
-    label: 'Audio',
-    value: 'Open the audio panel to mute sound and tune master, SFX, and ambience levels.',
-    note: 'World sounds follow the camera: nearby events play louder, and activity to the left or right pans in stereo.',
-  },
-  {
     label: 'Config',
-    value: 'Open a read-only runtime view of timing, multipliers, vision, population budget, and supervisor settings.',
-    note: 'Use this when you want the current world baseline without opening the codebase.',
+    value: 'Open the unified settings modal: runtime config, audio controls/log, and background execution behavior.',
+    note: 'Use this when you want the current world baseline, control audio output, or change hidden-tab pause behavior.',
   },
 ];
 

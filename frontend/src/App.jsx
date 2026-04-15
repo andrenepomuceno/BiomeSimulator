@@ -17,7 +17,6 @@ import Minimap from './components/Minimap';
 import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
 import HelpModal from './components/HelpModal';
-import AudioSettingsModal from './components/AudioSettingsModal';
 import SimulationConfigModal from './components/SimulationConfigModal';
 
 const MODALS = {
@@ -26,7 +25,6 @@ const MODALS = {
   CONFIG: 'config',
   REPORT: 'report',
   ENTITIES: 'entities',
-  AUDIO: 'audio',
 };
 
 const TOOL_SHORTCUTS = {
@@ -398,9 +396,6 @@ export default function App() {
   function _openModal(modalId) {
     playUiClick();
     setActiveDrawer(null);
-    if (modalId === MODALS.AUDIO) {
-      void unlockAudio();
-    }
     setActiveModal(modalId);
   }
 
@@ -506,11 +501,11 @@ export default function App() {
         onLoad={_handleLoad}
       />
       <HelpModal open={activeModal === MODALS.GUIDE} onClose={_closeModal} />
-      <SimulationConfigModal open={activeModal === MODALS.CONFIG} onClose={_closeModal} />
-      <AudioSettingsModal
-        open={activeModal === MODALS.AUDIO}
+      <SimulationConfigModal
+        open={activeModal === MODALS.CONFIG}
         onClose={_closeModal}
         onUnlock={_handleUnlockAudio}
+        onToggleBackground={_handleToggleBackground}
       />
       <SimulationReport open={activeModal === MODALS.REPORT} onClose={_closeModal} />
       <EntitySummaryWindow
@@ -532,10 +527,8 @@ export default function App() {
           onMenuToggle={() => _openModal(MODALS.MENU)}
           onGuideToggle={() => _openModal(MODALS.GUIDE)}
           onConfigToggle={() => _openModal(MODALS.CONFIG)}
-          onAudioToggle={() => _openModal(MODALS.AUDIO)}
           onReportToggle={() => _openModal(MODALS.REPORT)}
           onEntitiesToggle={() => _openModal(MODALS.ENTITIES)}
-          onToggleBackground={_handleToggleBackground}
           onLeftSidebarToggle={() => _handleDrawerToggle('left')}
           onRightSidebarToggle={() => _handleDrawerToggle('right')}
         />

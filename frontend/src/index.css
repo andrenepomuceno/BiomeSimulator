@@ -1492,6 +1492,37 @@ html, body, #root {
   gap: 16px;
 }
 
+.sim-config-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-bottom: 1px solid var(--sim-border);
+  background: rgba(8, 14, 28, 0.36);
+}
+
+.sim-config-tab {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: transparent;
+  color: #92a8b8;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sim-config-tab:hover {
+  color: #e0f4f8;
+  background: rgba(83, 168, 182, 0.08);
+}
+
+.sim-config-tab.active {
+  color: var(--sim-accent);
+  background: rgba(83, 168, 182, 0.12);
+  box-shadow: inset 0 -2px 0 var(--sim-accent);
+}
+
 .sim-config-hero {
   border-radius: 12px;
   border: 1px solid rgba(83, 168, 182, 0.18);
@@ -1541,6 +1572,38 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.sim-config-behavior-section {
+  gap: 10px;
+}
+
+.sim-config-background-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(15, 52, 96, 0.45);
+}
+
+.sim-config-background-row .audio-pill {
+  flex-shrink: 0;
+}
+
+.sim-config-audio-shell {
+  border-radius: 12px;
+  border: 1px solid #0f346055;
+  background: rgba(17, 24, 44, 0.88);
+  overflow: hidden;
+}
+
+.sim-config-audio-shell .audio-tabs {
+  border-bottom-color: rgba(15, 52, 96, 0.55);
+}
+
+.sim-config-audio-shell .audio-body {
+  padding: 14px;
 }
 
 .sim-config-section-header h6 {

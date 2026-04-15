@@ -18,13 +18,8 @@ const SELECT_FILTERS = [
   { key: 'terrain', label: 'Terrain', icon: 'bi-grid-3x3-gap-fill' },
 ];
 
-export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onAudioToggle, onReportToggle, onEntitiesToggle, onToggleBackground, onLeftSidebarToggle, onRightSidebarToggle }) {
-  const { paused, running, tps, clock, tool, setTool, audioSettings, pauseOnBackground, selectionTargets, setSelectionTarget } = useSimStore();
-  const audioIcon = audioSettings.muted
-    ? 'bi-volume-mute-fill'
-    : audioSettings.unlocked
-      ? 'bi-volume-up-fill'
-      : 'bi-volume-down-fill';
+export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onLeftSidebarToggle, onRightSidebarToggle }) {
+  const { paused, running, tps, clock, tool, setTool, selectionTargets, setSelectionTarget } = useSimStore();
 
   return (
     <div className="toolbar">
@@ -142,21 +137,9 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
           <i className="bi bi-question-circle-fill toolbar-icon" aria-hidden="true" />
           <span>Guide</span>
         </button>
-        <button className={`btn btn-sim btn-sm ${audioSettings.muted ? 'audio-btn-muted' : ''}`} onClick={onAudioToggle} title="Audio Settings">
-          <i className={`bi ${audioIcon} toolbar-icon`} aria-hidden="true" />
-          <span>Audio</span>
-        </button>
         <button className="btn btn-sim btn-sm" onClick={onEntitiesToggle} title="Entity Summary">
           <i className="bi bi-card-list toolbar-icon" aria-hidden="true" />
           <span>Entities</span>
-        </button>
-        <button
-          className={`btn btn-sim btn-sm ${!pauseOnBackground ? 'active' : ''}`}
-          onClick={onToggleBackground}
-          title={pauseOnBackground ? 'Simulation pauses when tab is hidden' : 'Simulation runs in background'}
-        >
-          <i className={`bi ${pauseOnBackground ? 'bi-pause-circle-fill' : 'bi-play-circle-fill'} toolbar-icon`} aria-hidden="true" />
-          <span>Background</span>
         </button>
         <span className="toolbar-version" title="Application version">
           v{appVersion}

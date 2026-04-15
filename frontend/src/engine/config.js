@@ -41,7 +41,7 @@ export const DEFAULT_CONFIG = {
   sleep_threshold_offset_wrong_period: 10,  // Additional energy threshold during wrong time of day (diurnal at night, nocturnal at day)
   activity_energy_penalty_wrong_period: 1.3, // Multiplier for energy costs during wrong time of day
   scavenge_decay_ticks: 100,
-  movement_sub_ticks: 3, // Number of movement sub-ticks per simulation tick (1, 2, 3, or 4). Increases movement granularity without affecting decision frequency. 1 = no sub-ticks (legacy).
+  movement_sub_ticks: 5, // Number of movement sub-ticks per simulation tick (1, 2, 3, or 4). Increases movement granularity without affecting decision frequency. 1 = no sub-ticks (legacy).
 
   // Flora
   initial_plant_density: 0.10,

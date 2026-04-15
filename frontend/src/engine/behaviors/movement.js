@@ -208,7 +208,8 @@ export function _pursueTarget(animal, target, world, reason) {
 export function _fleeFrom(animal, threat, world) {
   const fly = _canFly(animal);
   const effectiveSpeed = Math.max(1, Math.ceil(animal.speed / SUB_CELL_DIVISOR));
-  const bursts = fly ? effectiveSpeed + 1 : effectiveSpeed;
+  const baseBursts = fly ? effectiveSpeed + 1 : effectiveSpeed;
+  const bursts = _effectiveSteps(baseBursts, world);
   const ws = animal._walkableSet;
 
   for (let burst = 0; burst < bursts; burst++) {

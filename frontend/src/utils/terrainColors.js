@@ -28,13 +28,13 @@ export const MUD = 8;
 export const TERRAIN_COLORS = {
   [WATER]: [30, 100, 180, 255],
   [SAND]: [210, 190, 130, 255],
-  [DIRT]: [140, 100, 60, 255],
-  [SOIL]: [60, 150, 60, 255],
+  [DIRT]: [155, 115, 75, 255],
+  [SOIL]: [70, 140, 65, 255],
   [ROCK]: [120, 120, 130, 255],
-  [FERTILE_SOIL]: [85, 60, 30, 255],
+  [FERTILE_SOIL]: [55, 110, 50, 255],
   [DEEP_WATER]: [15, 55, 130, 255],
   [MOUNTAIN]: [170, 165, 160, 255],
-  [MUD]: [100, 80, 50, 255],
+  [MUD]: [90, 80, 60, 255],
 };
 
 /**
@@ -44,13 +44,13 @@ export const TERRAIN_COLORS = {
 export const TERRAIN_VAR_RGB = [
   [4,  6,  8],   // 0 WATER        — slight blue-green shift
   [14, 12, 6],   // 1 SAND         — warm red-yellow dominant
-  [12, 10, 6],   // 2 DIRT         — earthy red-brown dominant
-  [6,  14, 6],   // 3 SOIL         — green dominant
+  [14, 12, 8],   // 2 DIRT         — increased variation for lighter tone
+  [8,  16, 8],   // 3 SOIL         — enhanced green variation
   [15, 15, 16],  // 4 ROCK         — balanced, high variation
-  [8,  10, 5],   // 5 FERTILE_SOIL — earthy, slight green
+  [8, 14, 7],    // 5 FERTILE_SOIL — enhanced for darker green tone
   [3,  4,  7],   // 6 DEEP_WATER   — subtle blue shift
   [16, 15, 14],  // 7 MOUNTAIN     — balanced, high variation
-  [12, 10, 7],   // 8 MUD          — warm brown
+  [14, 12, 10],  // 8 MUD          — increased variation for cooler gray tone
 ];
 
 /**
@@ -84,25 +84,25 @@ _pair(SAND, DIRT,          [175, 145, 95]);
 // Sand ↔ Soil: slightly sandy green
 _pair(SAND, SOIL,          [135, 170, 95]);
 // Dirt ↔ Soil: earthy green
-_pair(DIRT, SOIL,          [100, 125, 60]);
-// Dirt ↔ Fertile: rich dark transitional
-_pair(DIRT, FERTILE_SOIL,  [112, 80,  45]);
-// Soil ↔ Fertile: lush dark green
-_pair(SOIL, FERTILE_SOIL,  [72,  105, 45]);
+_pair(DIRT, SOIL,          [112, 130, 70]);
+// Dirt ↔ Fertile: transitional toward fertile green
+_pair(DIRT, FERTILE_SOIL,  [105, 82,  62]);
+// Soil ↔ Fertile: dark fertile green
+_pair(SOIL, FERTILE_SOIL,  [62,  125, 57]);
 // Rock ↔ Mountain: gray gradient
 _pair(ROCK, MOUNTAIN,      [145, 142, 145]);
 // Soil ↔ Rock: grassy rock
 _pair(SOIL, ROCK,          [90,  135, 95]);
 // Dirt ↔ Rock: dry rock
-_pair(DIRT, ROCK,          [130, 110, 95]);
+_pair(DIRT, ROCK,          [140, 118, 100]);
 // Water ↔ Mud: swampy edge
 _pair(WATER, MUD,          [65,  90,  115]);
 // Sand ↔ Mud: wet sand
 _pair(SAND, MUD,           [155, 135, 90]);
 // Mud ↔ Soil: transitional
-_pair(MUD, SOIL,           [80,  115, 55]);
+_pair(MUD, SOIL,           [80,  110, 62]);
 // Mud ↔ Dirt: transitional
-_pair(MUD, DIRT,           [120, 90,  55]);
+_pair(MUD, DIRT,           [122, 98,  60]);
 export const TRANSITION_TINT = _T;
 
 /**

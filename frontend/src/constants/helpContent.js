@@ -50,6 +50,11 @@ const SHORTCUT_REFERENCE = [
     value: 'Switch directly between Select, Paint, Place, and Erase.',
     note: 'Tool shortcuts are disabled while a major modal is open so typing and navigation stay predictable.',
   },
+  {
+    label: 'Ctrl/Cmd + Z / Y',
+    value: 'Undo or redo the most recent terrain painting operation.',
+    note: 'History is terrain-only for now and resets when a new world is generated or loaded.',
+  },
 ];
 
 const SIMULATION_CONTROL_REFERENCE = [

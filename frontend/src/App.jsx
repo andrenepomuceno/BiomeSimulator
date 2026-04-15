@@ -263,11 +263,31 @@ export default function App() {
     debouncedSpeedChangeRef.current(tps);
   }
 
+  useEffect(() => {
+    useSimStore.getState().clearTerrainHistory();
+  }, [worldReady?.seed, mapWidth, mapHeight]);
+
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e) {
       // Ignore when typing in inputs
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const modifierPressed = e.ctrlKey || e.metaKey;
+      if (modifierPressed && !e.altKey) {
+        const key = e.key.toLowerCase();
+        if (key === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          _handleTerrainUndo();
+          return;
+        }
+        if (key === 'y' || (key === 'z' && e.shiftKey)) {
+          e.preventDefault();
+          _handleTerrainRedo();
+          return;
+        }
+      }
+
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       if (e.code === 'Space') {
@@ -394,6 +414,34 @@ export default function App() {
     const current = useSimStore.getState().pauseOnBackground;
     useSimStore.getState().setPauseOnBackground(!current);
     autoPausedRef.current = false;
+  }
+
+  function _handleTerrainUndo() {
+    const store = useSimStore.getState();
+    const entry = store.popTerrainUndoEntry();
+    if (!entry) return;
+    playUiClick();
+    store.applyTerrainChanges(entry.undo);
+    if (store.worker) {
+      store.worker.postMessage({ cmd: 'editTerrain', changes: entry.undo });
+    }
+    if (rendererRef.current) {
+      rendererRef.current.terrainLayer.updateTiles(entry.undo);
+    }
+  }
+
+  function _handleTerrainRedo() {
+    const store = useSimStore.getState();
+    const entry = store.popTerrainRedoEntry();
+    if (!entry) return;
+    playUiClick();
+    store.applyTerrainChanges(entry.redo);
+    if (store.worker) {
+      store.worker.postMessage({ cmd: 'editTerrain', changes: entry.redo });
+    }
+    if (rendererRef.current) {
+      rendererRef.current.terrainLayer.updateTiles(entry.redo);
+    }
   }
 
   function _handleDrawerToggle(side) {

@@ -13,7 +13,7 @@ function rgbaToHex([r, g, b]) {
 }
 
 export default function TerrainEditor() {
-  const { tool, paintTerrain, setPaintTerrain, brushSize, setBrushSize, placeEntityType, setPlaceEntityType } = useSimStore();
+  const { tool, paintTerrain, setPaintTerrain, brushSize, setBrushSize, placeEntityType, setPlaceEntityType, terrainUndoStack, terrainRedoStack } = useSimStore();
 
   if (tool === 'PAINT_TERRAIN') {
     return (
@@ -35,7 +35,8 @@ export default function TerrainEditor() {
           <input type="range" className="form-range form-range-sm" min={1} max={10}
             value={brushSize} onChange={e => setBrushSize(+e.target.value)} />
         </div>
-        <div className="small text-muted">Hover to preview the brush footprint, then click on the map to paint terrain</div>
+        <div className="small text-muted">Hover to preview the brush footprint, then click on the map to paint terrain.</div>
+        <div className="small text-muted">Undo/redo terrain edits with Ctrl/Cmd+Z and Ctrl/Cmd+Y. History: {terrainUndoStack.length} undo, {terrainRedoStack.length} redo.</div>
       </div>
     );
   }

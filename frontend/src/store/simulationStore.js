@@ -16,6 +16,7 @@ export const DEFAULT_AUDIO_SETTINGS = {
 
 export const AUDIO_LOG_LIMIT = 300;
 export const AUDIO_SETTINGS_STORAGE_KEY = 'biomeSimulator.audioSettings';
+const TERRAIN_HISTORY_LIMIT = 50;
 
 const PAUSE_ON_BG_STORAGE_KEY = 'biomeSimulator.pauseOnBackground';
 
@@ -101,8 +102,52 @@ const useSimStore = create((set, get) => ({
   terrainData: null, // Uint8Array
   worldReady: null,
   isGeneratingWorld: false,
+  terrainUndoStack: [],
+  terrainRedoStack: [],
   setTerrain: (data, w, h) => set({ terrainData: data, mapWidth: w, mapHeight: h }),
   setGeneratingWorld: (isGeneratingWorld) => set({ isGeneratingWorld: !!isGeneratingWorld }),
+  applyTerrainChanges: (changes) => set((state) => {
+    if (!state.terrainData || !Array.isArray(changes) || changes.length === 0) return {};
+    const nextTerrain = new Uint8Array(state.terrainData);
+    for (const change of changes) {
+      const idx = change.y * state.mapWidth + change.x;
+      if (idx >= 0 && idx < nextTerrain.length) {
+        nextTerrain[idx] = change.terrain;
+      }
+    }
+    const nextWorldReady = state.worldReady
+      ? { ...state.worldReady, terrain: new Uint8Array(nextTerrain) }
+      : state.worldReady;
+    return { terrainData: nextTerrain, worldReady: nextWorldReady };
+  }),
+  pushTerrainHistoryEntry: (entry) => set((state) => {
+    if (!entry?.undo?.length || !entry?.redo?.length) return {};
+    return {
+      terrainUndoStack: [...state.terrainUndoStack, entry].slice(-TERRAIN_HISTORY_LIMIT),
+      terrainRedoStack: [],
+    };
+  }),
+  popTerrainUndoEntry: () => {
+    const state = get();
+    if (state.terrainUndoStack.length === 0) return null;
+    const entry = state.terrainUndoStack[state.terrainUndoStack.length - 1];
+    set({
+      terrainUndoStack: state.terrainUndoStack.slice(0, -1),
+      terrainRedoStack: [...state.terrainRedoStack, entry].slice(-TERRAIN_HISTORY_LIMIT),
+    });
+    return entry;
+  },
+  popTerrainRedoEntry: () => {
+    const state = get();
+    if (state.terrainRedoStack.length === 0) return null;
+    const entry = state.terrainRedoStack[state.terrainRedoStack.length - 1];
+    set({
+      terrainRedoStack: state.terrainRedoStack.slice(0, -1),
+      terrainUndoStack: [...state.terrainUndoStack, entry].slice(-TERRAIN_HISTORY_LIMIT),
+    });
+    return entry;
+  },
+  clearTerrainHistory: () => set({ terrainUndoStack: [], terrainRedoStack: [] }),
 
   // Simulation state
   running: false,

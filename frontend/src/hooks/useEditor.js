@@ -19,16 +19,31 @@ export function useEditor(rendererRef) {
       case 'PAINT_TERRAIN': {
         const bs = state.brushSize;
         const pt = state.paintTerrain;
-        const changes = [];
+        const redo = [];
+        const undo = [];
+        const seen = new Set();
         for (let dy = -bs + 1; dy < bs; dy++) {
           for (let dx = -bs + 1; dx < bs; dx++) {
-            changes.push({ x: x + dx, y: y + dy, terrain: pt });
+            const tx = x + dx;
+            const ty = y + dy;
+            if (tx < 0 || ty < 0 || tx >= state.mapWidth || ty >= state.mapHeight) continue;
+            const key = `${tx}:${ty}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const idx = ty * state.mapWidth + tx;
+            const previousTerrain = state.terrainData?.[idx];
+            if (previousTerrain == null || previousTerrain === pt) continue;
+            redo.push({ x: tx, y: ty, terrain: pt });
+            undo.push({ x: tx, y: ty, terrain: previousTerrain });
           }
         }
-        worker.postMessage({ cmd: 'editTerrain', changes });
+        if (redo.length === 0) break;
+        worker.postMessage({ cmd: 'editTerrain', changes: redo });
+        state.applyTerrainChanges(redo);
+        state.pushTerrainHistoryEntry({ undo, redo });
         // Instant visual feedback
         if (rendererRef.current) {
-          rendererRef.current.terrainLayer.updateTiles(changes);
+          rendererRef.current.terrainLayer.updateTiles(redo);
         }
         break;
       }

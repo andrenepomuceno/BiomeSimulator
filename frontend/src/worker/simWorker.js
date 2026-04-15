@@ -93,6 +93,13 @@ async function doTick() {
 
     const tickMs = performance.now() - t0;
     postTickState(tickMs);
+
+    // Movement sub-ticks: run N-1 additional movement-only passes for granular movement
+    const subTicks = engine.world.config.movement_sub_ticks || 1;
+    for (let i = 1; i < subTicks; i++) {
+      engine.tickMovementOnly();
+      postSubTickState();
+    }
   } finally {
     _ticking = false;
   }
@@ -304,6 +311,37 @@ function postTickState(tickMs = 0) {
     msg.stats.activePlants = w.activePlantTiles.size;
     msg.statsHistory = w.statsHistory;
   }
+
+  self.postMessage(msg);
+}
+
+function postSubTickState() {
+  const w = engine.world;
+  // Lightweight message: only position deltas for moved animals
+  const animals = [];
+  for (const a of w.animals) {
+    if (!a._dirty) continue;
+    if (a.alive) {
+      // Minimal delta: just position and direction for sub-ticks
+      animals.push({
+        id: a.id,
+        x: a.x,
+        y: a.y,
+        direction: a.direction,
+      });
+    }
+    a.clearDirty();
+  }
+
+  if (animals.length === 0) return; // Skip if nothing moved
+
+  const msg = {
+    type: 'tick',
+    clock: w.clock.toDict(),
+    animals,
+    plantChanges: [],
+    incremental: true,
+  };
 
   self.postMessage(msg);
 }

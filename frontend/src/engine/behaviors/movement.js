@@ -41,6 +41,11 @@ export function _threatScanCooldown(world) {
   return world.config.threat_scan_cooldown_ticks ?? 2;
 }
 
+export function _effectiveSteps(baseSteps, world) {
+  const subTicks = world.config.movement_sub_ticks ?? 1;
+  return Math.max(1, Math.round(baseSteps / subTicks));
+}
+
 export function _hasValidPath(animal, tick, ttl) {
   return animal.path.length > 0 &&
     animal.pathIndex < animal.path.length &&
@@ -161,7 +166,8 @@ export function _followPath(animal, world) {
 
 export function _walkPath(animal, world) {
   const jitter = (Math.random() * 3 | 0) - 1;
-  const steps = _terrainSteps(animal, world, Math.max(1, animal.speed + jitter));
+  const terrainAdjusted = _terrainSteps(animal, world, Math.max(1, animal.speed + jitter));
+  const steps = _effectiveSteps(terrainAdjusted, world);
   for (let s = 0; s < steps; s++) {
     if (!animal.path.length || animal.pathIndex >= animal.path.length) break;
     _followPath(animal, world);
@@ -174,7 +180,8 @@ export function _pursueTarget(animal, target, world, reason) {
   animal.state = fly ? AnimalState.FLYING : AnimalState.RUNNING;
   const jitter = (Math.random() * 3 | 0) - 1;
   const baseSteps = fly ? animal.speed + 1 : animal.speed;
-  const steps = _terrainSteps(animal, world, Math.max(1, baseSteps + jitter));
+  const terrainAdjusted = _terrainSteps(animal, world, Math.max(1, baseSteps + jitter));
+  const steps = _effectiveSteps(terrainAdjusted, world);
   const startTx = animal.x | 0;
   const startTy = animal.y | 0;
   for (let s = 0; s < steps; s++) {
@@ -292,7 +299,8 @@ export function _randomWalk(animal, world) {
     let lastDdy = 0;
     let tileCrossings = 0;
     const jitter = (Math.random() * 3 | 0) - 1;
-    const steps = _terrainSteps(animal, world, Math.max(1, animal.speed + jitter));
+    const terrainAdjusted = _terrainSteps(animal, world, Math.max(1, animal.speed + jitter));
+    const steps = _effectiveSteps(terrainAdjusted, world);
 
     for (let s = 0; s < steps; s++) {
       const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];

@@ -3,7 +3,7 @@
  * No threading — designed to be called from a Web Worker.
  */
 import { World } from './world.js';
-import { Animal, LifeStage } from './entities.js';
+import { Animal, LifeStage, AnimalState } from './entities.js';
 import { SpatialHash } from './spatialHash.js';
 import { createSimulationSupervisor } from './simulationSupervisor.js';
 import { generateTerrain, computeWaterProximity } from './mapGenerator.js';
@@ -22,6 +22,7 @@ import {
   S_ADULT,
 } from './flora.js';
 import { decideAndAct, giveBirth } from './behaviors.js';
+import { _walkPath, _randomWalk } from './behaviors/movement.js';
 import { getEffectiveAnimalPopulationCap, normalizeAnimalCountsToBudget } from './animalSpecies.js';
 import {
   createBenchmarkCollector,
@@ -201,6 +202,39 @@ export class SimulationEngine {
       if (animal.alive) this.spatialHash.update(animal);
     }
     this._phases.spatialMs = performance.now() - spatialStart;
+  }
+
+  /**
+   * Movement-only tick: processes path following and random walk for movement sub-ticks.
+   * Does NOT evaluate decisions or advance the clock.
+   * Used to increase movement granularity: N movement sub-ticks per decision tick.
+   */
+  tickMovementOnly() {
+    const w = this.world;
+
+    // Process animals with valid cached paths
+    for (const animal of w.animals) {
+      if (!animal.alive) continue;
+
+      const hasValidPath = animal.path && animal.path.length > 0 && animal.pathIndex < animal.path.length;
+      if (hasValidPath) {
+        // Preserve state to avoid overwriting pursuit/flee states
+        const origState = animal.state;
+        _walkPath(animal, w);
+        // Restore state unless _walkPath explicitly changed it (shouldn't happen, but be safe)
+        if (animal.state === AnimalState.WALKING) {
+          animal.state = origState;
+        }
+      } else if (animal.state === AnimalState.WALKING) {
+        // Continue random walking
+        _randomWalk(animal, w);
+      }
+    }
+
+    // Update spatial hash for all moved animals
+    for (const animal of w.animals) {
+      if (animal.alive) this.spatialHash.update(animal);
+    }
   }
 
   /**

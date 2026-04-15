@@ -29,6 +29,13 @@ const MODALS = {
   AUDIO: 'audio',
 };
 
+const TOOL_SHORTCUTS = {
+  Digit1: 'SELECT',
+  Digit2: 'PAINT_TERRAIN',
+  Digit3: 'PLACE_ENTITY',
+  Digit4: 'ERASE',
+};
+
 const DRAWER_BREAKPOINT = 1024;
 
 // Simple debounce implementation for speed slider
@@ -261,6 +268,7 @@ export default function App() {
     function onKeyDown(e) {
       // Ignore when typing in inputs
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -276,11 +284,26 @@ export default function App() {
           return;
         }
         setActiveModal(current => (current ? null : MODALS.MENU));
+        return;
+      }
+
+      if (activeModal) {
+        return;
+      }
+
+      const nextTool = TOOL_SHORTCUTS[e.code];
+      if (nextTool) {
+        e.preventDefault();
+        const store = useSimStore.getState();
+        if (store.tool !== nextTool) {
+          playUiClick();
+          store.setTool(nextTool);
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeDrawer, isCompactLayout]);
+  }, [activeDrawer, activeModal, isCompactLayout, playUiClick]);
 
   // Auto-pause when browser tab is hidden
   useEffect(() => {

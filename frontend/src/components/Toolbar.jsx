@@ -6,10 +6,10 @@ import useSimStore from '../store/simulationStore';
 import { formatTimeOfDay } from '../utils/time';
 
 const TOOLS = [
-  { id: 'SELECT', label: 'Select', icon: 'bi-cursor-fill' },
-  { id: 'PAINT_TERRAIN', label: 'Paint', icon: 'bi-brush-fill' },
-  { id: 'PLACE_ENTITY', label: 'Place', icon: 'bi-plus-circle-fill' },
-  { id: 'ERASE', label: 'Erase', icon: 'bi-eraser-fill' },
+  { id: 'SELECT', label: 'Select', icon: 'bi-cursor-fill', shortcut: '1' },
+  { id: 'PAINT_TERRAIN', label: 'Paint', icon: 'bi-brush-fill', shortcut: '2' },
+  { id: 'PLACE_ENTITY', label: 'Place', icon: 'bi-plus-circle-fill', shortcut: '3' },
+  { id: 'ERASE', label: 'Erase', icon: 'bi-eraser-fill', shortcut: '4' },
 ];
 
 const SELECT_FILTERS = [
@@ -72,7 +72,7 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
             key={t.id}
             className={`tool-btn ${tool === t.id ? 'active' : ''}`}
             onClick={() => setTool(t.id)}
-            title={t.label}
+            title={`${t.label} (${t.shortcut})`}
           >
             <i className={`bi ${t.icon} toolbar-icon`} aria-hidden="true" />
             <span>{t.label}</span>

@@ -15,22 +15,22 @@ const TOOL_REFERENCE = [
   {
     label: '🔍 Select',
     value: 'Click an animal, plant, or tile to inspect live data in the right sidebar.',
-    note: 'Use this when you want to understand what the simulation is doing right now.',
+    note: 'Shortcut: 1. Use this when you want to understand what the simulation is doing right now.',
   },
   {
     label: '🎨 Paint',
     value: 'Replace terrain tiles to reshape coastlines, water access, and movement lanes.',
-    note: 'Small terrain edits can completely change where plants grow and how animals travel.',
+    note: 'Shortcut: 2. Small terrain edits can completely change where plants grow and how animals travel.',
   },
   {
     label: '🐾 Place',
     value: 'Spawn animals or plants directly into the world.',
-    note: 'Useful for setting up experiments or repopulating a region after a collapse.',
+    note: 'Shortcut: 3. Useful for setting up experiments or repopulating a region after a collapse.',
   },
   {
     label: '🗑️ Erase',
     value: 'Remove animals or clean up cluttered areas of the map.',
-    note: 'Use carefully when you want to isolate one species or simplify a test.',
+    note: 'Shortcut: 4. Use carefully when you want to isolate one species or simplify a test.',
   },
 ];
 
@@ -44,6 +44,11 @@ const SHORTCUT_REFERENCE = [
     label: 'Escape',
     value: 'Close the current major modal, or open the menu if no modal is active.',
     note: 'Works for the menu, guide, config, report, audio, and entity summary window.',
+  },
+  {
+    label: '1 / 2 / 3 / 4',
+    value: 'Switch directly between Select, Paint, Place, and Erase.',
+    note: 'Tool shortcuts are disabled while a major modal is open so typing and navigation stay predictable.',
   },
 ];
 
@@ -279,7 +284,7 @@ export const HELP_TABS = [
     label: '🎮 Controls',
     title: 'Run, inspect, and edit without guessing',
     intro: 'The toolbar controls time, the active editor tool, and access to the larger modal views. Most learning happens by switching between these controls quickly.',
-    chips: ['Space to play/pause', 'Escape for modal control', 'Step while paused', 'Edit live terrain'],
+    chips: ['Space to play/pause', 'Escape for modal control', '1-4 for tools', 'Edit live terrain'],
     sections: [
       {
         heading: 'Simulation controls',

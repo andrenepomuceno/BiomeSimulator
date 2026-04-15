@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { shouldMutePositionalSfx } from '../audio/soundMath.js';
 import { buildAudioLogExportText, formatAudioLogEntryLabel, formatAudioLogEntryMeta, formatAudioLogEntryDetail, formatAudioLogEventTime } from '../utils/audioLogExport.js';
+import { useModalA11y } from '../hooks/useModalA11y.js';
 
 const TABS = {
   SETTINGS: 'settings',
@@ -11,6 +12,9 @@ const TABS = {
 export default function AudioSettingsModal({ open, onClose, onUnlock }) {
   const { audioSettings, setAudioSettings, audioLog, clearAudioLog, viewport } = useSimStore();
   const [activeTab, setActiveTab] = useState(TABS.SETTINGS);
+  const modalRef = useRef(null);
+
+  useModalA11y({ open, onClose, containerRef: modalRef });
 
   useEffect(() => {
     if (open) {
@@ -49,11 +53,11 @@ export default function AudioSettingsModal({ open, onClose, onUnlock }) {
 
   return (
     <div className="audio-overlay" onClick={onClose}>
-      <div className="audio-modal" onClick={e => e.stopPropagation()}>
+      <div className="audio-modal" ref={modalRef} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="audio-modal-title" tabIndex={-1}>
         <div className="audio-header">
           <div>
             <div className="audio-eyebrow">Camera Audio</div>
-            <h5>World sound follows the camera</h5>
+            <h5 id="audio-modal-title">World sound follows the camera</h5>
           </div>
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose} aria-label="Close audio settings">✕</button>
         </div>

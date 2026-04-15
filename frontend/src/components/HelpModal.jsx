@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { HELP_TABS } from '../constants/helpContent.js';
+import { useModalA11y } from '../hooks/useModalA11y.js';
 
 function ReferenceRows({ rows }) {
   return (
@@ -58,6 +59,9 @@ function HelpSection({ section }) {
 
 export default function HelpModal({ open, onClose }) {
   const [activeTab, setActiveTab] = useState(HELP_TABS[0].id);
+  const modalRef = useRef(null);
+
+  useModalA11y({ open, onClose, containerRef: modalRef });
 
   useEffect(() => {
     if (open) {
@@ -71,9 +75,9 @@ export default function HelpModal({ open, onClose }) {
 
   return (
     <div className="help-overlay" onClick={onClose}>
-      <div className="help-modal" onClick={e => e.stopPropagation()}>
+      <div className="help-modal" ref={modalRef} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="help-modal-title" tabIndex={-1}>
         <div className="help-header">
-          <h5>{currentTab.title}</h5>
+          <h5 id="help-modal-title">{currentTab.title}</h5>
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose} aria-label="Close guide">✕</button>
         </div>
 

@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useMemo, useState } from 'react';
+import React, { useDeferredValue, useMemo, useRef, useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { SPECIES_INFO, STATE_NAMES, PLANT_STAGE_NAMES } from '../utils/terrainColors';
 import { getPlantByTypeId } from '../engine/plantSpecies';
@@ -6,6 +6,7 @@ import {
   buildEntitySummaryGroups,
   matchesActiveSelection,
 } from './entitySummaryGroups';
+import { useModalA11y } from '../hooks/useModalA11y.js';
 
 const TYPE_FILTERS = [
   { id: 'all', label: 'All' },
@@ -68,7 +69,10 @@ function buildPlantEntry(typeId, stage, x, y) {
 export default function EntitySummaryWindow({ open, onClose, onInspect }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const modalRef = useRef(null);
   const deferredSearch = useDeferredValue(searchTerm.trim().toLowerCase());
+
+  useModalA11y({ open, onClose, containerRef: modalRef });
 
   const { animals, worldReady, plantSnapshot, mapWidth, mapHeight, selectedEntity, selectedTile } = useSimStore();
 
@@ -120,9 +124,9 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
 
   return (
     <div className="entity-summary-overlay" onClick={onClose}>
-      <div className="entity-summary-modal" onClick={e => e.stopPropagation()}>
+      <div className="entity-summary-modal" ref={modalRef} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="entity-summary-title" tabIndex={-1}>
         <div className="entity-summary-header">
-          <h5>Entity Summary</h5>
+          <h5 id="entity-summary-title">Entity Summary</h5>
           <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>✕</button>
         </div>
 

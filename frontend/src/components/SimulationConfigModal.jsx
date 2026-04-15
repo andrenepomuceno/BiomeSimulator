@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import useSimStore from '../store/simulationStore';
 import { buildSimulationConfigSections } from './simulationConfigViewModel.js';
+import { useModalA11y } from '../hooks/useModalA11y.js';
 
 function SourceBadge({ source }) {
   return (
@@ -12,6 +13,9 @@ function SourceBadge({ source }) {
 
 export default function SimulationConfigModal({ open, onClose }) {
   const { gameConfig, clock, tps, hungerMultiplier, thirstMultiplier } = useSimStore();
+  const modalRef = useRef(null);
+
+  useModalA11y({ open, onClose, containerRef: modalRef });
 
   const sections = useMemo(() => buildSimulationConfigSections({
     gameConfig,
@@ -25,11 +29,11 @@ export default function SimulationConfigModal({ open, onClose }) {
 
   return (
     <div className="sim-config-overlay" onClick={onClose}>
-      <div className="sim-config-modal" onClick={e => e.stopPropagation()}>
+      <div className="sim-config-modal" ref={modalRef} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="sim-config-modal-title" tabIndex={-1}>
         <div className="sim-config-header">
           <div>
             <div className="sim-config-eyebrow">Global Simulation</div>
-            <h5>Runtime configuration</h5>
+            <h5 id="sim-config-modal-title">Runtime configuration</h5>
           </div>
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose} aria-label="Close simulation configuration">✕</button>
         </div>

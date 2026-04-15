@@ -13,6 +13,7 @@ import ANIMAL_SPECIES, {
   normalizeAnimalCountsToBudget,
 } from '../engine/animalSpecies';
 import PLANT_SPECIES, { ALL_PLANT_IDS, buildInitialPlantCounts, buildPlantMaxCounts } from '../engine/plantSpecies';
+import { useModalA11y } from '../hooks/useModalA11y.js';
 
 const NUMBER_FORMATTER = new Intl.NumberFormat('en-US');
 const DEFAULT_PLANT_COUNTS = buildInitialPlantCounts();
@@ -154,6 +155,7 @@ function CollapsibleSection({ title, icon, meta, defaultOpen = true, children })
 
 export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const hasWorld = useSimStore(state => !!state.terrainData || !!state.worldReady || state.animals.length > 0);
+  const modalRef = useRef(null);
   const [tab, setTab] = useState('new');
   const [newTab, setNewTab] = useState('map');
   const [params, setParams] = useState(() => buildDefaultParams());
@@ -164,6 +166,8 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const [faunaProfileLabel, setFaunaProfileLabel] = useState('Balanced baseline');
   const [floraProfileLabel, setFloraProfileLabel] = useState('Balanced growth');
   const fileInputRef = useRef(null);
+
+  useModalA11y({ open, onClose, containerRef: modalRef });
 
   if (!open) return null;
 
@@ -301,9 +305,9 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
 
   return (
     <div className="game-menu-overlay" onClick={onClose}>
-      <div className="game-menu-modal" onClick={e => e.stopPropagation()}>
+      <div className="game-menu-modal" ref={modalRef} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="game-menu-title" tabIndex={-1}>
         <div className="game-menu-header">
-          <h5>BiomeSimulator</h5>
+          <h5 id="game-menu-title">BiomeSimulator</h5>
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose} aria-label="Close menu">✕</button>
         </div>
 

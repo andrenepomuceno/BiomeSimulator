@@ -1,7 +1,7 @@
 /**
  * SimulationReport — full-screen modal with historical analytics of the simulation.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import useSimStore from '../store/simulationStore';
 import { ANIMAL_HEX_COLORS, SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
 import { buildSimulationReportText, deriveSimulationReportData, DIET_GROUPS } from '../utils/simulationReportExport';
@@ -14,6 +14,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { DIET_COLORS } from '../constants/statusColors';
 import { resolveTicksPerDay, ticksToDay } from '../utils/time';
+import { useModalA11y } from '../hooks/useModalA11y.js';
 
 ChartJS.register(
   LineElement, PointElement, LinearScale, CategoryScale,
@@ -55,8 +56,11 @@ const CHART_BASE = {
 
 export default function SimulationReport({ open, onClose }) {
   const [tab, setTab] = useState('population');
+  const modalRef = useRef(null);
   const { statsHistory, clock } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
+
+  useModalA11y({ open, onClose, containerRef: modalRef });
 
   // Derive all chart data from statsHistory
   const data = useMemo(
@@ -380,9 +384,9 @@ export default function SimulationReport({ open, onClose }) {
 
   return (
     <div className="report-overlay" onClick={onClose}>
-      <div className="report-modal" onClick={e => e.stopPropagation()}>
+      <div className="report-modal" ref={modalRef} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="report-modal-title" tabIndex={-1}>
         <div className="report-header">
-          <h5>📈 Simulation Report</h5>
+          <h5 id="report-modal-title">📈 Simulation Report</h5>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               className="btn btn-sm btn-outline-info"

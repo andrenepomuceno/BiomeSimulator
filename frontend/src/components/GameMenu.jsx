@@ -157,6 +157,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const [tab, setTab] = useState('new');
   const [newTab, setNewTab] = useState('map');
   const [params, setParams] = useState(() => buildDefaultParams());
+  const [pendingNewGameParams, setPendingNewGameParams] = useState(null);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [loadFileName, setLoadFileName] = useState('');
@@ -218,11 +219,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
 
   const setParam = (key, value) => setParams(current => ({ ...current, [key]: value }));
 
-  const startNewGame = (nextParams = params) => {
-    if (hasWorld && !window.confirm('Start a new simulation? Unsaved progress will be lost.')) {
-      return;
-    }
-
+  const buildNewGamePayload = (nextParams = params) => {
     const payload = {
       ...nextParams,
       initial_animal_counts: normalizeAnimalCountsToBudget(nextParams.initial_animal_counts, nextParams.max_animal_population),
@@ -235,8 +232,24 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
       payload.seed = Number(payload.seed);
     }
 
+    return payload;
+  };
+
+  const commitNewGame = (nextParams = params) => {
+    const payload = buildNewGamePayload(nextParams);
+
+    setPendingNewGameParams(null);
     onNewGame(payload);
     onClose();
+  };
+
+  const requestStartNewGame = (nextParams = params) => {
+    if (hasWorld) {
+      setPendingNewGameParams(buildNewGamePayload(nextParams));
+      return;
+    }
+
+    commitNewGame(nextParams);
   };
 
   const handleQuickStart = () => {
@@ -244,7 +257,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
     setParams(nextParams);
     setFaunaProfileLabel('Balanced baseline');
     setFloraProfileLabel('Balanced growth');
-    startNewGame(nextParams);
+    requestStartNewGame(nextParams);
   };
 
   const handleSave = () => {
@@ -589,7 +602,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
               </button>
               <div className="gm-footer-actions">
                 <button type="button" className="btn btn-outline-secondary" onClick={handleQuickStart}>Quick Start</button>
-                <button type="button" className="btn btn-sim" onClick={() => startNewGame()}>Start New Simulation</button>
+                <button type="button" className="btn btn-sim" onClick={() => requestStartNewGame()}>Start New Simulation</button>
               </div>
             </>
           )}
@@ -612,6 +625,26 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
             </>
           )}
         </div>
+
+        {pendingNewGameParams && (
+          <div className="gm-confirm-backdrop" role="presentation">
+            <div className="gm-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="gm-confirm-title">
+              <div className="gm-confirm-kicker">Unsaved simulation</div>
+              <h6 id="gm-confirm-title">Discard the current world?</h6>
+              <p className="gm-confirm-copy">
+                Starting a new simulation will replace the current terrain, plants, animals, and any unsaved progress.
+              </p>
+              <div className="gm-confirm-actions">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setPendingNewGameParams(null)}>
+                  Keep Current World
+                </button>
+                <button type="button" className="btn btn-danger" onClick={() => commitNewGame(pendingNewGameParams)}>
+                  Discard and Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

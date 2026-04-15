@@ -29,6 +29,7 @@ export function useSimulation() {
           const plantStage = new Uint8Array(msg.plantStage);
           const waterProximity = new Uint8Array(msg.waterProximity);
           const heightmap = msg.heightmap ? new Float32Array(msg.heightmap) : null;
+          store.setGeneratingWorld(false);
           store.setTerrain(terrain, msg.width, msg.height);
           store.setAnimals(msg.animals || []);
           store.setClock(msg.clock);
@@ -182,6 +183,7 @@ export function useSimulation() {
     };
 
     worker.onerror = (e) => {
+      useSimStore.getState().setGeneratingWorld(false);
       console.error('[SimWorker] Uncaught worker error:', e.message, e);
     };
 

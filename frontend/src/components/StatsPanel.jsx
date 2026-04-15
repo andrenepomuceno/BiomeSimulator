@@ -23,6 +23,7 @@ export default function StatsPanel() {
     profiling,
   } = useSimStore();
   const speciesKeys = Object.keys(SPECIES_INFO);
+  const [statsTab, setStatsTab] = useState('population');
   const [history, setHistory] = useState(() => {
     const h = { ticks: [] };
     speciesKeys.forEach(k => h[k] = []);
@@ -95,8 +96,38 @@ export default function StatsPanel() {
 
   return (
     <div className="sidebar-section">
-      <h6>Population</h6>
-      {speciesKeys.map(k => {
+      {/* Tab bar */}
+      <div className="stats-tabs" role="tablist" aria-label="Stats sections">
+        <button
+          className={`stats-tab${statsTab === 'population' ? ' active' : ''}`}
+          onClick={() => setStatsTab('population')}
+          role="tab"
+          aria-selected={statsTab === 'population'}
+        >
+          Population
+        </button>
+        <button
+          className={`stats-tab${statsTab === 'chart' ? ' active' : ''}`}
+          onClick={() => setStatsTab('chart')}
+          role="tab"
+          aria-selected={statsTab === 'chart'}
+        >
+          Chart
+        </button>
+        <button
+          className={`stats-tab${statsTab === 'settings' ? ' active' : ''}`}
+          onClick={() => setStatsTab('settings')}
+          role="tab"
+          aria-selected={statsTab === 'settings'}
+        >
+          Settings
+        </button>
+      </div>
+
+      {/* === Population tab === */}
+      {statsTab === 'population' && (
+        <div className="stats-tab-panel">
+          {speciesKeys.map(k => {
         const count = (stats.species && stats.species[k]) || 0;
         const cap = speciesCaps[k] || 0;
         const pct = cap > 0 ? count / cap : 0;
@@ -124,12 +155,22 @@ export default function StatsPanel() {
         <span className="stat-label">🍎 Fruits</span>
         <span className="stat-value" style={{ color: '#ff8844' }}>{stats.fruits}</span>
       </div>
+        </div>
+      )}
 
-      <div style={{ height: 140, marginTop: 8 }}>
-        <Line data={chartData} options={chartOptions} />
-      </div>
+      {/* === Chart tab === */}
+      {statsTab === 'chart' && (
+        <div className="stats-tab-panel">
+          <div style={{ height: 280 }}>
+            <Line data={chartData} options={chartOptions} />
+          </div>
+        </div>
+      )}
 
-      <h6 style={{ marginTop: 12 }}>Rate Multipliers</h6>
+      {/* === Settings tab === */}
+      {statsTab === 'settings' && (
+        <div className="stats-tab-panel">
+          <h6 style={{ marginTop: 4 }}>Rate Multipliers</h6>
       <div className="stat-row" style={{ flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="stat-label" style={{ minWidth: 50 }}>🍖 Hunger</span>
@@ -208,6 +249,8 @@ export default function StatsPanel() {
           {(profiling?.renderer?.entityUpdateMs || 0).toFixed(1)} / {(profiling?.renderer?.plantUpdateMs || 0).toFixed(1)}
         </span>
       </div>
+        </div>
+      )}
     </div>
   );
 }

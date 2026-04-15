@@ -1,7 +1,8 @@
 /**
  * EntityInspector — shows details of selected entity or tile.
+ * Animal view uses a tabbed layout: Status | Species | Diet | History.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import useSimStore from '../store/simulationStore';
 import { TERRAIN_NAMES as TERRAIN_DISPLAY_NAMES, STATE_NAMES, LIFE_STAGE_NAMES, PLANT_TYPE_NAMES, PLANT_STAGE_NAMES, PLANT_SEX_NAMES, PLANT_TYPE_SEX, SPECIES_INFO, SEX_NAMES } from '../utils/terrainColors';
 import ANIMAL_SPECIES, { buildAnimalSpeciesConfig } from '../engine/animalSpecies';
@@ -155,7 +156,7 @@ function PlantAttributes({ typeId, terrain, stage, clock, gameConfig }) {
   );
 }
 
-// --- Animal Species Attributes ---
+// --- Animal Species Attributes (Species tab content) ---
 
 function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
   const sp = ANIMAL_SPECIES_CONFIG[species];
@@ -182,7 +183,7 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
   const thirstPenaltyStart = (sp.max_thirst || 0) * (healthPenalty.threshold_fraction ?? 0.8);
 
   return (
-    <CollapsibleSection title="Species Attributes" icon="📋" defaultOpen={false}>
+    <>
       <div className="inspector-grid">
         <div className="stat-row"><span className="stat-label">🏃 Speed</span><span className="stat-value">{sp.speed}</span></div>
         <div className="stat-row"><span className="stat-label">👁️ Vision (Base)</span><span className="stat-value">{baseVision}</span></div>
@@ -275,10 +276,22 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
           ))}
         </div>
       </CollapsibleSection>
+    </>
+  );
+}
 
-      {/* Diet — Edible Plants */}
-      {rawSpecies.edible_plants && rawSpecies.edible_plants.length > 0 && (
-        <CollapsibleSection title="Edible Plants" icon="🌿" defaultOpen={false}>
+// --- Animal Diet Info (Diet tab content) ---
+
+function DietInfo({ species }) {
+  const sp = ANIMAL_SPECIES_CONFIG[species];
+  const rawSpecies = ANIMAL_SPECIES[species];
+  if (!sp || !rawSpecies) return null;
+  const hasPlants = rawSpecies.edible_plants && rawSpecies.edible_plants.length > 0;
+  const hasPrey = rawSpecies.prey_species && rawSpecies.prey_species.length > 0;
+  return (
+    <>
+      {hasPlants && (
+        <CollapsibleSection title="Edible Plants" icon="🌿" defaultOpen={true}>
           <div className="inspector-chip-list">
             {rawSpecies.edible_plants.map(k => {
               const plant = PLANT_SPECIES[k];
@@ -292,10 +305,8 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
           </div>
         </CollapsibleSection>
       )}
-
-      {/* Diet — Prey Species */}
-      {rawSpecies.prey_species && rawSpecies.prey_species.length > 0 && (
-        <CollapsibleSection title="Prey Species" icon="🎯" defaultOpen={false}>
+      {hasPrey && (
+        <CollapsibleSection title="Prey Species" icon="🎯" defaultOpen={true}>
           <div className="inspector-chip-list">
             {rawSpecies.prey_species.map(k => (
               <span key={k} style={{ background: '#2e1a1a', padding: '2px 7px', borderRadius: 4, border: '1px solid #4a2a2a' }}>
@@ -305,11 +316,13 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig }) {
           </div>
         </CollapsibleSection>
       )}
-
-      <CollapsibleSection title="Energy Costs" icon="⚡" defaultOpen={false}>
+      <CollapsibleSection title="Energy Costs" icon="⚡" defaultOpen={true}>
         <EnergyCostTable costs={sp.energy_costs} />
       </CollapsibleSection>
-    </CollapsibleSection>
+      {!hasPlants && !hasPrey && (
+        <div className="small text-muted mt-2" style={{ fontStyle: 'italic' }}>No diet data available for this species.</div>
+      )}
+    </>
   );
 }
 
@@ -674,9 +687,21 @@ function PlantConsumers({ plantTypeId, plantStage }) {
 
 // ===================== MAIN EXPORT =====================
 
+const ANIMAL_TABS = [
+  { key: 'status', label: 'Status' },
+  { key: 'species', label: 'Species' },
+  { key: 'diet', label: 'Diet' },
+  { key: 'history', label: 'History' },
+];
+
 export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) {
   const { selectedEntity, selectedTile, clearSelection, setSelectedEntity, clock, gameConfig } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);
+  const [animalTab, setAnimalTab] = useState('status');
+
+  // Reset tab when selected entity changes
+  const entityId = selectedEntity?.id;
+  useEffect(() => { setAnimalTab('status'); }, [entityId]);
 
   // --- Animal Inspector ---
   if (selectedEntity) {
@@ -722,163 +747,198 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
         {/* Derived status chips */}
         {!isEggStage && <AnimalStatusChips entity={e} speciesConfig={sp} clock={clock} />}
 
-        {/* Identity */}
-        <CollapsibleSection title="Identity" icon="🪪" defaultOpen={true}>
-          <div className="d-flex justify-content-end mb-1">
+        {/* Tab bar */}
+        <div className="inspector-tabs" role="tablist" aria-label="Inspector sections">
+          {ANIMAL_TABS.map(tab => (
             <button
-              className="btn btn-sm btn-outline-info py-0 px-2"
-              onClick={() => onFocusEntity?.(e)}
-              disabled={!Number.isFinite(e.x) || !Number.isFinite(e.y)}
+              key={tab.key}
+              className={`inspector-tab${animalTab === tab.key ? ' active' : ''}`}
+              onClick={() => setAnimalTab(tab.key)}
+              role="tab"
+              aria-selected={animalTab === tab.key}
             >
-              Olhar para
+              {tab.label}
             </button>
-          </div>
-          <div className="stat-row">
-            <span className="stat-label">Diet</span>
-            <span className="stat-value" style={{ color: DIET_COLORS[info.diet] || DIET_COLORS.Herbivore }}>
-              {info.diet}
-            </span>
-          </div>
-          <div className="stat-row">
-            <span className="stat-label">Sex</span>
-            <span className="stat-value">{SEX_NAMES[e.sex] || e.sex || 'Unknown'}</span>
-          </div>
-          <div className="stat-row">
-            <span className="stat-label">Life Stage</span>
-            <span className="stat-value">{LIFE_STAGE_NAMES[e.lifeStage] || 'Unknown'}</span>
-          </div>
-          <div className="stat-row">
-            <span className="stat-label">Age</span>
-            <span className="stat-value">{e.age} ticks ({ageDays} days)</span>
-          </div>
-          {birthDay != null && (
-            <div className="stat-row">
-              <span className="stat-label">Born</span>
-              <span className="stat-value">Day {birthDay} (tick {e._birthTick})</span>
-            </div>
-          )}
-          <div className="stat-row">
-            <span className="stat-label">Position</span>
-            <span className="stat-value">({Math.floor(e.x)}, {Math.floor(e.y)})</span>
-          </div>
-        </CollapsibleSection>
+          ))}
+        </div>
 
-        {/* Vital signs */}
-        <CollapsibleSection title="Vitals" icon="❤️" defaultOpen={true}>
-          <Bar icon="❤️" label="HP" value={e.hp} max={maxHp} color="#ff4757" />
-          {isEggStage && e._incubationPeriod > 0 && (
-            <div className="mt-1">
-              <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
-                <span className="text-muted">🕐 Incubation</span>
-                <span>{e.age} / {e._incubationPeriod} ticks</span>
+        {/* === Status tab === */}
+        {animalTab === 'status' && (
+          <div className="inspector-tab-panel">
+            {/* Identity */}
+            <CollapsibleSection title="Identity" icon="🪪" defaultOpen={true}>
+              <div className="d-flex justify-content-end mb-1">
+                <button
+                  className="btn btn-sm btn-outline-info py-0 px-2"
+                  onClick={() => onFocusEntity?.(e)}
+                  disabled={!Number.isFinite(e.x) || !Number.isFinite(e.y)}
+                >
+                  Focus
+                </button>
               </div>
-              <div className="entity-bar">
-                <div className="entity-bar-fill" style={{ width: `${Math.min(100, (e.age / e._incubationPeriod) * 100)}%`, background: e.age >= e._incubationPeriod ? '#88cc44' : '#ffaa33' }} />
-              </div>
-            </div>
-          )}
-          {isEggStage && e.parentA != null && (
-            <div className="stat-row"><span className="stat-label">Parents</span><span className="stat-value">#{e.parentA}, #{e.parentB}</span></div>
-          )}
-          {!isEggStage && <Bar icon="⚡" label="Energy" value={e.energy} max={maxEnergy} color="#4ecdc4" />}
-          {!isEggStage && <Bar icon="🍖" label="Hunger" value={e.hunger} max={maxHunger} color="#ff6b6b" />}
-          {!isEggStage && <Bar icon="💧" label="Thirst" value={e.thirst} max={maxThirst} color="#4d96ff" />}
-          <div className="mt-1">
-            <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
-              <span className="text-muted">⏳ Age</span>
-              <span>{e.age} / {maxAge}</span>
-            </div>
-            <div className="entity-bar">
-              <div className="entity-bar-fill" style={{ width: `${agePct}%`, background: agePct > 80 ? '#ff6b6b' : '#aaa' }} />
-            </div>
-          </div>
-        </CollapsibleSection>
-
-        {/* Navigation & Context */}
-        <CollapsibleSection title="Navigation" icon="🧭" defaultOpen={true}>
-          <div className="stat-row">
-            <span className="stat-label">Direction</span>
-            <span className="stat-value">{DIRECTION_LABELS[e.direction] || '?'}</span>
-          </div>
-          {e.targetX != null && e.targetY != null && e.state !== 0 && e.state !== 5 && (
-            <div className="stat-row">
-              <span className="stat-label">Target</span>
-              <span className="stat-value" style={{ color: '#888' }}>({e.targetX}, {e.targetY})</span>
-            </div>
-          )}
-          {e.pathLength > 0 && (
-            <div className="stat-row">
-              <span className="stat-label">Path</span>
-              <span className="stat-value">{e.pathIndex ?? 0}/{e.pathLength} steps</span>
-            </div>
-          )}
-          {homeX != null && homeY != null && (
-            <div className="stat-row">
-              <span className="stat-label">🏠 Home</span>
-              <span className="stat-value">({homeX}, {homeY}){homeDist != null ? ` — ${homeDist} tiles away` : ''}</span>
-            </div>
-          )}
-          {e._tileTerrain && (
-            <div className="stat-row">
-              <span className="stat-label">🗺️ Terrain</span>
-              <span className="stat-value" style={{ textTransform: 'capitalize' }}>{e._tileTerrain}</span>
-            </div>
-          )}
-          {e._tileWaterProximity != null && (
-            <div className="stat-row">
-              <span className="stat-label">💧 Water Distance</span>
-              <span className="stat-value">{e._tileWaterProximity} tiles</span>
-            </div>
-          )}
-        </CollapsibleSection>
-
-        {/* Cooldowns & Reproduction Status */}
-        {(e.mateCooldown > 0 || e.attackCooldown > 0 || e.pregnant || e.lifeStage === 4) && (
-          <CollapsibleSection title="Cooldowns" icon="⏱️" defaultOpen={true}>
-            {e.mateCooldown > 0 && (
               <div className="stat-row">
-                <span className="stat-label">💕 Mate</span>
-                <span className="stat-value" style={{ color: '#ff66aa' }}>{e.mateCooldown} ticks</span>
+                <span className="stat-label">Diet</span>
+                <span className="stat-value" style={{ color: DIET_COLORS[info.diet] || DIET_COLORS.Herbivore }}>
+                  {info.diet}
+                </span>
               </div>
-            )}
-            {e.attackCooldown > 0 && (
               <div className="stat-row">
-                <span className="stat-label">⚔️ Attack</span>
-                <span className="stat-value" style={{ color: '#ff4444' }}>{e.attackCooldown} ticks</span>
+                <span className="stat-label">Sex</span>
+                <span className="stat-value">{SEX_NAMES[e.sex] || e.sex || 'Unknown'}</span>
               </div>
-            )}
-            {e.pregnant && (
-              <>
+              <div className="stat-row">
+                <span className="stat-label">Life Stage</span>
+                <span className="stat-value">{LIFE_STAGE_NAMES[e.lifeStage] || 'Unknown'}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Age</span>
+                <span className="stat-value">{e.age} ticks ({ageDays} days)</span>
+              </div>
+              {birthDay != null && (
                 <div className="stat-row">
-                  <span className="stat-label">🤰 Pregnant</span>
-                  <span className="stat-value" style={{ color: '#ff99cc' }}>
-                    {e._gestationLitterSize || '?'} offspring
-                  </span>
+                  <span className="stat-label">Born</span>
+                  <span className="stat-value">Day {birthDay} (tick {e._birthTick})</span>
                 </div>
-                <Bar icon="🤰" label="Gestation" value={e.gestationTimer || 0} max={sp?.gestation_period || e.gestationTimer || 1} color="#ff99cc" />
-              </>
-            )}
-            {e.lifeStage === 4 && (
+              )}
               <div className="stat-row">
-                <span className="stat-label">🫘 Pupa</span>
-                <span className="stat-value" style={{ color: '#aa88cc' }}>Metamorphosing</span>
+                <span className="stat-label">Position</span>
+                <span className="stat-value">({Math.floor(e.x)}, {Math.floor(e.y)})</span>
               </div>
+            </CollapsibleSection>
+
+            {/* Vital signs */}
+            <CollapsibleSection title="Vitals" icon="❤️" defaultOpen={true}>
+              <Bar icon="❤️" label="HP" value={e.hp} max={maxHp} color="#ff4757" />
+              {isEggStage && e._incubationPeriod > 0 && (
+                <div className="mt-1">
+                  <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
+                    <span className="text-muted">🕐 Incubation</span>
+                    <span>{e.age} / {e._incubationPeriod} ticks</span>
+                  </div>
+                  <div className="entity-bar">
+                    <div className="entity-bar-fill" style={{ width: `${Math.min(100, (e.age / e._incubationPeriod) * 100)}%`, background: e.age >= e._incubationPeriod ? '#88cc44' : '#ffaa33' }} />
+                  </div>
+                </div>
+              )}
+              {isEggStage && e.parentA != null && (
+                <div className="stat-row"><span className="stat-label">Parents</span><span className="stat-value">#{e.parentA}, #{e.parentB}</span></div>
+              )}
+              {!isEggStage && <Bar icon="⚡" label="Energy" value={e.energy} max={maxEnergy} color="#4ecdc4" />}
+              {!isEggStage && <Bar icon="🍖" label="Hunger" value={e.hunger} max={maxHunger} color="#ff6b6b" />}
+              {!isEggStage && <Bar icon="💧" label="Thirst" value={e.thirst} max={maxThirst} color="#4d96ff" />}
+              <div className="mt-1">
+                <div className="d-flex justify-content-between" style={{ fontSize: '0.7rem' }}>
+                  <span className="text-muted">⏳ Age</span>
+                  <span>{e.age} / {maxAge}</span>
+                </div>
+                <div className="entity-bar">
+                  <div className="entity-bar-fill" style={{ width: `${agePct}%`, background: agePct > 80 ? '#ff6b6b' : '#aaa' }} />
+                </div>
+              </div>
+            </CollapsibleSection>
+
+            {/* Navigation & Context */}
+            <CollapsibleSection title="Navigation" icon="🧭" defaultOpen={true}>
+              <div className="stat-row">
+                <span className="stat-label">Direction</span>
+                <span className="stat-value">{DIRECTION_LABELS[e.direction] || '?'}</span>
+              </div>
+              {e.targetX != null && e.targetY != null && e.state !== 0 && e.state !== 5 && (
+                <div className="stat-row">
+                  <span className="stat-label">Target</span>
+                  <span className="stat-value" style={{ color: '#888' }}>({e.targetX}, {e.targetY})</span>
+                </div>
+              )}
+              {e.pathLength > 0 && (
+                <div className="stat-row">
+                  <span className="stat-label">Path</span>
+                  <span className="stat-value">{e.pathIndex ?? 0}/{e.pathLength} steps</span>
+                </div>
+              )}
+              {homeX != null && homeY != null && (
+                <div className="stat-row">
+                  <span className="stat-label">🏠 Home</span>
+                  <span className="stat-value">({homeX}, {homeY}){homeDist != null ? ` — ${homeDist} tiles away` : ''}</span>
+                </div>
+              )}
+              {e._tileTerrain && (
+                <div className="stat-row">
+                  <span className="stat-label">🗺️ Terrain</span>
+                  <span className="stat-value" style={{ textTransform: 'capitalize' }}>{e._tileTerrain}</span>
+                </div>
+              )}
+              {e._tileWaterProximity != null && (
+                <div className="stat-row">
+                  <span className="stat-label">💧 Water Distance</span>
+                  <span className="stat-value">{e._tileWaterProximity} tiles</span>
+                </div>
+              )}
+            </CollapsibleSection>
+
+            {/* Cooldowns & Reproduction Status */}
+            {(e.mateCooldown > 0 || e.attackCooldown > 0 || e.pregnant || e.lifeStage === 4) && (
+              <CollapsibleSection title="Cooldowns" icon="⏱️" defaultOpen={true}>
+                {e.mateCooldown > 0 && (
+                  <div className="stat-row">
+                    <span className="stat-label">💕 Mate</span>
+                    <span className="stat-value" style={{ color: '#ff66aa' }}>{e.mateCooldown} ticks</span>
+                  </div>
+                )}
+                {e.attackCooldown > 0 && (
+                  <div className="stat-row">
+                    <span className="stat-label">⚔️ Attack</span>
+                    <span className="stat-value" style={{ color: '#ff4444' }}>{e.attackCooldown} ticks</span>
+                  </div>
+                )}
+                {e.pregnant && (
+                  <>
+                    <div className="stat-row">
+                      <span className="stat-label">🤰 Pregnant</span>
+                      <span className="stat-value" style={{ color: '#ff99cc' }}>
+                        {e._gestationLitterSize || '?'} offspring
+                      </span>
+                    </div>
+                    <Bar icon="🤰" label="Gestation" value={e.gestationTimer || 0} max={sp?.gestation_period || e.gestationTimer || 1} color="#ff99cc" />
+                  </>
+                )}
+                {e.lifeStage === 4 && (
+                  <div className="stat-row">
+                    <span className="stat-label">🫘 Pupa</span>
+                    <span className="stat-value" style={{ color: '#aa88cc' }}>Metamorphosing</span>
+                  </div>
+                )}
+              </CollapsibleSection>
             )}
-          </CollapsibleSection>
+          </div>
         )}
 
-        {/* Species attributes */}
-        <SpeciesAttributes species={e.species} lifeStage={e.lifeStage} clock={clock} gameConfig={gameConfig} />
+        {/* === Species tab === */}
+        {animalTab === 'species' && (
+          <div className="inspector-tab-panel">
+            <SpeciesAttributes species={e.species} lifeStage={e.lifeStage} clock={clock} gameConfig={gameConfig} />
+          </div>
+        )}
 
-        {/* Action History */}
-        {e.actionHistory && e.actionHistory.length > 0 && (
-          <CollapsibleSection title="Action History" icon="📜" defaultOpen={false}>
-            <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: '0.63rem' }}>
-              {[...e.actionHistory].reverse().map((ev, i) => (
-                <ActionLogEntry key={i} event={ev} ticksPerDay={ticksPerDay} />
-              ))}
-            </div>
-          </CollapsibleSection>
+        {/* === Diet tab === */}
+        {animalTab === 'diet' && (
+          <div className="inspector-tab-panel">
+            <DietInfo species={e.species} />
+          </div>
+        )}
+
+        {/* === History tab === */}
+        {animalTab === 'history' && (
+          <div className="inspector-tab-panel">
+            {e.actionHistory && e.actionHistory.length > 0 ? (
+              <div style={{ maxHeight: 500, overflowY: 'auto', fontSize: '0.63rem' }}>
+                {[...e.actionHistory].reverse().map((ev, i) => (
+                  <ActionLogEntry key={i} event={ev} ticksPerDay={ticksPerDay} />
+                ))}
+              </div>
+            ) : (
+              <div className="small text-muted mt-2" style={{ fontStyle: 'italic' }}>No actions recorded yet.</div>
+            )}
+          </div>
         )}
       </div>
     );

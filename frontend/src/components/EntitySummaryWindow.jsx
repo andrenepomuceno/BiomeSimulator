@@ -8,14 +8,14 @@ import {
 } from './entitySummaryGroups';
 
 const TYPE_FILTERS = [
-  { id: 'all', label: 'Todos' },
-  { id: 'animal', label: 'Animais' },
-  { id: 'plant', label: 'Plantas' },
+  { id: 'all', label: 'All' },
+  { id: 'animal', label: 'Animals' },
+  { id: 'plant', label: 'Plants' },
 ];
 
 const ENTITY_TYPE_LABELS = {
   animal: 'Animal',
-  plant: 'Planta',
+  plant: 'Plant',
 };
 
 function handleActionKeyDown(event, action) {
@@ -122,14 +122,14 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
     <div className="entity-summary-overlay" onClick={onClose}>
       <div className="entity-summary-modal" onClick={e => e.stopPropagation()}>
         <div className="entity-summary-header">
-          <h5>Resumo de Entidades</h5>
+          <h5>Entity Summary</h5>
           <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>✕</button>
         </div>
 
         <div className="entity-summary-controls">
           <input
             className="form-control form-control-sm"
-            placeholder="Buscar por especie ou ID"
+            placeholder="Search by species or ID"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -144,7 +144,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
               </button>
             ))}
             <span className="entity-summary-counter">
-              {filteredEntries.length} / {totalEntries} entidades · {groupedEntries.length} grupos
+              {filteredEntries.length} / {totalEntries} entities · {groupedEntries.length} groups
             </span>
           </div>
         </div>
@@ -164,7 +164,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
                     <span className="entity-summary-group-label">{group.emoji} {group.label}</span>
                     <span className="entity-summary-group-meta">
                       {ENTITY_TYPE_LABELS[group.entityType]}
-                      {group.hasActive ? ' · selecionado' : ''}
+                      {group.hasActive ? ' · selected' : ''}
                     </span>
                   </span>
                   <span className="entity-summary-group-badge">{group.count}</span>
@@ -193,7 +193,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
             );
           })}
           {groupedEntries.length === 0 && (
-            <div className="entity-summary-empty">Nenhuma entidade encontrada para esse filtro.</div>
+            <div className="entity-summary-empty">No entities found for this filter.</div>
           )}
         </div>
       </div>

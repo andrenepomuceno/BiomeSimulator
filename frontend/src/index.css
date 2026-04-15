@@ -22,6 +22,7 @@ html, body, #root {
 .main-area {
   display: flex;
   flex: 1;
+  position: relative;
   overflow: hidden;
 }
 
@@ -30,6 +31,42 @@ html, body, #root {
   position: relative;
   overflow: hidden;
   background: #0a0a1a;
+}
+
+.world-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 10, 20, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.world-loading-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: min(420px, 100%);
+  padding: 18px 20px;
+  border: 1px solid rgba(83, 168, 182, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(15, 28, 54, 0.96) 0%, rgba(10, 18, 36, 0.96) 100%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.world-loading-title {
+  color: #eef8ff;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.world-loading-subtitle {
+  margin-top: 4px;
+  color: #9db4ca;
+  font-size: 0.82rem;
 }
 
 .sidebar {
@@ -66,10 +103,41 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   padding: 8px 16px;
   background: #0f3460;
   border-bottom: 1px solid #1a1a4e;
   flex-shrink: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.toolbar-group .btn,
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: #1a1a4e;
+  flex: 0 0 auto;
+}
+
+.toolbar-divider-spacer {
+  margin-left: auto;
+}
+
+.toolbar-icon {
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .toolbar .btn {
@@ -114,7 +182,6 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
 }
 
 .speed-control input[type="range"] {
@@ -193,14 +260,24 @@ html, body, #root {
 
 .select-filters {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-left: 4px;
+  margin-left: 8px;
+}
+
+.select-filters-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8eaec8;
+  white-space: nowrap;
 }
 
 .select-filter-label {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
   font-size: 0.73rem;
   color: #c0d0e0;
   cursor: pointer;
@@ -212,6 +289,21 @@ html, body, #root {
   accent-color: #53a8b6;
   margin: 0;
   cursor: pointer;
+}
+
+@media (max-width: 980px) {
+  .toolbar-divider {
+    display: none;
+  }
+
+  .toolbar-divider-spacer {
+    margin-left: 0;
+  }
+
+  .speed-control {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 .terrain-palette {
@@ -287,6 +379,88 @@ html, body, #root {
 .entity-info .btn-outline-secondary:hover {
   background: #244864;
   color: #fff;
+}
+
+/* Inspector tabs */
+.inspector-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #0f3460;
+  background: rgba(8, 14, 28, 0.36);
+  border-radius: 6px 6px 0 0;
+}
+
+.inspector-tab {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 4px;
+  background: transparent;
+  color: #92a8b8;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.inspector-tab:hover {
+  color: #e0f4f8;
+  background: rgba(83, 168, 182, 0.08);
+}
+
+.inspector-tab.active {
+  color: #53a8b6;
+  background: rgba(83, 168, 182, 0.12);
+  box-shadow: inset 0 -2px 0 #53a8b6;
+}
+
+.inspector-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Stats panel tabs */
+.stats-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #0f3460;
+  background: rgba(8, 14, 28, 0.36);
+  border-radius: 6px 6px 0 0;
+}
+
+.stats-tab {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 4px;
+  background: transparent;
+  color: #92a8b8;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.stats-tab:hover {
+  color: #e0f4f8;
+  background: rgba(83, 168, 182, 0.08);
+}
+
+.stats-tab.active {
+  color: #53a8b6;
+  background: rgba(83, 168, 182, 0.12);
+  box-shadow: inset 0 -2px 0 #53a8b6;
+}
+
+.stats-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* Inspector badges & grid */
@@ -689,6 +863,55 @@ html, body, #root {
   line-height: 1.45;
 }
 
+.gm-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(5, 10, 20, 0.72);
+  backdrop-filter: blur(3px);
+  border-radius: inherit;
+}
+
+.gm-confirm-dialog {
+  width: min(420px, 100%);
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(233, 69, 96, 0.3);
+  background: linear-gradient(180deg, rgba(36, 18, 28, 0.98) 0%, rgba(22, 15, 27, 0.98) 100%);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.38);
+}
+
+.gm-confirm-kicker {
+  color: #ff9aa8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.gm-confirm-dialog h6 {
+  margin: 8px 0 6px;
+  color: #fff1f4;
+  font-size: 1rem;
+}
+
+.gm-confirm-copy {
+  margin: 0;
+  color: #d6c2c9;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.gm-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 @media (max-width: 760px) {
   .game-menu-modal {
     width: 100%;
@@ -730,9 +953,14 @@ html, body, #root {
 
   .gm-actions-inline .btn,
   .gm-footer-actions .btn,
+  .gm-confirm-actions .btn,
   .game-menu-footer > .btn,
   .game-menu-footer > .btn-sim {
     width: 100%;
+  }
+
+  .gm-confirm-actions {
+    flex-direction: column;
   }
 }
 

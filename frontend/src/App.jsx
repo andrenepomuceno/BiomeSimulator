@@ -54,7 +54,7 @@ export default function App() {
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges,
-    clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile,
+    clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile, isGeneratingWorld,
   } = useSimStore();
 
   // Initialize renderer
@@ -103,6 +103,7 @@ export default function App() {
     }
 
     // Generate initial map via worker
+    useSimStore.getState().setGeneratingWorld(true);
     postCmd('generate');
 
     return () => {
@@ -219,6 +220,7 @@ export default function App() {
   }
 
   function _handleNewGame(params = {}) {
+    useSimStore.getState().setGeneratingWorld(true);
     postCmd('generate', { config: params });
     useSimStore.getState().setGameConfig(params);
     useSimStore.getState().setSimState({ running: false, paused: true });
@@ -394,6 +396,17 @@ export default function App() {
             <EntityInspector onFocusEntity={_handleFocusEntity} requestAnimalDetail={requestAnimalDetail} />
             <TerrainEditor />
           </div>
+          {isGeneratingWorld && (
+            <div className="world-loading-overlay" role="status" aria-live="polite" aria-label="Generating world">
+              <div className="world-loading-card">
+                <div className="spinner-border text-info" aria-hidden="true" />
+                <div>
+                  <div className="world-loading-title">Generating world</div>
+                  <div className="world-loading-subtitle">Building terrain, plants, and starting populations.</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

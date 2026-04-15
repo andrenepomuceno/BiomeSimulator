@@ -1,11 +1,10 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import useSimStore from '../store/simulationStore';
-import { SPECIES_INFO, STATE_NAMES, PLANT_STAGE_NAMES } from '../utils/terrainColors';
-import { getPlantByTypeId } from '../engine/plantSpecies';
 import {
   buildEntitySummaryGroups,
   matchesActiveSelection,
 } from './entitySummaryGroups';
+import { buildAnimalEntry, buildPlantEntry } from './entitySummaryEntries';
 import { useModalA11y } from '../hooks/useModalA11y.js';
 
 // --- Virtualization constants ---
@@ -102,47 +101,6 @@ function handleActionKeyDown(event, action) {
   if (event.key !== 'Enter' && event.key !== ' ') return;
   event.preventDefault();
   action();
-}
-
-function buildAnimalEntry(animal) {
-  const info = SPECIES_INFO[animal.species] || { emoji: '🐾', name: animal.species || 'Unknown' };
-  return {
-    key: `A-${animal.id}`,
-    entityType: 'animal',
-    groupKey: `animal:${animal.species || info.name}`,
-    groupLabel: info.name,
-    groupEmoji: info.emoji,
-    idLabel: `#${animal.id}`,
-    speciesLabel: info.name,
-    emoji: info.emoji,
-    x: animal.x,
-    y: animal.y,
-    summary: `${STATE_NAMES[animal.state] || 'Unknown'} · HP ${Math.round(animal.hp)}`,
-    searchable: `${info.name} ${animal.species || ''} ${animal.id}`.toLowerCase(),
-    raw: animal,
-  };
-}
-
-function buildPlantEntry(typeId, stage, x, y) {
-  const plant = getPlantByTypeId(typeId);
-  const speciesLabel = plant?.name || `Plant ${typeId}`;
-  const stageLabel = PLANT_STAGE_NAMES[stage] || `Stage ${stage}`;
-  const emoji = plant?.emoji?.adult || plant?.emoji?.youngSprout || '🌿';
-  return {
-    key: `P-${x}-${y}`,
-    entityType: 'plant',
-    groupKey: `plant:${typeId}`,
-    groupLabel: speciesLabel,
-    groupEmoji: emoji,
-    idLabel: `P(${x},${y})`,
-    speciesLabel,
-    emoji,
-    x,
-    y,
-    summary: `${stageLabel} · Tile (${x}, ${y})`,
-    searchable: `${speciesLabel} p ${x} ${y} ${typeId}`.toLowerCase(),
-    raw: { type: typeId, stage },
-  };
 }
 
 export default function EntitySummaryWindow({ open, onClose, onInspect }) {
@@ -245,6 +203,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
         <div className="entity-summary-controls">
           <input
             className="form-control form-control-sm"
+            aria-label="Search entities by species or ID"
             placeholder="Search by species or ID"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}

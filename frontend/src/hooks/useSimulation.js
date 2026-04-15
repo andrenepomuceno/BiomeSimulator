@@ -166,6 +166,17 @@ export function useSimulation() {
         case 'entityPlaced': {
           const placed = msg.entity;
           if (placed && placed.id != null) {
+            const pending = store.pendingEntityPlacement;
+            if (pending?.targetStack === 'undo') {
+              store.updateTopEntityUndoEntryId(placed.id);
+              store.clearPendingEntityPlacement();
+              break;
+            }
+            if (pending?.targetStack === 'redo') {
+              store.updateTopEntityRedoEntryId(placed.id);
+              store.clearPendingEntityPlacement();
+              break;
+            }
             store.pushEntityUndoEntry({
               kind: 'placedAnimal',
               entityId: placed.id,

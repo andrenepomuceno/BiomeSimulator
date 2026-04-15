@@ -106,6 +106,8 @@ const useSimStore = create((set, get) => ({
   terrainRedoStack: [],
   _actionSeq: 0,
   entityUndoStack: [],
+  entityRedoStack: [],
+  pendingEntityPlacement: null,
   setTerrain: (data, w, h) => set({ terrainData: data, mapWidth: w, mapHeight: h }),
   setGeneratingWorld: (isGeneratingWorld) => set({ isGeneratingWorld: !!isGeneratingWorld }),
   applyTerrainChanges: (changes) => set((state) => {
@@ -157,16 +159,51 @@ const useSimStore = create((set, get) => ({
     return {
       _actionSeq: seq,
       entityUndoStack: [...state.entityUndoStack, { ...entry, _seq: seq }].slice(-TERRAIN_HISTORY_LIMIT),
+      entityRedoStack: [],
     };
   }),
   popEntityUndoEntry: () => {
     const state = get();
     if (state.entityUndoStack.length === 0) return null;
     const entry = state.entityUndoStack[state.entityUndoStack.length - 1];
-    set({ entityUndoStack: state.entityUndoStack.slice(0, -1) });
+    set({
+      entityUndoStack: state.entityUndoStack.slice(0, -1),
+      entityRedoStack: [...state.entityRedoStack, entry].slice(-TERRAIN_HISTORY_LIMIT),
+    });
     return entry;
   },
-  clearTerrainHistory: () => set({ terrainUndoStack: [], terrainRedoStack: [], entityUndoStack: [], _actionSeq: 0 }),
+  popEntityRedoEntry: () => {
+    const state = get();
+    if (state.entityRedoStack.length === 0) return null;
+    const entry = state.entityRedoStack[state.entityRedoStack.length - 1];
+    set({
+      entityRedoStack: state.entityRedoStack.slice(0, -1),
+      entityUndoStack: [...state.entityUndoStack, entry].slice(-TERRAIN_HISTORY_LIMIT),
+    });
+    return entry;
+  },
+  updateTopEntityUndoEntryId: (entityId) => set((state) => {
+    if (state.entityUndoStack.length === 0) return {};
+    const next = [...state.entityUndoStack];
+    next[next.length - 1] = { ...next[next.length - 1], entityId };
+    return { entityUndoStack: next };
+  }),
+  updateTopEntityRedoEntryId: (entityId) => set((state) => {
+    if (state.entityRedoStack.length === 0) return {};
+    const next = [...state.entityRedoStack];
+    next[next.length - 1] = { ...next[next.length - 1], entityId };
+    return { entityRedoStack: next };
+  }),
+  setPendingEntityPlacement: (pending) => set({ pendingEntityPlacement: pending || null }),
+  clearPendingEntityPlacement: () => set({ pendingEntityPlacement: null }),
+  clearTerrainHistory: () => set({
+    terrainUndoStack: [],
+    terrainRedoStack: [],
+    entityUndoStack: [],
+    entityRedoStack: [],
+    pendingEntityPlacement: null,
+    _actionSeq: 0,
+  }),
 
   // Simulation state
   running: false,

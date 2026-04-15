@@ -283,7 +283,7 @@ export default function App() {
         }
         if (key === 'y' || (key === 'z' && e.shiftKey)) {
           e.preventDefault();
-          _handleTerrainRedo();
+          _handleRedo();
           return;
         }
       }
@@ -432,7 +432,10 @@ export default function App() {
         const sel = store.selectedEntity;
         if (sel && sel.id === entry.entityId) store.clearSelection();
       } else if (entry.kind === 'erasedAnimal') {
-        if (store.worker) store.worker.postMessage({ cmd: 'placeEntity', entityType: entry.species, x: entry.x, y: entry.y });
+        store.setPendingEntityPlacement({ targetStack: 'redo' });
+        if (store.worker) {
+          store.worker.postMessage({ cmd: 'placeEntity', entityType: entry.species, x: entry.x, y: entry.y });
+        }
       }
     } else {
       const entry = store.popTerrainUndoEntry();
@@ -444,17 +447,39 @@ export default function App() {
     }
   }
 
-  function _handleTerrainRedo() {
+  function _handleRedo() {
     const store = useSimStore.getState();
-    const entry = store.popTerrainRedoEntry();
-    if (!entry) return;
-    playUiClick();
-    store.applyTerrainChanges(entry.redo);
-    if (store.worker) {
-      store.worker.postMessage({ cmd: 'editTerrain', changes: entry.redo });
-    }
-    if (rendererRef.current) {
-      rendererRef.current.terrainLayer.updateTiles(entry.redo);
+    const terrainTop = store.terrainRedoStack[store.terrainRedoStack.length - 1];
+    const entityTop = store.entityRedoStack[store.entityRedoStack.length - 1];
+    if (!terrainTop && !entityTop) return;
+    const useEntity = entityTop && (!terrainTop || (entityTop._seq || 0) > (terrainTop._seq || 0));
+    if (useEntity) {
+      const entry = store.popEntityRedoEntry();
+      if (!entry) return;
+      playUiClick();
+      if (entry.kind === 'placedAnimal') {
+        store.setPendingEntityPlacement({ targetStack: 'undo' });
+        if (store.worker) {
+          store.worker.postMessage({ cmd: 'placeEntity', entityType: entry.species, x: entry.x, y: entry.y });
+        }
+      } else if (entry.kind === 'erasedAnimal') {
+        if (store.worker) {
+          store.worker.postMessage({ cmd: 'removeEntity', entityId: entry.entityId });
+        }
+        const sel = store.selectedEntity;
+        if (sel && sel.id === entry.entityId) store.clearSelection();
+      }
+    } else {
+      const entry = store.popTerrainRedoEntry();
+      if (!entry) return;
+      playUiClick();
+      store.applyTerrainChanges(entry.redo);
+      if (store.worker) {
+        store.worker.postMessage({ cmd: 'editTerrain', changes: entry.redo });
+      }
+      if (rendererRef.current) {
+        rendererRef.current.terrainLayer.updateTiles(entry.redo);
+      }
     }
   }
 

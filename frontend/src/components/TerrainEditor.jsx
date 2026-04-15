@@ -13,7 +13,19 @@ function rgbaToHex([r, g, b]) {
 }
 
 export default function TerrainEditor() {
-  const { tool, paintTerrain, setPaintTerrain, brushSize, setBrushSize, placeEntityType, setPlaceEntityType, terrainUndoStack, terrainRedoStack } = useSimStore();
+  const {
+    tool,
+    paintTerrain,
+    setPaintTerrain,
+    brushSize,
+    setBrushSize,
+    placeEntityType,
+    setPlaceEntityType,
+    terrainUndoStack,
+    terrainRedoStack,
+    entityUndoStack,
+    entityRedoStack,
+  } = useSimStore();
 
   if (tool === 'PAINT_TERRAIN') {
     return (
@@ -71,7 +83,8 @@ export default function TerrainEditor() {
             </button>
           ))}
         </div>
-        <div className="small text-muted mt-2">Click on map to place</div>
+        <div className="small text-muted mt-2">Click to place one, or drag to paint entities across tiles.</div>
+        <div className="small text-muted">Undo/redo entity edits with Ctrl/Cmd+Z and Ctrl/Cmd+Y. History: {entityUndoStack.length} undo, {entityRedoStack.length} redo.</div>
       </div>
     );
   }
@@ -81,6 +94,7 @@ export default function TerrainEditor() {
       <div className="sidebar-section">
         <h6>Erase</h6>
         <div className="small text-muted">Click on an animal to remove it</div>
+        <div className="small text-muted">Undo/redo entity edits with Ctrl/Cmd+Z and Ctrl/Cmd+Y. History: {entityUndoStack.length} undo, {entityRedoStack.length} redo.</div>
       </div>
     );
   }

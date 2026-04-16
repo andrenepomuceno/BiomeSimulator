@@ -38,7 +38,7 @@ const BASE_CONFIG = {
   seed: null, // null = random
 
   // Simulation
-  ticks_per_second: 20,
+  ticks_per_second: 10,
   ticks_per_day: DEFAULT_TICKS_PER_DAY,
   day_fraction: 0.6,
   animal_global_vision_multiplier: 1.2,

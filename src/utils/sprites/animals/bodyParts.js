@@ -503,6 +503,40 @@ export function drawBirdFoot(ctx, f, x, y, footColor) {
   px(ctx, f(x - 1), y + 2, dark);
 }
 
+// ─── Insect / Compound-eye helpers ────────────────────────────────────────
+
+/**
+ * Draw an insect compound eye — oval filled with a cross-grid facet pattern
+ * and a specular highlight, giving the classic multi-lens look at low resolution.
+ * @param {number} cx - center x
+ * @param {number} cy - center y
+ * @param {number} rx - horizontal radius (1–3 design pixels)
+ * @param {number} ry - vertical radius
+ * @param {string} eyeColor - base facet color
+ */
+export function drawCompoundEye(ctx, cx, cy, rx, ry, eyeColor) {
+  const dark = darken(eyeColor, 0.30);
+  const hi   = lighten(eyeColor, 0.45);
+
+  // Filled oval base
+  ellipse(ctx, cx, cy, rx, ry, eyeColor);
+
+  // Horizontal mid-line (facet row seam) — clipped to ellipse width
+  const hmw = Math.round(rx * Math.sqrt(Math.max(0, 1 - 0)));
+  if (hmw > 0) {
+    for (let dx = -hmw; dx <= hmw; dx++) px(ctx, cx + dx, cy, dark);
+  }
+  // Vertical mid-line (facet column seam) — clipped to ellipse height
+  for (let dy = -(ry - 1); dy <= (ry - 1); dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw >= 1) px(ctx, cx, cy + dy, dark);
+  }
+
+  // Specular highlight — top-left quadrant bright pixel
+  px(ctx, cx - Math.max(0, rx - 1), cy - Math.max(0, ry - 1), hi);
+  if (rx >= 2) px(ctx, cx - Math.max(0, rx - 2), cy - ry + 1, lighten(hi, 0.12));
+}
+
 // ─── Crocodile / Lizard helpers ───────────────────────────────────────────
 
 /**

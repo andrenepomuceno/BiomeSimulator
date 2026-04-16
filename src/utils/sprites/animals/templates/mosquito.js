@@ -4,6 +4,7 @@
  * long needle-like proboscis, bushy antennae, 6 very long thin legs.
  */
 import { px, rect, darken, lighten, blend, thickLine, shadedEllipse, segmentChain, quadraticThick, LEFT, DOWN, UP } from '../../helpers.js';
+import { drawCompoundEye } from '../bodyParts.js';
 
 export function drawMosquito(ctx, params, dir, frame) {
   const { body, accent, eye } = params;
@@ -29,9 +30,9 @@ export function drawMosquito(ctx, params, dir, frame) {
     // Head — shadedEllipse (small)
     shadedEllipse(ctx, cx, cy - 8, 2, 2, body, { highlight: lighten(body, 0.14) });
     if (dir === DOWN) {
-      // Compound eyes bulging on each side
-      shadedEllipse(ctx, cx - 3, cy - 8, 1, 1, eye, { highlight: lighten(eye, 0.45) });
-      shadedEllipse(ctx, cx + 3, cy - 8, 1, 1, eye, { highlight: lighten(eye, 0.45) });
+      // Compound eyes — faceted cross-grid pattern
+      drawCompoundEye(ctx, cx - 3, cy - 8, 2, 2, eye);
+      drawCompoundEye(ctx, cx + 3, cy - 8, 2, 2, eye);
     }
 
     // Antennae — quadraticThick, curving outward and bushy
@@ -106,7 +107,8 @@ export function drawMosquito(ctx, params, dir, frame) {
 
     // Head — shadedEllipse
     shadedEllipse(ctx, f(cx + 10), cy - 1, 3, 3, body);
-    shadedEllipse(ctx, f(cx + 11), cy - 3, 2, 2, eye, { highlight: lighten(eye, 0.45) });
+    // Compound eye (side view) — faceted oval
+    drawCompoundEye(ctx, f(cx + 11), cy - 3, 2, 2, eye);
 
     // Antenna — quadraticThick arcing upward
     quadraticThick(ctx, f(cx + 11), cy - 4, f(cx + 14), cy - 9, f(cx + 16), cy - 12, 0, outline);

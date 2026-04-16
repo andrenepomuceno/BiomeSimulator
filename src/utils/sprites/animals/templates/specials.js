@@ -2,7 +2,8 @@
  * Special-state sprite helpers — 64x64 design grid.
  * drawSleeping, drawDead, drawEgg, drawPupa.
  */
-import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle, softCircle } from '../../helpers.js';
+import { px, rect, ellipse, darken, lighten, noise, gradientV, rimLight, ao, speckle, anisotropicSpeckle } from '../../helpers.js';
+import { drawFurTexture } from '../bodyParts.js';
 
 /**
  * Draw a sleeping animal as a curled lump with Zzz.
@@ -22,12 +23,12 @@ export function drawSleeping(ctx, params = {}) {
   rect(ctx, cx - 12, cy + 6, 24, 4, shadow);
   rect(ctx, cx - 10, cy + 10, 20, 2, shadow);
 
-  // Fur / texture (multi-tone)
-  speckle(ctx, cx - 13, cy - 4, 26, 16, [shadow, darken(body, 0.10), lighten(body, 0.05)], 0.20);
+  // Directional fur texture — vertical streaks for a resting mammal
+  drawFurTexture(ctx, cx - 13, cy - 4, 26, 16, body, Math.PI / 2, 0.22);
   rimLight(ctx, cx - 10, cy - 4, 20, 2, highlight, 'top');
   ao(ctx, cx - 12, cy + 8, 24, 4, 0.08);
 
-  // Breathing highlight (only frame-dependent in animation, but static here)
+  // Breathing highlight
   rect(ctx, cx - 4, cy + 1, 8, 2, highlight);
 
   // Tail curl to right
@@ -58,36 +59,43 @@ export function drawDead(ctx, params = {}) {
   const cx = 32;
   const cy = 32;
 
-  // Skull (oval)
-  rect(ctx, cx - 5, cy - 6, 10, 3, bone);
-  rect(ctx, cx - 6, cy - 3, 12, 6, bone);
-  rect(ctx, cx - 5, cy + 3, 10, 2, boneSh);
-  // Eye sockets
-  rect(ctx, cx - 4, cy - 2, 3, 3, '#1a1a1a');
-  rect(ctx, cx + 1, cy - 2, 3, 3, '#1a1a1a');
-  // Nose hole
-  px(ctx, cx - 1, cy + 2, '#1a1a1a');
-  px(ctx, cx, cy + 2, '#1a1a1a');
+  // Skull — rounded via ellipse for organic shape
+  ellipse(ctx, cx, cy - 1, 6, 5, bone);
+  // Cheekbones shadow
+  for (let dy = 2; dy <= 5; dy++) {
+    const hw = Math.round(6 * Math.sqrt(Math.max(0, 1 - (dy * dy) / 25)));
+    if (hw > 0) rect(ctx, cx - hw, cy - 1 + dy, hw * 2 + 1, 1, boneSh);
+  }
+  // Highlight on crown
+  ellipse(ctx, cx - 1, cy - 3, 3, 2, lighten(bone, 0.12));
+
+  // Eye sockets — sunken dark ovals
+  ellipse(ctx, cx - 3, cy, 2, 2, '#1a1a1a');
+  ellipse(ctx, cx + 3, cy, 2, 2, '#1a1a1a');
+  // Nose cavity
+  px(ctx, cx - 1, cy + 3, '#1a1a1a');
+  px(ctx, cx, cy + 3, '#1a1a1a');
   // Jaw
-  rect(ctx, cx - 4, cy + 5, 8, 2, boneSh);
+  rect(ctx, cx - 4, cy + 6, 8, 2, boneSh);
   // Teeth
-  for (let i = 0; i < 4; i++) { px(ctx, cx - 3 + i * 2, cy + 5, bone); }
+  for (let i = 0; i < 4; i++) px(ctx, cx - 3 + i * 2, cy + 6, bone);
 
   // Spine
   for (let s = 0; s < 7; s++) {
-    rect(ctx, cx - 1, cy + 8 + s * 3, 2, 2, bone);
-    if (s % 2 === 0) { px(ctx, cx - 2, cy + 9 + s * 3, boneSh); px(ctx, cx + 1, cy + 9 + s * 3, boneSh); }
+    rect(ctx, cx - 1, cy + 9 + s * 3, 2, 2, bone);
+    if (s % 2 === 0) {
+      px(ctx, cx - 2, cy + 10 + s * 3, boneSh);
+      px(ctx, cx + 1, cy + 10 + s * 3, boneSh);
+    }
   }
 
   // Ribs (3 pairs)
   for (let r = 0; r < 3; r++) {
-    const ry = cy + 10 + r * 5;
-    // Left rib curves out and down
+    const ry = cy + 11 + r * 5;
     rect(ctx, cx - 2, ry, 1, 1, bone);
     rect(ctx, cx - 4, ry + 1, 2, 1, bone);
     rect(ctx, cx - 6, ry + 2, 2, 1, bone);
     rect(ctx, cx - 7, ry + 3, 2, 1, boneSh);
-    // Right rib
     rect(ctx, cx + 1, ry, 1, 1, bone);
     rect(ctx, cx + 2, ry + 1, 2, 1, bone);
     rect(ctx, cx + 4, ry + 2, 2, 1, bone);
@@ -99,91 +107,110 @@ export function drawDead(ctx, params = {}) {
 }
 
 /**
- * Draw an egg with shell texture and speckles.
+ * Draw an egg with smooth ellipse body, shell texture and speckles.
  */
 export function drawEgg(ctx, params = {}) {
   const body = params.body || '#e8dcc0';
   const accent = params.accent || '#c0a880';
-  const shell = lighten(body, 0.2);
-  const shellSh = darken(body, 0.05);
-  const speckle = accent || darken(body, 0.2);
-  const cx = 32;
-  const cy = 32;
+  const shell = lighten(body, 0.18);
+  const shellSh = darken(body, 0.08);
+  const speckleCol = accent || darken(body, 0.20);
+  const cx = 32, cy = 30;
+  const rx = 8, ry = 12;
 
-  // Egg shape (slightly tapered top) with gradient
-  rect(ctx, cx - 4, cy - 10, 8, 2, shell);
-  rect(ctx, cx - 6, cy - 8, 12, 3, shell);
-  gradientV(ctx, cx - 7, cy - 5, 14, 6, shell, shellSh);
-  gradientV(ctx, cx - 8, cy + 1, 16, 6, shell, shellSh);
-  rect(ctx, cx - 7, cy + 7, 14, 3, shellSh);
-  rect(ctx, cx - 6, cy + 10, 12, 2, shellSh);
-  rect(ctx, cx - 4, cy + 12, 8, 2, shellSh);
-  rimLight(ctx, cx - 4, cy - 10, 8, 2, lighten(shell, 0.12), 'top');
-  ao(ctx, cx - 6, cy + 10, 12, 4, 0.06);
+  // Egg base ellipse
+  ellipse(ctx, cx, cy, rx, ry, shell);
 
-  // Highlight band
-  rect(ctx, cx - 3, cy - 8, 4, 2, lighten(shell, 0.1));
+  // Tapered shadow on lower half — darker rows toward bottom
+  for (let dy = 2; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw > 0) rect(ctx, cx - hw, cy + dy, hw * 2 + 1, 1, darken(shell, 0.04 + dy * 0.010));
+  }
 
-  // Speckles
+  // Top highlight — sun-lit crown (narrowed for tapering feel)
+  const hiRx = Math.max(2, (rx * 0.48) | 0);
+  const hiRy = Math.max(1, (ry * 0.28) | 0);
+  ellipse(ctx, cx - 1, cy - ry + hiRy, hiRx, hiRy, lighten(shell, 0.16));
+  rimLight(ctx, cx - 4, cy - ry, 8, 2, lighten(shell, 0.12), 'top');
+
+  // Shell texture — isotropic speckle clipped to ellipse
+  for (let dy = -ry; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw > 0) speckle(ctx, cx - hw, cy + dy, hw * 2 + 1, 1,
+      [darken(shell, 0.10), darken(shell, 0.06), lighten(shell, 0.04)], 0.16);
+  }
+
+  // Speckle pigment marks
   const specklePositions = [
     [-3, -4], [2, -6], [5, -2], [-5, 2], [1, 4], [-2, 7], [4, 6],
     [-4, -1], [3, 1], [-1, 5], [5, 8], [-5, 6], [0, -3], [2, 9],
   ];
   for (const [dx, dy] of specklePositions) {
     if (noise(cx + dx, cy + dy) > 0.45) {
-      px(ctx, cx + dx, cy + dy, speckle);
-      if (noise(cx + dx + 1, cy + dy) > 0.6) px(ctx, cx + dx + 1, cy + dy, speckle);
+      px(ctx, cx + dx, cy + dy, speckleCol);
+      if (noise(cx + dx + 1, cy + dy) > 0.6) px(ctx, cx + dx + 1, cy + dy, speckleCol);
     }
   }
 
-  // Ground shadow
-  rect(ctx, cx - 6, cy + 14, 12, 2, 'rgba(0,0,0,0.10)');
+  ao(ctx, cx - rx + 2, cy + ry - 2, (rx - 1) * 2, 4, 0.08);
+  rect(ctx, cx - rx + 1, cy + ry + 2, (rx - 1) * 2, 2, 'rgba(0,0,0,0.10)');
 }
 
 /**
- * Draw a pupa / cocoon with silk texture and segment bands.
+ * Draw a pupa / cocoon with ellipse body, silk texture and segment bands.
  */
 export function drawPupa(ctx, params = {}) {
   const body = params.body || '#8a7a50';
   const accent = params.accent || '#6a5a30';
-  const silk = lighten(body, 0.15);
-  const silkSh = darken(body, 0.05);
-  const silkHi = lighten(body, 0.25);
+  const silk = lighten(body, 0.16);
+  const silkSh = darken(body, 0.08);
+  const silkHi = lighten(body, 0.28);
   const band = accent || darken(body, 0.15);
-  const cx = 32;
-  const cy = 32;
+  const cx = 32, cy = 28;
+  const rx = 6, ry = 14;
 
-  // Pupa shape (tapered both ends) with gradient
-  rect(ctx, cx - 3, cy - 12, 6, 2, silk);
-  rect(ctx, cx - 5, cy - 10, 10, 3, silk);
-  gradientV(ctx, cx - 6, cy - 7, 12, 5, silk, silkSh);
-  gradientV(ctx, cx - 7, cy - 2, 14, 8, silk, silkSh);
-  rect(ctx, cx - 6, cy + 6, 12, 4, silkSh);
-  rect(ctx, cx - 5, cy + 10, 10, 2, silkSh);
-  rect(ctx, cx - 3, cy + 12, 6, 2, silkSh);
-  rimLight(ctx, cx - 3, cy - 12, 6, 2, silkHi, 'top');
+  // Pupa base ellipse — tapered both ends
+  ellipse(ctx, cx, cy, rx, ry, silk);
 
-  // Highlight shimmer
-  rect(ctx, cx - 2, cy - 10, 3, 2, silkHi);
-  rect(ctx, cx - 1, cy - 7, 2, 3, silkHi);
-
-  // Segment bands
-  for (let s = -8; s <= 10; s += 4) {
-    rect(ctx, cx - 5, cy + s, 10, 1, band);
-  }
-
-  // Silk texture
-  for (let dy = -12; dy <= 13; dy++) {
-    for (let dx = -7; dx <= 7; dx++) {
-      if (noise(cx + dx, cy + dy) > 0.82) px(ctx, cx + dx, cy + dy, silkHi);
+  // Gradient shadow — both upper and lower halves darken
+  for (let dy = 1; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw > 0) {
+      rect(ctx, cx - hw, cy + dy, hw * 2 + 1, 1, darken(silk, 0.04 + dy * 0.010));
+      rect(ctx, cx - hw, cy - dy, hw * 2 + 1, 1, darken(silk, 0.02 + dy * 0.006));
     }
   }
 
-  // Thread from top
+  // Top highlight (narrow — tapered tip)
+  ellipse(ctx, cx - 1, cy - ry + 3, Math.max(1, rx - 2), 3, silkHi);
+  rimLight(ctx, cx - 2, cy - ry, 4, 2, silkHi, 'top');
+
+  // Side highlight shimmer
+  for (let dy = -ry + 3; dy <= -2; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw >= 2) px(ctx, cx - hw + 1, cy + dy, silkHi);
+  }
+
+  // Silk texture — diagonal anisotropic for wound-thread look
+  for (let dy = -ry; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw > 0) {
+      anisotropicSpeckle(ctx, cx - hw, cy + dy, hw * 2 + 1, 1,
+        [darken(silk, 0.08), lighten(silk, 0.06)], 0.28, Math.PI / 6, 2.0);
+    }
+  }
+
+  // Segment bands — clipped to ellipse width
+  for (let s = -ry + 4; s <= ry - 2; s += 4) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (s * s) / (ry * ry))));
+    if (hw > 0) rect(ctx, cx - hw, cy + s, hw * 2 + 1, 1, band);
+  }
+
+  // Suspension thread from tip
   for (let t = 0; t < 6; t++) {
-    px(ctx, cx + (t % 2 === 0 ? 0 : 1), cy - 13 - t, band);
+    px(ctx, cx + (t % 2 === 0 ? 0 : 1), cy - ry - 1 - t, band);
   }
 
   // Ground shadow
-  rect(ctx, cx - 5, cy + 15, 10, 2, 'rgba(0,0,0,0.10)');
+  rect(ctx, cx - rx + 1, cy + ry + 2, (rx - 1) * 2, 2, 'rgba(0,0,0,0.10)');
 }

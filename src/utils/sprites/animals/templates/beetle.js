@@ -4,6 +4,7 @@
  * segmented antennae with antennal clubs, compound eyes, 6 jointed legs.
  */
 import { px, rect, darken, lighten, blend, speckle, thickLine, shadedEllipse, fillPolygon, LEFT, DOWN, UP } from '../../helpers.js';
+import { drawCompoundEye } from '../bodyParts.js';
 
 export function drawBeetle(ctx, params, dir, frame) {
   const { body, accent, eye } = params;
@@ -54,9 +55,9 @@ export function drawBeetle(ctx, params, dir, frame) {
     const hCy = pCy - 6;
     shadedEllipse(ctx, cx, hCy + 2, 3, 2, body);
     if (dir === DOWN) {
-      // Bulging compound eyes — shadedEllipse per eye
-      shadedEllipse(ctx, cx - 3, hCy + 1, 1, 1, eye, { highlight: lighten(eye, 0.35) });
-      shadedEllipse(ctx, cx + 3, hCy + 1, 1, 1, eye, { highlight: lighten(eye, 0.35) });
+      // Bulging compound eyes — faceted oval with cross-grid seams
+      drawCompoundEye(ctx, cx - 3, hCy + 1, 2, 1, eye);
+      drawCompoundEye(ctx, cx + 3, hCy + 1, 2, 1, eye);
     }
 
     // Antennae — thickLine: elbow then club
@@ -105,9 +106,8 @@ export function drawBeetle(ctx, params, dir, frame) {
 
     // Head — small shadedEllipse forward of pronotum
     shadedEllipse(ctx, f(proX + 4), eCy, 3, eRy - 2, body);
-    // Eye
-    px(ctx, f(proX + 5), eCy - 2, eye);
-    px(ctx, f(proX + 5), eCy - 3, lighten(eye, 0.35));
+    // Compound eye — faceted with specular
+    drawCompoundEye(ctx, f(proX + 5), eCy - 2, 1, 1, eye);
 
     // Antenna — thickLine elbowed upward
     thickLine(ctx, f(proX + 5), eCy - 3, f(proX + 8), eCy - 6, 0, outline);

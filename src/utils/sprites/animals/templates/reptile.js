@@ -5,6 +5,7 @@
  * Scale texture via noise, slit-pupil eyes, claw detail, belly plates.
  */
 import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle, thickLine, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawReptileEye, drawTongue } from '../bodyParts.js';
 
 export function drawReptile(ctx, params, dir, frame) {
   const { body, accent, eye, w, h, tailLen } = params;
@@ -57,12 +58,8 @@ export function drawReptile(ctx, params, dir, frame) {
     scaleRegion(hx + 1, headY + 1, headW - 2, 4);
     if (dir === DOWN) {
       // Slit-pupil eyes
-      rect(ctx, hx + 3, headY + 3, 3, 3, eye);
-      rect(ctx, hx + headW - 6, headY + 3, 3, 3, eye);
-      px(ctx, hx + 4, headY + 3, '#000000'); // slit pupil
-      px(ctx, hx + headW - 5, headY + 3, '#000000');
-      px(ctx, hx + 3, headY + 3, '#ffffff');
-      px(ctx, hx + headW - 4, headY + 3, '#ffffff');
+      drawReptileEye(ctx, hx + 3, headY + 3, eye);
+      drawReptileEye(ctx, hx + headW - 6, headY + 3, eye);
       if (params.snout) {
         rect(ctx, hx + 3, headY, 3, 2, shadow);
         rect(ctx, hx + headW - 6, headY, 3, 2, shadow);
@@ -136,9 +133,7 @@ export function drawReptile(ctx, params, dir, frame) {
     for (let hx = 0; hx < headW; hx++) for (let hy = 0; hy < h; hy++) px(ctx, f(headX + hx), by + hy, body);
     rect(ctx, f(headX + headW - 3), by, 3, 2, highlight);
     // Eye (slit pupil)
-    rect(ctx, f(headX + headW - 3), by + (h > 6 ? 3 : 1), 3, 3, eye);
-    px(ctx, f(headX + headW - 2), by + (h > 6 ? 4 : 2), '#000000');
-    px(ctx, f(headX + headW - 3), by + (h > 6 ? 3 : 1), '#ffffff');
+    drawReptileEye(ctx, f(headX + headW - 3), by + (h > 6 ? 3 : 1), eye);
     if (params.teeth) {
       rect(ctx, f(headX + headW - 2), by + h - 3, 2, 2, '#f0f0e0');
       rect(ctx, f(headX + headW), by + h - 3, 2, 2, '#f0f0e0');

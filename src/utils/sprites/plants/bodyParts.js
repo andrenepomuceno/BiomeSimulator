@@ -330,3 +330,39 @@ export function drawCactusSpines(ctx, x, y, w, h, spineColor) {
     px(ctx, x + w, yy + 1, spineColor);
   }
 }
+
+/**
+ * Draw a tapered carrot root hanging from the crown.
+ */
+export function drawCarrotRoot(ctx, cx, crownY, h, rootColor, rootAccent) {
+  const sh = darken(rootColor, 0.18);
+  const hi = rootAccent || lighten(rootColor, 0.20);
+  for (let i = 0; i < h; i++) {
+    const y = crownY + i;
+    const w = Math.max(1, 5 - Math.floor(i * 4 / Math.max(1, h - 1)));
+    rect(ctx, cx - Math.floor(w / 2), y, w, 1, i < 2 ? hi : rootColor);
+    if (w >= 3) px(ctx, cx + Math.floor(w / 2), y, sh);
+  }
+  // Tiny root hairs near the tip.
+  px(ctx, cx - 1, crownY + h - 2, sh);
+  px(ctx, cx + 1, crownY + h - 1, sh);
+}
+
+/**
+ * Draw clustered potato tubers near ground level.
+ */
+export function drawPotatoTubers(ctx, cx, baseY, skinColor, skinAccent, count = 3) {
+  const eye = darken(skinColor, 0.30);
+  const spots = [
+    [-4, -1, 5],
+    [0, -2, 6],
+    [4, -1, 5],
+    [2, 1, 4],
+  ];
+  for (let i = 0; i < Math.min(count, spots.length); i++) {
+    const [ox, oy, sz] = spots[i];
+    drawFruit(ctx, cx + ox, baseY + oy, sz, skinColor, skinAccent);
+    px(ctx, cx + ox + 1, baseY + oy + 1, eye);
+    if (sz >= 5) px(ctx, cx + ox + 3, baseY + oy + 2, eye);
+  }
+}

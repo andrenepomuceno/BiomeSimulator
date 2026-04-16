@@ -5,7 +5,7 @@
  * Shell sheen, translucent wings, segmented antennae, caterpillar prolegs.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawInsectLeg, drawFurTexture } from '../bodyParts.js';
+import { drawInsectLeg, drawFurTexture, drawCaterpillarChainTop } from '../bodyParts.js';
 
 export function drawInsect(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -202,23 +202,7 @@ function drawCaterpillar(ctx, params, dir, frame) {
 
   if (dir === DOWN || dir === UP) {
     const headAtTop = dir === DOWN;
-    for (let s = 0; s < segments; s++) {
-      const sy = headAtTop ? cy - segments + s * 3 : cy + segments - 3 - s * 3;
-      const color = s % 2 === 0 ? body : accent;
-      // Segment body
-      rect(ctx, cx - 5, sy, 10, 3, color);
-      // Highlight on top
-      rect(ctx, cx - 4, sy, 4, 1, highlight);
-      // Shadow on bottom
-      rect(ctx, cx - 4, sy + 2, 8, 1, shadow);
-      // Prolegs
-      rect(ctx, cx - 7, sy + 1, 2, 2, shadow2);
-      rect(ctx, cx + 6, sy + 1, 2, 2, shadow2);
-      // Spot markings
-      if (spotColor && s % 2 === 0) {
-        rect(ctx, cx - 2, sy, 3, 2, spotColor);
-      }
-    }
+    drawCaterpillarChainTop(ctx, cx, cy, segments, headAtTop, body, accent, spotColor);
     const hy = headAtTop ? cy - segments - 4 : cy + segments;
     // Head
     rect(ctx, cx - 5, hy, 10, 4, body);

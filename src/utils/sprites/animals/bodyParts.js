@@ -538,3 +538,46 @@ export function drawArmoredBody(ctx, x, y, w, h, hiColor, shColor, scuteColor, s
   // Scale/plate texture overlay
   scalePatternFn(ctx, x + 1, y + 1, w - 2, h - 2, blend(hiColor, shColor, 0.5), scuteColor, 4);
 }
+
+/**
+ * Draw a rounded caterpillar segment with top highlight and belly shadow.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} cx
+ * @param {number} cy
+ * @param {number} rx
+ * @param {number} ry
+ * @param {string} color
+ * @param {string} spotColor
+ */
+export function drawCaterpillarSegment(ctx, cx, cy, rx, ry, color, spotColor) {
+  const hi = lighten(color, 0.14);
+  const sh = darken(color, 0.16);
+  ellipse(ctx, cx, cy, rx, ry, color);
+  ellipse(ctx, cx - 1, cy - 1, Math.max(1, rx - 1), 1, hi);
+  ellipse(ctx, cx, cy + 1, Math.max(1, rx - 1), 1, sh);
+  if (spotColor) {
+    px(ctx, cx, cy - 1, spotColor);
+    px(ctx, cx, cy, darken(spotColor, 0.15));
+  }
+}
+
+/**
+ * Draw a vertical caterpillar chain for DOWN/UP views.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} cx
+ * @param {number} cy
+ * @param {number} segments
+ * @param {boolean} headAtTop
+ * @param {string} body
+ * @param {string} accent
+ * @param {string} spotColor
+ */
+export function drawCaterpillarChainTop(ctx, cx, cy, segments, headAtTop, body, accent, spotColor) {
+  for (let s = 0; s < segments; s++) {
+    const sy = headAtTop ? cy - segments + s * 3 : cy + segments - 3 - s * 3;
+    const segColor = s % 2 === 0 ? body : accent;
+    drawCaterpillarSegment(ctx, cx, sy + 1, 5, 2, segColor, s % 2 === 0 ? spotColor : null);
+    rect(ctx, cx - 7, sy + 1, 2, 2, darken(segColor, 0.24));
+    rect(ctx, cx + 6, sy + 1, 2, 2, darken(segColor, 0.24));
+  }
+}

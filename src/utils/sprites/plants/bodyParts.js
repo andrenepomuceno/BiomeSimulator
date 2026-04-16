@@ -5,7 +5,7 @@
  */
 import {
   px, rect, ellipse,
-  darken, lighten,
+  darken, lighten, blend,
   gradientH, gradientV,
   rimLight, ao,
   speckle, anisotropicSpeckle,
@@ -218,4 +218,84 @@ export function drawFruit(ctx, x, y, size, fruitColor, fruitAccent) {
 
   // Stem pip (tiny dark pixel at the top)
   px(ctx, cx_, y - 1, darken(fruitColor, 0.40));
+}
+
+/**
+ * Draw a single curved grass blade with vertical color grading.
+ */
+export function drawGrassBlade(ctx, bx, by, h, lean, stem, leaf, leafDark, dark = false, seedTip = null) {
+  const baseCol = darken(dark ? leafDark : stem, 0.08);
+  const midCol = dark ? leafDark : leaf;
+  const tipCol = dark ? leaf : lighten(leaf, 0.18);
+
+  for (let i = 0; i < h; i++) {
+    const y = by - i;
+    const x = bx + Math.round(lean * (i / Math.max(1, h - 1)));
+    const t = i / Math.max(1, h);
+
+    let col;
+    if (seedTip && i >= h - 3) {
+      col = i === h - 1 ? lighten(seedTip, 0.18) : seedTip;
+    } else if (t < 0.3) {
+      col = blend(baseCol, midCol, t / 0.3);
+    } else if (t < 0.8) {
+      col = midCol;
+    } else {
+      col = blend(midCol, tipCol, (t - 0.8) / 0.2);
+    }
+
+    px(ctx, x, y, col);
+    if (i < Math.ceil(h * 0.35) && !dark) {
+      px(ctx, x + 1, y, darken(col, 0.14));
+    }
+  }
+}
+
+/**
+ * Draw a small seed panicle cluster at a blade tip.
+ */
+export function drawSeedHead(ctx, tipX, tipY, seedColor) {
+  const sh = darken(seedColor, 0.16);
+  const hi = lighten(seedColor, 0.16);
+  px(ctx, tipX, tipY, seedColor);
+  px(ctx, tipX - 1, tipY + 1, sh);
+  px(ctx, tipX + 1, tipY + 1, sh);
+  px(ctx, tipX, tipY + 2, seedColor);
+  px(ctx, tipX - 1, tipY + 2, hi);
+}
+
+/**
+ * Draw a low herb canopy with layered color and texture.
+ */
+export function drawHerbCanopy(ctx, x, y, w, h, leaf, leafDark) {
+  rect(ctx, x, y, w, h, leaf);
+  rect(ctx, x + 2, y - 4, Math.max(4, w - 4), 4, leaf);
+  rect(ctx, x + 3, y + 2, Math.max(4, w - 6), 2, leafDark);
+  drawLeafTexture(ctx, x, y - 4, w, h + 4, leaf, leafDark);
+  ao(ctx, x + 1, y + h - 1, Math.max(2, w - 2), 2, 0.08);
+}
+
+/**
+ * Draw a palm frond made of a central rachis and short leaflets.
+ */
+export function drawPalmFrond(ctx, startX, startY, length, dir, drop, leaf, leafDark) {
+  for (let i = 0; i < length; i++) {
+    const x = startX + i * dir;
+    const y = startY + Math.round((i / Math.max(1, length - 1)) * drop);
+    px(ctx, x, y, darken(leaf, 0.12));
+    if (i > 1 && i < length - 1) {
+      px(ctx, x, y - 1, leaf);
+      if (i % 2 === 0) px(ctx, x, y + 1, leafDark);
+    }
+  }
+}
+
+/**
+ * Draw evenly spaced cactus spines over a rectangular region.
+ */
+export function drawCactusSpines(ctx, x, y, w, h, spineColor) {
+  for (let yy = y + 2; yy < y + h - 1; yy += 4) {
+    px(ctx, x - 1, yy, spineColor);
+    px(ctx, x + w, yy + 1, spineColor);
+  }
 }

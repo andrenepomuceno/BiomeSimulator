@@ -37,7 +37,8 @@ const SCENES = [
     generate: true,
     config: { seed: RANDOM_SEED, map_width: 500, map_height: 500 },
     targetTick: 30,
-    zoom: 4,                          // wide overview — enough to see the whole map
+    zoom: 4,                          // used as fallback if fit calc fails
+    fitToMap: true,                   // auto-zoom to guarantee whole map visibility
     center: { fx: 0.50, fy: 0.50 },
   },
   // ── Close-ups at incrementing ticks so each shot is a different moment ──
@@ -121,6 +122,33 @@ function dataUrlToBuffer(dataUrl) {
   return Buffer.from(base64, 'base64');
 }
 
+// ── Compute overview zoom to fit full map inside canvas ────────────────────
+async function getFitToMapZoom(page, fallbackZoom) {
+  return page.evaluate(({ fallback }) => {
+    const state = window.__ecoCapture.getState();
+    const canvas = document.querySelector('.canvas-area canvas');
+    if (!canvas || !state?.mapWidth || !state?.mapHeight) {
+      return { zoom: fallback, fits: false, reason: 'missing-canvas-or-map' };
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const mapW = Math.max(1, state.mapWidth);
+    const mapH = Math.max(1, state.mapHeight);
+
+    // Keep a small margin so border tiles don't get clipped by rounding.
+    const fitZoom = Math.min(rect.width / mapW, rect.height / mapH) * 0.98;
+    const zoom = Math.max(1, Math.min(120, fitZoom));
+
+    window.__ecoCapture.setZoom(zoom);
+    window.__ecoCapture.centerOn(Math.floor(mapW / 2), Math.floor(mapH / 2));
+
+    const viewport = window.__ecoCapture.getState().viewport;
+    const fits = !!viewport && viewport.w >= mapW && viewport.h >= mapH;
+
+    return { zoom, fits, mapW, mapH, viewportW: viewport?.w ?? null, viewportH: viewport?.h ?? null };
+  }, { fallback: fallbackZoom });
+}
+
 // ── In-game scene capture ───────────────────────────────────────────
 async function runIngame(page, scenes, runDir, manifest) {
   await page.waitForFunction(() => !!window.__ecoCapture, { timeout: 30_000 });
@@ -149,21 +177,35 @@ async function runIngame(page, scenes, runDir, manifest) {
     }
     await page.evaluate(() => window.__ecoCapture.postCmd('pause'));
 
-    await page.evaluate((z) => window.__ecoCapture.setZoom(z), scene.zoom);
+    let usedZoom = scene.zoom;
+    await page.evaluate((z) => window.__ecoCapture.setZoom(z), usedZoom);
+
     const mapCenter = await page.evaluate((c) => {
       const state = window.__ecoCapture.getState();
       return { x: Math.floor(state.mapWidth * c.fx), y: Math.floor(state.mapHeight * c.fy) };
     }, scene.center);
     await page.evaluate(({ x, y }) => window.__ecoCapture.centerOn(x, y), mapCenter);
+
+    if (scene.fitToMap) {
+      const fit = await getFitToMapZoom(page, scene.zoom);
+      usedZoom = fit.zoom;
+      if (fit.fits) {
+        console.log(`  Fit-to-map zoom: ${usedZoom.toFixed(2)} (map ${fit.mapW}x${fit.mapH}, viewport ${fit.viewportW}x${fit.viewportH})`);
+      } else {
+        console.warn(`  Could not fully fit map at current constraints; using zoom ${usedZoom.toFixed(2)}`);
+      }
+    }
+
     await page.waitForTimeout(300);
 
     const tick = await page.evaluate(() => window.__ecoCapture.getState().clock.tick);
-    const fileName = `${scene.name}-tick${tick}-z${scene.zoom}.png`;
+    const zoomTag = usedZoom.toFixed(2).replace('.', 'p');
+    const fileName = `${scene.name}-tick${tick}-z${zoomTag}.png`;
     await page.locator('.canvas-area canvas').screenshot({ path: path.join(runDir, fileName), type: 'png' });
     console.log(`  Saved: ${fileName}`);
     manifest.push({
       scene: scene.name, file: fileName, seed: RANDOM_SEED,
-      config: scene.config ?? { seed: RANDOM_SEED }, tick, zoom: scene.zoom,
+      config: scene.config ?? { seed: RANDOM_SEED }, tick, zoom: usedZoom,
       capturedAt: new Date().toISOString(),
     });
 

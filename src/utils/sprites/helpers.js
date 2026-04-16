@@ -242,6 +242,277 @@ export function feather(ctx, x, y, w, h, baseColor, tipColor) {
   }
 }
 
+// ── Shape primitives ────────────────────────────────────────────────
+
+/**
+ * Pixel-art rounded rectangle. r is the corner radius in design pixels.
+ * r=0 is identical to rect(). r is clamped to Math.floor(min(w,h)/2).
+ */
+export function roundRect(ctx, x, y, w, h, r, color) {
+  r = Math.min(r, Math.floor(Math.min(w, h) / 2));
+  if (r <= 0) { rect(ctx, x, y, w, h, color); return; }
+  ctx.fillStyle = color;
+  // Horizontal fill (full width, inner height)
+  ctx.fillRect((x) * _CM * SCALE, (y + r) * _CM * SCALE, w * _CM * SCALE, (h - r * 2) * _CM * SCALE);
+  // Top + bottom strips (inner width)
+  ctx.fillRect((x + r) * _CM * SCALE, y * _CM * SCALE, (w - r * 2) * _CM * SCALE, r * _CM * SCALE);
+  ctx.fillRect((x + r) * _CM * SCALE, (y + h - r) * _CM * SCALE, (w - r * 2) * _CM * SCALE, r * _CM * SCALE);
+  // Pixel-art corners — quarter-circle approximation
+  for (let dy = 0; dy < r; dy++) {
+    const hw = Math.round(Math.sqrt(r * r - (r - 1 - dy) * (r - 1 - dy)));
+    const fill = hw;
+    ctx.fillRect((x + r - fill) * _CM * SCALE, (y + dy) * _CM * SCALE, fill * _CM * SCALE, _CM * SCALE);
+    ctx.fillRect((x + w - r) * _CM * SCALE, (y + dy) * _CM * SCALE, fill * _CM * SCALE, _CM * SCALE);
+    ctx.fillRect((x + r - fill) * _CM * SCALE, (y + h - 1 - dy) * _CM * SCALE, fill * _CM * SCALE, _CM * SCALE);
+    ctx.fillRect((x + w - r) * _CM * SCALE, (y + h - 1 - dy) * _CM * SCALE, fill * _CM * SCALE, _CM * SCALE);
+  }
+}
+
+/**
+ * Filled triangle via scanline rasterisation. All coords in design-pixel space.
+ * Works for any winding order.
+ */
+export function triangle(ctx, x1, y1, x2, y2, x3, y3, color) {
+  // Sort vertices by y
+  let ax = x1, ay = y1, bx = x2, by = y2, cx = x3, cy = y3;
+  if (ay > by) { let tx = ax, ty = ay; ax = bx; ay = by; bx = tx; by = ty; }
+  if (ay > cy) { let tx = ax, ty = ay; ax = cx; ay = cy; cx = tx; cy = ty; }
+  if (by > cy) { let tx = bx, ty = by; bx = cx; by = cy; cx = tx; cy = ty; }
+  ctx.fillStyle = color;
+  const totalH = cy - ay;
+  if (totalH === 0) return;
+  for (let y = ay; y <= cy; y++) {
+    const isLower = y > by || by === ay;
+    const segH = isLower ? cy - by : by - ay;
+    if (segH === 0) continue;
+    const alpha = (y - ay) / totalH;
+    const beta = isLower ? (y - by) / (cy - by) : (y - ay) / (by - ay);
+    let sx = Math.round(ax + (cx - ax) * alpha);
+    let ex = Math.round(isLower ? bx + (cx - bx) * beta : ax + (bx - ax) * beta);
+    if (sx > ex) { let t = sx; sx = ex; ex = t; }
+    ctx.fillRect(sx * _CM * SCALE, y * _CM * SCALE, (ex - sx + 1) * _CM * SCALE, _CM * SCALE);
+  }
+}
+
+/**
+ * Draw an arc outline of the given thickness (in design pixels).
+ * startAngle / endAngle in radians (0 = right, clockwise).
+ */
+export function arc(ctx, cx, cy, r, startAngle, endAngle, thickness, color) {
+  ctx.fillStyle = color;
+  const steps = Math.max(24, r * 4);
+  let angle = startAngle;
+  const step = (endAngle - startAngle) / steps;
+  for (let i = 0; i <= steps; i++, angle += step) {
+    for (let t = 0; t < thickness; t++) {
+      const ri = r - t;
+      if (ri < 0) break;
+      const px_ = Math.round(cx + Math.cos(angle) * ri);
+      const py_ = Math.round(cy + Math.sin(angle) * ri);
+      if (px_ < 0 || py_ < 0 || px_ >= DESIGN || py_ >= DESIGN) continue;
+      ctx.fillRect(px_ * _CM * SCALE, py_ * _CM * SCALE, _CM * SCALE, _CM * SCALE);
+    }
+  }
+}
+
+// ── Texture / fill helpers ───────────────────────────────────────────
+
+/**
+ * Repeating stripes at an arbitrary angle (radians, 0=horizontal).
+ * stripeW is the width of each colour band in design pixels.
+ */
+export function stripes(ctx, x, y, w, h, color1, color2, stripeW, angle = 0) {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      const proj = (x + dx) * cos + (y + dy) * sin;
+      const band = Math.floor(proj / stripeW);
+      px(ctx, x + dx, y + dy, band & 1 ? color2 : color1);
+    }
+  }
+}
+
+/**
+ * Direction-aware speckle — grains are stretched along `angle` (radians).
+ * ratio controls elongation (1 = isotropic, 3 = strongly directional).
+ */
+export function anisotropicSpeckle(ctx, x, y, w, h, colors, density = 0.3, angle = 0, ratio = 2.5) {
+  const len = colors.length;
+  const cos = Math.cos(-angle);
+  const sin = Math.sin(-angle);
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      const lx = (x + dx) * cos - (y + dy) * sin;
+      const ly = ((x + dx) * sin + (y + dy) * cos) / ratio;
+      const n = noise(Math.round(lx * 3) + 7919, Math.round(ly * 3) + 6271);
+      if (n < density) {
+        const ci = Math.floor(noise(Math.round(lx * 5) + 3571, Math.round(ly * 5) + 2393) * len) % len;
+        px(ctx, x + dx, y + dy, colors[ci]);
+      }
+    }
+  }
+}
+
+/**
+ * Crosshatch fill pattern. Lines at 45° and 135°, spaced `spacing` design pixels apart.
+ * color is drawn over whatever is already on the canvas (additive/overlay texture).
+ */
+export function crosshatch(ctx, x, y, w, h, color, spacing = 4) {
+  ctx.fillStyle = color;
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      const s45 = (x + dx + y + dy) % spacing === 0;
+      const s135 = (x + dx - (y + dy) + 1024 * spacing) % spacing === 0;
+      if (s45 || s135) {
+        ctx.fillRect((x + dx) * _CM * SCALE, (y + dy) * _CM * SCALE, _CM * SCALE, _CM * SCALE);
+      }
+    }
+  }
+}
+
+// ── Lighting / shading helpers ───────────────────────────────────────
+
+/**
+ * Classic 3D bevel: highlight strip on top/left, shadow strip on bottom/right.
+ * thickness is in design pixels. Replaces manual rimLight+ao combos.
+ */
+export function bevel(ctx, x, y, w, h, hiColor, shColor, thickness = 1) {
+  for (let t = 0; t < thickness; t++) {
+    // top
+    rect(ctx, x + t, y + t, w - t * 2, 1, hiColor);
+    // left
+    rect(ctx, x + t, y + t, 1, h - t * 2, hiColor);
+    // bottom
+    rect(ctx, x + t, y + h - 1 - t, w - t * 2, 1, shColor);
+    // right
+    rect(ctx, x + w - 1 - t, y + t, 1, h - t * 2, shColor);
+  }
+}
+
+/**
+ * Elliptical radial gradient fill — centerColor at (cx,cy) fading to outerColor at (rx,ry).
+ * Useful for sphere-like body shading and eyes.
+ */
+export function gradientRadial(ctx, cx, cy, rx, ry, innerColor, outerColor) {
+  for (let dy = -ry; dy <= ry; dy++) {
+    const cosLat = Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry)));
+    const hw = Math.round(rx * cosLat);
+    for (let dx = -hw; dx <= hw; dx++) {
+      const dist = Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
+      px(ctx, cx + dx, cy + dy, blend(innerColor, outerColor, Math.min(1, dist)));
+    }
+  }
+}
+
+/**
+ * Post-process: brighten interior pixels that are close to a transparent edge.
+ * Creates a subtle inner-glow effect (good for eyes, bioluminescent plants).
+ * radius is in design pixels. intensity 0-1.
+ */
+export function innerGlow(ctx, color, intensity = 0.5, radius = 2) {
+  const size = DESIGN * SCALE;
+  const imgData = ctx.getImageData(0, 0, size, size);
+  const { data, width } = imgData;
+  const s = SCALE;
+  const cols = DESIGN;
+  const rows = DESIGN;
+  const [gr, gg, gb] = _parseHex(color);
+
+  // Build opaque mask
+  const opaque = new Uint8Array(cols * rows);
+  for (let gy = 0; gy < rows; gy++)
+    for (let gx = 0; gx < cols; gx++) {
+      const i = (gy * s + (s >> 1)) * width * 4 + (gx * s + (s >> 1)) * 4;
+      if (data[i + 3] > 10) opaque[gy * cols + gx] = 1;
+    }
+
+  // For each opaque pixel, compute min distance to a transparent neighbour
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) {
+      if (!opaque[gy * cols + gx]) continue;
+      let minDist = radius + 1;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = gx + dx, ny = gy + dy;
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) { minDist = 0; break; }
+          if (!opaque[ny * cols + nx]) {
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < minDist) minDist = d;
+          }
+        }
+        if (minDist === 0) break;
+      }
+      if (minDist > radius) continue;
+      const t = 1 - minDist / radius; // 1 at edge, 0 at radius
+      const alpha = t * intensity;
+      // Blend glow colour into all physical pixels for this design cell
+      for (let py = 0; py < s; py++) {
+        for (let pxp = 0; pxp < s; pxp++) {
+          const idx = ((gy * s + py) * width + (gx * s + pxp)) * 4;
+          data[idx]     = Math.min(255, data[idx]     + (gr - data[idx])     * alpha);
+          data[idx + 1] = Math.min(255, data[idx + 1] + (gg - data[idx + 1]) * alpha);
+          data[idx + 2] = Math.min(255, data[idx + 2] + (gb - data[idx + 2]) * alpha);
+        }
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+// ── Organic curve helpers ────────────────────────────────────────────
+
+/**
+ * Draw a 1-design-pixel wide quadratic Bézier curve from (x0,y0) to (x1,y1)
+ * with control point (cpx,cpy). Useful for tails, tendrils, vines.
+ */
+export function quadraticLine(ctx, x0, y0, cpx, cpy, x1, y1, color) {
+  const steps = Math.max(16, Math.round(
+    Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2) +
+    Math.sqrt((cpx - x0) ** 2 + (cpy - y0) ** 2) * 0.5
+  ) * 2);
+  ctx.fillStyle = color;
+  let prevGx = -1, prevGy = -1;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const mt = 1 - t;
+    const gx = Math.round(mt * mt * x0 + 2 * mt * t * cpx + t * t * x1);
+    const gy = Math.round(mt * mt * y0 + 2 * mt * t * cpy + t * t * y1);
+    if (gx === prevGx && gy === prevGy) continue;
+    if (gx >= 0 && gy >= 0 && gx < DESIGN && gy < DESIGN)
+      ctx.fillRect(gx * _CM * SCALE, gy * _CM * SCALE, _CM * SCALE, _CM * SCALE);
+    prevGx = gx; prevGy = gy;
+  }
+}
+
+/**
+ * Symmetrical tapered leaf shape centred at (cx,cy), rotated by angle (radians,
+ * 0 = pointing right). Generalises feather() to any direction.
+ * color can be a single hex string or [baseColor, tipColor] for a gradient.
+ */
+export function leafShape(ctx, cx, cy, w, h, angle, color) {
+  const useGrad = Array.isArray(color);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const halfH = h / 2;
+  for (let s = 0; s <= h; s++) {
+    const t = s / h;
+    // Width profile: widest at s≈0.35*h, tapers to 0 at both ends
+    const profile = Math.sin(t * Math.PI) * (1 - 0.3 * t);
+    const hw = Math.round(w * 0.5 * profile);
+    if (hw <= 0) continue;
+    // Centre of this row in local space (along axis, -halfH → +halfH)
+    const along = s - halfH;
+    const col = useGrad ? blend(color[0], color[1], t) : color;
+    // Draw hw pixels on each side perpendicular to the axis
+    for (let d = -hw; d <= hw; d++) {
+      const gx = Math.round(cx + cos * along - sin * d);
+      const gy = Math.round(cy + sin * along + cos * d);
+      if (gx >= 0 && gy >= 0 && gx < DESIGN && gy < DESIGN) px(ctx, gx, gy, col);
+    }
+  }
+}
+
 // ── Post-processing ─────────────────────────────────────────────────
 
 /**

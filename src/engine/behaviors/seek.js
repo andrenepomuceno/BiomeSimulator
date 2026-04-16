@@ -237,6 +237,24 @@ export function _seekPrey(animal, world, spatialHash, vision) {
   const startedAt = benchmarkStart(collector);
   try {
     benchmarkAddKeyed(collector, 'speciesSeekPrey', animal.species, 1);
+
+    // Priority rule: if there is food nearby, eat first; hunt only when no food is found in vision.
+    if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) {
+      animal._chaseTarget = null;
+      animal._chaseLockUntilTick = 0;
+      return;
+    }
+    if (_tryEatMeatItem(animal, world, vision)) {
+      animal._chaseTarget = null;
+      animal._chaseLockUntilTick = 0;
+      return;
+    }
+    if (_tryEatEgg(animal, world, spatialHash, vision)) {
+      animal._chaseTarget = null;
+      animal._chaseLockUntilTick = 0;
+      return;
+    }
+
     const tick = world.clock.tick;
     const chaseLockTicks = animal._config.chase_lock_ticks ?? world.config.chase_lock_ticks ?? 5;
     let target = null;
@@ -264,10 +282,6 @@ export function _seekPrey(animal, world, spatialHash, vision) {
     }
     animal._chaseTarget = null;
     animal._chaseLockUntilTick = 0;
-
-    if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
-    if (_tryEatMeatItem(animal, world, vision)) return;
-    if (_tryEatEgg(animal, world, spatialHash, vision)) return;
 
     if (animal.hunger > (_decisionThresholds(animal).desperate_hunger_fallback_food_min ?? 50) && animal._ediblePlants.size > 0) {
       const idx = world.idx(animal.x, animal.y);
@@ -300,6 +314,12 @@ export function _seekOmnivoreFood(animal, world, spatialHash, vision) {
       return;
     }
 
+    // Priority rule: if there is food nearby, eat first; hunt only when no food is found in vision.
+    if (_tryEatFruitItem(animal, world, vision)) return;
+    if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
+    if (_tryEatMeatItem(animal, world, vision)) return;
+    if (_tryEatEgg(animal, world, spatialHash, vision)) return;
+
     if (animal.hunger > (_decisionThresholds(animal).desperate_hunger_hunt_min ?? 75)) {
       const tick = world.clock.tick;
       const chaseLockTicks = animal._config.chase_lock_ticks ?? world.config.chase_lock_ticks ?? 5;
@@ -328,10 +348,6 @@ export function _seekOmnivoreFood(animal, world, spatialHash, vision) {
       }
       animal._chaseTarget = null;
       animal._chaseLockUntilTick = 0;
-
-      if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
-      if (_tryEatMeatItem(animal, world, vision)) return;
-      if (_tryEatEgg(animal, world, spatialHash, vision)) return;
     }
 
     _seekPlantFood(animal, world, vision);

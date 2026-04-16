@@ -95,11 +95,15 @@ export function drawQuadruped(ctx, params, dir, frame) {
       rect(ctx, bx + 4, by + h - 10, 2, 2, spotCol);
       rect(ctx, bx + w - 7, by + 4, 2, 2, spotCol);
     }
-    // Bristles (boar)
+    // Bristles (boar) — dorsal ridge crest
     if (params.bristles) {
-      for (let i = 0; i < 4; i++) {
-        px(ctx, bx + 4 + i * 3, by + 1, darken(body, 0.12));
-        px(ctx, bx + 5 + i * 3, by + 2, darken(body, 0.08));
+      const bristleCol = params.bristleColor || lighten(body, 0.12);
+      const step = Math.floor((w - 8) / 5);
+      for (let i = 0; i < 5; i++) {
+        const bri = bx + 4 + i * step;
+        px(ctx, bri, by - 1, bristleCol);
+        px(ctx, bri + 1, by, bristleCol);
+        px(ctx, bri, by, darken(bristleCol, 0.08));
       }
     }
 
@@ -174,7 +178,15 @@ export function drawQuadruped(ctx, params, dir, frame) {
 
     // -- Tail --
     if (params.tail) {
-      if (params.bushyTail) {
+      if (params.squirrelTail) {
+        // Large bushy plume at rear (top-down view)
+        rect(ctx, cx - 4, by + h - 1, 9, 8, accent);
+        rect(ctx, cx - 3, by + h + 7, 7, 3, lighten(accent, 0.1));
+        px(ctx, cx - 1, by + h + 1, lighten(accent, 0.18));
+      } else if (params.cottonTail) {
+        rect(ctx, cx - 2, by + h, 4, 4, '#fffff4');
+        px(ctx, cx, by + h + 1, '#ffffff');
+      } else if (params.bushyTail) {
         rect(ctx, cx - 1, by + h - 3, 4, 4, accent);
         rect(ctx, cx + 2, by + h - 1, 3, 3, accent);
         rect(ctx, cx, by + h - 2, 3, 2, lighten(accent, 0.1));
@@ -247,7 +259,16 @@ export function drawQuadruped(ctx, params, dir, frame) {
 
     // -- Tail (back view) --
     if (params.tail) {
-      if (params.bushyTail) {
+      if (params.squirrelTail) {
+        rect(ctx, cx - 4, hy - 3, 9, 7, accent);
+        rect(ctx, cx - 3, hy + 3, 7, 3, lighten(accent, 0.1));
+        px(ctx, cx - 1, hy - 1, lighten(accent, 0.18));
+      } else if (params.cottonTail) {
+        // White puff visible from back
+        rect(ctx, cx - 2, hy + 2, 5, 5, '#fffff4');
+        px(ctx, cx, hy + 3, '#ffffff');
+        px(ctx, cx - 1, hy + 4, '#ffffff');
+      } else if (params.bushyTail) {
         rect(ctx, cx - 1, hy, 4, 4, accent);
         rect(ctx, cx - 3, hy + 1, 3, 3, lighten(accent, 0.08));
       } else if (params.tailStripes) {
@@ -370,11 +391,14 @@ export function drawQuadruped(ctx, params, dir, frame) {
     }
     // Beard (goat side)
     if (params.beard) rect(ctx, f(headX + 3), headY + headH, 3, beardLen + 2, accent);
-    // Bristles (boar side)
+    // Bristles (boar side) — dorsal crest spikes
     if (params.bristles) {
-      for (let i = 0; i < 3; i++) {
-        px(ctx, f(bx + 4 + i * 4), by, darken(body, 0.12));
-        px(ctx, f(bx + 4 + i * 4), by + 1, darken(body, 0.08));
+      const bristleCol = params.bristleColor || lighten(body, 0.12);
+      for (let i = 0; i < 5; i++) {
+        const bri = bx + 4 + i * Math.floor((w - 8) / 5);
+        px(ctx, f(bri), by - 2, bristleCol);
+        px(ctx, f(bri), by - 1, bristleCol);
+        px(ctx, f(bri), by, darken(bristleCol, 0.06));
       }
     }
     if (wolfScruff) {
@@ -387,7 +411,20 @@ export function drawQuadruped(ctx, params, dir, frame) {
     if (params.tail) {
       const tailX = bx - 3;
       const tailY = by + 3;
-      if (params.bushyTail) {
+      if (params.squirrelTail) {
+        // Iconic arching tail: from rear base, rises above the spine, curls forward
+        rect(ctx, f(tailX - 1), by + Math.floor(h * 0.55), 6, 6, accent);         // root (bushy base)
+        rect(ctx, f(tailX - 4), by + Math.floor(h * 0.2), 5, 6, accent);          // rising section
+        rect(ctx, f(tailX - 3), by - 5, 8, 7, accent);                            // arch above spine
+        rect(ctx, f(tailX + 4), by - 7, 7, 5, lighten(accent, 0.08));             // curl forward
+        rect(ctx, f(tailX + 9), by - 4, 5, 4, lighten(accent, 0.14));             // drooping tip
+        px(ctx, f(tailX - 1), by + Math.floor(h * 0.55) + 1, lighten(accent, 0.18)); // root highlight
+      } else if (params.cottonTail) {
+        // Small round white puff at rear
+        rect(ctx, f(tailX - 1), tailY, 5, 5, '#fffff4');
+        px(ctx, f(tailX + 1), tailY + 1, '#ffffff');
+        px(ctx, f(tailX), tailY + 2, '#ffffff');
+      } else if (params.bushyTail) {
         rect(ctx, f(tailX), tailY, 4, 4, accent);
         rect(ctx, f(tailX - 3), tailY, 3, 3, accent);
         rect(ctx, f(tailX - 3), tailY - 3, 3, 3, lighten(accent, 0.1));

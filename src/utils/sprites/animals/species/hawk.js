@@ -1,6 +1,6 @@
 export default {
   template: 'bird',
-  body: '#824d24', accent: '#d09144', eye: '#ffcc00',
-  beak: '#444444', w: 24, h: 16, wingSpan: 16, tailLen: 8,
-  breast: '#efd299',
+  body: '#5c3418', accent: '#b86c28', eye: '#ffdd00',
+  beak: '#4a3a10', w: 24, h: 16, wingSpan: 18, tailLen: 9,
+  breast: '#f5eddc', tailAccent: '#a83018',
 };

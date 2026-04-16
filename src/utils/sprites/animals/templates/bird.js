@@ -95,9 +95,10 @@ export function drawBird(ctx, params, dir, frame) {
     // Tail feathers
     if (dir === UP) {
       const tailLen = params.tailLen || 6;
+      const tailCol = params.tailAccent || accent;
       for (let t = 0; t < tailLen; t += 2) {
-        rect(ctx, cx - 3 + t, by + h + t, 3, 3, accent);
-        rect(ctx, cx + 3 - t, by + h + t, 3, 3, accent);
+        rect(ctx, cx - 3 + t, by + h + t, 3, 3, tailCol);
+        rect(ctx, cx + 3 - t, by + h + t, 3, 3, tailCol);
       }
     }
     // Feet — per-toe detail matching crow.js convention
@@ -176,12 +177,13 @@ export function drawBird(ctx, params, dir, frame) {
 
     // Tail
     const tailLen = params.tailLen || 6;
+    const tailCol = params.tailAccent || accent;
     for (let t = 0; t < tailLen; t++) {
-      px(ctx, f(bx - 3 - t), by + h - 5 + t, accent);
-      px(ctx, f(bx - 3 - t), by + h - 4 + t, accent);
+      px(ctx, f(bx - 3 - t), by + h - 5 + t, tailCol);
+      px(ctx, f(bx - 3 - t), by + h - 4 + t, tailCol);
       px(ctx, f(bx - 2 - t), by + h - 4 + t, shadow);
     }
-    rect(ctx, f(bx - tailLen - 2), by + h - 5 + tailLen - 1, 3, 3, shadow2);
+    rect(ctx, f(bx - tailLen - 2), by + h - 5 + tailLen - 1, 3, 3, darken(tailCol, 0.18));
 
     // Feet
     drawBirdFoot(ctx, f, bx + 3,  by + h + 1, outline);

@@ -50,13 +50,20 @@ export function drawCanid(ctx, params, dir, frame) {
     }
     if (params.earH) drawEarPair(ctx, hx, hy, headW, params.earH + 1, body, params.earInner, true);
 
+    // Belly patch (frontal)
+    if (params.bellyColor) {
+      const bpW = Math.max(4, Math.floor(w * 0.36));
+      ellipse(ctx, cx, by + Math.floor(h * 0.62), bpW, Math.floor(h * 0.26), params.bellyColor);
+    }
+
     // Tail
     if (params.tail) {
       const tx = cx + Math.floor(w * 0.34);
       const ty = by + h - 4;
+      const tailTip = params.tailTip || lighten(accent, 0.08);
       rect(ctx, tx, ty, 4, 3, accent);
       rect(ctx, tx + 3, ty - 2, 3, 3, accent);
-      rect(ctx, tx + 5, ty - 4, 3, 3, lighten(accent, 0.08));
+      rect(ctx, tx + 5, ty - 4, 3, 3, tailTip);
     }
     return;
   }
@@ -94,12 +101,19 @@ export function drawCanid(ctx, params, dir, frame) {
     rect(ctx, f(headX + 5), headY - 3, 2, 5, body);
   }
 
+  // Belly highlight (side view)
+  if (params.bellyColor) {
+    rect(ctx, f(bx + 3), by + Math.floor(h * 0.55), Math.floor(w * 0.45), Math.floor(h * 0.32), params.bellyColor);
+  }
+
   // Tail plume
   if (params.tail) {
     const tx = bx - 4;
     const ty = by + 4;
+    const tailTip = params.tailTip || lighten(accent, 0.08);
     rect(ctx, f(tx), ty, 4, 3, accent);
     rect(ctx, f(tx - 3), ty - 1, 3, 3, accent);
-    rect(ctx, f(tx - 5), ty - 2, 2, 2, lighten(accent, 0.08));
+    rect(ctx, f(tx - 5), ty - 2, 2, 3, tailTip);
+    rect(ctx, f(tx - 6), ty - 1, 1, 2, tailTip);
   }
 }

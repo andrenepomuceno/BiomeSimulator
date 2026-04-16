@@ -1,8 +1,8 @@
 export default {
   template: 'quadruped',
-  body: '#ce6e22', accent: '#eea242', eye: '#110000',
-  w: 24, h: 20, earH: 4, earInner: '#eea242',
-  tail: true, bushyTail: true,
-  noseColor: '#914e27',
-  bellyColor: '#f0ca90', pawColor: '#783e18', eyeIris: '#221100', eyeWhite: '#f2e8de',
+  body: '#b85a18', accent: '#e09848', eye: '#110000',
+  w: 20, h: 16, earH: 5, earInner: '#d07830', pointedEars: true,
+  tail: true, squirrelTail: true,
+  noseColor: '#7a3410',
+  bellyColor: '#f4d898', pawColor: '#6a3010', eyeIris: '#221100', eyeWhite: '#f2e8de',
 };

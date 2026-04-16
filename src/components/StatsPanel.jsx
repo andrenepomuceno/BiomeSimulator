@@ -16,6 +16,23 @@ const PLANT_EMOJIS = buildPlantChartEmojis();  // typeId → emoji
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
+/**
+ * External HTML legend rendered below a Line chart so it never clips the canvas.
+ */
+function ChartLegend({ datasets }) {
+  if (!datasets || datasets.length === 0) return null;
+  return (
+    <div className="chart-legend-external" role="list">
+      {datasets.map((ds, i) => (
+        <span key={i} className="chart-legend-item" role="listitem">
+          <span className="chart-legend-swatch" style={{ background: ds.borderColor }} />
+          {ds.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function StatsPanel() {
   const {
     stats,
@@ -118,10 +135,7 @@ export default function StatsPanel() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'bottom',
-        labels: { color: '#ccc', font: { size: 10 } },
-      },
+      legend: { display: false },
     },
     scales: {
       x: { display: false },
@@ -161,10 +175,7 @@ export default function StatsPanel() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'bottom',
-        labels: { color: '#ccc', font: { size: 10 } },
-      },
+      legend: { display: false },
     },
     scales: {
       x: { display: false },
@@ -317,14 +328,18 @@ export default function StatsPanel() {
       {statsTab === 'chart' && (
         <div className="stats-tab-panel">
           <h6 className="stats-section-title">Animal Population</h6>
-          <div className="stats-chart-block" style={{ marginBottom: 12 }}>
+          <div className="stats-chart-block" style={{ marginBottom: 4 }}>
             <Line data={animalChartData} options={chartOptions} />
           </div>
-          <h6 className="stats-section-title">Plant Population</h6>
+          <ChartLegend datasets={animalChartData.datasets} />
+          <h6 className="stats-section-title" style={{ marginTop: 10 }}>Plant Population</h6>
           {plantPopulationChartData.datasets.length > 0 ? (
-            <div className="stats-chart-block">
-              <Line data={plantPopulationChartData} options={chartOptions} />
-            </div>
+            <>
+              <div className="stats-chart-block">
+                <Line data={plantPopulationChartData} options={chartOptions} />
+              </div>
+              <ChartLegend datasets={plantPopulationChartData.datasets} />
+            </>
           ) : (
             <p className="report-empty" style={{ padding: '10px 0 4px', textAlign: 'left' }}>No plant population history yet.</p>
           )}
@@ -392,6 +407,7 @@ export default function StatsPanel() {
       <div className="stats-chart-block-compact">
         <Line data={performanceChartData} options={performanceChartOptions} />
       </div>
+      <ChartLegend datasets={performanceChartData.datasets} />
 
       <div className="stat-row">
         <span className="stat-label">Engine Tick</span>

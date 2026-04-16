@@ -623,6 +623,31 @@ html, body, #root {
   height: 220px;
 }
 
+.chart-legend-external {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-bottom: 4px;
+  padding: 4px 0 2px;
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: #ccc;
+  white-space: nowrap;
+}
+
+.chart-legend-swatch {
+  display: inline-block;
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 .stats-chart-block + .stats-section-title {
   margin-top: 8px;
 }

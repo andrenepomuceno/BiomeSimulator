@@ -79,6 +79,7 @@ export class SimulationEngine {
     this.world._benchmarkCollector = this._benchmarkCollector;
     this.supervisor.reset();
     const { terrain, waterProximity, heightmap, seed } = generateTerrain(this.config);
+    this.world.terrain = terrain;
     this.world.waterProximity = waterProximity;
     this.world.heightmap = heightmap;
 
@@ -279,10 +280,18 @@ export class SimulationEngine {
     for (const claim of rejectedPlantClaims) {
       const delta = deltaById.get(claim.animalId);
       if (!delta) continue;
+      // Restore animal state (claimed consumption is rejected)
       delta.hunger = claim.preHunger;
       delta.energy = claim.preEnergy;
       delta.hp = claim.preHp;
       delta.state = claim.preState;
+      // Restore plant state (claimed consumption is rejected)
+      if (claim.idx != null) {
+        w.plantType[claim.idx] = claim.preType;
+        w.plantStage[claim.idx] = claim.preStage;
+        w.plantAge[claim.idx] = claim.preAge;
+        if (claim.preType !== 0) w.activePlantTiles.add(claim.idx);
+      }
     }
 
     for (const id of mergedDeadIds) {
@@ -384,8 +393,13 @@ export class SimulationEngine {
         eatenPlants.add(idx);
         w.plantType[idx] = ptype;
         w.plantStage[idx] = pstage;
-        w.plantAge[idx] = 0;
-        if (ptype === 0) w.activePlantTiles.delete(idx);
+        // Only reset age if plant is removed; otherwise preserve growth progress
+        if (ptype === 0 || pstage === 0) {
+          w.plantAge[idx] = 0;
+          w.activePlantTiles.delete(idx);
+        } else {
+          w.activePlantTiles.add(idx);
+        }
         w.plantChanges.push([x, y, ptype, pstage]);
       }
     }

@@ -10,6 +10,7 @@ export function _eatPlantTile(animal, world, idx) {
   const preState = animal.state;
   const ptype = world.plantType[idx];
   const stage = world.plantStage[idx];
+  const preAge = world.plantAge[idx];
   const nutr = STAGE_NUTRITION[stage] || { hunger: 20, energy: 3 };
   animal.hunger = Math.max(0, animal.hunger - _plantHungerReduction(animal, nutr.hunger));
   animal.energy = Math.min(animal.maxEnergy, animal.energy + _plantEnergyGain(animal, nutr.energy));
@@ -35,6 +36,9 @@ export function _eatPlantTile(animal, world, idx) {
     preEnergy,
     preHp,
     preState,
+    preType: ptype,
+    preStage: stage,
+    preAge,
   });
   world.plantEvents.deaths_eaten[ptype] = (world.plantEvents.deaths_eaten[ptype] || 0) + 1;
 }

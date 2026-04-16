@@ -4,11 +4,10 @@
  * Stages 2-5 at 64×64 design grid, 3 animation frames for sway.
  */
 import { ao } from '../../helpers.js';
-import { drawFoliageMound, drawSideLobe, drawGroundBase, drawFruit, drawLeafTexture, drawLeafHighlight } from '../bodyParts.js';
+import { drawFoliageMound, drawSideLobe, drawGroundBase, drawFruit } from '../bodyParts.js';
 
 export function drawBush(ctx, params, stage, frame) {
   const { stem, leaf, leafDark, fruit, fruitAccent } = params;
-  const lh = params.leafHighlight || leaf;
   const cx = 28;
   const baseY = 56;
   // Reduced sway — wide low shapes move less convincingly with large offsets
@@ -20,14 +19,11 @@ export function drawBush(ctx, params, stage, frame) {
   if (stage === 2) {
     // Small round sprout cluster sitting directly on the ground — no trunk
     mound(cx + swayOff, baseY - 14, 7, 7);
-    drawLeafTexture(ctx, cx - 5 + swayOff, baseY - 20, 12, 10, leaf, leafDark);
     drawGroundBase(ctx, cx - 5, baseY, 11, stem, 3);
 
   } else if (stage === 3) {
     // Medium wide mound, wider than tall
     mound(cx + swayOff, baseY - 18, 12, 11);
-    drawLeafTexture(ctx, cx - 10 + swayOff, baseY - 28, 22, 22, leaf, leafDark);
-    drawLeafHighlight(ctx, cx - 2 + swayOff, baseY - 26, 7, 5, lh);
     drawGroundBase(ctx, cx - 10, baseY, 21, stem, 3);
     ao(ctx, cx - 10, baseY + 2, 22, 3, 0.10);
 
@@ -36,8 +32,6 @@ export function drawBush(ctx, params, stage, frame) {
     sideLobe_(cx - 11 + swayOff, baseY - 20, 10, 10);
     sideLobe_(cx + 11 + swayOff, baseY - 20, 10, 10);
     mound(cx + swayOff, baseY - 22, 12, 13);
-    drawLeafTexture(ctx, cx - 21 + swayOff, baseY - 32, 44, 34, leaf, leafDark);
-    drawLeafHighlight(ctx, cx - 4 + swayOff, baseY - 32, 8, 6, lh);
     drawGroundBase(ctx, cx - 17, baseY, 35, stem, 3);
     ao(ctx, cx - 17, baseY + 2, 36, 3, 0.12);
 
@@ -46,8 +40,6 @@ export function drawBush(ctx, params, stage, frame) {
     sideLobe_(cx - 11 + swayOff, baseY - 20, 10, 10);
     sideLobe_(cx + 11 + swayOff, baseY - 20, 10, 10);
     mound(cx + swayOff, baseY - 22, 12, 13);
-    drawLeafTexture(ctx, cx - 21 + swayOff, baseY - 32, 44, 34, leaf, leafDark);
-    drawLeafHighlight(ctx, cx - 4 + swayOff, baseY - 32, 8, 6, lh);
     // Fruit scattered across lobes
     drawFruit(ctx, cx - 16 + swayOff, baseY - 13, 5, fruit, fruitAccent);
     drawFruit(ctx, cx - 6  + swayOff, baseY - 20, 5, fruit, fruitAccent);

@@ -56,6 +56,18 @@ export function drawGroundBase(ctx, cx, baseY, w, stemColor, h = 4) {
 // ─── Bush foliage ───────────────────────────────────────────────────────────
 
 /**
+ * Private: apply leaf speckle texture clipped to an ellipse boundary.
+ * Prevents rectangular texture artifacts on white atlas backgrounds.
+ */
+function drawEllipseLeafTexture(ctx, mCx, mCy, rx, ry, leaf, leafDark) {
+  const colors = [leafDark, darken(leaf, 0.12), lighten(leaf, 0.06)];
+  for (let dy = -ry; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw > 0) speckle(ctx, mCx - hw, mCy + dy, hw * 2 + 1, 1, colors, 0.26);
+  }
+}
+
+/**
  * Draw a shaded foliage mound (front/centre lobe).
  * Ellipse with gradient shadow, top highlight, leaf texture, and ground AO.
  * @param {number} mCx  - horizontal centre (includes swayOff)
@@ -76,7 +88,8 @@ export function drawFoliageMound(ctx, mCx, topY, rx, ry, leaf, leafDark) {
   const hiRy = Math.max(1, Math.floor(ry * 0.30));
   ellipse(ctx, mCx, topY + hiRy, hiRx, hiRy, lighten(leaf, 0.17));
   // Leaf texture
-  drawLeafTexture(ctx, mCx - rx, topY, rx * 2 + 1, ry * 2 + 1, leaf, leafDark);
+  // Leaf texture — clipped to ellipse to avoid rectangular artifacts
+  drawEllipseLeafTexture(ctx, mCx, mCy, rx, ry, leaf, leafDark);
   // Ground contact AO
   ao(ctx, mCx - rx + 2, mCy + ry - 2, rx * 2 - 3, 4, 0.12);
 }
@@ -97,8 +110,12 @@ export function drawSideLobe(ctx, mCx, topY, rx, ry, leafDark) {
   const hiRy = Math.max(1, Math.floor(ry * 0.28));
   ellipse(ctx, mCx, topY + hiRy, hiRx, hiRy, lighten(leafDark, 0.12));
   // Texture
-  anisotropicSpeckle(ctx, mCx - rx, topY, rx * 2 + 1, ry * 2 + 1,
-    [darken(leafDark, 0.08), lighten(leafDark, 0.04)], 0.18, Math.PI / 2, 2.5);
+  // Texture — clipped to ellipse
+  const sideColors = [darken(leafDark, 0.08), lighten(leafDark, 0.04)];
+  for (let dy = -ry; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw > 0) speckle(ctx, mCx - hw, mCy + dy, hw * 2 + 1, 1, sideColors, 0.18);
+  }
 }
 
 // ─── Tree helpers ───────────────────────────────────────────────────────────
@@ -128,12 +145,26 @@ export function drawTrunk(ctx, cx, baseY, trunkH, trunkW, trunkColor, trunkDark)
  * @param {number} swayOff - frame sway offset
  */
 export function drawCanopyBase(ctx, cx, hw, cw, ch, baseY, th, swayOff, leaf, leafDark) {
-  rect(ctx, cx - hw + swayOff,     baseY - th - ((ch * 0.35) | 0), cw,      (ch * 0.70) | 0, leaf);
-  rect(ctx, cx - hw + 2 + swayOff, baseY - th - ((ch * 0.70) | 0), cw - 4,  (ch * 0.45) | 0, leaf);
-  rect(ctx, cx - hw + 6 + swayOff, baseY - th - ch,                cw - 12, (ch * 0.30) | 0, leaf);
-  // Underside shadow
-  rect(ctx, cx - hw + 2 + swayOff, baseY - th + 2, cw - 4, 6, darken(leaf, 0.22));
-  rect(ctx, cx - hw + 2 + swayOff, baseY - th + 4, cw - 4, 4, leafDark);
+  const mCx = cx + swayOff;
+  const ry  = (ch / 2) | 0;
+  const mCy = baseY - th - ry;
+
+  // Round canopy ellipse
+  ellipse(ctx, mCx, mCy, hw, ry, leaf);
+
+  // Gradient shadow — lower half darkens toward trunk
+  for (let dy = 1; dy <= ry; dy++) {
+    const ehw = Math.round(hw * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (ehw > 0) rect(ctx, mCx - ehw, mCy + dy, ehw * 2 + 1, 1, darken(leaf, 0.04 + dy * 0.018));
+  }
+
+  // Top highlight ellipse (sun-lit crown)
+  const hiRx = Math.max(3, (hw * 0.52) | 0);
+  const hiRy = Math.max(2, (ry * 0.30) | 0);
+  ellipse(ctx, mCx, mCy - ry + hiRy, hiRx, hiRy, lighten(leaf, 0.17));
+
+  // Leaf texture clipped to ellipse — no rectangular bleed
+  drawEllipseLeafTexture(ctx, mCx, mCy, hw, ry, leaf, leafDark);
 }
 
 /**

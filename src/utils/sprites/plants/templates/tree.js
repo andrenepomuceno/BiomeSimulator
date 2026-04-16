@@ -2,7 +2,7 @@
  * Tree template — round-canopy trees (apple, mango, oak, olive).
  * Stages 2-5 at 64×64 design grid, 3 animation frames for sway.
  */
-import { px, rect, darken, lighten, noise, gradientH, rimLight, ao, speckle } from '../../helpers.js';
+import { px, rect, darken, lighten, gradientV, gradientH, rimLight, ao, speckle, anisotropicSpeckle } from '../../helpers.js';
 
 export function drawTree(ctx, params, stage, frame) {
   const { trunk, trunkDark, leaf, leafDark, fruit, fruitAccent } = params;
@@ -16,12 +16,15 @@ export function drawTree(ctx, params, stage, frame) {
   const swayOff = frame === 0 ? 0 : (frame === 1 ? 2 : -2);
   const hw = (cw / 2) | 0;
 
+  // Directional leaf texture — vertical streaks simulate hanging leaf clusters
   function canopyTex(x, y, w, h) {
-    speckle(ctx, x, y, w, h, [leafDark, darken(leaf, 0.12), lighten(leaf, 0.06)], 0.26);
+    anisotropicSpeckle(ctx, x, y, w, h, [leafDark, darken(leaf, 0.12), lighten(leaf, 0.06)], 0.26, Math.PI / 2, 2.5);
+    speckle(ctx, x, y, w, h, [lighten(leaf, 0.12)], 0.05); // sunlight glints
   }
 
+  // Vertical bark texture simulates furrows
   function barkTex(x, y, w, h) {
-    speckle(ctx, x, y, w, h, [trunkDark, darken(trunk, 0.12), lighten(trunk, 0.04)], 0.24);
+    anisotropicSpeckle(ctx, x, y, w, h, [trunkDark, darken(trunk, 0.12), lighten(trunk, 0.05)], 0.30, Math.PI / 2, 5.0);
   }
 
   if (stage === 2) {
@@ -57,27 +60,45 @@ export function drawTree(ctx, params, stage, frame) {
     gradientH(ctx, cx, baseY - th, 8, th, trunk, trunkDark);
     rect(ctx, cx - 2, baseY - (th * 0.6) | 0, 4, (th * 0.5) | 0, trunkDark);
     barkTex(cx, baseY - th, 8, th);
+    // Trunk rim light
+    for (let r = 4; r < th - 4; r++) px(ctx, cx - 1, baseY - th + r, lighten(trunk, 0.08));
+    // Canopy base layers (stairstepped ellipse)
     rect(ctx, cx - hw + swayOff, baseY - th - (ch * 0.35) | 0, cw, (ch * 0.7) | 0, leaf);
     rect(ctx, cx - hw + 2 + swayOff, baseY - th - (ch * 0.7) | 0, cw - 4, (ch * 0.45) | 0, leaf);
     rect(ctx, cx - hw + 6 + swayOff, baseY - th - ch, cw - 12, (ch * 0.3) | 0, leaf);
+    // Canopy underside shadow
+    rect(ctx, cx - hw + 2 + swayOff, baseY - th + 2, cw - 4, 6, darken(leaf, 0.22));
     rect(ctx, cx - hw + 2 + swayOff, baseY - th + 4, cw - 4, 4, leafDark);
-    rect(ctx, cx - hw + 6 + swayOff, baseY - th - ch, cw - 12, 4, lighten(leaf, 0.2));
+    // Canopy top sun-cap
+    rect(ctx, cx - hw + 6 + swayOff, baseY - th - ch, cw - 12, 4, lighten(leaf, 0.20));
     canopyTex(cx - hw + swayOff, baseY - th - ch, cw, ch);
-    rect(ctx, cx - hw + 6 + swayOff, baseY - th - (ch * 0.6) | 0, 8, 6, lh);
-    rect(ctx, cx + 2 + swayOff, baseY - th - (ch * 0.8) | 0, 8, 6, lh);
-    rect(ctx, cx + hw - 12 + swayOff, baseY - th - (ch * 0.4) | 0, 6, 6, lh);
+    // Leaf cluster highlights (three sun-lit lobes)
+    rect(ctx, cx - hw + 4 + swayOff, baseY - th - (ch * 0.65) | 0, 7, 6, lh);
+    px(ctx, cx - hw + 5 + swayOff, baseY - th - (ch * 0.66) | 0, lighten(lh, 0.15));
+    rect(ctx, cx + 1 + swayOff, baseY - th - (ch * 0.85) | 0, 8, 6, lh);
+    px(ctx, cx + 2 + swayOff, baseY - th - (ch * 0.86) | 0, lighten(lh, 0.15));
+    rect(ctx, cx + hw - 11 + swayOff, baseY - th - (ch * 0.45) | 0, 6, 5, lh);
     rect(ctx, cx - 6, baseY, 20, 4, darken(trunk, 0.3));
+    ao(ctx, cx - 8, baseY + 2, 24, 3, 0.12);
   } else if (stage === 5) {
     gradientH(ctx, cx, baseY - th, 8, th, trunk, trunkDark);
     rect(ctx, cx - 2, baseY - (th * 0.6) | 0, 4, (th * 0.5) | 0, trunkDark);
     barkTex(cx, baseY - th, 8, th);
+    // Trunk rim light
+    for (let r = 4; r < th - 4; r++) px(ctx, cx - 1, baseY - th + r, lighten(trunk, 0.08));
+    // Canopy layers
     rect(ctx, cx - hw + swayOff, baseY - th - (ch * 0.35) | 0, cw, (ch * 0.7) | 0, leaf);
     rect(ctx, cx - hw + 2 + swayOff, baseY - th - (ch * 0.7) | 0, cw - 4, (ch * 0.45) | 0, leaf);
     rect(ctx, cx - hw + 6 + swayOff, baseY - th - ch, cw - 12, (ch * 0.3) | 0, leaf);
+    // Underside shadow
+    rect(ctx, cx - hw + 2 + swayOff, baseY - th + 2, cw - 4, 6, darken(leaf, 0.22));
     rect(ctx, cx - hw + 2 + swayOff, baseY - th + 4, cw - 4, 4, leafDark);
     canopyTex(cx - hw + swayOff, baseY - th - ch, cw, ch);
-    rect(ctx, cx - hw + 6 + swayOff, baseY - th - (ch * 0.6) | 0, 8, 6, lh);
-    rect(ctx, cx + 2 + swayOff, baseY - th - (ch * 0.8) | 0, 8, 6, lh);
+    // Leaf cluster highlights
+    rect(ctx, cx - hw + 4 + swayOff, baseY - th - (ch * 0.65) | 0, 7, 6, lh);
+    px(ctx, cx - hw + 5 + swayOff, baseY - th - (ch * 0.66) | 0, lighten(lh, 0.15));
+    rect(ctx, cx + 1 + swayOff, baseY - th - (ch * 0.85) | 0, 8, 6, lh);
+    px(ctx, cx + 2 + swayOff, baseY - th - (ch * 0.86) | 0, lighten(lh, 0.15));
     // Fruit
     const fy = baseY - th - (ch * 0.3) | 0;
     rect(ctx, cx - hw + 4 + swayOff, fy, 8, 8, fruit);
@@ -89,5 +110,6 @@ export function drawTree(ctx, params, stage, frame) {
     px(ctx, cx - hw + 5 + swayOff, fy + 1, lighten(fruit, 0.2));
     px(ctx, cx + hw - 9 + swayOff, fy - 5, lighten(fruit, 0.2));
     rect(ctx, cx - 6, baseY, 20, 4, darken(trunk, 0.3));
+    ao(ctx, cx - 8, baseY + 2, 24, 3, 0.12);
   }
 }

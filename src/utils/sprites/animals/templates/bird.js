@@ -4,7 +4,7 @@
  *
  * Feather texture, wing layering, detailed beak and eye ring.
  */
-import { px, rect, dither, darken, lighten, noise, gradientV, rimLight, ao, speckle, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawBird(ctx, params, dir, frame) {
   const { body, accent, eye, beak, w, h, wingSpan } = params;
@@ -22,8 +22,10 @@ export function drawBird(ctx, params, dir, frame) {
   const cy = 32;
   const wingUp = frame === 0 ? -3 : frame === 2 ? 3 : 0;
 
-  function featherRegion(x, y, rw, rh) {
-    speckle(ctx, x, y, rw, rh, [featherTex, darken(body, 0.10), lighten(body, 0.04)], 0.24);
+  // Directional feather texture — angle PI/2 = vertical streaks (head-to-tail)
+  function featherRegion(x, y, rw, rh, angle = Math.PI / 2) {
+    anisotropicSpeckle(ctx, x, y, rw, rh, [featherTex, darken(body, 0.10), lighten(body, 0.05)], 0.24, angle, 3.0);
+    speckle(ctx, x, y, rw, rh, [lighten(body, 0.08)], 0.04);
   }
 
   if (dir === DOWN || dir === UP) {
@@ -69,20 +71,30 @@ export function drawBird(ctx, params, dir, frame) {
     // Wings
     const wingY = by + 4 + wingUp;
     for (let i = 1; i <= wingSpan; i++) {
-      const wc = i <= 2 ? body : (i >= wingSpan - 1 ? shadow2 : accent);
-      const wh = Math.max(2, 4 - Math.floor(i / 3));
+      const t = (i - 1) / Math.max(1, wingSpan - 1); // 0=inner covert, 1=primary tip
+      const wc = t < 0.25 ? lighten(accent, 0.10)  // covert (near body)
+               : t < 0.65 ? accent                  // secondary
+               : darken(accent, 0.12);               // primary (tip)
+      const wh = Math.max(1, 5 - Math.round(i * 3 / wingSpan));
       rect(ctx, bx - i * 3, wingY, 3, wh, wc);
       rect(ctx, bx + w - 3 + i * 3, wingY, 3, wh, wc);
-      // Feather tips
-      if (i >= wingSpan - 2) {
-        px(ctx, bx - i * 3, wingY + wh, shadow2);
-        px(ctx, bx + w - 3 + i * 3 + 2, wingY + wh, shadow2);
+      // Leading edge highlight on coverts
+      if (t < 0.3) {
+        px(ctx, bx - i * 3, wingY, lighten(wc, 0.10));
+        px(ctx, bx + w - 3 + i * 3 + 2, wingY, lighten(wc, 0.10));
+      }
+      // Feather separation lines on primaries
+      if (t >= 0.65 && i % 2 === 1) {
+        px(ctx, bx - i * 3, wingY + wh - 1, shadow2);
+        px(ctx, bx + w - 3 + i * 3 + 2, wingY + wh - 1, shadow2);
       }
     }
-    // Wing covert highlight
+    // Covert leading edge highlight
     if (wingSpan > 4) {
       rect(ctx, bx - 3, wingY - 2, 3, 2, highlight);
       rect(ctx, bx + w, wingY - 2, 3, 2, highlight);
+      rect(ctx, bx - 5, wingY - 1, 2, 1, highlight2);
+      rect(ctx, bx + w + 3, wingY - 1, 2, 1, highlight2);
     }
 
     // Tail feathers
@@ -103,53 +115,67 @@ export function drawBird(ctx, params, dir, frame) {
     const bx = cx - Math.floor(w / 2);
     const by = cy - Math.floor(h / 2);
 
-    // Body
-    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by, body); px(ctx, f(bx + i), by + 1, body); }
-    for (let r = 2; r < h - 2; r++) for (let i = 0; i < w; i++) px(ctx, f(bx + i), by + r, body);
-    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + h - 2, shadow); px(ctx, f(bx + i), by + h - 1, shadow2); }
-    // Back highlight
-    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 2, highlight); px(ctx, f(bx + i), by + 3, highlight2); }
-    // Feather texture (multi-tone)
-    for (let r = 4; r < h - 3; r++) {
-      for (let c = 1; c < w - 1; c++) {
-        const n = noise(bx + c, by + r);
-        if (n > 0.79) px(ctx, f(bx + c), by + r, featherTex);
-        else if (n > 0.75) px(ctx, f(bx + c), by + r, darken(body, 0.10));
-        else if (n < 0.10) px(ctx, f(bx + c), by + r, lighten(body, 0.04));
-      }
-    }
+    // Body — dorsal-to-ventral gradient with directional feather texture
+    // Body is symmetric around cx=32 so gradientV works without flipping
+    gradientV(ctx, bx, by, w, h, highlight2, shadow2);
+    // Dorsal ridge
+    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by, highlight2); px(ctx, f(bx + i), by + 1, highlight2); }
+    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + 2, highlight); px(ctx, f(bx + i), by + 3, highlight); }
+    // Ventral shadow
+    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + h - 2, shadow); px(ctx, f(bx + i), by + h - 1, shadow2); }
     // Breast
     if (params.breast) {
       for (let i = 3; i < w - 3; i++) {
+        px(ctx, f(bx + i), by + h - 6, blend(breastCol, body, 0.4));
         px(ctx, f(bx + i), by + h - 5, breastCol);
         px(ctx, f(bx + i), by + h - 4, breastCol);
         px(ctx, f(bx + i), by + h - 3, breastCol);
       }
     }
+    // Horizontal feather streaks (body symmetric, no flip needed for texture)
+    anisotropicSpeckle(ctx, bx + 1, by + 3, w - 2, h - 5, [featherTex, darken(body, 0.10), lighten(body, 0.05)], 0.26, 0, 3.5);
 
-    // Head
+    // Head — gradient fill with cranium highlight and front-face shadow
     const headX = bx + w;
-    for (let dy = -3; dy < 4; dy++) for (let dx = 0; dx < 7; dx++) px(ctx, f(headX + dx), by + dy, body);
-    // Rounding
-    for (let dx = 1; dx < 6; dx++) { px(ctx, f(headX + dx), by - 4, body); px(ctx, f(headX + dx), by + 4, shadow); }
-    // Highlight
-    for (let dx = 1; dx < 5; dx++) px(ctx, f(headX + dx), by - 3, highlight);
-    // Eye
+    const headHW = 7;
+    const headLeft = flip ? (64 - bx - w - headHW) : (bx + w);
+    gradientV(ctx, headLeft, by - 3, headHW, 8, highlight, shadow);
+    // Rounded cap rows
+    for (let dx = 1; dx < 6; dx++) { px(ctx, f(headX + dx), by - 4, body); px(ctx, f(headX + dx), by + 4, shadow2); }
+    // Cranium highlight
+    for (let dx = 1; dx < headHW - 1; dx++) px(ctx, f(headX + dx), by - 3, highlight2);
+    // Front face edge shadow (beak side)
+    for (let dy = -2; dy < 3; dy++) px(ctx, f(headX + headHW - 1), by + dy, shadow);
+    // Eye — ring, iris, specular highlight
     rect(ctx, f(headX + 4), by - 3, 3, 3, eyeRing);
     px(ctx, f(headX + 5), by - 2, eye);
-    px(ctx, f(headX + 5), by - 3, '#ffffff');
-    // Beak
-    rect(ctx, f(headX + 7), by - 1, 3, 3, beak);
-    rect(ctx, f(headX + 7), by - 1, 2, 2, beakHi);
-    px(ctx, f(headX + 8), by + 1, beakSh);
+    px(ctx, f(headX + 4), by - 3, '#ffffff');  // specular
+    // Beak (hooked — hawk) with upper/lower mandible
+    rect(ctx, f(headX + 7), by - 2, 4, 2, beak);  // upper mandible
+    rect(ctx, f(headX + 7), by - 2, 3, 1, beakHi);  // top highlight
+    px(ctx, f(headX + 10), by - 1, beakSh);  // hook tip
+    rect(ctx, f(headX + 8), by, 3, 2, darken(beak, 0.08));  // lower mandible
+    px(ctx, f(headX + 10), by + 1, beakSh);
 
-    // Wing (folded)
+    // Wing (folded) — covert, secondary, and primary feather zones
     const wingY = by + 3 - wingUp;
-    for (let i = 0; i < Math.max(6, w - 4); i++) {
-      px(ctx, f(bx + 2 + i), wingY, accent);
-      px(ctx, f(bx + 2 + i), wingY + 1, accent);
-      px(ctx, f(bx + 2 + i), wingY + 2, shadow);
+    const wingW = Math.max(6, w - 4);
+    const covW = Math.floor(wingW * 0.3);
+    const priW = Math.floor(wingW * 0.35);
+    for (let i = 0; i < wingW; i++) {
+      const wc = i < covW
+        ? lighten(accent, 0.10)              // covert (lighter, near root)
+        : (i >= wingW - priW ? darken(accent, 0.10) : accent); // primary (darker, tip)
+      px(ctx, f(bx + 2 + i), wingY, lighten(wc, 0.06));
+      px(ctx, f(bx + 2 + i), wingY + 1, wc);
+      px(ctx, f(bx + 2 + i), wingY + 2, darken(wc, 0.08));
     }
+    // Feather separation lines on primaries
+    for (let i = wingW - priW; i < wingW - 1; i += 2) {
+      px(ctx, f(bx + 2 + i), wingY + 2, shadow2);
+    }
+    // Feather texture overlay (body-symmetric coords)
+    anisotropicSpeckle(ctx, bx + 2, wingY, wingW, 3, [featherTex, darken(accent, 0.06)], 0.16, Math.PI / 2, 2.0);
 
     // Tail
     const tailLen = params.tailLen || 6;

@@ -8,7 +8,7 @@
  *   - Detailed eyes with sclera, iris, pupil, highlight
  *   - Inner-ear detail, paw pads, species-specific markings
  */
-import { px, rect, dither, darken, lighten, blend, noise, gradientV, rimLight, ao, speckle, softCircle, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, softCircle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawQuadruped(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -27,9 +27,10 @@ export function drawQuadruped(ctx, params, dir, frame) {
   const cy = 36;
   const legShift = frame === 0 ? -3 : frame === 2 ? 3 : 0;
 
-  // Helper: multi-tone fur texture via speckle
-  function furRegion(x, y, rw, rh) {
-    speckle(ctx, x, y, rw, rh, [furTex, darken(body, 0.10), lighten(body, 0.05)], 0.22);
+  // Helper: directional fur texture — angle 0=horizontal (side view), PI/2=vertical (top view)
+  function furRegion(x, y, rw, rh, angle = 0) {
+    anisotropicSpeckle(ctx, x, y, rw, rh, [furTex, darken(body, 0.10), lighten(body, 0.06)], 0.26, angle, 3.5);
+    speckle(ctx, x, y, rw, rh, [lighten(body, 0.10)], 0.05); // subtle gloss flecks
   }
 
   if (dir === DOWN) {
@@ -62,8 +63,8 @@ export function drawQuadruped(ctx, params, dir, frame) {
     rect(ctx, bx + 3, by + h - 6, w - 6, 3, bellyCol);
     // Underside ambient occlusion
     ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.08);
-    // Fur texture
-    furRegion(bx + 3, by + 6, w - 6, h - 12);
+    // Fur texture — vertical streaks (head-to-tail direction in top-down view)
+    furRegion(bx + 3, by + 6, w - 6, h - 12, Math.PI / 2);
     // Spots (deer)
     if (params.spots) {
       rect(ctx, bx + 6, by + 6, 3, 3, accent);
@@ -219,7 +220,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     for (let r = 4; r < h - 4; r++) { px(ctx, bx, by + r, shadow); px(ctx, bx + 1, by + r, shadow); }
     rect(ctx, bx + 6, by + 4, Math.max(4, w - 12), 2, highlight);
     rimLight(ctx, bx + 4, by, w - 8, 3, highlight, 'top');
-    furRegion(bx + 3, by + 6, w - 6, h - 12);
+    furRegion(bx + 3, by + 6, w - 6, h - 12, Math.PI / 2);
     if (params.spots) {
       rect(ctx, bx + 6, by + 6, 3, 3, accent);
       rect(ctx, bx + w - 9, by + 10, 2, 2, accent);
@@ -298,27 +299,22 @@ export function drawQuadruped(ctx, params, dir, frame) {
     px(ctx, f(bx + w - 5), by + h + 6 + legShift, pawCol);
     rect(ctx, f(bx + w - 3), by + h, 3, 4, body);
 
-    // -- Body --
-    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by, body); px(ctx, f(bx + i), by + 1, highlight); }
-    for (let r = 2; r < h - 2; r++) for (let c = 0; c < w; c++) px(ctx, f(bx + c), by + r, body);
-    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + h - 2, shadow); px(ctx, f(bx + i), by + h - 1, shadow2); }
-    // Back highlight
-    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 3, highlight); px(ctx, f(bx + i), by + 4, highlight2); }
+    // -- Body -- dorsal-to-ventral gradient with directional fur streaks
+    // Body is symmetric around cx=32 so gradientV coords work for both flip directions
+    gradientV(ctx, bx, by, w, h, highlight2, shadow2);
+    // Dorsal ridge (back) — bright highlight along spine
+    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by, highlight2); px(ctx, f(bx + i), by + 1, highlight2); }
+    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + 2, highlight); px(ctx, f(bx + i), by + 3, highlight); }
+    // Ventral shadow
+    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + h - 2, shadow); px(ctx, f(bx + i), by + h - 1, shadow2); }
     // Belly accent
     for (let i = 3; i < w - 3; i++) {
-      px(ctx, f(bx + i), by + h - 5, bellyCol);
+      px(ctx, f(bx + i), by + h - 5, blend(bellyCol, body, 0.4));
       px(ctx, f(bx + i), by + h - 4, bellyCol);
       px(ctx, f(bx + i), by + h - 3, bellyCol);
     }
-    // Fur texture (multi-tone)
-    for (let r = 5; r < h - 5; r++) {
-      for (let c = 2; c < w - 2; c++) {
-        const n = noise(bx + c, by + r);
-        if (n > 0.82) px(ctx, f(bx + c), by + r, furTex);
-        else if (n > 0.78) px(ctx, f(bx + c), by + r, darken(body, 0.10));
-        else if (n < 0.12) px(ctx, f(bx + c), by + r, lighten(body, 0.05));
-      }
-    }
+    // Horizontal fur streaks along movement axis (body is symmetric, no flip needed for texture)
+    anisotropicSpeckle(ctx, bx + 2, by + 3, w - 4, h - 6, [furTex, darken(body, 0.10), lighten(body, 0.06)], 0.28, 0, 3.5);
     if (params.spots) {
       rect(ctx, f(bx + 6), by + 6, 3, 3, accent);
       rect(ctx, f(bx + w - 9), by + 4, 2, 2, accent);
@@ -329,16 +325,25 @@ export function drawQuadruped(ctx, params, dir, frame) {
     const headW = 10;
     const headX = bx + w;
     const headY = by - 3;
-    for (let hy = 1; hy < headH - 1; hy++) for (let hxo = 0; hxo < headW; hxo++) px(ctx, f(headX + hxo), headY + hy, body);
+    // Gradient fill: top-highlight to bottom-shadow; compute real screen left for gradientV
+    const headLeft = flip ? (64 - bx - w - headW) : (bx + w);
+    gradientV(ctx, headLeft, headY + 1, headW, headH - 2, highlight, shadow);
+    // Cap top/bottom (rounded)
     for (let hxo = 2; hxo < headW - 2; hxo++) px(ctx, f(headX + hxo), headY, body);
-    for (let hxo = 2; hxo < headW - 2; hxo++) px(ctx, f(headX + hxo), headY + headH - 1, shadow);
-    for (let hxo = 2; hxo < headW - 2; hxo++) { px(ctx, f(headX + hxo), headY + 2, highlight); px(ctx, f(headX + hxo), headY + 3, highlight); }
+    for (let hxo = 2; hxo < headW - 2; hxo++) px(ctx, f(headX + hxo), headY + headH - 1, shadow2);
+    // Cranium highlight ridge
+    for (let hxo = 1; hxo < headW - 1; hxo++) { px(ctx, f(headX + hxo), headY + 1, highlight2); }
+    for (let hxo = 1; hxo < headW - 1; hxo++) { px(ctx, f(headX + hxo), headY + 2, highlight); px(ctx, f(headX + hxo), headY + 3, highlight); }
+    // Front face edge shadow (snout side)
+    for (let hyo = 2; hyo < headH - 2; hyo++) px(ctx, f(headX + headW - 1), headY + hyo, shadow);
 
-    // -- Eye (side) --
+    // -- Eye (side) -- sclera, iris, pupil, specular highlight
+    rect(ctx, f(headX + headW - 6), headY + 2, 5, 5, outline);  // eye ring
     rect(ctx, f(headX + headW - 5), headY + 3, 4, 4, eyeWhite);
     rect(ctx, f(headX + headW - 4), headY + 4, 2, 2, eyeIris);
+    px(ctx, f(headX + headW - 4), headY + 5, darken(eyeIris, 0.35));  // pupil depth
     px(ctx, f(headX + headW - 3), headY + 4, darken(eyeIris, 0.3));
-    px(ctx, f(headX + headW - 5), headY + 3, eyeWhite);
+    px(ctx, f(headX + headW - 5), headY + 3, '#ffffff');  // specular highlight
     // Nose
     if (params.noseColor) rect(ctx, f(headX + headW - 3), headY + headH - 4, 3, 3, params.noseColor);
     // Cheeks

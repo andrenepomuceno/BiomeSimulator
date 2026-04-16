@@ -4,7 +4,7 @@
  *
  * Shell sheen, translucent wings, segmented antennae, caterpillar prolegs.
  */
-import { px, rect, dither, darken, lighten, noise, gradientV, rimLight, ao, speckle, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawInsect(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -41,8 +41,8 @@ export function drawInsect(ctx, params, dir, frame) {
         px(ctx, bx + 4, by + 6, lighten(params.sheen, 0.1));
       }
       rimLight(ctx, bx + 3, by, w - 6, 3, lighten(accent, 0.12), 'top');
-      // Shell texture via multi-color speckle
-      speckle(ctx, bx + 1, by + 3, w - 2, h - 6, [darken(accent, 0.07), darken(accent, 0.12), lighten(accent, 0.04)], 0.18);
+      // Shell micro-texture — anisotropic pattern for chitin facets
+      anisotropicSpeckle(ctx, bx + 1, by + 3, w - 2, h - 6, [darken(accent, 0.08), darken(accent, 0.14), lighten(accent, 0.05)], 0.20, Math.PI / 4, 1.8);
       ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.10);
     } else {
       // Non-shell body
@@ -85,13 +85,20 @@ export function drawInsect(ctx, params, dir, frame) {
     for (let i = 0; i < 3; i++) {
       const legY = by + Math.round(i * (h - 4) / 2) + 2;
       const off = (i === 1) ? -legOff : legOff;
-      rect(ctx, bx - 3, legY + off, 3, 2, outline);
-      rect(ctx, bx + w, legY - off, 3, 2, outline);
-      px(ctx, bx - 4, legY + off + 1, outline);
-      px(ctx, bx + w + 3, legY - off + 1, outline);
+      // Femur (coxa — thick upper segment)
+      rect(ctx, bx - 4, legY + off, 4, 2, shadow);
+      rect(ctx, bx + w, legY - off, 4, 2, shadow);
+      // Tibia (angled outward)
+      rect(ctx, bx - 6, legY + off + 1, 3, 2, outline);
+      rect(ctx, bx + w + 3, legY - off + 1, 3, 2, outline);
+      // Tarsus tip
+      px(ctx, bx - 7, legY + off + 2, outline);
+      px(ctx, bx + w + 5, legY - off + 2, outline);
       if (params.jumpLegs && i === 2) {
-        rect(ctx, bx - 6, legY + off + 2, 3, 2, outline);
-        rect(ctx, bx + w + 3, legY - off + 2, 3, 2, outline);
+        rect(ctx, bx - 9, legY + off + 3, 4, 2, shadow);
+        rect(ctx, bx + w + 5, legY - off + 3, 4, 2, shadow);
+        px(ctx, bx - 10, legY + off + 4, outline);
+        px(ctx, bx + w + 9, legY - off + 4, outline);
       }
     }
 
@@ -116,21 +123,24 @@ export function drawInsect(ctx, params, dir, frame) {
     const by = cy - Math.floor(h / 2);
 
     if (params.shell) {
-      for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
-        const col = r < 3 ? accent : (r >= h - 3 ? darken(accent, 0.1) : accent);
-        px(ctx, f(bx + c), by + r, col);
-      }
+      // Shell body — dorsal gradient + keel line (body symmetric around cx=32)
+      gradientV(ctx, bx, by, w, h, lighten(accent, 0.14), darken(accent, 0.16));
+      for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by, lighten(accent, 0.18)); px(ctx, f(bx + i), by + 1, lighten(accent, 0.12)); }
+      // Dorsal keel
+      for (let r = 2; r < h - 2; r++) px(ctx, cx, by + r, darken(accent, 0.10));
+      // Ventral shadow
+      for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + h - 2, darken(accent, 0.12)); px(ctx, f(bx + i), by + h - 1, darken(accent, 0.18)); }
       if (params.sheen) {
         rect(ctx, f(bx + 3), by + 3, 3, 3, params.sheen);
         px(ctx, f(bx + 4), by + 5, lighten(params.sheen, 0.1));
       }
-      // Shell texture (multi-tone)
-      speckle(ctx, bx + 1, by + 2, w - 2, h - 4, [darken(accent, 0.07), darken(accent, 0.12), lighten(accent, 0.04)], 0.18);
+      // Shell micro-texture (body symmetric coords)
+      anisotropicSpeckle(ctx, bx + 1, by + 2, w - 2, h - 4, [darken(accent, 0.08), darken(accent, 0.13), lighten(accent, 0.05)], 0.18, Math.PI / 4, 1.8);
     } else {
-      for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
-        px(ctx, f(bx + c), by + r, r < 3 ? body : (r >= h - 3 ? shadow : body));
-      }
-      rect(ctx, f(bx + 2), by + 2, w - 4, 2, highlight);
+      // Non-shell body — dorsal-to-ventral gradient
+      gradientV(ctx, bx, by, w, h, highlight, shadow);
+      for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by, highlight); px(ctx, f(bx + i), by + 1, lighten(body, 0.08)); }
+      for (let i = 2; i < w - 2; i++) px(ctx, f(bx + i), by + h - 1, shadow2);
     }
 
     // Head (side)
@@ -148,19 +158,29 @@ export function drawInsect(ctx, params, dir, frame) {
     for (let i = 0; i < 3; i++) {
       const lx = bx + Math.round(i * (w - 4) / 2) + 2;
       const off = (i === 1) ? -legOff : legOff;
-      rect(ctx, f(lx), by + h + off, 2, 3, outline);
-      if (params.jumpLegs && i === 2) rect(ctx, f(lx), by + h + 3 + off, 2, 3, outline);
+      rect(ctx, f(lx), by + h + off, 2, 2, shadow);           // femur
+      rect(ctx, f(lx - 1), by + h + 2 + off, 2, 2, outline);  // tibia (angled)
+      px(ctx, f(lx - 2), by + h + 4 + off, outline);           // tarsus tip
+      if (params.jumpLegs && i === 2) {
+        rect(ctx, f(lx), by + h + 2 + off, 3, 2, shadow);
+        rect(ctx, f(lx - 2), by + h + 4 + off, 3, 2, outline);
+      }
     }
 
     // Wings (side)
     if (params.wings) {
-      const wingCol = 'rgba(180,190,220,0.35)';
+      const wingCol = 'rgba(180,190,220,0.40)';
+      const wingVein = 'rgba(140,160,200,0.55)';
+      const wingHi = 'rgba(230,240,255,0.30)';
       const wy = by - 3 + (frame === 1 ? 0 : -3);
       for (let i = 2; i < w - 2; i++) {
-        px(ctx, f(bx + i), wy, wingCol);
+        px(ctx, f(bx + i), wy, wingHi);       // leading edge (lighter)
         px(ctx, f(bx + i), wy + 1, wingCol);
         px(ctx, f(bx + i), wy + 2, wingCol);
       }
+      // Wing cross-veins
+      px(ctx, f(bx + 4), wy, wingVein); px(ctx, f(bx + 4), wy + 1, wingVein);
+      if (w > 10) { px(ctx, f(bx + 7), wy, wingVein); px(ctx, f(bx + 7), wy + 1, wingVein); }
     }
 
     // Antennae (side)
@@ -222,14 +242,20 @@ function drawCaterpillar(ctx, params, dir, frame) {
       const wave = Math.round(Math.sin((s + wavePhase) * 1.1) * 2);
       const sy = cy - 3 + wave;
       const color = s % 2 === 0 ? body : accent;
-      // Segment
+      const segHi = lighten(color, 0.15);
+      const segSh = darken(color, 0.15);
+      // Segment with dorsal highlight and ventral shadow
       rect(ctx, f(sx), sy, 3, 4, color);
-      rect(ctx, f(sx), sy, 2, 1, highlight);
-      rect(ctx, f(sx), sy + 3, 3, 1, shadow);
-      // Prolegs
-      px(ctx, f(sx + 1), sy + 5, shadow2);
+      rect(ctx, f(sx), sy, 3, 1, segHi);              // dorsal highlight
+      rect(ctx, f(sx), sy + 3, 3, 1, segSh);          // ventral shadow
+      px(ctx, f(sx + 2), sy + 1, segSh);              // trailing edge gap
+      // Prolegs (wider for visibility)
+      rect(ctx, f(sx), sy + 4, 2, 2, shadow2);
       // Spots
-      if (spotColor && s % 2 === 0) px(ctx, f(sx + 1), sy + 1, spotColor);
+      if (spotColor && s % 2 === 0) {
+        px(ctx, f(sx + 1), sy + 1, spotColor);
+        px(ctx, f(sx + 1), sy + 2, darken(spotColor, 0.15));
+      }
     }
     // Head
     const hx = cx + segments;

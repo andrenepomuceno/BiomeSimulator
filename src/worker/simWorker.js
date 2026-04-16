@@ -264,6 +264,9 @@ function postTickState(tickMs = 0) {
       if (a.alive) {
         animals.push(a.toDelta());
       } else if (a.state === 9) {
+        if (a.consumed) {
+          animals.push(a.toDelta());
+        }
         animalsDead.push(a.id);
       }
       a.clearDirty();

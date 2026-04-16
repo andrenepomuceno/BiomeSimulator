@@ -55,11 +55,6 @@ export function _attack(attacker, defender, world) {
     world.markEntityDead(defender);
     defender.logAction(world.clock.tick, 'KILLED_BY', { attacker: attacker.species, attackerId: attacker.id });
     attacker.logAction(world.clock.tick, 'KILLED', { target: defender.species, targetId: defender.id });
-    attacker.logAction(world.clock.tick, 'EAT_PREY', { prey: defender.species, preyId: defender.id });
-    attacker.hunger = Math.max(0, attacker.hunger - 80);
-    attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + 25);
-    attacker.hp = Math.min(attacker.maxHp, attacker.hp + 15);
-    attacker.state = AnimalState.EATING;
   }
 }
 

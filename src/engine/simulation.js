@@ -478,6 +478,9 @@ export class SimulationEngine {
       this.spatialHash.remove(dead);
     }
 
+    // Remove consumed corpses/eggs promptly so they disappear after being eaten.
+    w.animals = w.animals.filter(a => a.alive || !a.consumed);
+
     const tick = w.clock.tick;
     const totalAnimals = w.animals.length;
     const cleanupInterval = totalAnimals > 1500 ? 10 : totalAnimals > 800 ? 25 : 50;

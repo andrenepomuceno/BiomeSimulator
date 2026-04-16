@@ -51,6 +51,7 @@ export function _tryScavenge(animal, world, spatialHash, vision) {
     animal.applyEnergyCost('EAT');
     animal.logAction(world.clock.tick, 'SCAVENGED', { corpse: target.species, corpseId: target.id });
     target.consumed = true;
+    target._dirty = true;
     return true;
   }
 
@@ -81,8 +82,8 @@ export function _tryEatEgg(animal, world, spatialHash, vision) {
   if (bestDist <= 1.5) {
     target.hp = 0;
     world.markEntityDead(target);
-    animal.hunger = Math.max(0, animal.hunger - 20);
-    animal.energy = Math.min(animal.maxEnergy, animal.energy + 8);
+    target.consumed = true;
+    target._dirty = true;
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
     animal.logAction(world.clock.tick, 'ATE_EGG', { species: target.species, eggId: target.id });

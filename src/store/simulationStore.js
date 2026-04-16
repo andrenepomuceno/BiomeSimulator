@@ -249,6 +249,10 @@ const useSimStore = create((set, get) => ({
       if (a.alive) {
         animals.push(a);
       } else if (a.state === 9) {
+        if (a.consumed) {
+          map.delete(a.id);
+          continue;
+        }
         const deathTick = a._deathTick ?? currentTick;
         if (currentTick - deathTick < 300) {
           animals.push(a);

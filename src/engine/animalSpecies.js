@@ -91,7 +91,7 @@ const DEFAULT_COMBAT = {
 };
 
 const DEFAULT_HISTORY = {
-  action_history_max_size: 100,
+  action_history_max_size: 150,
 };
 
 const GAME_TIME_FIELDS = ['max_age', 'mature_age', 'mate_cooldown', 'decision_interval', 'gestation_period', 'incubation_period', 'pupa_age', 'pupa_duration'];

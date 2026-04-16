@@ -73,27 +73,6 @@ describe('generateTerrain', () => {
     const { terrain } = generateTerrain({ ...config, min_land_ratio: 0, seed: 42 });
     expect(terrain).toHaveLength(64 * 64);
   });
-
-  it('accepts percentage min_land_ratio input (50 => 0.5)', () => {
-    const { terrain } = generateTerrain({ ...config, min_land_ratio: 50, seed: 7 });
-    let landCount = 0;
-    for (let i = 0; i < terrain.length; i++) {
-      if (terrain[i] !== WATER && terrain[i] !== DEEP_WATER) landCount++;
-    }
-    expect(landCount / terrain.length).toBeGreaterThanOrEqual(0.5);
-  });
-
-  it('falls back to the 50% minimum when min_land_ratio is empty/invalid', () => {
-    const cases = ['', null, undefined, 'abc'];
-    for (const value of cases) {
-      const { terrain } = generateTerrain({ ...config, min_land_ratio: value, seed: 11 });
-      let landCount = 0;
-      for (let i = 0; i < terrain.length; i++) {
-        if (terrain[i] !== WATER && terrain[i] !== DEEP_WATER) landCount++;
-      }
-      expect(landCount / terrain.length).toBeGreaterThanOrEqual(0.5);
-    }
-  });
 });
 
 describe('computeWaterProximity', () => {

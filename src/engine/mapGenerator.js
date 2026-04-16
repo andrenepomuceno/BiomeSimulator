@@ -15,19 +15,7 @@ export function generateTerrain(config) {
   const seaLevel = config.sea_level ?? 0.38;
   const islandCount = config.island_count ?? 5;
   const islandSize = config.island_size_factor ?? 0.3;
-  // Guarantee at least 50% land by default.
-  // Accept ratio [0..1] or percentage [0..100] and normalize to ratio.
-  // Invalid/empty values fall back to 0.5.
-  const minLandRatioInput = config.min_land_ratio;
-  const minLandRatioNumeric = (minLandRatioInput === '' || minLandRatioInput == null)
-    ? NaN
-    : Number(minLandRatioInput);
-  const minLandRatioNormalized = Number.isFinite(minLandRatioNumeric)
-    ? (minLandRatioNumeric > 1 && minLandRatioNumeric <= 100
-      ? minLandRatioNumeric / 100
-      : minLandRatioNumeric)
-    : 0.5;
-  const minLandRatio = Math.max(0.5, Math.min(0.95, minLandRatioNormalized));
+  const minLandRatio = config.min_land_ratio ?? 0.5;
   const seed = config.seed ?? Math.floor(Math.random() * 2147483647);
 
   // Base heightmap with multi-octave gradient noise
@@ -70,10 +58,10 @@ export function generateTerrain(config) {
   let effectiveSeaLevel = seaLevel;
   if (minLandRatio > 0) {
     const sorted = Float64Array.from(combined).sort();
-    const idx = Math.max(0, Math.min(sorted.length - 1, Math.floor((1.0 - minLandRatio) * sorted.length)));
+    const idx = Math.floor((1.0 - minLandRatio) * sorted.length);
     // Subtract a small epsilon so tiles sitting exactly on the boundary
     // are counted as land (classification is strict: v > effectiveSeaLevel).
-    const heightAtPercentile = sorted[idx] - 1e-9;
+    const heightAtPercentile = sorted[Math.min(idx, sorted.length - 1)] - 1e-9;
     effectiveSeaLevel = Math.min(seaLevel, heightAtPercentile);
   }
 

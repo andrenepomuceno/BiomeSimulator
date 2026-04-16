@@ -40,10 +40,12 @@ export function drawSnake(ctx, params, dir, frame) {
     }
     segmentChain(ctx, pts, radii, cols);
 
-    // Belly stripe down the spine
-    const minPtY = Math.min(...pts.map(p => p[1]));
-    const maxPtY = Math.max(...pts.map(p => p[1]));
-    rect(ctx, cx - 1, minPtY, 3, maxPtY - minPtY + 1, bellyCol);
+    // Belly stripe — follow segments instead of flat rectangle
+    for (let i = 0; i < pts.length; i++) {
+      const [bx_, by_] = pts[i];
+      const r = radii[i];
+      rect(ctx, bx_ - 1, by_ + r - 1, 3, 2, bellyCol);
+    }
 
     // Top highlight on each segment
     for (let i = 0; i < pts.length; i++) {

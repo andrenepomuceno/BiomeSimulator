@@ -56,16 +56,33 @@ export function drawFlower(ctx, params, stage, frame) {
     // Opening bud — 6 petals just beginning to unfold
     const centerX3 = cx + 4 + swayOff;
     const centerY3 = baseY - 33;
+    
+    // Helper to draw small petal made of circles
+    function drawSmallCirclePetal(angle, startRadius, length) {
+      const cos_a = Math.cos(angle);
+      const sin_a = Math.sin(angle);
+      
+      const numCircles = 4;
+      for (let j = 0; j < numCircles; j++) {
+        const t = j / (numCircles - 1);
+        const distAlongPetal = t * length;
+        const circleRadius = Math.max(0.5, 1.8 * (1 - t * 0.7));
+        
+        const circleX = centerX3 + Math.round(cos_a * (startRadius + distAlongPetal));
+        const circleY = centerY3 + Math.round(sin_a * (startRadius + distAlongPetal)) - 1;  // unfold upward
+        
+        let circleColor = petal;
+        if (j === numCircles - 1) {
+          circleColor = lighten(petal, 0.12);
+        }
+        
+        ellipse(ctx, circleX, circleY, Math.round(circleRadius), Math.round(circleRadius), circleColor);
+      }
+    }
+    
     for (let i = 0; i < 6; i++) {
       const angle = (i * Math.PI) / 3;
-      const px1 = centerX3 + Math.round(Math.cos(angle) * 5);
-      const py1 = centerY3 + Math.round(Math.sin(angle) * 5);
-      const px2 = centerX3 + Math.round(Math.cos(angle) * 11);
-      const py2 = centerY3 + Math.round(Math.sin(angle) * 11) - 2; // unfold upward
-      
-      rect(ctx, px1 - 1, py1 - 1, 2, 2, petal);
-      px(ctx, px2, py2, lighten(petal, 0.12));
-      px(ctx, px2 - 1, py2 - 1, petal);
+      drawSmallCirclePetal(angle, 4, 8);
     }
     
     // Center disc barely showing
@@ -84,30 +101,49 @@ export function drawFlower(ctx, params, stage, frame) {
     // Full flower head — 8 individual petals radiating from center
     const centerX = cx + 4 + swayOff;
     const centerY = baseY - 36;
-    const petalRadius = 9;
-    const petalLen = 7;
+    const petalRadius = 8;
+    const petalLen = 10;
+    
+    // Helper to draw a petal made of overlapping circles
+    function drawCirclePetal(angle, startRadius, length) {
+      const cos_a = Math.cos(angle);
+      const sin_a = Math.sin(angle);
+      const perpX = -sin_a;
+      const perpY = cos_a;
+      
+      // Draw petal as series of circles along the direction, tapering in size
+      const numCircles = 6;
+      for (let j = 0; j < numCircles; j++) {
+        const t = j / (numCircles - 1);  // 0 to 1
+        const distAlongPetal = t * length;
+        const circleRadius = Math.max(1, 2.5 * (1 - t * 0.8));  // Taper from ~2.5 to ~0.5
+        
+        const circleX = centerX + Math.round(cos_a * (startRadius + distAlongPetal));
+        const circleY = centerY + Math.round(sin_a * (startRadius + distAlongPetal));
+        
+        // Color variation along petal
+        let circleColor = petal;
+        if (j === numCircles - 1) {
+          circleColor = petalDark || darken(petal, 0.15);  // Darker tip
+        } else if (j >= numCircles - 2) {
+          circleColor = darken(petal, 0.08);  // Slightly darker toward tip
+        }
+        
+        ellipse(ctx, circleX, circleY, Math.round(circleRadius), Math.round(circleRadius), circleColor);
+        
+        // Highlight on top-lit petals (left half of flower facing top-left)
+        if (j < numCircles - 1 && j > 0) {
+          const highlightX = circleX + Math.round(perpX);
+          const highlightY = circleY + Math.round(perpY);
+          px(ctx, highlightX, highlightY, lighten(petal, 0.10));
+        }
+      }
+    }
     
     // Draw 8 petals at cardinal + diagonal angles
     for (let i = 0; i < 8; i++) {
-      const angle = (i * Math.PI) / 4;  // 0, π/4, π/2, 3π/4, π, 5π/4, 3π/2, 7π/4
-      const px1 = centerX + Math.round(Math.cos(angle) * petalRadius);
-      const py1 = centerY + Math.round(Math.sin(angle) * petalRadius);
-      const px2 = centerX + Math.round(Math.cos(angle) * (petalRadius + petalLen));
-      const py2 = centerY + Math.round(Math.sin(angle) * (petalRadius + petalLen));
-      
-      // Petal base (wider)
-      const baseW = i % 2 === 0 ? 3 : 2;  // Cardinal petals slightly wider
-      rect(ctx, px1 - 1, py1 - 1, baseW, 3, petal);
-      
-      // Petal tip (pointed)
-      px(ctx, px2, py2, petalDark || darken(petal, 0.15));
-      px(ctx, px2 - 1, py2, darken(petal, 0.10));
-      px(ctx, px2 + 1, py2, darken(petal, 0.10));
-      
-      // Petal highlight (top-lit)
-      if (i < 4) {  // top half petals get more light
-        px(ctx, Math.round(px1 + (px2 - px1) * 0.5), Math.round(py1 + (py2 - py1) * 0.5), lighten(petal, 0.15));
-      }
+      const angle = (i * Math.PI) / 4;
+      drawCirclePetal(angle, petalRadius, petalLen);
     }
     
     // Center disc (ellipse for roundness)
@@ -129,20 +165,35 @@ export function drawFlower(ctx, params, stage, frame) {
     const centerX5 = cx + 4 + swayOff;
     const centerY5 = baseY - 34;
     
+    // Helper to draw drooping petal made of circles
+    function drawDroopingCirclePetal(angle, dropLen) {
+      const cos_a = Math.cos(angle);
+      const sin_a = Math.sin(angle);
+      
+      const petalAlpha = angle < Math.PI / 2 ? petal : darken(petal, 0.15);
+      
+      const numCircles = 5;
+      for (let j = 0; j < numCircles; j++) {
+        const t = j / (numCircles - 1);
+        const distAlongDrop = t * dropLen;
+        const circleRadius = Math.max(0.5, 2.0 * (1 - t * 0.8));
+        
+        const circleX = centerX5 + Math.round(cos_a * 4);
+        const circleY = centerY5 + Math.round(sin_a * 4) + Math.round(distAlongDrop);
+        
+        let circleColor = petalAlpha;
+        if (j >= numCircles - 2) {
+          circleColor = darken(petalAlpha, 0.12);
+        }
+        
+        ellipse(ctx, circleX, circleY, Math.round(circleRadius), Math.round(circleRadius), circleColor);
+      }
+    }
+    
     for (let i = 0; i < 8; i++) {
       const angle = (i * Math.PI) / 4;
-      // Start petals from center, drop them down as they age
-      const px1 = centerX5 + Math.round(Math.cos(angle) * 6);
-      const py1 = centerY5 + Math.round(Math.sin(angle) * 6);
       const dropLen = 10 + (i % 2) * 2;
-      const px2 = centerX5 + Math.round(Math.cos(angle) * 5);
-      const py2 = centerY5 + Math.round(Math.sin(angle) * 5) + dropLen;  // hang down
-      
-      // Petal color fades with drop (some gone, some still visible)
-      const petalAlpha = i < 4 ? petal : darken(petal, 0.15);
-      rect(ctx, px1 - 1, py1, 2, 2, petalAlpha);
-      px(ctx, px2, py2, petalAlpha);
-      px(ctx, px2 - 1, py2, darken(petalAlpha, 0.10));
+      drawDroopingCirclePetal(angle, dropLen);
     }
     
     // Mature seed head (large, domed)

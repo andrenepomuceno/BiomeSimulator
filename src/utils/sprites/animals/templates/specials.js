@@ -6,7 +6,7 @@ import { px, rect, ellipse, darken, lighten, noise, gradientV, rimLight, ao, spe
 import { drawFurTexture } from '../bodyParts.js';
 
 /**
- * Draw a sleeping animal as a curled lump with Zzz.
+ * Draw a sleeping animal silhouette.
  */
 export function drawSleeping(ctx, params = {}) {
   const sleepTemplate = params.sleepTemplate || 'quadruped';
@@ -31,7 +31,6 @@ function drawSleepingQuadruped(ctx, params = {}) {
   const body = params.body || '#808080';
   const shadow = darken(body, 0.15);
   const highlight = lighten(body, 0.10);
-  const outline = darken(body, 0.30);
   const cx = 32;
   const cy = 32;
 
@@ -54,11 +53,6 @@ function drawSleepingQuadruped(ctx, params = {}) {
   rect(ctx, cx + 12, cy + 4, 3, 2, body);
   rect(ctx, cx + 14, cy + 2, 3, 2, body);
   rect(ctx, cx + 16, cy, 2, 2, body);
-
-  // Zzz letters
-  drawZ(ctx, cx + 10, cy - 12, 5, outline);
-  drawZ(ctx, cx + 16, cy - 18, 4, shadow);
-  drawZ(ctx, cx + 20, cy - 23, 3, highlight);
 }
 
 function drawSleepingBird(ctx, params = {}) {
@@ -67,7 +61,6 @@ function drawSleepingBird(ctx, params = {}) {
   const beak = '#d3aa5a';
   const shadow = darken(body, 0.16);
   const highlight = lighten(body, 0.10);
-  const outline = darken(body, 0.30);
   const cx = 32;
   const cy = 33;
 
@@ -78,9 +71,6 @@ function drawSleepingBird(ctx, params = {}) {
   rect(ctx, cx + 8, cy, 3, 2, beak);
   px(ctx, cx + 11, cy, darken(beak, 0.18));
   rect(ctx, cx - 6, cy + 8, 12, 1, shadow);
-
-  drawZ(ctx, cx + 10, cy - 12, 4, outline);
-  drawZ(ctx, cx + 15, cy - 17, 3, shadow);
 }
 
 function drawSleepingReptile(ctx, params = {}) {
@@ -88,7 +78,6 @@ function drawSleepingReptile(ctx, params = {}) {
   const shadow = darken(body, 0.15);
   const highlight = lighten(body, 0.10);
   const stripe = params.accent || darken(body, 0.10);
-  const outline = darken(body, 0.32);
   const cx = 32;
   const cy = 34;
 
@@ -100,8 +89,6 @@ function drawSleepingReptile(ctx, params = {}) {
   rect(ctx, cx + 6, cy - 1, 2, 1, highlight);
   px(ctx, cx + 10, cy - 1, '#111111');
   rect(ctx, cx - 8, cy + 7, 16, 1, shadow);
-
-  drawZ(ctx, cx + 9, cy - 11, 4, outline);
 }
 
 function drawSleepingInsect(ctx, params = {}) {
@@ -109,7 +96,6 @@ function drawSleepingInsect(ctx, params = {}) {
   const accent = params.accent || darken(body, 0.08);
   const shadow = darken(body, 0.18);
   const highlight = lighten(body, 0.10);
-  const outline = darken(body, 0.30);
   const cx = 32;
   const cy = 33;
 
@@ -120,14 +106,6 @@ function drawSleepingInsect(ctx, params = {}) {
   rect(ctx, cx - 6, cy + 5, 3, 1, shadow);
   rect(ctx, cx + 8, cy + 5, 3, 1, shadow);
   px(ctx, cx + 9, cy, '#111111');
-
-  drawZ(ctx, cx + 10, cy - 12, 4, outline);
-}
-
-function drawZ(ctx, x, y, size, color) {
-  for (let i = 0; i < size; i++) px(ctx, x + i, y, color);
-  for (let i = 0; i < size; i++) px(ctx, x + size - 1 - i, y + i, color);
-  for (let i = 0; i < size; i++) px(ctx, x + i, y + size - 1, color);
 }
 
 /**

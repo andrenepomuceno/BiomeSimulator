@@ -13,6 +13,35 @@ import { _calculateEffectiveSleepThreshold, _canEatPlant, _decisionThresholds, _
 
 export { giveBirth };
 
+/**
+ * Pre-computes per-tick decision context: effective vision, cached thresholds, and night flag.
+ * Called once per non-staggered decision tick, after state continuations and stagger check.
+ */
+function _buildCtx(animal, world) {
+  const isNight = world.clock.isNight;
+  const nocturnal = animal._config.nocturnal;
+  const globalVisionMultiplier = world.config.animal_global_vision_multiplier ?? 1;
+  const nightVisionReduction = world.config.night_vision_reduction_factor ?? 0.65;
+  const nocturnalDayVisionFactor = world.config.nocturnal_day_vision_factor ?? 0.8;
+  const baseVision = Math.max(1, animal.visionRange || 1);
+  const scaledBaseVision = Math.max(1, Math.floor(baseVision * globalVisionMultiplier));
+  const vision = Math.max(1, nocturnal
+    ? (isNight ? scaledBaseVision : Math.floor(scaledBaseVision * nocturnalDayVisionFactor))
+    : (isNight ? Math.floor(scaledBaseVision * nightVisionReduction) : scaledBaseVision));
+  return { vision, isNight, thresholds: _decisionThresholds(animal) };
+}
+
+/** Routes food-seeking to the correct function based on diet. */
+function _seekFoodByDiet(animal, world, spatialHash, vision) {
+  if (animal.diet === DIET.HERBIVORE) {
+    _seekPlantFood(animal, world, vision);
+  } else if (animal.diet === DIET.OMNIVORE) {
+    _seekOmnivoreFood(animal, world, spatialHash, vision);
+  } else {
+    _seekPrey(animal, world, spatialHash, vision);
+  }
+}
+
 export function decideAndAct(animal, world, spatialHash) {
   const collector = world._benchmarkCollector;
   const startedAt = benchmarkStart(collector);
@@ -84,6 +113,7 @@ export function decideAndAct(animal, world, spatialHash) {
         }
       }
     }
+
     if (animal.state === AnimalState.EATING) {
       _doEat(animal);
       return;
@@ -92,17 +122,6 @@ export function decideAndAct(animal, world, spatialHash) {
       _doDrink(animal, world);
       return;
     }
-
-    const isNight = world.clock.isNight;
-    const nocturnal = animal._config.nocturnal;
-    const globalVisionMultiplier = world.config.animal_global_vision_multiplier ?? 1;
-    const nightVisionReduction = world.config.night_vision_reduction_factor ?? 0.65;
-    const nocturnalDayVisionFactor = world.config.nocturnal_day_vision_factor ?? 0.8;
-    const baseVision = Math.max(1, animal.visionRange || 1);
-    const scaledBaseVision = Math.max(1, Math.floor(baseVision * globalVisionMultiplier));
-    const vision = Math.max(1, nocturnal
-      ? (isNight ? scaledBaseVision : Math.floor(scaledBaseVision * nocturnalDayVisionFactor))
-      : (isNight ? Math.floor(scaledBaseVision * nightVisionReduction) : scaledBaseVision));
 
     const interval = Math.max(1, animal._config.decision_interval || 2);
     if (animal.id % interval !== world.clock.tick % interval) {
@@ -122,18 +141,19 @@ export function decideAndAct(animal, world, spatialHash) {
       return;
     }
 
-    if (animal.thirst > (_decisionThresholds(animal).drink_opportunistic ?? 25) && world.isWaterAdjacent(animal.x, animal.y)) {
+    const { vision, isNight, thresholds } = _buildCtx(animal, world);
+
+    if (animal.thirst > (thresholds.drink_opportunistic ?? 25) && world.isWaterAdjacent(animal.x, animal.y)) {
       animal.state = AnimalState.DRINKING;
       animal.applyEnergyCost('DRINK');
       return;
     }
 
-    if (animal.hunger > (_decisionThresholds(animal).eat_opportunistic ?? 20) && (animal.diet === DIET.HERBIVORE || animal.diet === DIET.OMNIVORE)) {
+    if (animal.hunger > (thresholds.eat_opportunistic ?? 20) && (animal.diet === DIET.HERBIVORE || animal.diet === DIET.OMNIVORE)) {
       const idx = world.idx(animal.x, animal.y);
       const ptype = world.plantType[idx];
       const stage = world.plantStage[idx];
       if (ptype > 0 && _isEdibleStage(ptype, stage) && _canEatPlant(animal, ptype)) {
-        const thresholds = _decisionThresholds(animal);
         const minHunger = stage === S_SEED
           ? (thresholds.eat_seed_min_hunger ?? 50)
           : stage === S_ADULT
@@ -146,7 +166,7 @@ export function decideAndAct(animal, world, spatialHash) {
       }
     }
 
-    if (animal.thirst > (_decisionThresholds(animal).critical_thirst ?? 55)) {
+    if (animal.thirst > (thresholds.critical_thirst ?? 55)) {
       _seekWater(animal, world, vision);
       return;
     }
@@ -201,14 +221,8 @@ export function decideAndAct(animal, world, spatialHash) {
       }
     }
 
-    if (animal.hunger > (_decisionThresholds(animal).critical_hunger ?? 45)) {
-      if (animal.diet === DIET.HERBIVORE) {
-        _seekPlantFood(animal, world, vision);
-      } else if (animal.diet === DIET.OMNIVORE) {
-        _seekOmnivoreFood(animal, world, spatialHash, vision);
-      } else {
-        _seekPrey(animal, world, spatialHash, vision);
-      }
+    if (animal.hunger > (thresholds.critical_hunger ?? 45)) {
+      _seekFoodByDiet(animal, world, spatialHash, vision);
       return;
     }
 
@@ -227,8 +241,8 @@ export function decideAndAct(animal, world, spatialHash) {
       }
     }
 
-    if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && !animal.pregnant && animal.energy > (_decisionThresholds(animal).mate_energy_min ?? 50)) {
-      const mate = _findMate(animal, spatialHash, Math.max(vision, _decisionThresholds(animal).mate_search_radius_min ?? 10));
+    if (animal.lifeStage === LifeStage.ADULT && animal.mateCooldown <= 0 && !animal.pregnant && animal.energy > (thresholds.mate_energy_min ?? 50)) {
+      const mate = _findMate(animal, spatialHash, Math.max(vision, thresholds.mate_search_radius_min ?? 10));
       if (mate) {
         const dist = Math.abs(mate.x - animal.x) + Math.abs(mate.y - animal.y);
         if (dist <= 2) {
@@ -245,18 +259,12 @@ export function decideAndAct(animal, world, spatialHash) {
       }
     }
 
-    if (animal.hunger > (_decisionThresholds(animal).moderate_hunger ?? 30)) {
-      if (animal.diet === DIET.HERBIVORE) {
-        _seekPlantFood(animal, world, vision);
-      } else if (animal.diet === DIET.OMNIVORE) {
-        _seekOmnivoreFood(animal, world, spatialHash, vision);
-      } else {
-        _seekPrey(animal, world, spatialHash, vision);
-      }
+    if (animal.hunger > (thresholds.moderate_hunger ?? 30)) {
+      _seekFoodByDiet(animal, world, spatialHash, vision);
       return;
     }
 
-    if (animal.thirst > (_decisionThresholds(animal).moderate_thirst ?? 35)) {
+    if (animal.thirst > (thresholds.moderate_thirst ?? 35)) {
       _seekWater(animal, world, vision);
       return;
     }

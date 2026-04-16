@@ -95,6 +95,24 @@ export function drawQuadrupedLeg(ctx, x, y, legLength, legColor, shadowColor, pa
 }
 
 /**
+ * Draw a slender ungulate leg ending in a small hoof.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x
+ * @param {number} y
+ * @param {number} legLength
+ * @param {string} legColor
+ * @param {string} shadowColor
+ * @param {string} hoofColor
+ */
+export function drawHoofLeg(ctx, x, y, legLength, legColor, shadowColor, hoofColor) {
+  const upper = Math.max(2, Math.floor(legLength * 0.45));
+  const lower = Math.max(2, legLength - upper - 1);
+  rect(ctx, x + 1, y, 2, upper, legColor);
+  rect(ctx, x + 1, y + upper, 2, lower, shadowColor);
+  rect(ctx, x, y + upper + lower, 4, 1, hoofColor);
+}
+
+/**
  * Draw a head shape with highlight.
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} x - head left edge

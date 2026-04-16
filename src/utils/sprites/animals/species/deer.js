@@ -1,5 +1,5 @@
 export default {
-  template: 'quadruped',
+  template: 'ungulate',
   body: '#b37a2f', accent: '#e9c77e', eye: '#221100',
   w: 26, h: 18, earH: 5, earInner: '#dba255',
   antlers: true, noseColor: '#5a311d', spots: true,

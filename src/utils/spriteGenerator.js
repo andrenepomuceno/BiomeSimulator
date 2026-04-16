@@ -20,6 +20,9 @@ import { drawReptile } from './sprites/animals/templates/reptile.js';
 import { drawCrocodile } from './sprites/animals/templates/crocodile.js';
 import { drawLizard } from './sprites/animals/templates/lizard.js';
 import { drawSnake } from './sprites/animals/templates/snake.js';
+import { drawCanid } from './sprites/animals/templates/canid.js';
+import { drawUngulate } from './sprites/animals/templates/ungulate.js';
+import { drawUrsid } from './sprites/animals/templates/ursid.js';
 import { drawSleeping, drawDead, drawEgg, drawPupa } from './sprites/animals/templates/specials.js';
 
 import rabbit from './sprites/animals/species/rabbit.js';
@@ -73,10 +76,17 @@ const TEMPLATE_DRAW = {
   crocodile: drawCrocodile,
   lizard: drawLizard,
   snake: drawSnake,
+  canid: drawCanid,
+  ungulate: drawUngulate,
+  ursid: drawUrsid,
 };
 
 function normalizeSleepTemplate(template) {
   switch (template) {
+    case 'canid':
+    case 'ungulate':
+    case 'ursid':
+      return 'quadruped';
     case 'crow':
       return 'bird';
     case 'beetle':

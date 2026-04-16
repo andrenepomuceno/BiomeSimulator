@@ -1,5 +1,5 @@
 export default {
-  template: 'quadruped',
+  template: 'canid',
   body: '#f36d0d', accent: '#f5e2bb', eye: '#222222',
   w: 24, h: 16, earH: 8, earInner: '#222222',
   tail: true, bushyTail: true,

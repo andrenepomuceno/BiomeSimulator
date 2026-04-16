@@ -1,5 +1,5 @@
 export default {
-  template: 'quadruped',
+  template: 'ursid',
   body: '#76502a', accent: '#976741', eye: '#111111',
   w: 32, h: 24, earH: 4, earInner: '#a6805a',
   large: true, noseColor: '#47331f', muzzle: '#c6aa7a',

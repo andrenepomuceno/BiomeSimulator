@@ -105,6 +105,7 @@ function createEngineWithWorld(animals) {
     isTileBlocked() { return false; },
     getAliveSpeciesCount() { return 0; },
     nextId() { return 9999; },
+    _spawnMeatDrops() {},
   };
 
   engine.world = world;

@@ -39,7 +39,8 @@ describe('PLANT_SPECIES registry', () => {
       expect(sp.name).toEqual(expect.any(String));
       expect(sp.stageAges).toHaveLength(4);
       expect(sp.productionChance).toBeGreaterThan(0);
-      expect(sp.edibleStages.length).toBeGreaterThan(0);
+      // Some species are inedible by design (edibleStages: [])
+      expect(Array.isArray(sp.edibleStages)).toBe(true);
     }
   });
 
@@ -147,8 +148,8 @@ describe('plant builder functions', () => {
   it('buildEdibleStagesMap returns Sets', () => {
     const map = buildEdibleStagesMap();
     for (const sp of Object.values(PLANT_SPECIES)) {
+      // Set is always present; size may be 0 for inedible species
       expect(map[sp.typeId]).toBeInstanceOf(Set);
-      expect(map[sp.typeId].size).toBeGreaterThan(0);
     }
   });
 

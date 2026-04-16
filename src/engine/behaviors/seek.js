@@ -164,7 +164,7 @@ export function _seekPrey(animal, world, spatialHash, vision) {
     if (target) {
       animal._chaseTarget = target;
       animal._chaseLockUntilTick = tick + chaseLockTicks;
-      if (bestDist <= 1) {
+      if (bestDist <= 1 && animal.attackCooldown <= 0) {
         _attack(animal, target, world);
       } else {
         _pursueTarget(animal, target, world, 'prey');
@@ -227,7 +227,7 @@ export function _seekOmnivoreFood(animal, world, spatialHash, vision) {
       if (target) {
         animal._chaseTarget = target;
         animal._chaseLockUntilTick = tick + chaseLockTicks;
-        if (bestDist <= 1) {
+        if (bestDist <= 1 && animal.attackCooldown <= 0) {
           _attack(animal, target, world);
         } else {
           _pursueTarget(animal, target, world, 'omnivore-prey');

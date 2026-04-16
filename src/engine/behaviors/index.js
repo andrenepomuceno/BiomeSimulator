@@ -65,8 +65,23 @@ export function decideAndAct(animal, world, spatialHash) {
       if (terrain === WATER || terrain === DEEP_WATER) {
         animal.state = AnimalState.IDLE;
       } else {
-        _doSleep(animal, world);
-        return;
+        // Herbivores/omnivores can be startled awake by a nearby predator
+        let startled = false;
+        if (animal.diet === DIET.HERBIVORE || animal.diet === DIET.OMNIVORE) {
+          const wakeRadius = animal._config.wake_threat_radius ?? 3;
+          const nearby = spatialHash.queryRadius(animal.x, animal.y, wakeRadius);
+          startled = nearby.some(e =>
+            e.alive && e.id !== animal.id && e.diet === DIET.CARNIVORE &&
+            (e._preySpecies.size === 0 || e._preySpecies.has(animal.species))
+          );
+        }
+        if (startled) {
+          animal.state = AnimalState.IDLE;
+          // Fall through to decision tree — flee logic will run
+        } else {
+          _doSleep(animal, world);
+          return;
+        }
       }
     }
     if (animal.state === AnimalState.EATING) {
@@ -93,7 +108,9 @@ export function decideAndAct(animal, world, spatialHash) {
     if (animal.id % interval !== world.clock.tick % interval) {
       benchmarkAdd(collector, 'decisionStaggerSkips', 1);
       benchmarkAddKeyed(collector, 'speciesDecisionStaggerSkips', animal.species, 1);
-      if (animal.path.length && animal.pathIndex < animal.path.length) {
+      // Don't reuse an old path while a flee episode is active — it may lead toward the threat
+      const fleeActive = world.clock.tick < animal._fleeLockUntilTick && animal._cachedThreat?.alive;
+      if (!fleeActive && animal.path.length && animal.pathIndex < animal.path.length) {
         if (!_reusePathIfValid(animal, world, 'stagger')) {
           animal.applyEnergyCost('IDLE');
           _idleRecover(animal);

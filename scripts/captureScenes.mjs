@@ -16,35 +16,64 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 
+// ── Random seed (new each run) ─────────────────────────────────────
+const RANDOM_SEED = Math.floor(Math.random() * 999_999) + 1;
+
 // ── Scene definitions ───────────────────────────────────────────────
+// `generate: true`  → start a fresh world at tick 0 before advancing.
+// `generate: false` → continue the existing world from its current tick.
+// `center: { fx, fy }` → fractional position within the map (0–1).
 const SCENES = [
   {
-    name: 'day-medium',
-    config: { seed: 1337, map_width: 180, map_height: 180 },
-    targetTick: 100,
-    zoom: 8,
-    center: null, // null = map center
+    name: 'overview-full',
+    generate: true,
+    config: { seed: RANDOM_SEED, map_width: 200, map_height: 200 },
+    targetTick: 30,
+    zoom: 4,                          // wide overview — enough to see the whole map
+    center: { fx: 0.50, fy: 0.50 },
   },
+  // ── Close-ups at incrementing ticks so each shot is a different moment ──
   {
-    name: 'night-medium',
-    config: { seed: 1337, map_width: 180, map_height: 180 },
-    targetTick: 250,
-    zoom: 8,
-    center: null,
-  },
-  {
-    name: 'crowded-close',
-    config: { seed: 4242, map_width: 260, map_height: 260 },
-    targetTick: 60,
+    name: 'closeup-nw',
+    generate: false,
+    targetTick: 30,   // already at 30 — no extra advance
     zoom: 20,
-    center: (w, h) => ({ x: Math.floor(w / 3), y: Math.floor(h / 3) }),
+    center: { fx: 0.18, fy: 0.18 },
   },
   {
-    name: 'overview-far',
-    config: { seed: 1337, map_width: 180, map_height: 180 },
-    targetTick: 100,
-    zoom: 2,
-    center: null,
+    name: 'closeup-ne',
+    generate: false,
+    targetTick: 50,
+    zoom: 28,
+    center: { fx: 0.82, fy: 0.18 },
+  },
+  {
+    name: 'closeup-center',
+    generate: false,
+    targetTick: 70,
+    zoom: 24,
+    center: { fx: 0.50, fy: 0.50 },
+  },
+  {
+    name: 'closeup-sw',
+    generate: false,
+    targetTick: 90,
+    zoom: 32,
+    center: { fx: 0.18, fy: 0.82 },
+  },
+  {
+    name: 'closeup-se',
+    generate: false,
+    targetTick: 110,
+    zoom: 20,
+    center: { fx: 0.82, fy: 0.82 },
+  },
+  {
+    name: 'closeup-detail',
+    generate: false,
+    targetTick: 130,
+    zoom: 36,                         // most zoomed — individual sprite detail
+    center: { fx: 0.55, fy: 0.38 },
   },
 ];
 
@@ -87,7 +116,7 @@ async function main() {
     process.exit(1);
   }
 
-  fs.mkdirSync(opts.outDir, { recursive: true });
+  fs.mkdirSync(opts.outDir, { recursive: true }); // base dir; run subdir created after timestamp is known
 
   const PORT = 5199;
   console.log('Starting Vite dev server...');
@@ -99,12 +128,21 @@ async function main() {
 
   try {
     browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      deviceScaleFactor: 2,  // HiDPI — 2× pixel density for sharper screenshots
+    });
     const page = await context.newPage();
 
     // ── Viewport captures ─────────────────────────────────────────
-    console.log(`Navigating to ${baseUrl}...`);
-    await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  // ── Per-run timestamped subfolder ─────────────────────────────────────────
+  const runTs   = new Date().toISOString().replace(/:/g, '-').replace(/\.\d+Z$/, 'Z');
+  const runDir  = path.join(opts.outDir, runTs);
+  fs.mkdirSync(runDir, { recursive: true });
+  console.log(`\nRun output folder: ${runDir}`);
+  console.log(`Random seed for this run: ${RANDOM_SEED}`);
+  console.log(`Navigating to ${baseUrl}...`);
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
     // Wait for the automation bridge to be available
     await page.waitForFunction(() => !!window.__ecoCapture, { timeout: 30_000 });
@@ -112,63 +150,68 @@ async function main() {
     for (const scene of scenes) {
       console.log(`\n── Scene: ${scene.name} ──`);
 
-      // Generate world with specific config — clear stale state first
-      await page.evaluate((cfg) => {
-        const store = window.__ecoCapture.getState;
-        // Mark worldReady as null so waitForWorld won't resolve on stale data
-        window.__ecoCapture.postCmd('generate', { config: cfg });
-      }, scene.config);
-      console.log('  Waiting for world...');
-      // Wait until worldReady is set AND clock.tick is 0 (fresh world)
-      await page.evaluate(() => new Promise((resolve) => {
-        const check = () => {
-          const s = window.__ecoCapture.getState();
-          return s.worldReady && s.clock.tick === 0;
-        };
-        if (check()) { resolve(); return; }
-        const unsub = window.__ecoCapture._subscribe((state) => {
-          if (state.worldReady && state.clock.tick === 0) { unsub(); resolve(); }
-        });
-      }));
+      if (scene.generate) {
+        // Start a fresh world
+        await page.evaluate((cfg) => {
+          window.__ecoCapture.postCmd('generate', { config: cfg });
+        }, scene.config);
+        console.log('  Waiting for world...');
+        await page.evaluate(() => new Promise((resolve) => {
+          const check = () => {
+            const s = window.__ecoCapture.getState();
+            return s.worldReady && s.clock.tick === 0;
+          };
+          if (check()) { resolve(); return; }
+          const unsub = window.__ecoCapture._subscribe((state) => {
+            if (state.worldReady && state.clock.tick === 0) { unsub(); resolve(); }
+          });
+        }));
+        // Start sim at high speed
+        await page.evaluate(() => window.__ecoCapture.postCmd('start'));
+        await page.evaluate(() => window.__ecoCapture.postCmd('setSpeed', { tps: 60 }));
+      }
 
-      // Start and advance to target tick
-      await page.evaluate(() => window.__ecoCapture.postCmd('start'));
-      await page.evaluate(() => window.__ecoCapture.postCmd('setSpeed', { tps: 60 }));
-      console.log(`  Advancing to tick ${scene.targetTick}...`);
-      await page.evaluate((tick) => window.__ecoCapture.waitForTick(tick), scene.targetTick);
+      // Advance to target tick (no-op if we're already there)
+      const currentTick = await page.evaluate(() => window.__ecoCapture.getState().clock.tick);
+      if (currentTick < scene.targetTick) {
+        console.log(`  Advancing from tick ${currentTick} → ${scene.targetTick}...`);
+        await page.evaluate((tick) => window.__ecoCapture.waitForTick(tick), scene.targetTick);
+      }
       await page.evaluate(() => window.__ecoCapture.postCmd('pause'));
 
-      // Position camera
+      // Position camera using fractional map coordinates
       await page.evaluate((z) => window.__ecoCapture.setZoom(z), scene.zoom);
-      const center = await page.evaluate((sceneDef) => {
+      const mapCenter = await page.evaluate((c) => {
         const state = window.__ecoCapture.getState();
         const w = state.mapWidth;
         const h = state.mapHeight;
-        if (sceneDef.centerFn) {
-          // Can't pass functions through evaluate; compute from map size
-          return { x: Math.floor(w / 3), y: Math.floor(h / 3) };
-        }
-        return { x: Math.floor(w / 2), y: Math.floor(h / 2) };
-      }, { centerFn: !!scene.center });
-      await page.evaluate(({ x, y }) => window.__ecoCapture.centerOn(x, y), center);
+        return { x: Math.floor(w * c.fx), y: Math.floor(h * c.fy) };
+      }, scene.center);
+      await page.evaluate(({ x, y }) => window.__ecoCapture.centerOn(x, y), mapCenter);
 
       // Small delay to let the renderer settle
-      await page.waitForTimeout(200);
+      await page.waitForTimeout(300);
 
-      // Capture
-      const result = await page.evaluate(() => window.__ecoCapture.capture());
-      const fileName = `${scene.name}-tick${result.meta.tick}-z${scene.zoom}.png`;
-      const filePath = path.join(opts.outDir, fileName);
-      fs.writeFileSync(filePath, dataUrlToBuffer(result.dataUrl));
-      console.log(`  Saved: ${fileName} (${result.meta.width}×${result.meta.height})`);
+      // ── Canvas-only screenshot (captures just the game canvas, no UI) ──
+      const tick = await page.evaluate(() => window.__ecoCapture.getState().clock.tick);
+      const fileName = `${scene.name}-tick${tick}-z${scene.zoom}.png`;
+      const filePath = path.join(runDir, fileName);
+      await page.locator('.canvas-area canvas').screenshot({ path: filePath, type: 'png' });
+      console.log(`  Saved: ${fileName}`);
 
       manifest.push({
         scene: scene.name,
         file: fileName,
-        config: scene.config,
-        ...result.meta,
+        seed: RANDOM_SEED,
+        config: scene.config ?? { seed: RANDOM_SEED },
+        tick,
+        zoom: scene.zoom,
         capturedAt: new Date().toISOString(),
       });
+
+      // Resume the sim (so the next scene can keep advancing from this tick)
+      await page.evaluate(() => window.__ecoCapture.postCmd('start'));
+      await page.evaluate(() => window.__ecoCapture.postCmd('setSpeed', { tps: 60 }));
     }
 
     // ── Atlas captures ────────────────────────────────────────────
@@ -177,22 +220,23 @@ async function main() {
     await page.waitForFunction(() => !!window.__ecoAtlasCapture, { timeout: 15_000 });
 
     const faunaDataUrl = await page.evaluate(() => window.__ecoAtlasCapture.getFaunaDataUrl());
-    const faunaPath = path.join(opts.outDir, 'fauna-atlas.png');
+    const faunaPath = path.join(runDir, 'fauna-atlas.png');
     fs.writeFileSync(faunaPath, dataUrlToBuffer(faunaDataUrl));
     console.log('  Saved: fauna-atlas.png');
     manifest.push({ scene: 'fauna-atlas', file: 'fauna-atlas.png', capturedAt: new Date().toISOString() });
 
     const floraDataUrl = await page.evaluate(() => window.__ecoAtlasCapture.getFloraDataUrl());
-    const floraPath = path.join(opts.outDir, 'flora-atlas.png');
+    const floraPath = path.join(runDir, 'flora-atlas.png');
     fs.writeFileSync(floraPath, dataUrlToBuffer(floraDataUrl));
     console.log('  Saved: flora-atlas.png');
     manifest.push({ scene: 'flora-atlas', file: 'flora-atlas.png', capturedAt: new Date().toISOString() });
 
     // ── Write manifest ────────────────────────────────────────────
-    const manifestPath = path.join(opts.outDir, 'manifest.json');
+    const manifestPath = path.join(runDir, 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     console.log(`\nManifest written to ${manifestPath}`);
     console.log(`Total captures: ${manifest.length}`);
+    console.log(`Run folder: ${runDir}`);
 
   } finally {
     if (browser) await browser.close();

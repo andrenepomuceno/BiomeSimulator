@@ -99,7 +99,7 @@ export function useAudio() {
       manager.setLogger((entry) => {
         const store = useSimStore.getState();
         store.pushAudioLog({ ...entry, tick: store.clock.tick });
-      });
+      }, { flush: true });
     } else {
       manager.setLogger(null);
     }

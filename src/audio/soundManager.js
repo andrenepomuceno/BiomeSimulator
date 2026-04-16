@@ -92,6 +92,8 @@ export class SoundManager {
     this._ambienceSampleLayers = null;   // { birds, insects, crickets, wind } loaded AudioBufferSourceNodes
     this._ecoMood = null;                // { biodiversity, population, trend } from computeEcoMood
     this._logger = null;
+    this._ringBuffer = [];
+    this._ringBufferLimit = 300;
 
     this._pipelineOptions = {
       proceduralOnly: AUDIO_PIPELINE_DEFAULTS.proceduralOnly,
@@ -106,8 +108,13 @@ export class SoundManager {
     this._sampleLoadState = new Map();
   }
 
-  setLogger(logger) {
+  setLogger(logger, { flush = false } = {}) {
     this._logger = typeof logger === 'function' ? logger : null;
+    if (flush && this._logger && this._ringBuffer.length > 0) {
+      const pending = this._ringBuffer.slice();
+      this._ringBuffer = [];
+      for (const entry of pending) this._logger(entry);
+    }
   }
 
   applySettings(patch) {
@@ -626,11 +633,11 @@ export class SoundManager {
     this._sampleLoadState.clear();
     this._activeVoices = 0;
     this._logger = null;
+    this._ringBuffer = [];
   }
 
   _emitLog(entry) {
-    if (!this._logger) return;
-    this._logger({
+    const formatted = {
       ...entry,
       at: Date.now(),
       atPrecise: typeof performance !== 'undefined' ? performance.now() : null,
@@ -641,7 +648,13 @@ export class SoundManager {
       distance: Number.isFinite(entry.distance) ? Number(entry.distance.toFixed(2)) : null,
       distanceGain: Number.isFinite(entry.distanceGain) ? Number(entry.distanceGain.toFixed(3)) : null,
       audibleRadius: Number.isFinite(entry.audibleRadius) ? Number(entry.audibleRadius.toFixed(2)) : null,
-    });
+    };
+    // Always maintain a ring buffer so recent history is available on demand.
+    this._ringBuffer.push(formatted);
+    if (this._ringBuffer.length > this._ringBufferLimit) {
+      this._ringBuffer.shift();
+    }
+    if (this._logger) this._logger(formatted);
   }
 
   _ensureContext() {

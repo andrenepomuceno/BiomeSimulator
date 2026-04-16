@@ -2,83 +2,107 @@
  * Snake drawing template — 64x64 design grid.
  * Used by: snake species.
  *
- * Sinusoidal body segments with scale patterns, forked tongue, belly plates.
+ * Smooth sinusoidal body using overlapping elliptical segments.
+ * Avoids blocky "square" segment look while preserving direction animations.
  */
-import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle, DOWN, UP, LEFT } from '../../helpers.js';
+import { px, rect, ellipse, darken, lighten, noise, speckle, DOWN, UP, LEFT } from '../../helpers.js';
 
 export function drawSnake(ctx, params, dir, frame) {
   const { body, accent, pattern, belly, eye, headW, headH, segments, segW } = params;
-  const shadow = darken(body, 0.15);
-  const highlight = lighten(body, 0.10);
-  const outline = darken(body, 0.3);
+  const shadow = darken(body, 0.18);
+  const highlight = lighten(body, 0.12);
+  const outline = darken(body, 0.32);
   const patternDark = pattern ? darken(pattern, 0.1) : null;
   const cx = 32;
   const cy = 32;
   const phase = (frame / 3) * Math.PI * 2;
   const isVert = dir === DOWN || dir === UP;
 
-  // Segment helpers
   const segCount = segments || 9;
   const sw = segW || 6;
-  const segH = sw;
 
-  // Draw a single segment with scale detail and gradient
-  function seg(sx, sy, w, h, primary, secondary) {
-    gradientV(ctx, sx, sy, w, h, lighten(primary, 0.06), darken(primary, 0.06));
-    // Belly stripe
-    if (isVert) {
-      rect(ctx, sx + 1, sy, 2, h, belly || accent);
-    } else {
-      rect(ctx, sx, sy + h - 2, w, 2, belly || accent);
+  function drawBlob(x, y, rx, ry, primary, secondary) {
+    ellipse(ctx, x, y, rx, ry, primary);
+    // Lower half shading to reinforce rounded volume
+    for (let dy = 0; dy <= ry; dy++) {
+      const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+      if (hw > 0) rect(ctx, x - hw, y + dy, hw * 2 + 1, 1, darken(primary, 0.04 + dy * 0.01));
     }
-    // Scale pattern (multi-tone)
-    speckle(ctx, sx, sy, w, h, [secondary || shadow, darken(primary, 0.10), lighten(primary, 0.04)], 0.22);
+    // Top highlight strip
+    ellipse(ctx, x, y - Math.max(1, Math.floor(ry * 0.45)), Math.max(1, rx - 2), Math.max(1, Math.floor(ry * 0.3)), highlight);
+    // Scale texture
+    speckle(ctx, x - rx, y - ry, rx * 2 + 1, ry * 2 + 1,
+      [secondary || shadow, darken(primary, 0.10), lighten(primary, 0.04)], 0.18);
+    // Belly stripe
+    if (isVert) rect(ctx, x - 1, y - ry + 1, 2, ry * 2 - 1, belly || accent);
+    else rect(ctx, x - rx + 1, y + ry - 1, rx * 2 - 1, 2, belly || accent);
+  }
+
+  function bridge(x0, y0, r0, x1, y1, r1, primary, secondary) {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const dist = Math.max(Math.abs(dx), Math.abs(dy));
+    if (dist <= 1) return;
+    for (let s = 1; s < dist; s++) {
+      const t = s / dist;
+      const xi = Math.round(x0 + dx * t);
+      const yi = Math.round(y0 + dy * t);
+      const ri = Math.max(2, Math.round(r0 + (r1 - r0) * t));
+      drawBlob(xi, yi, ri, Math.max(2, ri - 1), primary, secondary);
+    }
   }
 
   if (isVert) {
     const direction = dir === DOWN ? 1 : -1;
-    const startY = cy - direction * Math.floor(segCount * segH / 2);
+    const spacing = sw - 1;
+    const startY = cy - direction * Math.floor(segCount * spacing / 2);
+    let prevX = null;
+    let prevY = null;
+    let prevR = null;
 
     for (let i = 0; i < segCount; i++) {
-      const yOff = startY + i * segH * direction;
+      const yOff = startY + i * spacing * direction;
       const xOff = cx + Math.round(Math.sin(phase + i * 0.6) * 8);
-      const w = sw + (i < 2 ? 2 : i > segCount - 3 ? -(segCount - 1 - i) : 0);
+      const r = Math.max(2, Math.round(sw * 0.5 + (i < 2 ? 2 - i : i > segCount - 3 ? (segCount - 1 - i) * 0.6 : 0)));
       const col = i % 3 === 0 && pattern ? pattern : (i % 2 === 0 ? body : accent);
       const secCol = i % 3 === 0 && patternDark ? patternDark : shadow;
 
-      seg(xOff - Math.floor(w / 2), yOff, w, segH, col, secCol);
+      if (prevX !== null) bridge(prevX, prevY, prevR, xOff, yOff, r, col, secCol);
+      drawBlob(xOff, yOff, r, Math.max(2, r - 1), col, secCol);
+      prevX = xOff;
+      prevY = yOff;
+      prevR = r;
 
       // Dorsal diamond pattern
       if (pattern && i > 0 && i < segCount - 1 && i % 2 === 1) {
-        px(ctx, xOff, yOff + 1, pattern);
-        px(ctx, xOff - 1, yOff + 2, pattern);
-        px(ctx, xOff + 1, yOff + 2, pattern);
-        px(ctx, xOff, yOff + 3, pattern);
+        px(ctx, xOff, yOff, pattern);
+        px(ctx, xOff - 1, yOff + 1, pattern);
+        px(ctx, xOff + 1, yOff + 1, pattern);
+        px(ctx, xOff, yOff + 2, pattern);
       }
     }
 
     // Head
     const hw = headW || 10;
     const hh = headH || 7;
-    const headY = dir === DOWN ? startY - hh - 1 : startY + segCount * segH + 1;
+    const headY = dir === DOWN ? startY - hh - 2 : startY + segCount * spacing;
     const hx = cx - Math.floor(hw / 2);
 
-    // Head shape (slightly rounded)
-    rect(ctx, hx + 1, headY, hw - 2, 1, body);
-    gradientV(ctx, hx, headY + 1, hw, hh - 2, body, shadow);
-    rect(ctx, hx + 1, headY + hh - 1, hw - 2, 1, shadow);
-    rimLight(ctx, hx + 1, headY, hw - 2, 2, lighten(body, 0.10), 'top');
-    // Scale texture on head
-    speckle(ctx, hx, headY, hw, hh, [shadow, darken(body, 0.10)], 0.18);
+    // Rounded triangular-ish head
+    ellipse(ctx, cx, headY + Math.floor(hh / 2), Math.max(4, Math.floor(hw / 2)), Math.max(3, Math.floor(hh / 2)), body);
+    ellipse(ctx, cx, headY + 1, Math.max(3, Math.floor(hw / 2) - 2), 1, highlight);
+    speckle(ctx, hx, headY, hw, hh, [shadow, darken(body, 0.10)], 0.15);
+
     // Eyes (slit pupil)
     if (dir === DOWN) {
-      rect(ctx, hx + 2, headY + 2, 3, 3, eye);
-      rect(ctx, hx + hw - 5, headY + 2, 3, 3, eye);
-      px(ctx, hx + 3, headY + 2, '#000000');
-      px(ctx, hx + hw - 4, headY + 2, '#000000');
-      px(ctx, hx + 2, headY + 2, '#ffffff');
-      px(ctx, hx + hw - 3, headY + 2, '#ffffff');
+      rect(ctx, hx + 1, headY + 2, 3, 3, eye);
+      rect(ctx, hx + hw - 4, headY + 2, 3, 3, eye);
+      px(ctx, hx + 2, headY + 3, '#000000');
+      px(ctx, hx + hw - 3, headY + 3, '#000000');
+      px(ctx, hx + 1, headY + 2, '#ffffff');
+      px(ctx, hx + hw - 2, headY + 2, '#ffffff');
     }
+
     // Forked tongue
     const tongueY = dir === DOWN ? headY + hh : headY - 3;
     const tongueDir = dir === DOWN ? 1 : -1;
@@ -90,47 +114,77 @@ export function drawSnake(ctx, params, dir, frame) {
     // LEFT / RIGHT
     const flip = dir === LEFT;
     const f = flip ? (x) => 63 - x : (x) => x;
-    const direction = 1;
-    const startX = cx - Math.floor(segCount * sw / 2);
+    const spacing = sw - 1;
+    const startX = cx - Math.floor(segCount * spacing / 2);
+    let prevX = null;
+    let prevY = null;
+    let prevR = null;
 
     for (let i = 0; i < segCount; i++) {
-      const xOff = startX + i * sw * direction;
+      const xOff = startX + i * spacing;
       const yOff = cy + Math.round(Math.sin(phase + i * 0.6) * 6);
-      const h = sw + (i < 2 ? 2 : i > segCount - 3 ? -(segCount - 1 - i) : 0);
+      const r = Math.max(2, Math.round(sw * 0.5 + (i < 2 ? 2 - i : i > segCount - 3 ? (segCount - 1 - i) * 0.6 : 0)));
       const col = i % 3 === 0 && pattern ? pattern : (i % 2 === 0 ? body : accent);
       const secCol = i % 3 === 0 && patternDark ? patternDark : shadow;
 
-      for (let dx = 0; dx < sw; dx++) {
-        for (let dy = 0; dy < h; dy++) {
-          const c = dy < h - 2 ? col : (belly || accent);
-          px(ctx, f(xOff + dx), yOff - Math.floor(h / 2) + dy, c);
-          if (noise(xOff + dx, yOff + dy) > 0.78) px(ctx, f(xOff + dx), yOff - Math.floor(h / 2) + dy, secCol);
+      if (prevX !== null) {
+        const dx = xOff - prevX;
+        const dy = yOff - prevY;
+        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+        for (let s = 1; s < dist; s++) {
+          const t = s / dist;
+          const xi = Math.round(prevX + dx * t);
+          const yi = Math.round(prevY + dy * t);
+          const ri = Math.max(2, Math.round(prevR + (r - prevR) * t));
+          for (let oy = -Math.max(2, ri - 1); oy <= Math.max(2, ri - 1); oy++) {
+            const hw = Math.round(ri * Math.sqrt(Math.max(0, 1 - (oy * oy) / ((Math.max(2, ri - 1) * Math.max(2, ri - 1))))));
+            for (let ox = -hw; ox <= hw; ox++) {
+              const c = oy >= Math.max(1, ri - 2) ? (belly || accent) : col;
+              px(ctx, f(xi + ox), yi + oy, c);
+            }
+          }
         }
       }
 
+      for (let oy = -Math.max(2, r - 1); oy <= Math.max(2, r - 1); oy++) {
+        const hw = Math.round(r * Math.sqrt(Math.max(0, 1 - (oy * oy) / ((Math.max(2, r - 1) * Math.max(2, r - 1))))));
+        for (let ox = -hw; ox <= hw; ox++) {
+          const c = oy >= Math.max(1, r - 2) ? (belly || accent) : col;
+          px(ctx, f(xOff + ox), yOff + oy, c);
+          if (noise(xOff + ox, yOff + oy) > 0.82) px(ctx, f(xOff + ox), yOff + oy, secCol);
+        }
+      }
+      // top highlight on each segment
+      for (let ox = -Math.max(1, r - 2); ox <= Math.max(1, r - 2); ox++) px(ctx, f(xOff + ox), yOff - Math.max(2, r - 1), highlight);
+
+      prevX = xOff;
+      prevY = yOff;
+      prevR = r;
+
       // Dorsal pattern
       if (pattern && i > 0 && i < segCount - 1 && i % 2 === 1) {
-        const py = yOff - Math.floor(h / 2);
-        px(ctx, f(xOff + 2), py + 1, pattern);
-        px(ctx, f(xOff + 1), py + 2, pattern);
-        px(ctx, f(xOff + 3), py + 2, pattern);
-        px(ctx, f(xOff + 2), py + 3, pattern);
+        px(ctx, f(xOff), yOff - 1, pattern);
+        px(ctx, f(xOff - 1), yOff, pattern);
+        px(ctx, f(xOff + 1), yOff, pattern);
+        px(ctx, f(xOff), yOff + 1, pattern);
       }
     }
 
     // Head
     const hw = headW || 10;
     const hh = headH || 7;
-    const headX = startX + segCount * sw + 1;
+    const headX = startX + segCount * spacing + 1;
     const hy = cy - Math.floor(hh / 2);
 
-    for (let dx = 0; dx < hw; dx++) for (let dy = 0; dy < hh; dy++) px(ctx, f(headX + dx), hy + dy, body);
-    rimLight(ctx, headX, hy, hw, 2, lighten(body, 0.10), 'top');
+    ellipse(ctx, f(headX + Math.floor(hw / 2)), hy + Math.floor(hh / 2), Math.max(4, Math.floor(hw / 2)), Math.max(3, Math.floor(hh / 2)), body);
+    ellipse(ctx, f(headX + Math.floor(hw / 2)), hy + 1, Math.max(3, Math.floor(hw / 2) - 2), 1, highlight);
     speckle(ctx, headX, hy, hw, hh, [shadow, darken(body, 0.10)], 0.18);
+
     // Eye
-    rect(ctx, f(headX + hw - 4), hy + 1, 3, 3, eye);
-    px(ctx, f(headX + hw - 3), hy + 2, '#000000');
-    px(ctx, f(headX + hw - 4), hy + 1, '#ffffff');
+    rect(ctx, f(headX + hw - 3), hy + 1, 2, 2, eye);
+    px(ctx, f(headX + hw - 2), hy + 2, '#000000');
+    px(ctx, f(headX + hw - 3), hy + 1, '#ffffff');
+
     // Forked tongue
     px(ctx, f(headX + hw), cy, '#cc2222');
     px(ctx, f(headX + hw + 1), cy, '#cc2222');

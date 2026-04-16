@@ -198,8 +198,24 @@ export function drawMushroomCap(ctx, cx, baseY, capColor, capDark, stemColor, st
  * @param {string} fruitAccent - highlight colour (defaults to lightened fruit)
  */
 export function drawFruit(ctx, x, y, size, fruitColor, fruitAccent) {
-  const hi = fruitAccent || lighten(fruitColor, 0.22);
-  rect(ctx, x, y, size, size, fruitColor);
-  px(ctx, x + 1, y + 1, hi);
-  px(ctx, x + 1, y,     lighten(hi, 0.12));
+  const hi   = fruitAccent || lighten(fruitColor, 0.22);
+  const sh   = darken(fruitColor, 0.22);
+  const cx_  = x + Math.floor(size / 2);
+  const cy_  = y + Math.floor(size / 2);
+  const rx   = Math.max(2, Math.floor(size / 2));
+  const ry   = Math.max(2, Math.floor(size / 2));
+
+  // Base circle
+  ellipse(ctx, cx_, cy_, rx, ry, fruitColor);
+
+  // Shadow crescent (bottom-right quadrant — one darker ring)
+  ellipse(ctx, cx_ + 1, cy_ + 1, Math.max(1, rx - 1), Math.max(1, ry - 1), sh);
+  ellipse(ctx, cx_,     cy_,     Math.max(1, rx - 1), Math.max(1, ry - 1), fruitColor);
+
+  // Specular highlight (top-left)
+  px(ctx, cx_ - 1, cy_ - 1, hi);
+  px(ctx, cx_ - 1, cy_ - 2, lighten(hi, 0.14));
+
+  // Stem pip (tiny dark pixel at the top)
+  px(ctx, cx_, y - 1, darken(fruitColor, 0.40));
 }

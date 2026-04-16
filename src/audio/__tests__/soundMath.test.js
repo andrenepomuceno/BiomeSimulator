@@ -1,16 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { computeEcoMood, computePositionalMix, detectMacroEvents, getAudibleRadius, getViewportCenter, shouldMutePositionalSfx } from '../soundMath.js';
+import {
+  computeEcoMood,
+  computePositionalMix,
+  computeZoomAttenuation,
+  detectMacroEvents,
+  getAudibleRadius,
+  getViewportCenter,
+  shouldMutePositionalSfx,
+} from '../soundMath.js';
 
 describe('soundMath', () => {
   it('computes the center of the active viewport', () => {
     expect(getViewportCenter({ x: 20, y: 40, w: 10, h: 14 })).toEqual({ x: 25, y: 47 });
   });
 
-  it('expands the audible radius for larger viewports', () => {
-    const small = getAudibleRadius({ x: 0, y: 0, w: 10, h: 10 }, 18);
-    const large = getAudibleRadius({ x: 0, y: 0, w: 60, h: 60 }, 18);
+  it('expands the audible radius as camera zoom increases', () => {
+    const farZoom = getAudibleRadius({ x: 0, y: 0, w: 60, h: 60, zoom: 2.0 }, 18);
+    const nearZoom = getAudibleRadius({ x: 0, y: 0, w: 60, h: 60, zoom: 4.0 }, 18);
 
-    expect(large).toBeGreaterThan(small);
+    expect(nearZoom).toBeGreaterThan(farZoom);
   });
 
   it('centers nearby events and pans left or right by camera-relative position', () => {
@@ -33,9 +41,17 @@ describe('soundMath', () => {
     expect(mix.gain).toBe(0);
   });
 
-  it('mutes positional SFX when the camera is zoomed far out', () => {
-    expect(shouldMutePositionalSfx({ x: 0, y: 0, w: 100, h: 100, zoom: 2.5 })).toBe(true);
-    expect(shouldMutePositionalSfx({ x: 0, y: 0, w: 100, h: 100, zoom: 3 })).toBe(false);
+  it('attenuates positional SFX progressively as camera zooms out', () => {
+    const near = computeZoomAttenuation({ x: 0, y: 0, w: 100, h: 100, zoom: 4 });
+    const mid = computeZoomAttenuation({ x: 0, y: 0, w: 100, h: 100, zoom: 2.8 });
+    const far = computeZoomAttenuation({ x: 0, y: 0, w: 100, h: 100, zoom: 1.8 });
+
+    expect(near).toBeCloseTo(1, 3);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(1);
+    expect(far).toBe(0);
+    expect(shouldMutePositionalSfx({ x: 0, y: 0, w: 100, h: 100, zoom: 2.5 })).toBe(false);
+    expect(shouldMutePositionalSfx({ x: 0, y: 0, w: 100, h: 100, zoom: 1.8 })).toBe(true);
   });
 });
 

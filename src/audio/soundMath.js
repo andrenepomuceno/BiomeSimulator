@@ -1,6 +1,8 @@
 export const MIN_AUDIBLE_RADIUS_TILES = 18;
 export const MAX_AUDIBLE_RADIUS_TILES = 80;
 export const POSITIONAL_SFX_MUTE_ZOOM_THRESHOLD = 2.5;
+const POSITIONAL_SFX_FULL_ZOOM = 4;
+const POSITIONAL_SFX_MIN_ZOOM = 1.8;
 
 export function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -15,18 +17,36 @@ export function getViewportCenter(viewport) {
 }
 
 export function getAudibleRadius(viewport, baseRadius = MIN_AUDIBLE_RADIUS_TILES) {
-  if (!viewport) return baseRadius;
-  const diagonal = Math.hypot(viewport.w || 0, viewport.h || 0);
+  if (!viewport || !Number.isFinite(viewport.zoom)) return baseRadius;
+  const zoomNorm = clamp(
+    (viewport.zoom - POSITIONAL_SFX_MIN_ZOOM) / (POSITIONAL_SFX_FULL_ZOOM - POSITIONAL_SFX_MIN_ZOOM),
+    0,
+    1,
+  );
+  const radiusScale = 0.65 + zoomNorm * 0.75;
   return clamp(
-    Math.max(baseRadius, diagonal * 0.75),
-    baseRadius,
+    baseRadius * radiusScale,
+    baseRadius * 0.6,
     MAX_AUDIBLE_RADIUS_TILES,
   );
 }
 
+export function computeZoomAttenuation(viewport) {
+  if (!viewport || !Number.isFinite(viewport.zoom)) return 1;
+  if (viewport.zoom >= POSITIONAL_SFX_FULL_ZOOM) return 1;
+  if (viewport.zoom <= POSITIONAL_SFX_MIN_ZOOM) return 0;
+
+  const t = clamp(
+    (viewport.zoom - POSITIONAL_SFX_MIN_ZOOM) / (POSITIONAL_SFX_FULL_ZOOM - POSITIONAL_SFX_MIN_ZOOM),
+    0,
+    1,
+  );
+  // Smoothstep for gradual onset and rollout (no audible step edges).
+  return t * t * (3 - 2 * t);
+}
+
 export function shouldMutePositionalSfx(viewport) {
-  if (!viewport || !Number.isFinite(viewport.zoom)) return false;
-  return viewport.zoom <= POSITIONAL_SFX_MUTE_ZOOM_THRESHOLD;
+  return computeZoomAttenuation(viewport) <= 0.02;
 }
 
 export function computePositionalMix(source, viewport, baseRadius = MIN_AUDIBLE_RADIUS_TILES) {
@@ -59,15 +79,19 @@ export function computePositionalMix(source, viewport, baseRadius = MIN_AUDIBLE_
   const distanceGain = normalizedDistance >= 1
     ? 0
     : Math.pow(1 - normalizedDistance, 1.6);
+  const zoomGain = computeZoomAttenuation(viewport);
+  const gain = distanceGain * zoomGain;
   const panRange = Math.max((viewport.w || 0) * 0.4, 8);
   const pan = clamp(dx / panRange, -1, 1);
 
   return {
-    audible: distanceGain > 0.02,
-    gain: distanceGain,
+    audible: gain > 0.01,
+    gain,
     pan,
     distance,
     audibleRadius,
+    zoomGain,
+    distanceGain,
     centerX: center.x,
     centerY: center.y,
   };

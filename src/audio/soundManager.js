@@ -7,7 +7,7 @@ import {
   AMBIENCE_SAMPLES,
   AUDIO_PIPELINE_DEFAULTS,
 } from './soundEvents.js';
-import { clamp, computePositionalMix, shouldMutePositionalSfx } from './soundMath.js';
+import { clamp, computePositionalMix } from './soundMath.js';
 
 const MAX_ACTIVE_VOICES = 24;
 const MAX_SFX_PER_TICK = 4;
@@ -261,33 +261,64 @@ export class SoundManager {
       osc.stop(now + dur + 0.02);
     };
 
+    const addNoise = (filterType, freq, q, level, dur) => {
+      const source = offline.createBufferSource();
+      source.buffer = this._getNoiseBuffer();
+      const filter = offline.createBiquadFilter();
+      filter.type = filterType;
+      filter.frequency.value = freq;
+      filter.Q.value = q;
+      const g = offline.createGain();
+      g.gain.setValueAtTime(ZERO_GAIN, now);
+      g.gain.linearRampToValueAtTime(Math.max(ZERO_GAIN, level), now + 0.004);
+      g.gain.exponentialRampToValueAtTime(ZERO_GAIN, now + dur);
+      source.connect(filter);
+      filter.connect(g);
+      g.connect(gainNode);
+      source.start(now);
+      source.stop(now + dur + 0.03);
+    };
+
     let duration = 0.1;
     switch (preset) {
       case 'attack':
-        duration = 0.14;
-        addOsc(tt, 640, 220, 0.55, 0.08, -3);
-        addOsc('square', 1280, 520, 0.22, 0.06, 7);
-        addOsc('triangle', 220, 120, 0.2, 0.11);
+        duration = 0.16;
+        addNoise(group ? (group.noiseBand || 'bandpass') : 'bandpass', group ? (group.noiseFreq || 2600) : 2600, 2.2, 0.32, 0.07);
+        addNoise('highpass', 5000, 1.5, 0.14, 0.03);
+        addOsc(tt, 720, 250, 0.42, 0.08, -4);
+        addOsc('sawtooth', 500, 210, 0.2, 0.09, 2);
+        addOsc('triangle', 230, 108, 0.18, 0.11, 6);
         break;
       case 'death':
-        duration = 0.34;
-        addOsc(tt, 180, 48, 0.62, 0.34);
-        addOsc('sine', 84, 38, 0.35, 0.3, -6);
+        duration = 0.38;
+        addNoise(group ? (group.noiseBand || 'lowpass') : 'lowpass', group ? (group.noiseFreq || 540) : 540, 0.85, 0.24, 0.2);
+        addNoise('bandpass', 1800, 1.1, 0.1, 0.11);
+        addOsc(tt, 200, 52, 0.55, 0.36, -6);
+        addOsc('sine', 82, 40, 0.26, 0.32, -8);
+        addOsc('square', 280, 110, 0.1, 0.2, 9);
         break;
       case 'eat':
-        duration = 0.1;
-        addOsc('square', 520, 330, 0.42, 0.07, 5);
-        addOsc('sine', 230, 180, 0.24, 0.1);
+        duration = 0.11;
+        addNoise(group ? (group.noiseBand || 'highpass') : 'highpass', group ? (group.noiseFreq || 3400) : 3400, 2.1, 0.22, 0.04);
+        addNoise('bandpass', 1600, 1.8, 0.08, 0.05);
+        addOsc('square', 560, 300, 0.28, 0.07, 6);
+        addOsc('triangle', 350, 240, 0.16, 0.09, 1);
+        addOsc('sine', 300, 205, 0.18, 0.11, -2);
         break;
       case 'drink':
-        duration = 0.13;
-        addOsc('triangle', 160, 90, 0.38, 0.1, -4);
-        addOsc('sine', 420, 260, 0.16, 0.08);
+        duration = 0.16;
+        addNoise(group ? (group.noiseBand || 'lowpass') : 'lowpass', group ? (group.noiseFreq || 640) : 640, 0.95, 0.2, 0.1);
+        addNoise('bandpass', 1200, 1.2, 0.08, 0.06);
+        addOsc('triangle', 130, 70, 0.2, 0.1, -5);
+        addOsc('triangle', 280, 170, 0.14, 0.12, 2);
+        addOsc('sine', 520, 280, 0.07, 0.09, 8);
         break;
       case 'mate':
-        duration = 0.2;
-        addOsc(tt, 360, 860, 0.45, 0.2, 2);
-        addOsc('sine', 620, 1180, 0.24, 0.14, 9);
+        duration = 0.23;
+        addNoise('bandpass', 2600, 1.2, 0.05, 0.09);
+        addOsc(tt, 360, 920, 0.42, 0.23, 4);
+        addOsc('sine', 640, 1280, 0.2, 0.16, 11);
+        addOsc('triangle', 220, 330, 0.13, 0.19, -8);
         break;
       case 'fruit':
         duration = 0.2;
@@ -404,9 +435,6 @@ export class SoundManager {
     }
 
     if (config.positional) {
-      if (shouldMutePositionalSfx(this.viewport)) {
-        return false;
-      }
       mix = computePositionalMix(event, this.viewport, config.audibleRadiusTiles);
       if (!mix.audible) return false;
       gain *= mix.gain;
@@ -945,27 +973,32 @@ export class SoundManager {
 
     switch (preset) {
       case 'attack':
-        // Retro+modern bite: layered transient, texture burst, and low thump.
-        duration = 0.14;
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 2600, 2.1, 0.52, 0.06, now));
-        collectBurst(this._addNoiseBurst(voiceGain, 'highpass', 4200, 1.4, 0.25, 0.035, now));
-        addOscillator(tt || 'square', pf(680), pf(240), 0.42, 0.07, variantDetune - 4);
-        addOscillator('triangle', pf(220), pf(110), 0.18, 0.1, variantDetune + 3);
+        // Rich strike with bite transient, resonant body, and short metallic sheen.
+        duration = 0.16;
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 2600, 2.3, 0.52, 0.07, now));
+        collectBurst(this._addNoiseBurst(voiceGain, 'highpass', 5000, 1.6, 0.2, 0.03, now));
+        addOscillator(tt || 'square', pf(720), pf(250), 0.38, 0.08, variantDetune - 4);
+        addOscillator('sawtooth', pf(500), pf(210), 0.2, 0.09, variantDetune + 2);
+        addOscillator('triangle', pf(230), pf(108), 0.18, 0.11, variantDetune + 6);
         break;
       case 'death':
-        // Weighted collapse with sub impact and filtered dust tail.
-        duration = 0.34;
-        collectBurst(this._addImpact(voiceGain, pf(190), 0.75, 0.34, now));
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 500, 0.75, 0.38, 0.16, now));
-        addOscillator(tt || 'triangle', pf(140), pf(44), 0.24, 0.3, -10 + variantDetune);
-        addOscillator('sine', pf(72), pf(42), 0.16, 0.28, variantDetune - 3);
+        // Heavier collapse with sub drop, noisy debris, and dissonant overtone.
+        duration = 0.38;
+        collectBurst(this._addImpact(voiceGain, pf(200), 0.8, 0.36, now));
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 540, 0.85, 0.36, 0.2, now));
+        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 1800, 1.1, 0.16, 0.11, now));
+        addOscillator(tt || 'triangle', pf(150), pf(46), 0.24, 0.34, -10 + variantDetune);
+        addOscillator('sine', pf(78), pf(40), 0.16, 0.32, variantDetune - 3);
+        addOscillator('square', pf(280), pf(110), 0.09, 0.2, variantDetune + 9);
         break;
       case 'eat':
-        // Short crisp nibble with tonal click.
-        duration = 0.1;
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'highpass', nf || 3300, 2.2, 0.46, 0.04, now));
-        addOscillator(tt || 'square', pf(540), pf(300), 0.28, 0.065, variantDetune + 6);
-        addOscillator('sine', pf(300), pf(210), 0.24, 0.1, variantDetune - 2);
+        // Bite with crunchy transient plus short cavity resonance.
+        duration = 0.11;
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'highpass', nf || 3400, 2.4, 0.43, 0.04, now));
+        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 1600, 1.8, 0.14, 0.05, now));
+        addOscillator(tt || 'square', pf(560), pf(300), 0.26, 0.07, variantDetune + 6);
+        addOscillator('triangle', pf(350), pf(240), 0.16, 0.09, variantDetune + 1);
+        addOscillator('sine', pf(300), pf(205), 0.18, 0.11, variantDetune - 2);
         break;
       case 'fruit':
         // Organic sparkle: not species-dependent (plant event)
@@ -975,18 +1008,21 @@ export class SoundManager {
         collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 4800, 3.1, 0.14, 0.07, now));
         break;
       case 'mate':
-        // Soft chirp — group-coloured tone
-        duration = 0.2;
-        addOscillator(tt || 'sine', pf(380), pf(860), 0.54, 0.2, 4 + variantDetune);
-        addOscillator('sine', pf(640), pf(1220), 0.2, 0.14, 11 + variantDetune);
-        addOscillator('triangle', pf(220), pf(310), 0.13, 0.16, variantDetune - 8);
+        // Expressive call with melodic glide and gentle breathy texture.
+        duration = 0.23;
+        addOscillator(tt || 'sine', pf(360), pf(920), 0.5, 0.23, 4 + variantDetune);
+        addOscillator('sine', pf(640), pf(1280), 0.2, 0.16, 11 + variantDetune);
+        addOscillator('triangle', pf(220), pf(330), 0.13, 0.19, variantDetune - 8);
+        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 2600, 1.2, 0.08, 0.09, now));
         break;
       case 'drink':
-        // Splash — group filter colours the water sound
-        duration = 0.13;
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 640, 0.9, 0.46, 0.09, now));
-        addOscillator(tt || 'sine', pf(120), pf(70), 0.22, 0.08, variantDetune - 5);
-        addOscillator('triangle', pf(260), pf(170), 0.15, 0.1, variantDetune + 2);
+        // Wet gulp with splash texture and short throat resonance.
+        duration = 0.16;
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 640, 0.95, 0.42, 0.1, now));
+        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 1200, 1.2, 0.16, 0.06, now));
+        addOscillator(tt || 'sine', pf(130), pf(70), 0.2, 0.1, variantDetune - 5);
+        addOscillator('triangle', pf(280), pf(170), 0.14, 0.12, variantDetune + 2);
+        addOscillator('sine', pf(520), pf(280), 0.07, 0.09, variantDetune + 8);
         break;
       case 'flee':
         duration = 0.09;

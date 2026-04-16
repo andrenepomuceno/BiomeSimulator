@@ -28,6 +28,10 @@ export function _seekWater(animal, world, vision) {
   try {
     benchmarkAddKeyed(collector, 'speciesSeekWater', animal.species, 1);
     if (world.isWaterAdjacent(animal.x, animal.y)) {
+      // Arrived — clear water lock
+      animal._waterLockUntilTick = 0;
+      animal._waterTargetX = null;
+      animal._waterTargetY = null;
       animal.state = AnimalState.DRINKING;
       animal.applyEnergyCost('DRINK');
       return;
@@ -36,6 +40,24 @@ export function _seekWater(animal, world, vision) {
     if (_reusePathIfValid(animal, world, 'water')) return;
 
     const desperate = animal.thirst > ((_decisionThresholds(animal).critical_thirst ?? 55) + 20);
+
+    // Water destination lock: skip expensive grid scan if we already have a valid target
+    const tick = world.clock.tick;
+    const waterLockTicks = world.config.water_lock_ticks ?? 30;
+    if (tick < animal._waterLockUntilTick && animal._waterTargetX != null
+        && world.isInBounds(animal._waterTargetX, animal._waterTargetY)
+        && world.isWaterAdjacent(animal._waterTargetX, animal._waterTargetY)) {
+      const pathLimit = desperate ? 80 : 50;
+      _computePath(animal, world, animal._waterTargetX, animal._waterTargetY, pathLimit, 'water');
+      if (animal.path.length) {
+        _walkPath(animal, world);
+        return;
+      }
+      // Path failed — clear lock and fall through to full scan
+      animal._waterLockUntilTick = 0;
+    }
+
+    // Full grid scan
     const searchR = desperate ? Math.min(vision * 3, 30) : vision * 2;
     const candidates = [];
     let bestDist = Infinity;
@@ -62,6 +84,10 @@ export function _seekWater(animal, world, vision) {
       const pool = unoccupied.length > 0 ? unoccupied : viable;
       const pick = pool[(Math.random() * pool.length) | 0];
       const pathLimit = desperate ? 80 : 50;
+      // Lock onto this destination
+      animal._waterTargetX = pick[0];
+      animal._waterTargetY = pick[1];
+      animal._waterLockUntilTick = tick + waterLockTicks;
       _computePath(animal, world, pick[0], pick[1], pathLimit, 'water');
     }
 
@@ -89,6 +115,31 @@ export function _seekPlantFood(animal, world, vision) {
     }
 
     if (_reusePathIfValid(animal, world, 'plant')) return;
+
+    // Plant destination lock: skip expensive ring scan if we have a valid target
+    const tick = world.clock.tick;
+    const plantLockTicks = world.config.plant_lock_ticks ?? 20;
+    if (tick < animal._plantLockUntilTick && animal._plantTargetX != null) {
+      const tx = animal._plantTargetX;
+      const ty = animal._plantTargetY;
+      if (world.isInBounds(tx, ty)) {
+        const ni = world.idx(tx, ty);
+        const ntype = world.plantType[ni];
+        const nstage = world.plantStage[ni];
+        if (ntype > 0 && _isEdibleStage(ntype, nstage) && _canEatPlant(animal, ntype)) {
+          const pathLimit = nstage === S_FRUIT ? 40 : 60;
+          _computePath(animal, world, tx, ty, pathLimit, nstage === S_FRUIT ? 'fruit' : 'plant');
+          if (animal.path.length) {
+            _walkPath(animal, world);
+            return;
+          }
+        }
+      }
+      // Target gone or unreachable — clear lock and fall through to scan
+      animal._plantLockUntilTick = 0;
+      animal._plantTargetX = null;
+      animal._plantTargetY = null;
+    }
 
     const r = vision;
     const maxR = animal.hunger > (_decisionThresholds(animal).expanded_plant_search_hunger ?? 65) ? Math.min(vision * 3, 25) : r;
@@ -127,6 +178,10 @@ export function _seekPlantFood(animal, world, vision) {
 
     const target = bestFruit || bestPlant || (animal.hunger > (_decisionThresholds(animal).desperate_seed_hunger_min ?? 60) ? bestSeed : null);
     if (target) {
+      // Lock onto this plant destination
+      animal._plantTargetX = target[0];
+      animal._plantTargetY = target[1];
+      animal._plantLockUntilTick = tick + plantLockTicks;
       const pathLimit = target === bestFruit ? 40 : 60;
       _computePath(animal, world, target[0], target[1], pathLimit, target === bestFruit ? 'fruit' : 'plant');
       if (animal.path.length) {

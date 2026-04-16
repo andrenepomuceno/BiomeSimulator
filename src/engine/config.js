@@ -55,6 +55,10 @@ const BASE_CONFIG = {
   carnivore_retreat_desperate_hunger: 45,          // hunger level that triggers desperate mode
   carnivore_retreat_desperate_thirst: 55,          // thirst level that triggers desperate mode
   sleep_block_hp_threshold: 0.85,                  // don't sleep voluntarily if hp < this fraction of maxHp
+  threat_cache_ttl: 10,                            // ticks to reuse a found threat before rescanning (was 4)
+  threat_scan_cooldown_ticks: 8,                   // ticks to skip scan after "no threat found" (was 2)
+  water_lock_ticks: 30,                            // ticks to commit to a water destination before rescanning
+  plant_lock_ticks: 20,                            // ticks to commit to a plant target before rescanning
 
   // Flora
   initial_plant_density: 0.10,

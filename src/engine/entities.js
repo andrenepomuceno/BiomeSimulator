@@ -90,6 +90,14 @@ export class Animal {
     this._chaseTarget = null;        // reference to prey being chased
     this._chaseLockUntilTick = 0;    // tick until chase episode is committed
 
+    // Seek destination lock-in — avoid rescanning when already heading somewhere
+    this._waterTargetX = null;       // locked water destination tile X
+    this._waterTargetY = null;       // locked water destination tile Y
+    this._waterLockUntilTick = 0;    // tick until water destination is re-evaluated
+    this._plantTargetX = null;       // locked plant destination tile X
+    this._plantTargetY = null;       // locked plant destination tile Y
+    this._plantLockUntilTick = 0;    // tick until plant destination is re-evaluated
+
     this.mateCooldown = 0;
     this.attackCooldown = 0;
     this._deathTick = null;

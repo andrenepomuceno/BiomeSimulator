@@ -36,9 +36,11 @@ flowchart TD
     Opp -->|Yes| OppAct["Start drinking / eating"]
     Opp -->|No| P1{"Thirst > 55?\n(critical)"}
     P1 -->|Yes| SeekWater["P1: Seek water via A*"]
-    P1 -->|No| P2{"Predator in\nvision range?"}
+    P1 -->|No| P2{"Predator in\nvision range?\n(herbivores/omnivores)"}
     P2 -->|Yes| Flee["P2: Flee from threat"]
-    P2 -->|No| P3{"Hunger > 45?\n(critical)"}
+    P2 -->|No| P2b{"Carnivore/omnivore:\nstronger predator nearby\n+ badly wounded?"}
+    P2b -->|Yes| Retreat["P2b: Retreat from stronger predator"]
+    P2b -->|No| P3{"Hunger > 45?\n(critical)"}
     P3 -->|Yes| SeekFood["P3: Seek food\n(plants or prey)"]
     P3 -->|No| P4{"Energy < 20?"}
     P4 -->|Yes| Sleep["P4: Sleep"]
@@ -57,6 +59,7 @@ flowchart TD
 |----------|-----------|--------|
 | 1 | Thirst > 55 (critical) | Seek water via A* |
 | 2 | Predator in vision range (herbivores/omnivores) | Flee |
+| 2b | Carnivore/omnivore: stronger predator nearby + badly wounded | Retreat (flee from that predator) |
 | 3 | Hunger > 45 (critical) | Seek food (plants or prey) |
 | 4 | Energy < 20 | Sleep |
 | 5 | Adult + cooldown = 0 + energy > 50 | Find mate |
@@ -96,6 +99,31 @@ Herbivores and omnivores scan their vision range for carnivores using the spatia
 5. Flying species receive +1 burst
 
 Both herbivores and omnivores flee from stronger predators.
+
+### Flee/Chase Lock-In
+
+Once an animal begins fleeing (or chasing), it commits to the same target for a window of ticks before re-evaluating. This prevents jitter from rapid target switches each tick.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `flee_lock_ticks` | 5 | Ticks to continue fleeing the current threat before scanning again |
+| `chase_lock_ticks` | 5 | Ticks to continue chasing the current prey before scanning again |
+
+Both can be overridden per-species via `flee_lock_ticks` / `chase_lock_ticks` in `animalSpecies.js`.
+
+### Carnivore/Omnivore Retreat
+
+Carnivores and omnivores can also flee — not from prey, but from a **stronger predator** when they are badly wounded. This check runs after the herbivore/omnivore flee check (P2) and uses the same `_fleeFrom` movement logic.
+
+**Retreat triggers when all of the following hold:**
+- The animal is a carnivore or omnivore
+- A stronger predator is within vision range (`threat.attack_power > animal.attack_power + carnivore_retreat_power_margin`)
+- The animal's HP is below a threshold:
+  - Normal mode: HP < `carnivore_retreat_hp_normal_threshold` (default 30%)
+  - Desperate mode: HP < `carnivore_retreat_hp_desperate_threshold` (default 40%)
+- Desperate mode activates when `hunger > carnivore_retreat_desperate_hunger` (default 45) OR `thirst > carnivore_retreat_desperate_thirst` (default 55)
+
+Retreat also respects the flee lock-in window (`flee_lock_ticks`), so the animal commits to fleeing the same threat for several ticks before reconsidering.
 
 ---
 

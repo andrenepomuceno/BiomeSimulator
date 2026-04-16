@@ -42,6 +42,14 @@ Timing values are authored in game minutes and converted back to ticks from the 
 | Flora | `plant_reproduction_*` | various | Dynamic offspring caps at high coverage |
 | Flora | `plant_water_growth_modifiers` | object | Near/far growth factors by water context |
 | Flora | `plant_dirt_death_chance_by_stage` | object | Stage-based harsh-terrain death rates |
+| Fauna | `movement_sub_ticks` | 5 | Number of sub-tick movement steps executed per engine tick |
+| Fauna | `flee_lock_ticks` | 5 | Ticks to commit to fleeing the same threat before re-evaluating; overridable per species |
+| Fauna | `chase_lock_ticks` | 5 | Ticks to commit to chasing the same prey before re-evaluating; overridable per species |
+| Fauna | `carnivore_retreat_hp_normal_threshold` | 0.30 | Carnivore/omnivore retreats from a stronger predator when HP < 30% of max (normal mode) |
+| Fauna | `carnivore_retreat_hp_desperate_threshold` | 0.40 | HP threshold rises to 40% when the animal is hungry or thirsty (desperate mode) |
+| Fauna | `carnivore_retreat_power_margin` | 3 | Retreat only if `threat.attack_power > animal.attack_power + margin` |
+| Fauna | `carnivore_retreat_desperate_hunger` | 45 | Hunger value that activates desperate mode for retreat threshold |
+| Fauna | `carnivore_retreat_desperate_thirst` | 55 | Thirst value that activates desperate mode for retreat threshold |
 | Fauna | `pathfinding_cache_ttl` | 15 | Path reuse TTL in ticks, derived from an authored game-time duration |
 | Fauna | `threat_cache_ttl` | 4 | Threat cache TTL in ticks, derived from an authored game-time duration |
 | Fauna | `threat_scan_cooldown_ticks` | 2 | Delay between expensive threat rescans, derived from an authored game-time duration |

@@ -4,7 +4,7 @@
 import { DEFAULT_DAY_FRACTION, DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 import { DIET } from './animalSpecies.js';
 import { SpatialHash } from './spatialHash.js';
-import { GroundItem, ITEM_TYPE, nextItemId, meatDropRange } from './items.js';
+import { GroundItem, ITEM_TYPE, nextItemId } from './items.js';
 
 // Terrain types
 export const WATER = 0;
@@ -248,11 +248,12 @@ export class World {
 
   /**
    * Spawn a ground item near (cx, cy). Falls back gracefully if no clear tile found.
+   * @param {number} germinationTicks - For SEED items: per-species lifetime (0 = global fallback).
    */
-  spawnItem(cx, cy, type, source, radius = 2) {
+  spawnItem(cx, cy, type, source, radius = 2, germinationTicks = 0) {
     const tile = this._findItemTile(cx, cy, radius);
     if (!tile) return null;
-    const item = new GroundItem(nextItemId(), tile.x, tile.y, type, source, this.clock.tick);
+    const item = new GroundItem(nextItemId(), tile.x, tile.y, type, source, this.clock.tick, germinationTicks);
     this.items.push(item);
     this._itemById.set(item.id, item);
     this._itemSpatialHash.insert(item);
@@ -298,9 +299,9 @@ export class World {
    */
   tickItemLifecycle(config) {
     const tick = this.clock.tick;
-    const meatDecay   = config.item_meat_decay_ticks   ?? 300;
+    const meatDecay = config.item_meat_decay_ticks ?? 300;
     const fruitToSeed = config.item_fruit_to_seed_ticks ?? 200;
-    const seedGerm    = config.item_seed_germination_ticks ?? 400;
+    const seedGermFallback = config.item_seed_germination_ticks ?? 400;
 
     for (let i = this.items.length - 1; i >= 0; i--) {
       const item = this.items[i];
@@ -310,15 +311,17 @@ export class World {
         if (age >= meatDecay) this.removeItem(item);
       } else if (item.type === ITEM_TYPE.FRUIT) {
         if (age >= fruitToSeed) {
-          // Transform fruit → seed in place (reset age clock for seed timer)
+          // Transform fruit -> seed; carry over per-species germinationTicks
           this._itemSpatialHash.remove(item);
           item.type = ITEM_TYPE.SEED;
           item.createdTick = tick;
+          if (!item.germinationTicks) item.germinationTicks = seedGermFallback;
           this._itemSpatialHash.insert(item);
           this.itemChanges.push({ op: 'update', item: item.toDelta() });
         }
       } else if (item.type === ITEM_TYPE.SEED) {
-        if (age >= seedGerm) this.removeItem(item);
+        const germ = item.germinationTicks > 0 ? item.germinationTicks : seedGermFallback;
+        if (age >= germ) this.removeItem(item);
       }
     }
   }
@@ -339,24 +342,22 @@ export class World {
 
   rebuildAnimalGrid() {
     this.animalGrid.fill(0);
-    for (const animal of this.animals) {
-      if (animal.alive && animal.lifeStage !== -1) this.placeAnimal(animal.x, animal.y);
+    for (const a of this.animals) {
+      if (a.alive && a.lifeStage !== -1) this.placeAnimal(a.x | 0, a.y | 0);
     }
   }
 
   rebuildEggGrid() {
     this.eggGrid.fill(0);
-    for (const animal of this.animals) {
-      if (animal.alive && animal.lifeStage === -1) this.placeEgg(animal.x, animal.y);
+    for (const a of this.animals) {
+      if (a.alive && a.lifeStage === -1) this.placeEgg(a.x | 0, a.y | 0);
     }
   }
 
   rebuildActivePlantTiles() {
     this.activePlantTiles.clear();
     for (let i = 0; i < this.plantType.length; i++) {
-      if (this.plantType[i] !== 0 && this.plantStage[i] !== 0) {
-        this.activePlantTiles.add(i);
-      }
+      if (this.plantType[i] > 0 && this.plantStage[i] > 0) this.activePlantTiles.add(i);
     }
   }
 

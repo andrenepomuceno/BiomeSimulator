@@ -78,7 +78,13 @@ async function doTick() {
     const w = engine.world;
     let aliveCount = 0;
     for (const a of w.animals) if (a.alive) aliveCount++;
-    const useParallel = faunaWorkersReady && faunaWorkers.length > 0 && aliveCount >= MIN_ANIMALS_FOR_PARALLEL;
+    // Fauna sub-workers currently do not mirror world.items/_itemSpatialHash,
+    // so force serial behavior when ground items exist to preserve eating logic.
+    const hasGroundItems = Array.isArray(w.items) && w.items.length > 0;
+    const useParallel = faunaWorkersReady
+      && faunaWorkers.length > 0
+      && aliveCount >= MIN_ANIMALS_FOR_PARALLEL
+      && !hasGroundItems;
 
     if (useParallel) {
       engine.tickFlora();

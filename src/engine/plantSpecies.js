@@ -95,7 +95,7 @@ const PLANT_SPECIES = {
     stageAges: [194, 775, 1938, 8862],
     fruitSpoilAge: 665,
     edibleStages: [],
-    dropProfile: { itemType: 'FRUIT', countRange: [1, 3] },
+    dropProfile: { itemType: 'FRUIT', countRange: [1, 3], seedGerminationTicks: 500 },
     colors: {
       seed:        [80,  110, 55,  35],
       youngSprout: [45,  100, 35,  100],
@@ -121,7 +121,7 @@ const PLANT_SPECIES = {
     stageAges: [222, 997, 2326, 9969],
     fruitSpoilAge: 665,
     edibleStages: [],
-    dropProfile: { itemType: 'FRUIT', countRange: [1, 3] },
+    dropProfile: { itemType: 'FRUIT', countRange: [1, 3], seedGerminationTicks: 600 },
     colors: {
       seed:        [85,  120, 50,  35],
       youngSprout: [50,  108, 30,  100],
@@ -247,7 +247,7 @@ const PLANT_SPECIES = {
     stageAges: [277, 1218, 2769, 13846],
     fruitSpoilAge: 831,
     edibleStages: [],
-    dropProfile: { itemType: 'SEED', countRange: [1, 3] },
+    dropProfile: { itemType: 'SEED', countRange: [1, 3], seedGerminationTicks: 400 },
     colors: {
       seed:        [75,  105, 50,  35],
       youngSprout: [40,  95,  30,  100],
@@ -298,7 +298,7 @@ const PLANT_SPECIES = {
     stageAges: [332, 1440, 3212, 13292],
     fruitSpoilAge: 886,
     edibleStages: [],
-    dropProfile: { itemType: 'FRUIT', countRange: [1, 2] },
+    dropProfile: { itemType: 'FRUIT', countRange: [1, 2], seedGerminationTicks: 800 },
     colors: {
       seed:        [90,  120, 55,  35],
       youngSprout: [55,  110, 35,  100],
@@ -374,7 +374,7 @@ const PLANT_SPECIES = {
     stageAges: [305, 1329, 3102, 14400],
     fruitSpoilAge: 858,
     edibleStages: [],
-    dropProfile: { itemType: 'FRUIT', countRange: [1, 3] },
+    dropProfile: { itemType: 'FRUIT', countRange: [1, 3], seedGerminationTicks: 450 },
     colors: {
       seed:        [90,  115, 60,  35],
       youngSprout: [55,  105, 38,  100],
@@ -732,7 +732,11 @@ export function buildTreeDropProfiles() {
   const map = {};
   for (const sp of Object.values(PLANT_SPECIES)) {
     if (sp.dropProfile) {
-      map[sp.typeId] = { ...sp.dropProfile };
+      map[sp.typeId] = {
+        itemType: sp.dropProfile.itemType,
+        countRange: sp.dropProfile.countRange,
+        seedGerminationTicks: sp.dropProfile.seedGerminationTicks ?? 400,
+      };
     }
   }
   return map;

@@ -173,7 +173,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x66cc66,
     visualScale: 0.7,
-    mass: 'small',
+    mass_kg: 2,
     audioScale: 0.211,
     soundGroup: SOUND_GROUP.SMALL_MAMMAL,
     speed: 4,
@@ -214,7 +214,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0xcc8844,
     visualScale: 0.7,
-    mass: 'small',
+    mass_kg: 0.5,
     audioScale: 0.158,
     soundGroup: SOUND_GROUP.SMALL_MAMMAL,
     speed: 4,
@@ -256,7 +256,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x556633,
     visualScale: 0.55,
-    mass: 'small',
+    mass_kg: 0.03,
     audioScale: 0.053,
     soundGroup: SOUND_GROUP.INSECT,
     speed: 4,
@@ -299,7 +299,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0xbbbbbb,
     visualScale: 0.95,
-    mass: 'large',
+    mass_kg: 80,
     audioScale: 0.368,
     soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 4,
@@ -341,7 +341,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0xcc9955,
     visualScale: 0.95,
-    mass: 'large',
+    mass_kg: 150,
     audioScale: 0.316,
     soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 8,
@@ -384,7 +384,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0xdd8833,
     visualScale: 0.85,
-    mass: 'medium',
+    mass_kg: 6,
     audioScale: 0.263,
     soundGroup: SOUND_GROUP.SMALL_MAMMAL,
     speed: 8,
@@ -426,7 +426,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0xdd4444,
     visualScale: 1.1,
-    mass: 'large',
+    mass_kg: 85,
     audioScale: 0.579,
     soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 8,
@@ -468,7 +468,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x885533,
     visualScale: 0.95,
-    mass: 'large',
+    mass_kg: 120,
     audioScale: 0.474,
     soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 4,
@@ -511,7 +511,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x8B4513,
     visualScale: 1.1,
-    mass: 'large',
+    mass_kg: 250,
     audioScale: 1.0,
     soundGroup: SOUND_GROUP.LARGE_MAMMAL,
     speed: 4,
@@ -554,7 +554,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x778899,
     visualScale: 0.85,
-    mass: 'medium',
+    mass_kg: 8,
     audioScale: 0.211,
     soundGroup: SOUND_GROUP.SMALL_MAMMAL,
     speed: 4,
@@ -598,7 +598,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x333344,
     visualScale: 0.7,
-    mass: 'small',
+    mass_kg: 0.5,
     audioScale: 0.105,
     soundGroup: SOUND_GROUP.BIRD,
     speed: 8,
@@ -641,7 +641,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x556655,
     visualScale: 0.55,
-    mass: 'small',
+    mass_kg: 0.003,
     audioScale: 0.0,
     soundGroup: SOUND_GROUP.INSECT,
     speed: 8,
@@ -684,7 +684,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x88bb33,
     visualScale: 0.55,
-    mass: 'small',
+    mass_kg: 0.01,
     audioScale: 0.026,
     soundGroup: SOUND_GROUP.INSECT,
     speed: 4,
@@ -729,7 +729,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x6f9933,
     visualScale: 0.55,
-    mass: 'small',
+    mass_kg: 0.005,
     audioScale: 0.026,
     soundGroup: SOUND_GROUP.INSECT,
     speed: 8,
@@ -772,7 +772,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x5a8f4b,
     visualScale: 0.7,
-    mass: 'small',
+    mass_kg: 0.3,
     audioScale: 0.184,
     soundGroup: SOUND_GROUP.REPTILE,
     speed: 4,
@@ -815,7 +815,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x448844,
     visualScale: 0.85,
-    mass: 'medium',
+    mass_kg: 5,
     audioScale: 0.158,
     soundGroup: SOUND_GROUP.REPTILE,
     speed: 4,
@@ -859,7 +859,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0xaa6622,
     visualScale: 0.85,
-    mass: 'medium',
+    mass_kg: 5,
     audioScale: 0.184,
     soundGroup: SOUND_GROUP.BIRD,
     speed: 12,
@@ -902,7 +902,7 @@ const ANIMAL_SPECIES = {
     reproduction: 'SEXUAL',
     color: 0x556b2f,
     visualScale: 1.1,
-    mass: 'large',
+    mass_kg: 400,
     audioScale: 0.895,
     soundGroup: SOUND_GROUP.REPTILE,
     speed: 4,
@@ -1196,15 +1196,27 @@ export function buildSpeciesSoundGroup() {
 }
 
 /**
- * Build mass → [minDrop, maxDrop] lookup for meat drops on death.
- * Returns { [speciesId]: { mass, dropRange: [min, max] } }.
+ * Classify a numeric mass_kg into a size category.
+ * Thresholds: < 5 kg → 'small', 5–80 kg → 'medium', ≥ 80 kg → 'large'.
+ * @param {number} mass_kg
+ * @returns {'small'|'medium'|'large'}
+ */
+export function massCategory(mass_kg) {
+  if (mass_kg >= 80) return 'large';
+  if (mass_kg >= 5)  return 'medium';
+  return 'small';
+}
+
+/**
+ * Build species → { mass_kg, category, dropRange } lookup for meat drops on death.
  */
 export function buildMassDropMap() {
   const map = {};
   for (const [key, sp] of Object.entries(ANIMAL_SPECIES)) {
-    const mass = sp.mass ?? 'small';
-    const dropRange = mass === 'large' ? [0, 3] : mass === 'medium' ? [0, 2] : [0, 1];
-    map[key] = { mass, dropRange };
+    const mass_kg = sp.mass_kg ?? 1;
+    const category = massCategory(mass_kg);
+    const dropRange = category === 'large' ? [0, 3] : category === 'medium' ? [0, 2] : [0, 1];
+    map[key] = { mass_kg, category, dropRange };
   }
   return map;
 }

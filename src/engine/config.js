@@ -121,7 +121,6 @@ const BASE_CONFIG = {
   // Ground items
   item_meat_decay_ticks: 300,         // ticks until a meat item disappears
   item_fruit_to_seed_ticks: 200,      // ticks until a fruit item transforms into a seed
-  item_seed_germination_ticks: 400,   // ticks until a seed item germinates
   item_drop_radius_animal: 2,         // tile radius for radial meat scatter on death
   item_drop_radius_plant: 2,          // tile radius for radial fruit/seed scatter on reproduction
   item_max_changes_per_tick: 2000,    // cap for itemChanges delta array per tick

@@ -89,8 +89,9 @@ export function produceOffspring(world) {
         const dropCount = dropMin + Math.floor(Math.random() * (dropMax - dropMin + 1));
         const itemType = profile.itemType === 'SEED' ? ITEM_TYPE.SEED : ITEM_TYPE.FRUIT;
         const radius = world.config.item_drop_radius_plant ?? 2;
+        const germinationTicks = profile.seedGerminationTicks ?? 0;
         for (let d = 0; d < dropCount; d++) {
-          world.spawnItem(x, y, itemType, ptype, radius);
+          world.spawnItem(x, y, itemType, ptype, radius, germinationTicks);
         }
         births++;
       }

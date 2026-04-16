@@ -27,12 +27,14 @@ export const ITEM_TYPE_NAMES = {
 };
 
 /**
- * Derives meat size category from species mass field.
- * Returns [minCount, maxCount] for uniform random drop.
+ * Derives meat drop range from a numeric mass_kg value.
+ * Thresholds match massCategory(): ≥80=large, ≥5=medium, else small.
+ * @param {number} mass_kg
+ * @returns {[number, number]} [minCount, maxCount]
  */
-export function meatDropRange(mass) {
-  if (mass === 'large')  return [0, 3];
-  if (mass === 'medium') return [0, 2];
+export function meatDropRange(mass_kg) {
+  if (mass_kg >= 80) return [0, 3];
+  if (mass_kg >= 5)  return [0, 2];
   return [0, 1]; // small
 }
 
@@ -62,13 +64,23 @@ export class GroundItem {
    * @param {string} source    - Species id or plant type id that produced this item.
    * @param {number} createdTick - World tick when the item was created.
    */
-  constructor(id, x, y, type, source, createdTick) {
+  /**
+   * @param {number} id
+   * @param {number} x
+   * @param {number} y
+   * @param {number} type        - ITEM_TYPE constant.
+   * @param {string|number} source - Species id or plant typeId that produced this item.
+   * @param {number} createdTick
+   * @param {number} [germinationTicks] - Ticks until a SEED item disappears (per-species).
+   */
+  constructor(id, x, y, type, source, createdTick, germinationTicks = 0) {
     this.id = id;
     this.x = x;
     this.y = y;
     this.type = type;
     this.source = source;
     this.createdTick = createdTick;
+    this.germinationTicks = germinationTicks; // per-species seed lifetime (0 = use global fallback)
     this.consumed = false;
   }
 
@@ -81,6 +93,7 @@ export class GroundItem {
       type: this.type,
       source: this.source,
       createdTick: this.createdTick,
+      germinationTicks: this.germinationTicks,
       consumed: this.consumed,
     };
   }

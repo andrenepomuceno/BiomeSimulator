@@ -2,7 +2,7 @@
  * Mushroom template — mushroom (cap + stem).
  * Stages 2-5 at 64×64 design grid, 3 frames (slight cap wobble).
  */
-import { px, rect, darken, lighten, gradientV, rimLight, ao } from '../../helpers.js';
+import { px, rect, darken, lighten, gradientV, rimLight, ao, shadedEllipse } from '../../helpers.js';
 import { drawCapTexture, drawMushroomCap, drawGroundBase } from '../bodyParts.js';
 
 export function drawMushroom(ctx, params, stage, frame) {
@@ -13,23 +13,33 @@ export function drawMushroom(ctx, params, stage, frame) {
   const wobble = frame === 1 ? 2 : (frame === 2 ? -2 : 0);
 
   if (stage === 2) {
+    // Stem
     rect(ctx, cx + 2, baseY - 8, 4, 8, stem);
-    rect(ctx, cx, baseY - 12, 8, 6, cap);
-    rect(ctx, cx + 2, baseY - 12, 4, 2, lighten(cap, 0.2));
-    drawCapTexture(ctx, cx, baseY - 12, 8, 6, cap, capDark);
+    rect(ctx, cx + 2, baseY - 8, 2, 8, stemDark);
+    // Cap — shadedEllipse instead of raw rects
+    shadedEllipse(ctx, cx + 4, baseY - 12, 6, 4, cap, {
+      highlight: lighten(cap, 0.20),
+      shadow:    darken(cap, 0.12),
+    });
+    drawCapTexture(ctx, cx - 1, baseY - 16, 11, 8, cap, capDark);
+    if (spots) px(ctx, cx + 4, baseY - 14, spots);
     drawGroundBase(ctx, cx - 2, baseY, 12, stem);
+
   } else if (stage === 3) {
+    // Stem
     rect(ctx, cx + 2, baseY - 16, 6, 16, stem);
-    rect(ctx, cx, baseY - 12, 2, 8, stemDark);
-    // Cap
-    rect(ctx, cx - 4 + wobble, baseY - 24, 16, 10, cap);
-    rect(ctx, cx - 2 + wobble, baseY - 28, 12, 6, cap);
-    rect(ctx, cx - 2 + wobble, baseY - 16, 12, 4, capDark);
-    rect(ctx, cx + wobble, baseY - 28, 8, 4, lighten(cap, 0.2));
-    drawCapTexture(ctx, cx - 4 + wobble, baseY - 28, 16, 14, cap, capDark);
+    rect(ctx, cx + 2, baseY - 16, 2, 10, stemDark);
+    // Cap — shadedEllipse for smooth rounded silhouette
+    shadedEllipse(ctx, cx + 4 + wobble, baseY - 20, 11, 8, cap, {
+      highlight: lighten(cap, 0.22),
+      shadow:    darken(cap, 0.14),
+    });
+    // Gill underside (dark fringe where cap meets stem)
+    rect(ctx, cx - 3 + wobble, baseY - 14, 16, 3, capDark);
+    drawCapTexture(ctx, cx - 6 + wobble, baseY - 28, 22, 16, cap, capDark);
     if (spots) {
-      rect(ctx, cx + wobble, baseY - 24, 4, 4, spots);
-      rect(ctx, cx + 6 + wobble, baseY - 22, 4, 4, spots);
+      rect(ctx, cx + 1 + wobble, baseY - 22, 4, 4, spots);
+      rect(ctx, cx + 8 + wobble, baseY - 20, 4, 4, spots);
     }
     drawGroundBase(ctx, cx - 4, baseY, 16, stem);
   } else if (stage === 4) {

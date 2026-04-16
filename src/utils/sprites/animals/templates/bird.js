@@ -5,7 +5,7 @@
  * Feather texture, wing layering, detailed beak and eye ring.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawFurTexture } from '../bodyParts.js';
+import { drawFurTexture, drawBirdFoot } from '../bodyParts.js';
 
 export function drawBird(ctx, params, dir, frame) {
   const { body, accent, eye, beak, w, h, wingSpan } = params;
@@ -100,8 +100,10 @@ export function drawBird(ctx, params, dir, frame) {
         rect(ctx, cx + 3 - t, by + h + t, 3, 3, accent);
       }
     }
-    rect(ctx, cx - 3, by + h, 3, 3, outline);
-    rect(ctx, cx + 3, by + h, 3, 3, outline);
+    // Feet — per-toe detail matching crow.js convention
+    const fId = (x) => x;
+    drawBirdFoot(ctx, fId, cx - 3, by + h + 1, outline);
+    drawBirdFoot(ctx, fId, cx + 3, by + h + 1, outline);
 
   } else {
     // LEFT / RIGHT
@@ -182,8 +184,7 @@ export function drawBird(ctx, params, dir, frame) {
     rect(ctx, f(bx - tailLen - 2), by + h - 5 + tailLen - 1, 3, 3, shadow2);
 
     // Feet
-    rect(ctx, f(bx + 2), by + h, 3, 3, outline);
-    rect(ctx, f(bx + 5), by + h, 3, 3, outline);
-    rect(ctx, f(bx + 2), by + h + 3, 3, 2, outline);
+    drawBirdFoot(ctx, f, bx + 3,  by + h + 1, outline);
+    drawBirdFoot(ctx, f, bx + 7,  by + h + 1, outline);
   }
 }

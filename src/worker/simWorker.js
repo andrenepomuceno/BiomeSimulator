@@ -38,6 +38,9 @@ let pendingPause = false;
 const FULL_SYNC_INTERVAL = 30;
 const FAUNA_TICK_TIMEOUT_MS = 800;
 const MAX_PLANT_CHANGES_PER_TICK = 5000;
+// Cap the postMessage rate to main thread regardless of TPS.
+// At TPS > MAX_UI_UPDATE_HZ the loop batches multiple sim ticks per iteration.
+const MAX_UI_UPDATE_HZ = 30;
 
 // --- Fauna worker pool ---
 const MIN_ANIMALS_FOR_PARALLEL = 500;
@@ -62,7 +65,9 @@ function stopLoop() {
 
 function scheduleNextTick() {
   if (!running || paused) return;
-  tickTimeoutId = setTimeout(doTick, 1000 / tps);
+  // Fire at most MAX_UI_UPDATE_HZ times/sec; each call may batch multiple sim ticks.
+  const intervalMs = Math.max(1000 / tps, 1000 / MAX_UI_UPDATE_HZ);
+  tickTimeoutId = setTimeout(doTick, intervalMs);
 }
 
 async function doTick() {
@@ -75,37 +80,57 @@ async function doTick() {
   _ticking = true;
   try {
     const t0 = performance.now();
-    const w = engine.world;
-    let aliveCount = 0;
-    for (const a of w.animals) if (a.alive) aliveCount++;
-    // Fauna sub-workers currently do not mirror world.items/_itemSpatialHash,
-    // so force serial behavior when ground items exist to preserve eating logic.
-    const hasGroundItems = Array.isArray(w.items) && w.items.length > 0;
-    const useParallel = faunaWorkersReady
-      && faunaWorkers.length > 0
-      && aliveCount >= MIN_ANIMALS_FOR_PARALLEL
-      && !hasGroundItems;
+    // Number of sim ticks to run per loop iteration.
+    // When TPS > MAX_UI_UPDATE_HZ we batch multiple ticks and post once,
+    // keeping the main thread message rate capped at MAX_UI_UPDATE_HZ.
+    const ticksPerLoop = Math.max(1, Math.round(tps / MAX_UI_UPDATE_HZ));
 
-    if (useParallel) {
-      engine.tickFlora();
-      const behaviorStart = performance.now();
-      await doParallelFauna();
-      engine._phases.behaviorMs = performance.now() - behaviorStart;
-      engine._phases.spatialMs = 0;
-      engine.tickCleanup();
-    } else {
-      engine.tick();
+    // Detect if any full-sync boundary is crossed in this batch.
+    const tickBefore = engine.world.clock.tick;
+
+    for (let i = 0; i < ticksPerLoop; i++) {
+      // Respect pending pause between individual ticks for fast response.
+      if (pendingPause) break;
+
+      const w = engine.world;
+      let aliveCount = 0;
+      for (const a of w.animals) if (a.alive) aliveCount++;
+      // Fauna sub-workers currently do not mirror world.items/_itemSpatialHash,
+      // so force serial behavior when ground items exist to preserve eating logic.
+      const hasGroundItems = Array.isArray(w.items) && w.items.length > 0;
+      const useParallel = faunaWorkersReady
+        && faunaWorkers.length > 0
+        && aliveCount >= MIN_ANIMALS_FOR_PARALLEL
+        && !hasGroundItems;
+
+      if (useParallel) {
+        engine.tickFlora();
+        const behaviorStart = performance.now();
+        await doParallelFauna();
+        engine._phases.behaviorMs = performance.now() - behaviorStart;
+        engine._phases.spatialMs = 0;
+        engine.tickCleanup();
+      } else {
+        engine.tick();
+      }
+
+      // Movement sub-ticks: only post for the last sim tick in the batch to avoid
+      // flooding the main thread with intermediate position updates.
+      const isLastInBatch = (i === ticksPerLoop - 1) || pendingPause;
+      const subTicks = engine.world.config.movement_sub_ticks || 1;
+      for (let s = 1; s < subTicks; s++) {
+        engine.tickMovementOnly();
+        if (isLastInBatch) postSubTickState();
+      }
     }
+
+    // If a full-sync boundary was crossed during the batch, force full sync now.
+    const tickAfter = engine.world.clock.tick;
+    const hadFullSync =
+      Math.floor(tickAfter / FULL_SYNC_INTERVAL) > Math.floor(tickBefore / FULL_SYNC_INTERVAL);
 
     const tickMs = performance.now() - t0;
-    postTickState(tickMs);
-
-    // Movement sub-ticks: run N-1 additional movement-only passes for granular movement
-    const subTicks = engine.world.config.movement_sub_ticks || 1;
-    for (let i = 1; i < subTicks; i++) {
-      engine.tickMovementOnly();
-      postSubTickState();
-    }
+    postTickState(tickMs, hadFullSync);
   } finally {
     _ticking = false;
   }
@@ -240,10 +265,10 @@ function disposeFaunaWorkers() {
   faunaWorkersReady = false;
 }
 
-function postTickState(tickMs = 0) {
+function postTickState(tickMs = 0, forceFullSync = false) {
   const w = engine.world;
   const tick = w.clock.tick;
-  const isFullSync = tick % FULL_SYNC_INTERVAL === 0;
+  const isFullSync = forceFullSync || tick % FULL_SYNC_INTERVAL === 0;
   const plantChangesOverflow = w.plantChanges.length > MAX_PLANT_CHANGES_PER_TICK;
 
   let animals;

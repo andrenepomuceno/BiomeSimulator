@@ -107,7 +107,17 @@ export default function TileInspector({ tile, clearSelection, requestAnimalDetai
     const hasCurrentAnimals = tile.animals && tile.animals.length > 0;
     setTileTab(hasCurrentPlant ? 'plant' : hasCurrentAnimals ? 'animals' : 'terrain');
     setPlantTab('info');
-  }, [tile]);
+  }, [tile.x, tile.y]);
+
+  useEffect(() => {
+    if (tileTab === 'plant' && !hasPlant) {
+      setTileTab(hasAnimals ? 'animals' : 'terrain');
+      return;
+    }
+    if (tileTab === 'animals' && !hasAnimals) {
+      setTileTab(hasPlant ? 'plant' : 'terrain');
+    }
+  }, [tileTab, hasPlant, hasAnimals]);
 
   const handleSelectAnimal = (animal) => {
     setSelectedEntity(animal);

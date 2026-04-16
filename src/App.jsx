@@ -48,7 +48,7 @@ export default function App() {
   const rendererRef = useRef(null);
   const { postCmd, requestTileInfo, requestAnimalDetail } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
-  const { unlockAudio, updateListenerViewport, playUiClick, playWorldEffect, syncAmbience } = useAudio();
+  const { unlockAudio, updateListenerViewport, playUiClick, playWorldEffect, syncAmbience, setAudioLogging } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
   const [activeDrawer, setActiveDrawer] = useState(null);
   const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth < DRAWER_BREAKPOINT);
@@ -471,6 +471,7 @@ export default function App() {
         onClose={_closeModal}
         onUnlock={_handleUnlockAudio}
         onToggleBackground={_handleToggleBackground}
+        onAudioLogging={setAudioLogging}
       />
       <SimulationReport open={activeModal === MODALS.REPORT} onClose={_closeModal} />
       <EntitySummaryWindow

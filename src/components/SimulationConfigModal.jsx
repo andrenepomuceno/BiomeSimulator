@@ -29,7 +29,7 @@ function SourceBadge({ source }) {
   );
 }
 
-export default function SimulationConfigModal({ open, onClose, onUnlock, onToggleBackground }) {
+export default function SimulationConfigModal({ open, onClose, onUnlock, onToggleBackground, onAudioLogging }) {
   const {
     gameConfig,
     clock,
@@ -54,6 +54,15 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
     setActivePanel(PANEL_TABS.CONFIG);
     setActiveAudioTab(AUDIO_TABS.SETTINGS);
   }, [open]);
+
+  // Enable audio logging only while the log tab is visible to avoid
+  // unnecessary Zustand updates and re-renders during normal gameplay.
+  useEffect(() => {
+    if (!onAudioLogging) return;
+    const logVisible = open && activeAudioTab === AUDIO_TABS.LOG;
+    onAudioLogging(logVisible);
+    return () => onAudioLogging(false);
+  }, [open, activeAudioTab, onAudioLogging]);
 
   const sections = useMemo(() => buildSimulationConfigSections({
     gameConfig,

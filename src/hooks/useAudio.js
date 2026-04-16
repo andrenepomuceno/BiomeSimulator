@@ -21,13 +21,6 @@ export function useAudio() {
     const manager = ensureManager();
     let previousAudioSettings = useSimStore.getState().audioSettings;
     manager.applySettings(previousAudioSettings);
-    manager.setLogger((entry) => {
-      const store = useSimStore.getState();
-      store.pushAudioLog({
-        ...entry,
-        tick: store.clock.tick,
-      });
-    });
 
     const unsubscribe = useSimStore.subscribe((state) => {
       if (state.audioSettings !== previousAudioSettings) {
@@ -100,11 +93,24 @@ export function useAudio() {
     ensureManager().syncClock(clock);
   }, []);
 
+  const setAudioLogging = useCallback((enabled) => {
+    const manager = ensureManager();
+    if (enabled) {
+      manager.setLogger((entry) => {
+        const store = useSimStore.getState();
+        store.pushAudioLog({ ...entry, tick: store.clock.tick });
+      });
+    } else {
+      manager.setLogger(null);
+    }
+  }, []);
+
   return {
     unlockAudio,
     updateListenerViewport,
     playUiClick,
     playWorldEffect,
     syncAmbience,
+    setAudioLogging,
   };
 }

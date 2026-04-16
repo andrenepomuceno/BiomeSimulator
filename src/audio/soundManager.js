@@ -202,13 +202,19 @@ export class SoundManager {
       }
     }
 
-    for (const job of jobs) {
-      const key = this._cacheKey(job.preset, job.groupName, job.variant);
-      if (this._proceduralCache.has(key)) continue;
-      const buffer = await this._renderProceduralBuffer(job.preset, job.groupName, job.variant);
-      if (buffer) {
-        this._proceduralCache.set(key, buffer);
-      }
+    const pending = jobs.filter((j) => !this._proceduralCache.has(this._cacheKey(j.preset, j.groupName, j.variant)));
+    const BATCH_SIZE = 6;
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      const batch = pending.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map((j) => this._renderProceduralBuffer(j.preset, j.groupName, j.variant)),
+      );
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled' && result.value) {
+          const j = batch[idx];
+          this._proceduralCache.set(this._cacheKey(j.preset, j.groupName, j.variant), result.value);
+        }
+      });
     }
     this._proceduralCacheWarmed = true;
   }

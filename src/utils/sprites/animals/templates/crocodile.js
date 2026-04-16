@@ -3,6 +3,7 @@
  * 64x64 design grid.
  */
 import { px, rect, darken, lighten, blend, speckle, shadedEllipse, scalePattern, quadraticThick, thickLine, fillPolygon, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawReptileEye, drawArmoredBody, drawScuteRidge } from '../bodyParts.js';
 
 export function drawCrocodile(ctx, params, dir, frame) {
   const { body, accent, eye } = params;
@@ -15,17 +16,7 @@ export function drawCrocodile(ctx, params, dir, frame) {
   const jawCol   = lighten(accent, 0.10);
   const legOff   = frame === 0 ? 0 : frame === 1 ? -2 : 2;
 
-  // Shared: armored body fill using scalePattern + gradient
-  function armoredBody(x, y, w, h) {
-    // Base gradient (highlight top → shadow bottom)
-    for (let dy = 0; dy < h; dy++) {
-      const t = h <= 1 ? 0 : dy / (h - 1);
-      const inset = dy === 0 || dy === h - 1 ? 2 : (dy === 1 || dy === h - 2 ? 1 : 0);
-      rect(ctx, x + inset, y + dy, Math.max(1, w - inset * 2), 1, blend(bodyHi, bodySh, t));
-    }
-    // scalePattern gives overlapping armored-plate texture
-    scalePattern(ctx, x + 1, y + 1, w - 2, h - 2, blend(bodyHi, bodySh, 0.5), scuteCol, 4);
-  }
+  const armoredBody = (x, y, w, h) => drawArmoredBody(ctx, x, y, w, h, bodyHi, bodySh, scuteCol, scalePattern);
 
   if (dir === DOWN || dir === UP) {
     const facingDown = dir === DOWN;
@@ -36,11 +27,7 @@ export function drawCrocodile(ctx, params, dir, frame) {
     armoredBody(bx, by, 24, 11);
 
     // Raised dorsal scute ridge
-    for (let i = 0; i < 5; i++) {
-      const sx = cx - 8 + i * 4;
-      const sy = by + 2 + (i % 2);
-      shadedEllipse(ctx, sx + 1, sy + 1, 1, 1, scuteCol, { highlight: lighten(scuteCol, 0.12) });
-    }
+    drawScuteRidge(ctx, cx - 8, by + 2, 5, 4, scuteCol);
 
     // Head + snout (broad, flat) — fillPolygon for trapezoidal skull
     const headY = facingDown ? by - 8 : by + 11;
@@ -58,11 +45,9 @@ export function drawCrocodile(ctx, params, dir, frame) {
     px(ctx, cx + 3, facingDown ? headY + 1 : headY - 1, outline);
 
     if (facingDown) {
-      // Eyes — shadedEllipse on each side
-      shadedEllipse(ctx, cx - 6, headY + 3, 1, 1, eye, { highlight: '#ffffff' });
-      px(ctx, cx - 6, headY + 4, '#000000');
-      shadedEllipse(ctx, cx + 6, headY + 3, 1, 1, eye, { highlight: '#ffffff' });
-      px(ctx, cx + 6, headY + 4, '#000000');
+      // Eyes with slit pupils
+      drawReptileEye(ctx, cx - 7, headY + 2, eye);
+      drawReptileEye(ctx, cx + 5, headY + 2, eye);
       if (params.teeth) {
         for (const tx of [cx - 5, cx - 1, cx + 2, cx + 5])
           px(ctx, tx, headY + 7, '#f0f0e0');
@@ -108,9 +93,8 @@ export function drawCrocodile(ctx, params, dir, frame) {
     ], body);
     // Jaw underline
     rect(ctx, f(hx + 6), by + 5, 8, 1, jawCol);
-    // Eye — shadedEllipse
-    shadedEllipse(ctx, f(hx + 3), by + 1, 1, 1, eye, { highlight: '#ffffff' });
-    px(ctx, f(hx + 3), by + 2, '#000000');
+    // Eye with slit pupil
+    drawReptileEye(ctx, f(hx + 2), by, eye);
     // Nostrils
     px(ctx, f(hx + 13), by + 2, outline);
     px(ctx, f(hx + 13), by + 3, outline);

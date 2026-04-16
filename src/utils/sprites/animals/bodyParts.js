@@ -10,7 +10,7 @@
  *   drawHead(ctx, x, y, width, height, bodyColor, highlight, shadow);
  */
 
-import { px, rect, darken, lighten, rimLight, ao, anisotropicSpeckle } from '../helpers.js';
+import { px, rect, darken, lighten, rimLight, ao, anisotropicSpeckle, ellipse, speckle, fillPolygon, blend } from '../helpers.js';
 
 /**
  * Draw a single eye with sclera, iris, pupil, and highlight.
@@ -337,4 +337,204 @@ export function drawSimpleBody(ctx, x, y, w, h, bodyColor, highlightColor, shado
   // Rim light and AO
   rimLight(ctx, x + 4, y, w - 8, 3, highlightColor, 'top');
   ao(ctx, x + 2, y + h - 3, w - 4, 3, 0.08);
+}
+
+// ─── Reptile / Snake helpers ───────────────────────────────────────────────
+
+/**
+ * Draw a slit-pupil eye for reptiles.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x
+ * @param {number} y
+ * @param {string} irisColor
+ */
+export function drawReptileEye(ctx, x, y, irisColor) {
+  rect(ctx, x, y, 3, 3, irisColor);            // iris square
+  px(ctx, x + 1, y + 1, '#000000');            // slit pupil
+  px(ctx, x, y, '#ffffff');                    // highlight
+}
+
+/**
+ * Draw a forked tongue for snakes.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x - base x
+ * @param {number} y - base y (tip of mouth)
+ * @param {number} length - total length in pixels
+ * @param {number} direction - 1 for down/forward, -1 for up/back
+ * @param {string} tongueColor - defaults to red
+ */
+export function drawTongue(ctx, x, y, length, direction = 1, tongueColor = '#cc2222') {
+  // Stem
+  px(ctx, x, y, tongueColor);
+  px(ctx, x, y + direction, tongueColor);
+  // Fork tips
+  px(ctx, x - 1, y + direction * 2, tongueColor);
+  px(ctx, x + 1, y + direction * 2, tongueColor);
+}
+
+/**
+ * Draw a belly stripe that follows segment positions.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<[number,number]>} pts - segment center positions
+ * @param {number[]} radii - segment radii
+ * @param {string} bellyColor
+ * @param {boolean} isHorizontal - true for LEFT/RIGHT orientation (belly on bottom)
+ */
+export function drawBellyStripe(ctx, pts, radii, bellyColor, isHorizontal = false) {
+  for (let i = 0; i < pts.length; i++) {
+    const [bx, by] = pts[i];
+    const r = radii[i];
+    if (isHorizontal) {
+      rect(ctx, bx - r + 1, by + r - 1, r * 2 - 1, 2, bellyColor);
+    } else {
+      rect(ctx, bx - 1, by + r - 1, 3, 2, bellyColor);
+    }
+  }
+}
+
+/**
+ * Draw dorsal diamond pattern (snake markings).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<[number,number]>} pts - segment center positions
+ * @param {string} patternColor
+ * @param {boolean} isHorizontal - orientation
+ */
+export function drawDorsalPattern(ctx, pts, patternColor, isHorizontal = false) {
+  for (let i = 1; i < pts.length - 1; i += 2) {
+    const [sx, sy] = pts[i];
+    if (isHorizontal) {
+      px(ctx, sx, sy - 1, patternColor);
+      px(ctx, sx - 1, sy, patternColor);
+      px(ctx, sx + 1, sy, patternColor);
+      px(ctx, sx, sy + 1, patternColor);
+    } else {
+      px(ctx, sx, sy, patternColor);
+      px(ctx, sx - 1, sy + 1, patternColor);
+      px(ctx, sx + 1, sy + 1, patternColor);
+      px(ctx, sx, sy + 2, patternColor);
+    }
+  }
+}
+
+/**
+ * Draw highlight dots on top of each segment (rim light).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<[number,number]>} pts
+ * @param {number[]} radii
+ * @param {string} highlightColor
+ * @param {boolean} isHorizontal
+ */
+export function drawSegmentHighlights(ctx, pts, radii, highlightColor, isHorizontal = false) {
+  for (let i = 0; i < pts.length; i++) {
+    const [sx, sy] = pts[i];
+    const r = radii[i];
+    const span = Math.max(1, r - 2);
+    for (let ox = -span; ox <= span; ox++) {
+      px(ctx, sx + ox, sy - r + 1, highlightColor);
+    }
+  }
+}
+
+// ─── Bird helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Draw a pointed beak (top-down view, symmetric).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} cx - center x
+ * @param {number} y - beak base y
+ * @param {number} length - beak length in pixels
+ * @param {string} beakColor
+ */
+export function drawBeakDown(ctx, cx, y, length, beakColor) {
+  const beakDark = darken(beakColor, 0.18);
+  const beakHi   = lighten(beakColor, 0.15);
+  for (let i = 0; i < length; i++) {
+    const w = Math.max(1, length - i);
+    rect(ctx, cx - Math.floor(w / 2), y + i, w, 1, beakColor);
+  }
+  px(ctx, cx, y + 1, beakHi);
+  px(ctx, cx, y + length - 1, beakDark);
+}
+
+/**
+ * Draw a sideways-facing beak (fillPolygon wedge).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - x-flip function (e.g., (x) => x or (x) => 63 - x)
+ * @param {number} tipX - beak tip x (before flip)
+ * @param {number} baseY - vertical center of beak attachment
+ * @param {number} length - beak length
+ * @param {string} beakColor
+ */
+export function drawBeakSide(ctx, f, tipX, baseY, length, beakColor) {
+  const beakDark = darken(beakColor, 0.15);
+  fillPolygon(ctx, [
+    [f(tipX - length), baseY - 1],
+    [f(tipX),          baseY + 1],
+    [f(tipX - length), baseY + 2],
+  ], beakColor);
+  px(ctx, f(tipX - 1), baseY + 1, beakDark);
+}
+
+/**
+ * Draw a bird foot (two toes in side view, or four toes from above).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - x-flip function
+ * @param {number} x - foot base x
+ * @param {number} y - foot base y
+ * @param {string} footColor
+ */
+export function drawBirdFoot(ctx, f, x, y, footColor) {
+  // Leg
+  px(ctx, f(x), y, footColor);
+  px(ctx, f(x), y + 1, footColor);
+  px(ctx, f(x), y + 2, footColor);
+  // Front toe
+  px(ctx, f(x + 1), y + 2, footColor);
+  px(ctx, f(x + 2), y + 2, footColor);
+  // Back toe
+  px(ctx, f(x - 1), y + 2, footColor);
+}
+
+// ─── Crocodile / Lizard helpers ───────────────────────────────────────────
+
+/**
+ * Draw dorsal scute ridge (raised bumps along spine).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} startX - first scute x
+ * @param {number} y - scute y
+ * @param {number} count - number of scutes
+ * @param {number} spacing - pixels between scutes
+ * @param {string} scuteColor
+ */
+export function drawScuteRidge(ctx, startX, y, count, spacing, scuteColor) {
+  const hiColor = lighten(scuteColor, 0.12);
+  for (let i = 0; i < count; i++) {
+    const sx = startX + i * spacing;
+    const sy = y + (i % 2);   // alternate Y for irregular look
+    ellipse(ctx, sx, sy, 1, 1, scuteColor);
+    px(ctx, sx, sy - 1, hiColor);
+  }
+}
+
+/**
+ * Draw an armored body fill (gradient + scale overlay).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ * @param {string} hiColor - top highlight color
+ * @param {string} shColor - bottom shadow color
+ * @param {string} scuteColor - scale/plate color
+ * @param {Function} scalePatternFn - reference to the scalePattern helper from helpers.js
+ */
+export function drawArmoredBody(ctx, x, y, w, h, hiColor, shColor, scuteColor, scalePatternFn) {
+  // Gradient fill row-by-row
+  for (let dy = 0; dy < h; dy++) {
+    const t = h <= 1 ? 0 : dy / (h - 1);
+    const inset = dy === 0 || dy === h - 1 ? 2 : (dy === 1 || dy === h - 2 ? 1 : 0);
+    rect(ctx, x + inset, y + dy, Math.max(1, w - inset * 2), 1, blend(hiColor, shColor, t));
+  }
+  // Scale/plate texture overlay
+  scalePatternFn(ctx, x + 1, y + 1, w - 2, h - 2, blend(hiColor, shColor, 0.5), scuteColor, 4);
 }

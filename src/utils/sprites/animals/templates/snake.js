@@ -6,6 +6,7 @@
  * Avoids blocky "square" segment look while preserving direction animations.
  */
 import { px, rect, ellipse, darken, lighten, speckle, segmentChain, shadedEllipse, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawReptileEye, drawTongue, drawBellyStripe, drawDorsalPattern, drawSegmentHighlights } from '../bodyParts.js';
 
 export function drawSnake(ctx, params, dir, frame) {
   const { body, accent, pattern, belly, eye, headW, headH, segments, segW } = params;
@@ -40,32 +41,10 @@ export function drawSnake(ctx, params, dir, frame) {
     }
     segmentChain(ctx, pts, radii, cols);
 
-    // Belly stripe — follow segments instead of flat rectangle
-    for (let i = 0; i < pts.length; i++) {
-      const [bx_, by_] = pts[i];
-      const r = radii[i];
-      rect(ctx, bx_ - 1, by_ + r - 1, 3, 2, bellyCol);
-    }
-
-    // Top highlight on each segment
-    for (let i = 0; i < pts.length; i++) {
-      const [px_, py_] = pts[i];
-      const r = radii[i];
-      for (let ox = -Math.max(1, r - 2); ox <= Math.max(1, r - 2); ox++) {
-        px(ctx, px_ + ox, py_ - r + 1, highlight);
-      }
-    }
-
-    // Dorsal diamond pattern
-    if (pattern) {
-      for (let i = 1; i < segCount - 1; i += 2) {
-        const [px_, py_] = pts[i];
-        px(ctx, px_, py_, pattern);
-        px(ctx, px_ - 1, py_ + 1, pattern);
-        px(ctx, px_ + 1, py_ + 1, pattern);
-        px(ctx, px_, py_ + 2, pattern);
-      }
-    }
+    // Belly stripe, segment highlights, dorsal pattern
+    drawBellyStripe(ctx, pts, radii, bellyCol, false);
+    drawSegmentHighlights(ctx, pts, radii, highlight, false);
+    if (pattern) drawDorsalPattern(ctx, pts, pattern, false);
 
     // Head — shadedEllipse
     const hw = headW || 10;
@@ -80,21 +59,14 @@ export function drawSnake(ctx, params, dir, frame) {
     // Eyes (slit pupil)
     if (dir === DOWN) {
       const hx = hCx - Math.floor(hw / 2);
-      rect(ctx, hx + 1, headY + 2, 3, 3, eye);
-      rect(ctx, hx + hw - 4, headY + 2, 3, 3, eye);
-      px(ctx, hx + 2, headY + 3, '#000000');
-      px(ctx, hx + hw - 3, headY + 3, '#000000');
-      px(ctx, hx + 1, headY + 2, '#ffffff');
-      px(ctx, hx + hw - 2, headY + 2, '#ffffff');
+      drawReptileEye(ctx, hx + 1, headY + 2, eye);
+      drawReptileEye(ctx, hx + hw - 4, headY + 2, eye);
     }
 
     // Forked tongue
     const tongueY   = dir === DOWN ? headY + hh : headY - 3;
     const tongueDir = dir === DOWN ? 1 : -1;
-    px(ctx, cx, tongueY, '#cc2222');
-    px(ctx, cx, tongueY + tongueDir, '#cc2222');
-    px(ctx, cx - 1, tongueY + tongueDir * 2, '#cc2222');
-    px(ctx, cx + 1, tongueY + tongueDir * 2, '#cc2222');
+    drawTongue(ctx, cx, tongueY, 2, tongueDir);
 
   } else {
     // LEFT / RIGHT
@@ -119,32 +91,10 @@ export function drawSnake(ctx, params, dir, frame) {
     }
     segmentChain(ctx, pts, radii, cols);
 
-    // Belly stripe along bottom
-    for (let i = 0; i < pts.length; i++) {
-      const [bx_, by_] = pts[i];
-      const r = radii[i];
-      rect(ctx, bx_ - r + 1, by_ + r - 1, r * 2 - 1, 2, bellyCol);
-    }
-
-    // Top highlight on each segment
-    for (let i = 0; i < pts.length; i++) {
-      const [px_, py_] = pts[i];
-      const r = radii[i];
-      for (let ox = -Math.max(1, r - 2); ox <= Math.max(1, r - 2); ox++) {
-        px(ctx, px_ + ox, py_ - r + 1, highlight);
-      }
-    }
-
-    // Dorsal diamond pattern
-    if (pattern) {
-      for (let i = 1; i < segCount - 1; i += 2) {
-        const [px_, py_] = pts[i];
-        px(ctx, px_, py_ - 1, pattern);
-        px(ctx, px_ - 1, py_,  pattern);
-        px(ctx, px_ + 1, py_,  pattern);
-        px(ctx, px_, py_ + 1, pattern);
-      }
-    }
+    // Belly stripe, segment highlights, dorsal pattern
+    drawBellyStripe(ctx, pts, radii, bellyCol, true);
+    drawSegmentHighlights(ctx, pts, radii, highlight, true);
+    if (pattern) drawDorsalPattern(ctx, pts, pattern, true);
 
     // Head — shadedEllipse
     const hw = headW || 10;
@@ -158,14 +108,9 @@ export function drawSnake(ctx, params, dir, frame) {
     });
 
     // Eye
-    rect(ctx, f(headX + hw - 3), hCy - 1, 2, 2, eye);
-    px(ctx, f(headX + hw - 2), hCy, '#000000');
-    px(ctx, f(headX + hw - 3), hCy - 1, '#ffffff');
+    drawReptileEye(ctx, f(headX + hw - 3), hCy - 1, eye);
 
     // Forked tongue
-    px(ctx, f(headX + hw),     sideY, '#cc2222');
-    px(ctx, f(headX + hw + 1), sideY, '#cc2222');
-    px(ctx, f(headX + hw + 2), sideY - 1, '#cc2222');
-    px(ctx, f(headX + hw + 2), sideY + 1, '#cc2222');
+    drawTongue(ctx, f(headX + hw), sideY, 2, flip ? -1 : 1);
   }
 }

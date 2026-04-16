@@ -4,6 +4,7 @@
  * 64x64 design grid.
  */
 import { px, rect, darken, lighten, blend, speckle, shadedEllipse, fillPolygon, thickLine, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawBeakDown, drawBeakSide, drawBirdFoot } from '../bodyParts.js';
 
 export function drawCrow(ctx, params, dir, frame) {
   const { body, accent, eye, beak } = params;
@@ -16,7 +17,6 @@ export function drawCrow(ctx, params, dir, frame) {
   const featherTex = darken(body, 0.08);
   const wingOff = frame === 0 ? -2 : frame === 2 ? 2 : 0;
 
-  // Shared feather texture overlay
   function feathers(x, y, w, h) {
     speckle(ctx, x, y, w, h,
       [featherTex, darken(body, 0.12), lighten(body, 0.03)], 0.22);
@@ -54,13 +54,8 @@ export function drawCrow(ctx, params, dir, frame) {
       shadedEllipse(ctx, cx + 2, hy + 3, 1, 1, darken(body, 0.35));
       px(ctx, cx + 2, hy + 3, eye);
 
-      // Beak — fillPolygon triangle (cleaner wedge than rect+px)
-      fillPolygon(ctx, [
-        [cx - 2, hy + 6],
-        [cx + 2, hy + 6],
-        [cx,     hy + 9],
-      ], beak);
-      px(ctx, cx, hy + 9, darken(beak, 0.18));
+      // Beak — pointed wedge downward
+      drawBeakDown(ctx, cx, hy + 6, 4, beak);
     }
 
     // Tail — fillPolygon fan wedge
@@ -74,12 +69,11 @@ export function drawCrow(ctx, params, dir, frame) {
     ], accent);
     rect(ctx, cx - 3, ty + tDir, 6, 2, shadow2);
 
-    // Legs/feet — thickLine
+    // Legs/feet
     const fy = by + 15;
-    thickLine(ctx, cx - 3, fy, cx - 3, fy + 3, 0, shadow2);
-    thickLine(ctx, cx + 3, fy, cx + 3, fy + 3, 0, shadow2);
-    thickLine(ctx, cx - 3, fy + 3, cx - 5, fy + 3, 0, shadow2); // toe L
-    thickLine(ctx, cx + 3, fy + 3, cx + 5, fy + 3, 0, shadow2); // toe R
+    const fId = (x) => x;
+    drawBirdFoot(ctx, fId, cx - 3, fy, shadow2);
+    drawBirdFoot(ctx, fId, cx + 3, fy, shadow2);
 
   } else {
     const flip = dir === LEFT;
@@ -115,12 +109,8 @@ export function drawCrow(ctx, params, dir, frame) {
     shadedEllipse(ctx, f(hx + 4), by + 4, 1, 1, darken(body, 0.35));
     px(ctx, f(hx + 4), by + 4, eye);
 
-    // Beak — fillPolygon pointed wedge (horizontal, forward)
-    fillPolygon(ctx, [
-      [f(hx + 6), by + 3],
-      [f(hx + 9), by + 5],
-      [f(hx + 6), by + 6],
-    ], beak);
+    // Beak — sideways pointed wedge
+    drawBeakSide(ctx, f, hx + 9, by + 4, 4, beak);
 
     // Tail — fillPolygon backward wedge
     fillPolygon(ctx, [
@@ -130,10 +120,8 @@ export function drawCrow(ctx, params, dir, frame) {
     ], accent);
     px(ctx, f(bx - 5), by + 9, shadow2);
 
-    // Legs — thickLine + toe stubs
-    thickLine(ctx, f(bx + 7), by + 15, f(bx + 7), by + 19, 0, shadow2);
-    thickLine(ctx, f(bx + 11), by + 15, f(bx + 11), by + 19, 0, shadow2);
-    thickLine(ctx, f(bx + 7),  by + 19, f(bx + 5),  by + 19, 0, shadow2);
-    thickLine(ctx, f(bx + 11), by + 19, f(bx + 13), by + 19, 0, shadow2);
+    // Legs/feet
+    drawBirdFoot(ctx, f, bx + 7,  by + 15, shadow2);
+    drawBirdFoot(ctx, f, bx + 11, by + 15, shadow2);
   }
 }

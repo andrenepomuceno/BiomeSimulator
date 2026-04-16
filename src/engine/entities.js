@@ -126,7 +126,7 @@ export class Animal {
     this._actionBuf = [];
     this._actionBufIdx = 0;
     this._actionBufFull = false;
-    this._actionMaxSize = config.action_history_max_size || 32;
+    this._actionMaxSize = config.action_history_max_size || 100;
 
     // Facing direction (0=DOWN, 1=LEFT, 2=RIGHT, 3=UP)
     this.direction = 0;

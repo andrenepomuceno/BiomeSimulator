@@ -22,15 +22,18 @@ import { px, rect, darken, lighten, rimLight, ao, anisotropicSpeckle, ellipse, s
  * @param {number} size - eye size (default 4, resulting in 4x4 sclera box)
  */
 export function drawEye(ctx, x, y, eyeWhite, eyeIris, size = 4) {
-  // Sclera (white)
+  // Sclera
   rect(ctx, x, y, size, size, eyeWhite);
-  // Iris (colored center)
+  const irisOff = Math.floor(size / 4);
   const irisSize = Math.ceil(size / 2);
-  rect(ctx, x + Math.floor(size / 4), y + Math.floor(size / 4), irisSize, irisSize, eyeIris);
-  // Pupil (dark center)
-  px(ctx, x + Math.floor(size / 4), y + Math.floor(size / 4), darken(eyeIris, 0.3));
-  // Highlight (top-left rim light)
-  px(ctx, x, y, eyeWhite);
+  const irisX = x + irisOff;
+  const irisY = y + irisOff;
+  // Iris
+  rect(ctx, irisX, irisY, irisSize, irisSize, eyeIris);
+  // Pupil — centered toward bottom-right of iris for depth
+  px(ctx, irisX + irisSize - 1, irisY + irisSize - 1, darken(eyeIris, 0.40));
+  // Specular highlight — bright pixel at iris top-left
+  px(ctx, irisX, irisY, lighten(eyeWhite, 0.06));
 }
 
 /**
@@ -484,15 +487,20 @@ export function drawBeakSide(ctx, f, tipX, baseY, length, beakColor) {
  * @param {string} footColor
  */
 export function drawBirdFoot(ctx, f, x, y, footColor) {
-  // Leg
-  px(ctx, f(x), y, footColor);
+  const dark = darken(footColor, 0.22);
+  // Tarsometatarsus (lower leg)
+  px(ctx, f(x), y,     footColor);
   px(ctx, f(x), y + 1, footColor);
   px(ctx, f(x), y + 2, footColor);
-  // Front toe
-  px(ctx, f(x + 1), y + 2, footColor);
-  px(ctx, f(x + 2), y + 2, footColor);
-  // Back toe
-  px(ctx, f(x - 1), y + 2, footColor);
+  // Three forward toes fanning out
+  px(ctx, f(x - 1), y + 3, footColor);  // inner toe
+  px(ctx, f(x),     y + 3, footColor);  // middle toe
+  px(ctx, f(x + 1), y + 3, footColor);  // outer toe
+  // Claw tips
+  px(ctx, f(x - 2), y + 4, dark);       // inner claw
+  px(ctx, f(x + 2), y + 4, dark);       // outer claw
+  // Hallux (rear toe) — darker hint at tarsus junction
+  px(ctx, f(x - 1), y + 2, dark);
 }
 
 // ─── Crocodile / Lizard helpers ───────────────────────────────────────────

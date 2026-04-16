@@ -397,3 +397,80 @@ export function drawPotatoTubers(ctx, cx, baseY, skinColor, skinAccent, count = 
     if (sz >= 5) px(ctx, cx + ox + 3, baseY + oy + 2, eye);
   }
 }
+
+// ─── Flower helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Draw a flower stem with a cylindrical highlight.
+ * Stem is drawn at (cx+2+swayOff, baseY-h) with width 4.
+ * @param {number} cx       - horizontal reference (same cx as the rest of the flower)
+ * @param {number} baseY    - ground y
+ * @param {number} h        - stem height in pixels
+ * @param {string} stemColor
+ * @param {number} swayOff  - per-frame sway offset
+ */
+export function drawFlowerStem(ctx, cx, baseY, h, stemColor, swayOff) {
+  const sx = cx + 2 + swayOff;
+  rect(ctx, sx, baseY - h, 4, h, stemColor);
+  for (let r = 4; r < h - 2; r++) px(ctx, sx, baseY - h + r, lighten(stemColor, 0.10));
+}
+
+/**
+ * Draw a radial ring of tapered circle-chain petals.
+ * Used by flower stages 3 (opening bud) and 4 (full bloom).
+ * @param {number} centerX   - flower head center x
+ * @param {number} centerY   - flower head center y
+ * @param {string} petalColor - base petal color
+ * @param {string} petalDark  - petal tip / shadow color (null → darken by 0.15)
+ * @param {number} count      - number of petals
+ * @param {number} startR     - distance from center to petal base
+ * @param {number} petalLen   - petal length in pixels
+ * @param {number} r0         - circle radius at petal base (default 2.5)
+ * @param {number} r1         - circle radius at petal tip (default 0.5)
+ */
+export function drawPetalRing(ctx, centerX, centerY, petalColor, petalDark, count, startR, petalLen, r0 = 2.5, r1 = 0.5) {
+  const tipColor = petalDark || darken(petalColor, 0.15);
+  const numCircles = Math.max(3, Math.round(petalLen / 2));
+  for (let i = 0; i < count; i++) {
+    const angle = (i * Math.PI * 2) / count;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    for (let j = 0; j < numCircles; j++) {
+      const t = j / (numCircles - 1);
+      const dist = startR + t * petalLen;
+      const cr = Math.max(1, Math.round(r0 + (r1 - r0) * t));
+      const ex = centerX + Math.round(cosA * dist);
+      const ey = centerY + Math.round(sinA * dist);
+      const color = j >= numCircles - 2 ? tipColor : (j >= numCircles - 3 ? darken(petalColor, 0.08) : petalColor);
+      ellipse(ctx, ex, ey, cr, cr, color);
+    }
+  }
+}
+
+/**
+ * Draw a flower center disc with optional seed texture and ripe seed patches.
+ * @param {number} cx           - center x
+ * @param {number} cy           - center y
+ * @param {number} rx           - horizontal radius of disc
+ * @param {number} ry           - vertical radius of disc
+ * @param {string} centerColor  - disc color
+ * @param {string|null} fruitColor - ripe seed color (shown when mature=true)
+ * @param {boolean} seedTexture - whether to overlay the dense seed anisotropic texture
+ * @param {boolean} mature      - whether to show ripe seed patches (stage 5)
+ */
+export function drawFlowerCenter(ctx, cx, cy, rx, ry, centerColor, fruitColor = null, seedTexture = false, mature = false) {
+  const discColor = mature ? darken(centerColor, 0.10) : centerColor;
+  ellipse(ctx, cx, cy, rx, ry, discColor);
+  // Dome highlight
+  ellipse(ctx, cx - 1, cy - 2, Math.max(1, Math.floor(rx * 0.58)), Math.max(1, Math.floor(ry * 0.50)), lighten(centerColor, 0.12));
+  if (seedTexture) {
+    anisotropicSpeckle(ctx, cx - rx - 1, cy - ry - 1, (rx + 1) * 2, (ry + 1) * 2,
+      [darken(centerColor, mature ? 0.22 : 0.18), darken(centerColor, mature ? 0.28 : 0.24)],
+      mature ? 0.42 : 0.38, 0, 1.0);
+  }
+  if (mature && fruitColor) {
+    rect(ctx, cx + 1, cy - 3, 5, 5, fruitColor);
+    rect(ctx, cx + 5, cy - 1, 4, 4, fruitColor);
+    px(ctx, cx + 2, cy - 2, lighten(fruitColor, 0.15));
+  }
+}

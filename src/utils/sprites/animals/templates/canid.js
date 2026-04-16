@@ -2,7 +2,7 @@
  * Canid drawing template — fox/wolf focused silhouette.
  */
 import { px, rect, ellipse, darken, lighten, gradientV, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawFurTexture } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawFurTexture, drawEyeSide } from '../bodyParts.js';
 
 export function drawCanid(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -93,9 +93,7 @@ export function drawCanid(ctx, params, dir, frame) {
   ellipse(ctx, f(headX + 4), headY + 6, 5, 5, body);
   rect(ctx, f(headX + 7), headY + 7, 3, 2, darken(body, 0.05));
   if (params.noseColor) rect(ctx, f(headX + 9), headY + 7, 2, 2, params.noseColor);
-  rect(ctx, f(headX + 2), headY + 5, 3, 3, eyeWhite);
-  px(ctx, f(headX + 3), headY + 6, eyeIris);
-  px(ctx, f(headX + 2), headY + 5, '#ffffff');
+  drawEyeSide(ctx, f, headX + 2, headY + 5, eyeWhite, eyeIris);
   if (params.earH) {
     rect(ctx, f(headX + 2), headY - 2, 2, 4, body);
     rect(ctx, f(headX + 5), headY - 3, 2, 5, body);

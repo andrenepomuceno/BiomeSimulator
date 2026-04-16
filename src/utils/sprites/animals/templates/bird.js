@@ -5,7 +5,7 @@
  * Feather texture, wing layering, detailed beak and eye ring.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawFurTexture, drawBirdFoot } from '../bodyParts.js';
+import { drawFurTexture, drawBirdFoot, drawRaptorBeak } from '../bodyParts.js';
 
 export function drawBird(ctx, params, dir, frame) {
   const { body, accent, eye, beak, w, h, wingSpan } = params;
@@ -148,12 +148,8 @@ export function drawBird(ctx, params, dir, frame) {
     rect(ctx, f(headX + 4), by - 3, 3, 3, eyeRing);
     px(ctx, f(headX + 5), by - 2, eye);
     px(ctx, f(headX + 4), by - 3, '#ffffff');  // specular
-    // Beak (hooked — hawk) with upper/lower mandible
-    rect(ctx, f(headX + 7), by - 2, 4, 2, beak);  // upper mandible
-    rect(ctx, f(headX + 7), by - 2, 3, 1, beakHi);  // top highlight
-    px(ctx, f(headX + 10), by - 1, beakSh);  // hook tip
-    rect(ctx, f(headX + 8), by, 3, 2, darken(beak, 0.08));  // lower mandible
-    px(ctx, f(headX + 10), by + 1, beakSh);
+    // Beak (hooked raptor)
+    drawRaptorBeak(ctx, f, headX + 7, by - 2, beak, beakHi, beakSh);
 
     // Wing (folded) — covert, secondary, and primary feather zones
     const wingY = by + 3 - wingUp;

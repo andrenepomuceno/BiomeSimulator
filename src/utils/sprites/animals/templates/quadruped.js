@@ -9,7 +9,7 @@
  *   - Inner-ear detail, paw pads, species-specific markings
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, softCircle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawHorns, drawAntlers, drawTusks, drawMask, drawMuzzle, drawFurTexture } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawHorns, drawAntlers, drawTusks, drawMask, drawMuzzle, drawFurTexture, drawQuadrupedLeg, drawQuadrupedLegSide, drawEyeSide } from '../bodyParts.js';
 
 export function drawQuadruped(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -45,12 +45,8 @@ export function drawQuadruped(ctx, params, dir, frame) {
     const by = cy - Math.floor(h / 2);
 
     // -- Back legs (behind body) --
-    rect(ctx, bx + 1, by + h + legShift, 4, 4, shadow);
-    rect(ctx, bx + 1, by + h + 4 + legShift, 4, 3, outline);
-    rect(ctx, bx + 2, by + h + 6 + legShift, 2, 2, pawCol);
-    rect(ctx, bx + w - 5, by + h - legShift, 4, 4, shadow);
-    rect(ctx, bx + w - 5, by + h + 4 - legShift, 4, 3, outline);
-    rect(ctx, bx + w - 4, by + h + 6 - legShift, 2, 2, pawCol);
+    drawQuadrupedLeg(ctx, bx + 1, by + h + legShift, shadow, outline, pawCol);
+    drawQuadrupedLeg(ctx, bx + w - 5, by + h - legShift, shadow, outline, pawCol);
 
     // -- Body -- rounded with multi-tone shading --
     rect(ctx, bx + 4, by, w - 8, 3, highlight2);
@@ -165,16 +161,8 @@ export function drawQuadruped(ctx, params, dir, frame) {
 
     // -- Front legs --
     const legY = by + h;
-    rect(ctx, bx + 3, legY - legShift, 4, 4, body);
-    rect(ctx, bx + 3, legY + 4 - legShift, 4, 3, outline);
-    rect(ctx, bx + 4, legY + 6 - legShift, 2, 2, pawCol);
-    rect(ctx, bx + w - 7, legY + legShift, 4, 4, body);
-    rect(ctx, bx + w - 7, legY + 4 + legShift, 4, 3, outline);
-    rect(ctx, bx + w - 6, legY + 6 + legShift, 2, 2, pawCol);
-    if (heavyPaws) {
-      rect(ctx, bx + 3, legY + 7 - legShift, 4, 1, pawCol);
-      rect(ctx, bx + w - 7, legY + 7 + legShift, 4, 1, pawCol);
-    }
+    drawQuadrupedLeg(ctx, bx + 3, legY - legShift, body, outline, pawCol, heavyPaws);
+    drawQuadrupedLeg(ctx, bx + w - 7, legY + legShift, body, outline, pawCol, heavyPaws);
 
     // -- Tail --
     if (params.tail) {
@@ -204,10 +192,8 @@ export function drawQuadruped(ctx, params, dir, frame) {
     const by = cy - Math.floor(h / 2);
 
     // -- Back legs --
-    rect(ctx, bx + 1, by + h + legShift, 4, 4, shadow);
-    rect(ctx, bx + 1, by + h + 4 + legShift, 4, 3, outline);
-    rect(ctx, bx + w - 5, by + h - legShift, 4, 4, shadow);
-    rect(ctx, bx + w - 5, by + h + 4 - legShift, 4, 3, outline);
+    drawQuadrupedLeg(ctx, bx + 1, by + h + legShift, shadow, outline);
+    drawQuadrupedLeg(ctx, bx + w - 5, by + h - legShift, shadow, outline);
 
     // -- Body --
     rect(ctx, bx + 4, by, w - 8, 3, body);
@@ -252,10 +238,8 @@ export function drawQuadruped(ctx, params, dir, frame) {
 
     // -- Front legs --
     const legY = by + h;
-    rect(ctx, bx + 3, legY - legShift, 4, 4, body);
-    rect(ctx, bx + 3, legY + 4 - legShift, 4, 3, outline);
-    rect(ctx, bx + w - 7, legY + legShift, 4, 4, body);
-    rect(ctx, bx + w - 7, legY + 4 + legShift, 4, 3, outline);
+    drawQuadrupedLeg(ctx, bx + 3, legY - legShift, body, outline);
+    drawQuadrupedLeg(ctx, bx + w - 7, legY + legShift, body, outline);
 
     // -- Tail (back view) --
     if (params.tail) {
@@ -287,15 +271,11 @@ export function drawQuadruped(ctx, params, dir, frame) {
     const by = cy - Math.floor(h / 2);
 
     // -- Back legs --
-    rect(ctx, f(bx), by + h, 3, 4, shadow);
-    rect(ctx, f(bx), by + h + 4 - legShift, 3, 3, outline);
-    px(ctx, f(bx + 1), by + h + 6 - legShift, pawCol);
-    rect(ctx, f(bx + 3), by + h, 3, 4, shadow);
+    drawQuadrupedLegSide(ctx, f, bx, by + h, shadow, outline, pawCol, -legShift);
+    rect(ctx, f(bx + 3), by + h, 3, 4, shadow);   // rear stub
     // -- Front legs --
-    rect(ctx, f(bx + w - 6), by + h, 3, 4, body);
-    rect(ctx, f(bx + w - 6), by + h + 4 + legShift, 3, 3, outline);
-    px(ctx, f(bx + w - 5), by + h + 6 + legShift, pawCol);
-    rect(ctx, f(bx + w - 3), by + h, 3, 4, body);
+    drawQuadrupedLegSide(ctx, f, bx + w - 6, by + h, body, outline, pawCol, legShift);
+    rect(ctx, f(bx + w - 3), by + h, 3, 4, body);  // front stub
 
     // -- Body -- dorsal-to-ventral gradient with directional fur streaks
     // Body is symmetric around cx=32 so gradientV coords work for both flip directions
@@ -335,13 +315,8 @@ export function drawQuadruped(ctx, params, dir, frame) {
     // Front face edge shadow (snout side)
     for (let hyo = 2; hyo < headH - 2; hyo++) px(ctx, f(headX + headW - 1), headY + hyo, shadow);
 
-    // -- Eye (side) -- sclera, iris, pupil, specular highlight
-    rect(ctx, f(headX + headW - 6), headY + 2, 5, 5, outline);  // eye ring
-    rect(ctx, f(headX + headW - 5), headY + 3, 4, 4, eyeWhite);
-    rect(ctx, f(headX + headW - 4), headY + 4, 2, 2, eyeIris);
-    px(ctx, f(headX + headW - 4), headY + 5, darken(eyeIris, 0.35));  // pupil depth
-    px(ctx, f(headX + headW - 3), headY + 4, darken(eyeIris, 0.3));
-    px(ctx, f(headX + headW - 5), headY + 3, '#ffffff');  // specular highlight
+    // -- Eye (side) --
+    drawEyeSide(ctx, f, headX + headW - 6, headY + 2, eyeWhite, eyeIris, outline);
     // Nose
     if (params.noseColor) rect(ctx, f(headX + headW - 3), headY + headH - 4, 3, 3, params.noseColor);
     if (longSnout && params.noseColor) rect(ctx, f(headX + headW - 1), headY + headH - 3, 2, 1, params.noseColor);

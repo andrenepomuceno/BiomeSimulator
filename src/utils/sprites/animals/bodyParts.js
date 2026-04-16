@@ -54,6 +54,29 @@ export function drawEyePair(ctx, headX, headY, headWidth, eyeOffsetLeft, eyeOffs
 }
 
 /**
+ * Draw a side-view eye with sclera, iris, pupil, and specular highlight.
+ * Simple mode (outlineColor=null): 3×3 sclera, 1-pixel iris.
+ * Detailed mode: 5×5 outline ring, 4×4 sclera, 2×2 iris with depth shading.
+ * @param {Function} f - x-flip function
+ * @param {number} x - eye top-left x (before flip)
+ * @param {string|null} outlineColor - ring color; enables detailed 5px mode when set
+ */
+export function drawEyeSide(ctx, f, x, y, eyeWhite, eyeIris, outlineColor = null) {
+  if (outlineColor) {
+    rect(ctx, f(x), y, 5, 5, outlineColor);
+    rect(ctx, f(x + 1), y + 1, 4, 4, eyeWhite);
+    rect(ctx, f(x + 2), y + 2, 2, 2, eyeIris);
+    px(ctx, f(x + 2), y + 3, darken(eyeIris, 0.35));
+    px(ctx, f(x + 3), y + 2, darken(eyeIris, 0.3));
+    px(ctx, f(x + 1), y + 1, '#ffffff');
+  } else {
+    rect(ctx, f(x), y, 3, 3, eyeWhite);
+    px(ctx, f(x + 1), y + 1, eyeIris);
+    px(ctx, f(x), y, '#ffffff');
+  }
+}
+
+/**
  * Draw an insect leg (femur, tibia, tarsus joints).
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} x - hip attachment point x
@@ -85,13 +108,26 @@ export function drawInsectLeg(ctx, x, y, rightSide, femurColor, tibiaColor, tars
  * @param {string} shadowColor - shadow color (bottom)
  * @param {string} pawColor - paw/hoof color
  */
-export function drawQuadrupedLeg(ctx, x, y, legLength, legColor, shadowColor, pawColor) {
-  // Upper leg
-  rect(ctx, x, y, 4, Math.floor(legLength * 0.6), legColor);
-  // Lower leg (darker)
-  rect(ctx, x, y + Math.floor(legLength * 0.6), 4, Math.floor(legLength * 0.3), shadowColor);
-  // Paw/hoof
-  rect(ctx, x, y + legLength - 2, 4, 2, pawColor);
+export function drawQuadrupedLeg(ctx, x, y, upperColor, jointColor, pawColor = null, heavyPaw = false) {
+  rect(ctx, x, y, 4, 4, upperColor);
+  rect(ctx, x, y + 4, 4, 3, jointColor);
+  if (pawColor !== null) {
+    rect(ctx, x + 1, y + 6, 2, 2, pawColor);
+    if (heavyPaw) rect(ctx, x, y + 7, 4, 1, pawColor);
+  }
+}
+
+/**
+ * Draw a quadruped leg (side view, 3px wide).
+ * Upper half is fixed; lower half shifts to animate ankle flexion.
+ * @param {Function} f - x-flip function
+ * @param {number} x - leg top-left x (before flip)
+ * @param {number} lowerShift - y offset on joint+paw for animation
+ */
+export function drawQuadrupedLegSide(ctx, f, x, y, upperColor, jointColor, pawColor, lowerShift = 0) {
+  rect(ctx, f(x), y, 3, 4, upperColor);
+  rect(ctx, f(x), y + 4 + lowerShift, 3, 3, jointColor);
+  px(ctx, f(x + 1), y + 6 + lowerShift, pawColor);
 }
 
 /**
@@ -494,6 +530,22 @@ export function drawBeakSide(ctx, f, tipX, baseY, length, beakColor) {
     [f(tipX - length), baseY + 2],
   ], beakColor);
   px(ctx, f(tipX - 1), baseY + 1, beakDark);
+}
+
+/**
+ * Draw a hooked raptor beak (side view) with upper and lower mandible.
+ * @param {Function} f - x-flip function
+ * @param {number} x - beak attachment x (before flip)
+ * @param {number} y - beak attachment y
+ * @param {string} beakHi - highlight on top edge
+ * @param {string} beakSh - shadow on hook tip and lower edge
+ */
+export function drawRaptorBeak(ctx, f, x, y, beakColor, beakHi, beakSh) {
+  rect(ctx, f(x), y, 4, 2, beakColor);
+  rect(ctx, f(x), y, 3, 1, beakHi);
+  px(ctx, f(x + 3), y + 1, beakSh);
+  rect(ctx, f(x + 1), y + 2, 3, 2, darken(beakColor, 0.08));
+  px(ctx, f(x + 3), y + 3, beakSh);
 }
 
 /**

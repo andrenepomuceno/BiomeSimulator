@@ -2,7 +2,7 @@
  * Ursid drawing template — bear focused silhouette.
  */
 import { px, rect, ellipse, darken, lighten, gradientV, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawNose, drawMuzzle, drawFurTexture } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawNose, drawMuzzle, drawFurTexture, drawEyeSide } from '../bodyParts.js';
 
 export function drawUrsid(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -72,9 +72,7 @@ export function drawUrsid(ctx, params, dir, frame) {
   ellipse(ctx, f(headX + 4), headY + 6, 5, 5, body);
   if (params.muzzle) rect(ctx, f(headX + 6), headY + 7, 4, 3, params.muzzle);
   if (params.noseColor) rect(ctx, f(headX + 9), headY + 7, 2, 2, params.noseColor);
-  rect(ctx, f(headX + 2), headY + 5, 3, 3, eyeWhite);
-  px(ctx, f(headX + 3), headY + 6, eyeIris);
-  px(ctx, f(headX + 2), headY + 5, '#ffffff');
+  drawEyeSide(ctx, f, headX + 2, headY + 5, eyeWhite, eyeIris);
 
   if (params.earH) {
     rect(ctx, f(headX + 2), headY + 1, 2, 2, body);

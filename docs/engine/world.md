@@ -7,17 +7,21 @@ Return to [Documentation Home](../README.md).
 
 ## Terrain Types (`world.js`)
 
-| Constant | Value | Walkable |
-|----------|-------|----------|
-| `WATER` | 0 | No |
-| `SAND` | 1 | Yes |
-| `DIRT` | 2 | Yes |
-| `SOIL` | 3 | Yes |
-| `ROCK` | 4 | Varies (per species) |
-| `FERTILE_SOIL` | 5 | Yes |
-| `DEEP_WATER` | 6 | No |
-| `MOUNTAIN` | 7 | Varies (per species) |
-| `MUD` | 8 | Yes |
+Terrain is stored as a `Uint8Array` using 9 constants. These constants are also exported as `TERRAIN_IDS` (name→number) and `TERRAIN_NAMES` (number→string) for serialization and species config builders.
+
+| Constant | Value | Walkable (default) | Notes |
+|----------|-------|--------------------|-------|
+| `WATER` | 0 | No | Shallow water; blocks most land animals; flying species can cross |
+| `SAND` | 1 | Yes | Coastal and desert terrain; slower movement (0.75×) |
+| `DIRT` | 2 | Yes | Common inland terrain; standard growth conditions |
+| `SOIL` | 3 | Yes | Fertile terrain; standard movement and plant growth |
+| `ROCK` | 4 | Yes\* | Walkable by rock-tolerant species; most plants cannot grow here |
+| `FERTILE_SOIL` | 5 | Yes | Best growing terrain for most non-desert plants |
+| `DEEP_WATER` | 6 | No | Open ocean; blocks all species except flyers |
+| `MOUNTAIN` | 7 | No\* | Blocks most species; only a few (Goat, Bear, Crow, Hawk) can traverse it |
+| `MUD` | 8 | Yes | Slow terrain (0.5× speed); found near water edges |
+
+\* Rock is walkable only for species that include it in `walkable_terrain`. Mountain is blocked by `isWalkable()` (the default A\* predicate) but accessible for species whose `walkable_terrain` set includes `MOUNTAIN`.
 
 ---
 
@@ -47,7 +51,10 @@ Holds the entire world state using flat TypedArrays for memory efficiency. Grid 
 | `plantType` | `Uint8Array` | Plant type per tile (0 = none, 1–15) |
 | `plantStage` | `Uint8Array` | Growth stage (0–6) |
 | `plantAge` | `Uint16Array` | Ticks since planted |
-| `plantFruit` | `Uint8Array` | Boolean (0 or 1) |
+| `plantFruit` | `Uint8Array` | Boolean fruit flag (0 or 1) |
+| `animalGrid` | `Uint8Array` | Count of living animals occupying each tile |
+| `eggGrid` | `Uint8Array` | Count of egg-stage animals on each tile |
+| `activePlantTiles` | `Set<number>` | Flat indices of tiles that have a living plant — avoids iterating the full grid each tick |
 
 All `World` methods that accept `(x, y)` coordinates **floor float inputs** internally using `| 0`. This allows sub-tile animal positions (e.g. `5.75, 3.25`) to be passed directly.
 
@@ -57,14 +64,15 @@ All `World` methods that accept `(x, y)` coordinates **floor float inputs** inte
 |--------|-----------|-------------|
 | `idx(x, y)` | `→ number` | Flat array index (floors float inputs) |
 | `isInBounds(x, y)` | `→ boolean` | Boundary check |
-| `isWalkable(x, y)` | `→ boolean` | Not WATER or ROCK |
-| `isWalkableFor(x, y, walkableSet)` | `→ boolean` | Species-specific walkability check |
+| `isWalkable(x, y)` | `→ boolean` | Default A\* predicate: not WATER, DEEP\_WATER, or MOUNTAIN |
+| `isWalkableFor(x, y, walkableSet)` | `→ boolean` | Species-specific walkability: checks the tile type against the species' `walkable_terrain` Set |
+| `isTileOccupied(x, y)` | `→ boolean` | Whether `animalGrid` count > 0 at that tile |
+| `isTileBlocked(x, y)` | `→ boolean` | `isWalkable` AND not occupied — used by birth placement to find a free adjacent tile |
 | `isWaterAdjacent(x, y)` | `→ boolean` | 8-neighbor water check |
-| `isTileOccupied(x, y)` | `→ boolean` | Whether `animalGrid` has an occupant |
-| `placeAnimal(x, y)` | — | Mark tile as occupied |
-| `vacateAnimal(x, y)` | — | Mark tile as vacant |
-| `getAliveSpeciesCount(species)` | `→ number` | Alive count for a species (lazy cached per tick) |
-| `getStats()` | `→ object` | Population counts, plant stats |
+| `placeAnimal(x, y)` | — | Increment `animalGrid` count at that tile |
+| `vacateAnimal(x, y)` | — | Decrement `animalGrid` count at that tile |
+| `getAliveSpeciesCount(species)` | `→ number` | Alive count for a species (lazily cached once per tick via `_speciesPopCache`) |
+| `getStats()` | `→ object` | Population counts, plant totals, and event tallies |
 
 ---
 

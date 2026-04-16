@@ -51,7 +51,7 @@ The legacy `tick()` method calls all three phases in sequence for backward compa
 
 When fauna sub-workers are active, the main worker calls `applyFaunaResults(results)` instead of `tickFaunaSequential()`:
 
-- Sorts all deltas by `animal.id` for deterministic merge order
+- Sorts all deltas by `animal.id` for a deterministic merge order — this ensures that movement conflict resolution and birth ID assignment produce the same outcome regardless of which sub-worker finished first
 - Rebuilds the occupancy grid from scratch
 - Resolves movement conflicts (first delta wins)
 - Deduplicates plant eating (Set-based tracking)
@@ -78,7 +78,14 @@ The supervisor only logs inside the worker. It does not pause the simulation or 
 
 ## Dead Animal Lifecycle
 
-When an animal dies, `_deathTick` is recorded. Dead animals remain in the array (and are visible as 💀 skulls) for 300 ticks, then are permanently removed.
+When an animal dies, `world.killAnimal()` records `_deathTick`. Dead animals remain in the `animals` array (visible as 💀 skulls in the renderer) for **300 ticks**, after which `tickCleanup` permanently removes them from the array.
+
+Two separate windows govern post-death behaviour:
+
+| Window | Parameter | Default | Purpose |
+|--------|-----------|---------|--------|
+| Visibility window | hard-coded | 300 ticks | How long skull sprites are rendered |
+| Scavenge window | `scavenge_decay_ticks` | ~100 ticks | How long a corpse can be eaten by scavengers |
 
 ---
 

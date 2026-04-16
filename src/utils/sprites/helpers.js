@@ -460,6 +460,197 @@ export function innerGlow(ctx, color, intensity = 0.5, radius = 2) {
   ctx.putImageData(imgData, 0, 0);
 }
 
+// ── Limb & body structure helpers ────────────────────────────────────
+
+/**
+ * Thick straight line (capsule) between two design-pixel points.
+ * r is the half-thickness radius. Replaces manual per-pixel leg/antenna drawing.
+ * Example: thickLine(ctx, 20, 30, 14, 40, 1, '#333') draws a leg.
+ */
+export function thickLine(ctx, x0, y0, x1, y1, r, color) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const steps = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy)));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    circle(ctx, Math.round(x0 + dx * t), Math.round(y0 + dy * t), r, color);
+  }
+}
+
+/**
+ * Thick quadratic Bézier curve — like quadraticLine() but with radius r.
+ * taperEnd (0–1): if > 0, radius shrinks to r*(1-taperEnd) at the end point.
+ * Perfect for curving tails, tentacles, tongues, vines.
+ * Example: quadraticThick(ctx, 32,40, 20,55, 10,50, 2, color, 0.8)
+ */
+export function quadraticThick(ctx, x0, y0, cpx, cpy, x1, y1, r, color, taperEnd = 0) {
+  const steps = Math.max(16, Math.round(
+    (Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2) +
+     Math.sqrt((cpx - x0) ** 2 + (cpy - y0) ** 2)) * 2
+  ));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps, mt = 1 - t;
+    const gx = Math.round(mt * mt * x0 + 2 * mt * t * cpx + t * t * x1);
+    const gy = Math.round(mt * mt * y0 + 2 * mt * t * cpy + t * t * y1);
+    const ri = Math.max(0, Math.round(r * (1 - t * taperEnd)));
+    if (ri === 0) px(ctx, gx, gy, color);
+    else circle(ctx, gx, gy, ri, color);
+  }
+}
+
+/**
+ * Draw a chain of overlapping filled circles along a polyline, with per-point
+ * radii and colors. The canonical tool for snakes, caterpillars, worms,
+ * segmented tails and any smooth tubular body.
+ *
+ * points : [[x,y], …]
+ * radii  : number | number[]  — one radius per point, or a single value
+ * colors : string | string[]  — one color per point, or a single value
+ *
+ * Example:
+ *   segmentChain(ctx,
+ *     [[32,20],[30,28],[33,36],[30,44]],
+ *     [4, 4, 3, 2],
+ *     ['#336633','#2d5c2d','#336633','#1a3a1a']
+ *   );
+ */
+export function segmentChain(ctx, points, radii, colors) {
+  const getR = (i) => Array.isArray(radii)  ? radii[Math.min(i, radii.length - 1)]  : radii;
+  const getC = (i) => Array.isArray(colors) ? colors[Math.min(i, colors.length - 1)] : colors;
+  // Fill bridges between segment centers first
+  for (let i = 1; i < points.length; i++) {
+    const [x0, y0] = points[i - 1];
+    const [x1, y1] = points[i];
+    const r0 = getR(i - 1), r1 = getR(i);
+    const dx = x1 - x0, dy = y1 - y0;
+    const steps = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy)));
+    for (let s = 1; s < steps; s++) {
+      const t = s / steps;
+      circle(ctx,
+        Math.round(x0 + dx * t), Math.round(y0 + dy * t),
+        Math.max(1, Math.round(r0 + (r1 - r0) * t)),
+        getC(i));
+    }
+  }
+  // Draw segment blobs on top for clean overlap
+  for (let i = 0; i < points.length; i++) {
+    circle(ctx, points[i][0], points[i][1], Math.max(1, getR(i)), getC(i));
+  }
+}
+
+// ── Body shading helpers ──────────────────────────────────────────────
+
+/**
+ * Draw a vertically-shaded filled ellipse with a built-in top highlight strip
+ * and optional noise texture — the single-call replacement for the
+ * "draw ellipse + gradient + highlight + speckle" pattern repeated in every
+ * body-segment block.
+ *
+ * options:
+ *   highlight : string   — top color (default: lighten 14%)
+ *   shadow    : string   — bottom color (default: darken 18%)
+ *   texture   : boolean  — add speckle noise (default: false)
+ *   texColors : string[] — palette for speckle (default: 3-tone darken/lighten)
+ *   texDensity: number   — speckle density 0–1 (default: 0.20)
+ *   overlay   : string   — center/belly stripe color (drawn vertically at cx)
+ *   overlayW  : number   — overlay stripe half-width in design px (default: 1)
+ *
+ * Example:
+ *   shadedEllipse(ctx, 32, 38, 8, 11, '#336633', {
+ *     texture: true, overlay: '#a0d870', overlayW: 2,
+ *   });
+ */
+export function shadedEllipse(ctx, cx, cy, rx, ry, color, options = {}) {
+  const hi = options.highlight ?? lighten(color, 0.14);
+  const sh = options.shadow   ?? darken(color,  0.18);
+  for (let dy = -ry; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw <= 0) continue;
+    const t = (dy + ry) / (2 * ry);
+    rect(ctx, cx - hw, cy + dy, hw * 2 + 1, 1, blend(hi, sh, t));
+  }
+  // Top highlight sub-ellipse
+  const hlRy = Math.max(1, Math.floor(ry * 0.38));
+  const hlRx = Math.max(1, Math.floor(rx * 0.55));
+  ellipse(ctx, cx, cy - Math.floor(ry * 0.40), hlRx, hlRy, lighten(color, 0.09));
+  // Belly / center overlay stripe
+  if (options.overlay) {
+    const ow = options.overlayW ?? 1;
+    rect(ctx, cx - ow, cy - ry + 1, ow * 2 + 1, ry * 2 - 1, options.overlay);
+  }
+  // Optional noise texture
+  if (options.texture) {
+    const texCols = options.texColors ?? [darken(color, 0.09), darken(color, 0.15), lighten(color, 0.04)];
+    speckle(ctx, cx - rx, cy - ry, rx * 2 + 1, ry * 2 + 1, texCols, options.texDensity ?? 0.20);
+  }
+}
+
+// ── Polygon helpers ───────────────────────────────────────────────────
+
+/**
+ * Fill an arbitrary convex or concave polygon using scanline rasterisation.
+ * points: [[x, y], …] in design-pixel space.
+ * Useful for beaks, fins, wedge tails, arrow-shaped wings, irregular heads.
+ *
+ * Example:
+ *   fillPolygon(ctx, [[32,10],[38,20],[26,20]], '#cc8800'); // triangle beak
+ */
+export function fillPolygon(ctx, points, color) {
+  if (points.length < 3) return;
+  const ys  = points.map(p => p[1]);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  for (let y = minY; y <= maxY; y++) {
+    const xs = [];
+    for (let i = 0; i < points.length; i++) {
+      const [x0, y0] = points[i];
+      const [x1, y1] = points[(i + 1) % points.length];
+      if ((y0 <= y && y1 > y) || (y1 <= y && y0 > y)) {
+        xs.push(x0 + (y - y0) / (y1 - y0) * (x1 - x0));
+      }
+    }
+    xs.sort((a, b) => a - b);
+    for (let i = 0; i < xs.length; i += 2) {
+      const lx = Math.round(xs[i]);
+      const rx_ = Math.round(xs[i + 1] ?? xs[i]);
+      if (lx <= rx_) rect(ctx, lx, y, rx_ - lx + 1, 1, color);
+    }
+  }
+}
+
+// ── Surface texture helpers ───────────────────────────────────────────
+
+/**
+ * Overlapping fish / reptile scale pattern within a bounding rectangle.
+ * Draws a staggered grid of bottom-half arc outlines over a base fill.
+ * scaleSize: radius of each individual scale arc in design pixels (default 4).
+ *
+ * Example:
+ *   scalePattern(ctx, 20, 28, 24, 12, '#336633', '#1a4a1a', 3);
+ */
+export function scalePattern(ctx, x, y, w, h, baseColor, scaleColor, scaleSize = 4) {
+  rect(ctx, x, y, w, h, baseColor);
+  const r    = scaleSize;
+  const rowH = Math.max(1, Math.round(r * 0.75));
+  for (let row = 0; row * rowH < h + r; row++) {
+    const yc   = y + row * rowH;
+    const xOff = (row % 2 === 0) ? 0 : r;
+    for (let col = -1; col * r * 2 < w + r * 2; col++) {
+      const xc = x + xOff + col * r * 2;
+      for (let dy = 0; dy <= r; dy++) {
+        const hw = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy)));
+        const py = yc + dy;
+        if (py < y || py >= y + h) continue;
+        for (let dx = -hw; dx <= hw; dx++) {
+          const qx = xc + dx;
+          if (qx < x || qx >= x + w) continue;
+          // Only arc-edge pixels, not interior
+          if (dy === r || Math.abs(dx) === hw) px(ctx, qx, py, scaleColor);
+        }
+      }
+    }
+  }
+}
+
+
 // ── Organic curve helpers ────────────────────────────────────────────
 
 /**

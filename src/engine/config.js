@@ -47,6 +47,8 @@ const BASE_CONFIG = {
   sleep_threshold_offset_wrong_period: 10,
   activity_energy_penalty_wrong_period: 1.3,
   movement_sub_ticks: 5,
+  flee_lock_ticks: 5,   // ticks to commit to fleeing the same threat before re-evaluating
+  chase_lock_ticks: 5,  // ticks to commit to chasing the same prey before re-evaluating
 
   // Flora
   initial_plant_density: 0.10,

@@ -288,7 +288,6 @@ export function _fleeFrom(animal, threat, world) {
     animal.direction = fly2 > 0 ? Direction.DOWN : Direction.UP;
   }
   _applyEnergyCostWithModifier(animal, fly ? 'FLY' : 'FLEE', world.clock.isNight, world.config);
-  animal.logAction(world.clock.tick, 'FLED', { from: threat.species, threatId: threat.id });
 }
 
 export function _randomWalk(animal, world) {

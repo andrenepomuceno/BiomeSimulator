@@ -84,6 +84,12 @@ export class Animal {
     this._cachedThreatTick = -1;
     this._nextThreatCheckTick = 0;
 
+    // Behavior lock-in — commit flee/chase episodes for N ticks before re-evaluating
+    this._fleeTargetId = null;       // id of threat in the current flee episode
+    this._fleeLockUntilTick = 0;     // tick until flee episode is committed
+    this._chaseTarget = null;        // reference to prey being chased
+    this._chaseLockUntilTick = 0;    // tick until chase episode is committed
+
     this.mateCooldown = 0;
     this.attackCooldown = 0;
     this._deathTick = null;

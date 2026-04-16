@@ -146,8 +146,24 @@ export function _seekPrey(animal, world, spatialHash, vision) {
   const startedAt = benchmarkStart(collector);
   try {
     benchmarkAddKeyed(collector, 'speciesSeekPrey', animal.species, 1);
-    const { target, bestDist } = _findNearestHuntableTarget(animal, spatialHash, vision);
+    const tick = world.clock.tick;
+    const chaseLockTicks = animal._config.chase_lock_ticks ?? world.config.chase_lock_ticks ?? 5;
+    let target = null;
+    let bestDist = Infinity;
+    if (tick < animal._chaseLockUntilTick && animal._chaseTarget?.alive) {
+      const locked = animal._chaseTarget;
+      const d = Math.abs(locked.x - animal.x) + Math.abs(locked.y - animal.y);
+      if (d <= vision + 2) {
+        target = locked;
+        bestDist = d;
+      }
+    }
+    if (!target) {
+      ({ target, bestDist } = _findNearestHuntableTarget(animal, spatialHash, vision));
+    }
     if (target) {
+      animal._chaseTarget = target;
+      animal._chaseLockUntilTick = tick + chaseLockTicks;
       if (bestDist <= 1) {
         _attack(animal, target, world);
       } else {
@@ -155,6 +171,8 @@ export function _seekPrey(animal, world, spatialHash, vision) {
       }
       return;
     }
+    animal._chaseTarget = null;
+    animal._chaseLockUntilTick = 0;
 
     if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
     if (_tryEatEgg(animal, world, spatialHash, vision)) return;
@@ -191,8 +209,24 @@ export function _seekOmnivoreFood(animal, world, spatialHash, vision) {
     }
 
     if (animal.hunger > (_decisionThresholds(animal).desperate_hunger_hunt_min ?? 75)) {
-      const { target, bestDist } = _findNearestHuntableTarget(animal, spatialHash, vision);
+      const tick = world.clock.tick;
+      const chaseLockTicks = animal._config.chase_lock_ticks ?? world.config.chase_lock_ticks ?? 5;
+      let target = null;
+      let bestDist = Infinity;
+      if (tick < animal._chaseLockUntilTick && animal._chaseTarget?.alive) {
+        const locked = animal._chaseTarget;
+        const d = Math.abs(locked.x - animal.x) + Math.abs(locked.y - animal.y);
+        if (d <= vision + 2) {
+          target = locked;
+          bestDist = d;
+        }
+      }
+      if (!target) {
+        ({ target, bestDist } = _findNearestHuntableTarget(animal, spatialHash, vision));
+      }
       if (target) {
+        animal._chaseTarget = target;
+        animal._chaseLockUntilTick = tick + chaseLockTicks;
         if (bestDist <= 1) {
           _attack(animal, target, world);
         } else {
@@ -200,6 +234,8 @@ export function _seekOmnivoreFood(animal, world, spatialHash, vision) {
         }
         return;
       }
+      animal._chaseTarget = null;
+      animal._chaseLockUntilTick = 0;
 
       if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
       if (_tryEatEgg(animal, world, spatialHash, vision)) return;

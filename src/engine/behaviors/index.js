@@ -3,7 +3,7 @@ import { DIET } from '../animalSpecies.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from '../benchmarkProfiler.js';
 import { S_ADULT, S_SEED } from '../flora.js';
 import { DEEP_WATER, WATER } from '../world.js';
-import { _findNearestThreat } from './combat.js';
+import { _findNearestThreat, _isThreatValidFor } from './combat.js';
 import { _eatPlantTile } from './eating.js';
 import { _computePath, _fleeFrom, _randomWalk, _reusePathIfValid, _walkPath } from './movement.js';
 import { _findMate, _doMate, giveBirth } from './reproduce.js';
@@ -135,11 +135,28 @@ export function decideAndAct(animal, world, spatialHash) {
     }
 
     if (animal.diet === DIET.HERBIVORE || animal.diet === DIET.OMNIVORE) {
-      const threat = _findNearestThreat(animal, world, spatialHash, vision);
+      const tick = world.clock.tick;
+      const fleeLockTicks = animal._config.flee_lock_ticks ?? world.config.flee_lock_ticks ?? 5;
+      let threat = null;
+      if (tick < animal._fleeLockUntilTick && _isThreatValidFor(animal, animal._cachedThreat, vision)) {
+        // Still within flee episode — skip spatial scan
+        threat = animal._cachedThreat;
+      } else {
+        threat = _findNearestThreat(animal, world, spatialHash, vision);
+      }
       if (threat) {
+        if (threat.id !== animal._fleeTargetId) {
+          // New flee episode — log once
+          animal.logAction(tick, 'FLED', { from: threat.species, threatId: threat.id });
+          animal._fleeTargetId = threat.id;
+        }
+        animal._fleeLockUntilTick = tick + fleeLockTicks;
         _fleeFrom(animal, threat, world);
         return;
       }
+      // No threat — clear flee episode
+      animal._fleeTargetId = null;
+      animal._fleeLockUntilTick = 0;
     }
 
     if (animal.hunger > (_decisionThresholds(animal).critical_hunger ?? 45)) {

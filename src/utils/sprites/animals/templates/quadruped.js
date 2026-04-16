@@ -20,12 +20,21 @@ export function drawQuadruped(ctx, params, dir, frame) {
   const outline = darken(body, 0.35);
   const bellyCol = params.bellyColor || accent;
   const pawCol = params.pawColor || outline;
+  const spotCol = params.spotColor || accent;
   const eyeIris = params.eyeIris || eye;
   const eyeWhite = params.eyeWhite || '#ffffff';
   const furTex = params.furTexture || darken(body, 0.06);
+  const antlerBase = params.antlerBase || '#b08050';
+  const antlerMid = params.antlerMid || '#c09868';
+  const antlerTip = params.antlerTip || '#d0b080';
+  const hornBase = params.hornBase || '#d0d0d0';
+  const hornTip = params.hornTip || '#e8e8e8';
+  const beardLen = params.beardLen || 2;
   const roundedBody = !!params.roundedBody;
   const heavyPaws = !!params.heavyPaws;
   const shoulderHump = !!params.shoulderHump;
+  const wolfScruff = !!params.wolfScruff;
+  const longSnout = !!params.longSnout;
 
   const cx = 32;
   const cy = 36;
@@ -72,12 +81,19 @@ export function drawQuadruped(ctx, params, dir, frame) {
       rect(ctx, bx + 7, by, w - 14, 1, lighten(body, 0.14));
       rect(ctx, bx + 8, by + 1, w - 16, 1, highlight2);
     }
+    if (wolfScruff) {
+      px(ctx, bx + 6, by + 1, darken(body, 0.10));
+      px(ctx, bx + 9, by, darken(body, 0.14));
+      px(ctx, bx + 12, by + 1, darken(body, 0.10));
+      px(ctx, bx + w - 11, by, darken(body, 0.14));
+      px(ctx, bx + w - 8, by + 1, darken(body, 0.10));
+    }
     // Spots (deer)
     if (params.spots) {
-      rect(ctx, bx + 6, by + 6, 3, 3, accent);
-      rect(ctx, bx + w - 9, by + 8, 3, 2, accent);
-      rect(ctx, bx + 4, by + h - 10, 2, 2, accent);
-      rect(ctx, bx + w - 7, by + 4, 2, 2, accent);
+      rect(ctx, bx + 6, by + 6, 3, 3, spotCol);
+      rect(ctx, bx + w - 9, by + 8, 3, 2, spotCol);
+      rect(ctx, bx + 4, by + h - 10, 2, 2, spotCol);
+      rect(ctx, bx + w - 7, by + 4, 2, 2, spotCol);
     }
     // Bristles (boar)
     if (params.bristles) {
@@ -109,6 +125,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     // Nose
     if (params.noseColor) {
       drawNose(ctx, cx, hy + 7, params.noseColor, true);
+      if (longSnout) rect(ctx, cx - 1, hy + 8, 2, 1, params.noseColor);
     }
 
     // -- Ears --
@@ -117,11 +134,11 @@ export function drawQuadruped(ctx, params, dir, frame) {
     }
     // Horns
     if (params.horns) {
-      drawHorns(ctx, hx, hy - 2, headW, 3, '#d0d0d0', '#e8e8e8');
+      drawHorns(ctx, hx, hy - 2, headW, 3, hornBase, hornTip);
     }
     // Antlers
     if (params.antlers) {
-      drawAntlers(ctx, hx, hy - 3, headW, '#b08050', '#c09868', '#d0b080');
+      drawAntlers(ctx, hx, hy - 3, headW, antlerBase, antlerMid, antlerTip);
     }
     // Tusks
     if (params.tusks) {
@@ -134,7 +151,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     // Beard
     if (params.beard) {
       rect(ctx, cx - 2, by - 1, 4, 3, accent);
-      rect(ctx, cx - 1, by + 2, 2, 2, accent);
+      rect(ctx, cx - 1, by + 2, 2, beardLen, accent);
     }
     // Muzzle (bear)
     if (params.muzzle) {
@@ -190,9 +207,16 @@ export function drawQuadruped(ctx, params, dir, frame) {
     rect(ctx, bx + 6, by + 4, Math.max(4, w - 12), 2, highlight);
     rimLight(ctx, bx + 4, by, w - 8, 3, highlight, 'top');
     drawFurTexture(ctx, bx + 3, by + 6, w - 6, h - 12, body, Math.PI / 2);
+    if (wolfScruff) {
+      px(ctx, bx + 6, by + 1, darken(body, 0.10));
+      px(ctx, bx + 9, by, darken(body, 0.14));
+      px(ctx, bx + 12, by + 1, darken(body, 0.10));
+      px(ctx, bx + w - 11, by, darken(body, 0.14));
+      px(ctx, bx + w - 8, by + 1, darken(body, 0.10));
+    }
     if (params.spots) {
-      rect(ctx, bx + 6, by + 6, 3, 3, accent);
-      rect(ctx, bx + w - 9, by + 10, 2, 2, accent);
+      rect(ctx, bx + 6, by + 6, 3, 3, spotCol);
+      rect(ctx, bx + w - 9, by + 10, 2, 2, spotCol);
     }
 
     // -- Head (back view) --
@@ -208,10 +232,10 @@ export function drawQuadruped(ctx, params, dir, frame) {
       drawEarPair(ctx, hx, hy, headW, params.earH, body, params.earInner, params.pointedEars);
     }
     if (params.horns) {
-      drawHorns(ctx, hx, hy - 2, headW, 3, '#d0d0d0', '#e8e8e8');
+      drawHorns(ctx, hx, hy - 2, headW, 3, hornBase, hornTip);
     }
     if (params.antlers) {
-      drawAntlers(ctx, hx, hy - 3, headW, '#b08050', '#c09868', '#d0b080');
+      drawAntlers(ctx, hx, hy - 3, headW, antlerBase, antlerMid, antlerTip);
     }
 
     // -- Front legs --
@@ -269,13 +293,13 @@ export function drawQuadruped(ctx, params, dir, frame) {
     // Horizontal fur streaks along movement axis (body is symmetric, no flip needed for texture)
     anisotropicSpeckle(ctx, bx + 2, by + 3, w - 4, h - 6, [furTex, darken(body, 0.10), lighten(body, 0.06)], 0.28, 0, 3.5);
     if (params.spots) {
-      rect(ctx, f(bx + 6), by + 6, 3, 3, accent);
-      rect(ctx, f(bx + w - 9), by + 4, 2, 2, accent);
+      rect(ctx, f(bx + 6), by + 6, 3, 3, spotCol);
+      rect(ctx, f(bx + w - 9), by + 4, 2, 2, spotCol);
     }
 
     // -- Head --
     const headH = Math.max(10, h - 2);
-    const headW = 10;
+    const headW = longSnout ? 11 : 10;
     const headX = bx + w;
     const headY = by - 3;
     // Gradient fill: top-highlight to bottom-shadow; compute real screen left for gradientV
@@ -299,6 +323,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     px(ctx, f(headX + headW - 5), headY + 3, '#ffffff');  // specular highlight
     // Nose
     if (params.noseColor) rect(ctx, f(headX + headW - 3), headY + headH - 4, 3, 3, params.noseColor);
+    if (longSnout && params.noseColor) rect(ctx, f(headX + headW - 1), headY + headH - 3, 2, 1, params.noseColor);
     // Cheeks
     if (params.cheeks) rect(ctx, f(headX + 1), headY + 6, 3, 3, params.cheeks);
     // Muzzle (bear)
@@ -325,16 +350,16 @@ export function drawQuadruped(ctx, params, dir, frame) {
     }
     // Horns (side)
     if (params.horns) {
-      rect(ctx, f(headX + 3), headY - 3, 3, 3, '#d0d0d0');
-      rect(ctx, f(headX + 3), headY - 7, 3, 4, '#e8e8e8');
+      rect(ctx, f(headX + 3), headY - 3, 3, 3, hornBase);
+      rect(ctx, f(headX + 3), headY - 7, 3, 4, hornTip);
     }
     // Antlers (side)
     if (params.antlers) {
-      const ac = '#b08050', al = '#c09868';
+      const ac = antlerBase, al = antlerMid;
       rect(ctx, f(headX + 3), headY - 3, 3, 3, ac);
       rect(ctx, f(headX + 3), headY - 7, 3, 4, ac);
       rect(ctx, f(headX), headY - 7, 3, 3, al);
-      rect(ctx, f(headX + 6), headY - 10, 3, 3, al);
+      rect(ctx, f(headX + 6), headY - 10, 3, 3, antlerTip);
     }
     // Tusks (side)
     if (params.tusks) rect(ctx, f(headX + headW - 3), headY + headH, 3, 3, '#f0f0e0');
@@ -344,13 +369,18 @@ export function drawQuadruped(ctx, params, dir, frame) {
       rect(ctx, f(headX + headW - 5), headY + 6, 3, 3, '#111111');
     }
     // Beard (goat side)
-    if (params.beard) rect(ctx, f(headX + 3), headY + headH, 3, 4, accent);
+    if (params.beard) rect(ctx, f(headX + 3), headY + headH, 3, beardLen + 2, accent);
     // Bristles (boar side)
     if (params.bristles) {
       for (let i = 0; i < 3; i++) {
         px(ctx, f(bx + 4 + i * 4), by, darken(body, 0.12));
         px(ctx, f(bx + 4 + i * 4), by + 1, darken(body, 0.08));
       }
+    }
+    if (wolfScruff) {
+      px(ctx, f(bx + 7), by + 1, darken(body, 0.10));
+      px(ctx, f(bx + 10), by, darken(body, 0.14));
+      px(ctx, f(bx + 13), by + 1, darken(body, 0.10));
     }
 
     // -- Tail --

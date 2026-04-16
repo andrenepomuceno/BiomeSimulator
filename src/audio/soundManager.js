@@ -18,6 +18,10 @@ const PITCH_JITTER = 0.05;
 const BUS_RAMP_SECONDS = 0.05;
 const AMBIENCE_FADE_SECONDS = 1.2;
 const PROCEDURAL_VARIANT_COUNT = 3;
+const SFX_BUS_BOOST = 1.9;
+const AMBIENCE_BUS_BOOST = 1.5;
+const MASTER_BUS_BOOST = 1.15;
+const OUTPUT_MAKEUP_GAIN = 1.22;
 
 function hashString(value) {
   if (!value) return 0;
@@ -59,6 +63,8 @@ export class SoundManager {
     this.masterGain = null;
     this.sfxGain = null;
     this.ambienceGain = null;
+    this.outputCompressor = null;
+    this.outputMakeupGain = null;
 
     this.viewport = null;
     this.settings = {
@@ -564,6 +570,8 @@ export class SoundManager {
     safeDisconnect(this.masterGain);
     safeDisconnect(this.sfxGain);
     safeDisconnect(this.ambienceGain);
+    safeDisconnect(this.outputCompressor);
+    safeDisconnect(this.outputMakeupGain);
 
     if (this.context && this.context.state !== 'closed') {
       try {
@@ -577,6 +585,8 @@ export class SoundManager {
     this.masterGain = null;
     this.sfxGain = null;
     this.ambienceGain = null;
+    this.outputCompressor = null;
+    this.outputMakeupGain = null;
     this._noiseBuffer = null;
     this._sampleBuffers.clear();
     this._sampleLoadState.clear();
@@ -613,10 +623,22 @@ export class SoundManager {
     this.masterGain = context.createGain();
     this.sfxGain = context.createGain();
     this.ambienceGain = context.createGain();
+    this.outputCompressor = context.createDynamicsCompressor();
+    this.outputMakeupGain = context.createGain();
+
+    // Keep transients present while preventing hard clipping at boosted levels.
+    this.outputCompressor.threshold.value = -16;
+    this.outputCompressor.knee.value = 24;
+    this.outputCompressor.ratio.value = 3.2;
+    this.outputCompressor.attack.value = 0.004;
+    this.outputCompressor.release.value = 0.12;
+    this.outputMakeupGain.gain.value = OUTPUT_MAKEUP_GAIN;
 
     this.sfxGain.connect(this.masterGain);
     this.ambienceGain.connect(this.masterGain);
-    this.masterGain.connect(context.destination);
+    this.masterGain.connect(this.outputCompressor);
+    this.outputCompressor.connect(this.outputMakeupGain);
+    this.outputMakeupGain.connect(context.destination);
 
     this._syncBuses();
     return context;
@@ -626,9 +648,13 @@ export class SoundManager {
     if (!this.context || !this.masterGain || !this.sfxGain || !this.ambienceGain) return;
 
     const now = this.context.currentTime;
-    const masterTarget = this.settings.muted ? 0 : clamp(this.settings.masterVolume, 0, 1);
-    const sfxTarget = this.settings.sfxEnabled ? clamp(this.settings.sfxVolume, 0, 1) : 0;
-    const ambienceTarget = this.settings.ambienceEnabled ? clamp(this.settings.ambienceVolume, 0, 1) : 0;
+    const masterLevel = clamp(this.settings.masterVolume, 0, 1);
+    const sfxLevel = clamp(this.settings.sfxVolume, 0, 1);
+    const ambienceLevel = clamp(this.settings.ambienceVolume, 0, 1);
+
+    const masterTarget = this.settings.muted ? 0 : Math.pow(masterLevel, 0.95) * MASTER_BUS_BOOST;
+    const sfxTarget = this.settings.sfxEnabled ? Math.pow(sfxLevel, 0.9) * SFX_BUS_BOOST : 0;
+    const ambienceTarget = this.settings.ambienceEnabled ? Math.pow(ambienceLevel, 0.92) * AMBIENCE_BUS_BOOST : 0;
 
     rampParam(this.masterGain.gain, masterTarget, now);
     rampParam(this.sfxGain.gain, sfxTarget, now);

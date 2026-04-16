@@ -5,6 +5,7 @@
  * Feather texture, wing layering, detailed beak and eye ring.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawFurTexture } from '../bodyParts.js';
 
 export function drawBird(ctx, params, dir, frame) {
   const { body, accent, eye, beak, w, h, wingSpan } = params;
@@ -22,12 +23,6 @@ export function drawBird(ctx, params, dir, frame) {
   const cy = 32;
   const wingUp = frame === 0 ? -3 : frame === 2 ? 3 : 0;
 
-  // Directional feather texture — angle PI/2 = vertical streaks (head-to-tail)
-  function featherRegion(x, y, rw, rh, angle = Math.PI / 2) {
-    anisotropicSpeckle(ctx, x, y, rw, rh, [featherTex, darken(body, 0.10), lighten(body, 0.05)], 0.24, angle, 3.0);
-    speckle(ctx, x, y, rw, rh, [lighten(body, 0.08)], 0.04);
-  }
-
   if (dir === DOWN || dir === UP) {
     const bx = cx - Math.floor(w / 2);
     const by = cy - Math.floor(h / 2);
@@ -42,7 +37,7 @@ export function drawBird(ctx, params, dir, frame) {
     rect(ctx, cx - 2, by + 1, 4, 2, highlight2);
     rimLight(ctx, bx + 3, by, w - 6, 3, highlight2, 'top');
     // Feather texture
-    featherRegion(bx + 2, by + 4, w - 4, h - 8);
+    drawFurTexture(ctx, bx + 2, by + 4, w - 4, h - 8, body, Math.PI / 2, 0.24);
     // Breast colour
     if (params.breast && dir === DOWN) {
       rect(ctx, bx + 3, by + h - 7, w - 6, 4, breastCol);

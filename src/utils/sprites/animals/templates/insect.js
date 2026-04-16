@@ -5,6 +5,7 @@
  * Shell sheen, translucent wings, segmented antennae, caterpillar prolegs.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawInsectLeg, drawFurTexture } from '../bodyParts.js';
 
 export function drawInsect(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -85,15 +86,13 @@ export function drawInsect(ctx, params, dir, frame) {
     for (let i = 0; i < 3; i++) {
       const legY = by + Math.round(i * (h - 4) / 2) + 2;
       const off = (i === 1) ? -legOff : legOff;
-      // Femur (coxa — thick upper segment)
-      rect(ctx, bx - 4, legY + off, 4, 2, shadow);
-      rect(ctx, bx + w, legY - off, 4, 2, shadow);
-      // Tibia (angled outward)
-      rect(ctx, bx - 6, legY + off + 1, 3, 2, outline);
-      rect(ctx, bx + w + 3, legY - off + 1, 3, 2, outline);
-      // Tarsus tip
-      px(ctx, bx - 7, legY + off + 2, outline);
-      px(ctx, bx + w + 5, legY - off + 2, outline);
+      
+      // Left legs
+      drawInsectLeg(ctx, bx - 4, legY + off, false, shadow, outline, outline, 3);
+      
+      // Right legs
+      drawInsectLeg(ctx, bx + w, legY - off, true, shadow, outline, outline, 3);
+      
       if (params.jumpLegs && i === 2) {
         rect(ctx, bx - 9, legY + off + 3, 4, 2, shadow);
         rect(ctx, bx + w + 5, legY - off + 3, 4, 2, shadow);

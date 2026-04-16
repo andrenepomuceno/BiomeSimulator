@@ -9,6 +9,7 @@
  *   - Inner-ear detail, paw pads, species-specific markings
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, softCircle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawHorns, drawAntlers, drawTusks, drawMask, drawMuzzle, drawFurTexture } from '../bodyParts.js';
 
 export function drawQuadruped(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -26,12 +27,6 @@ export function drawQuadruped(ctx, params, dir, frame) {
   const cx = 32;
   const cy = 36;
   const legShift = frame === 0 ? -3 : frame === 2 ? 3 : 0;
-
-  // Helper: directional fur texture — angle 0=horizontal (side view), PI/2=vertical (top view)
-  function furRegion(x, y, rw, rh, angle = 0) {
-    anisotropicSpeckle(ctx, x, y, rw, rh, [furTex, darken(body, 0.10), lighten(body, 0.06)], 0.26, angle, 3.5);
-    speckle(ctx, x, y, rw, rh, [lighten(body, 0.10)], 0.05); // subtle gloss flecks
-  }
 
   if (dir === DOWN) {
     const bx = cx - Math.floor(w / 2);
@@ -64,7 +59,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     // Underside ambient occlusion
     ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.08);
     // Fur texture — vertical streaks (head-to-tail direction in top-down view)
-    furRegion(bx + 3, by + 6, w - 6, h - 12, Math.PI / 2);
+    drawFurTexture(ctx, bx + 3, by + 6, w - 6, h - 12, body, Math.PI / 2);
     // Spots (deer)
     if (params.spots) {
       rect(ctx, bx + 6, by + 6, 3, 3, accent);
@@ -95,76 +90,34 @@ export function drawQuadruped(ctx, params, dir, frame) {
     px(ctx, hx, hy + 5, shadow); px(ctx, hx + 1, hy + 5, shadow);
     // Cheeks
     if (params.cheeks) {
-      rect(ctx, hx, hy + 4, 3, 3, params.cheeks);
-      rect(ctx, hx + headW - 3, hy + 4, 3, 3, params.cheeks);
+      drawCheekPair(ctx, hx, hy + 4, headW, 0, params.cheeks);
     }
     // -- Eyes -- sclera, iris, pupil, highlight
-    rect(ctx, hx + 3, hy + 3, 4, 4, eyeWhite);
-    rect(ctx, hx + 4, hy + 4, 2, 2, eyeIris);
-    px(ctx, hx + 4, hy + 4, darken(eyeIris, 0.3));
-    px(ctx, hx + 3, hy + 3, eyeWhite);
-    rect(ctx, hx + headW - 7, hy + 3, 4, 4, eyeWhite);
-    rect(ctx, hx + headW - 6, hy + 4, 2, 2, eyeIris);
-    px(ctx, hx + headW - 5, hy + 4, darken(eyeIris, 0.3));
-    px(ctx, hx + headW - 4, hy + 3, eyeWhite);
+    drawEyePair(ctx, hx, hy + 3, headW, 3, 0, eyeWhite, eyeIris);
     // Nose
     if (params.noseColor) {
-      rect(ctx, cx - 2, hy + 7, 4, 3, params.noseColor);
-      px(ctx, cx - 1, hy + 7, lighten(params.noseColor, 0.2));
+      drawNose(ctx, cx, hy + 7, params.noseColor, true);
     }
 
     // -- Ears --
     if (params.earH) {
-      const earH = params.earH;
-      for (let e = 0; e < earH; e++) {
-        const ew = params.pointedEars
-          ? Math.max(1, 3 - Math.floor(e * 2 / Math.max(1, earH - 1)))
-          : (e < earH - 2 ? 3 : 2);
-        rect(ctx, hx, hy - 1 - e, ew, 1, body);
-        rect(ctx, hx + headW - ew, hy - 1 - e, ew, 1, body);
-      }
-      if (!params.pointedEars && params.earInner && earH >= 6) {
-        for (let e = 1; e < earH - 2; e++) {
-          px(ctx, hx + 1, hy - 1 - e, params.earInner);
-          px(ctx, hx + headW - 2, hy - 1 - e, params.earInner);
-        }
-      }
+      drawEarPair(ctx, hx, hy, headW, params.earH, body, params.earInner, params.pointedEars);
     }
     // Horns
     if (params.horns) {
-      const hc = '#d0d0d0', hl = '#e8e8e8';
-      rect(ctx, hx - 3, hy - 2, 3, 3, hc);
-      rect(ctx, hx + headW, hy - 2, 3, 3, hc);
-      rect(ctx, hx - 3, hy - 5, 3, 3, hl);
-      rect(ctx, hx + headW, hy - 5, 3, 3, hl);
-      px(ctx, hx - 2, hy - 6, hl); px(ctx, hx + headW + 1, hy - 6, hl);
+      drawHorns(ctx, hx, hy - 2, headW, 3, '#d0d0d0', '#e8e8e8');
     }
     // Antlers
     if (params.antlers) {
-      const ac = '#b08050', al = '#c09868', at = '#d0b080';
-      rect(ctx, hx - 3, hy - 3, 3, 3, ac);
-      rect(ctx, hx + headW, hy - 3, 3, 3, ac);
-      rect(ctx, hx - 3, hy - 7, 3, 4, ac);
-      rect(ctx, hx + headW, hy - 7, 3, 4, ac);
-      rect(ctx, hx - 6, hy - 7, 3, 3, al);
-      rect(ctx, hx + headW + 3, hy - 7, 3, 3, al);
-      rect(ctx, hx - 6, hy - 11, 3, 4, at);
-      rect(ctx, hx + headW + 3, hy - 11, 3, 4, at);
-      px(ctx, hx - 3, hy - 10, al); px(ctx, hx + headW + 2, hy - 10, al);
+      drawAntlers(ctx, hx, hy - 3, headW, '#b08050', '#c09868', '#d0b080');
     }
     // Tusks
     if (params.tusks) {
-      rect(ctx, hx + 1, by - 1, 3, 3, '#f0f0e0');
-      rect(ctx, hx + headW - 4, by - 1, 3, 3, '#f0f0e0');
-      px(ctx, hx + 2, by - 1, '#fffff0');
-      px(ctx, hx + headW - 3, by - 1, '#fffff0');
+      drawTusks(ctx, hx + 1, by - 1);
     }
     // Mask (raccoon)
     if (params.mask) {
-      rect(ctx, hx + 3, hy + 2, 4, 3, '#111111');
-      rect(ctx, hx + headW - 7, hy + 2, 4, 3, '#111111');
-      px(ctx, hx + 4, hy + 2, '#222222');
-      px(ctx, hx + headW - 5, hy + 2, '#222222');
+      drawMask(ctx, hx + 3, hy + 2);
     }
     // Beard
     if (params.beard) {
@@ -220,7 +173,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     for (let r = 4; r < h - 4; r++) { px(ctx, bx, by + r, shadow); px(ctx, bx + 1, by + r, shadow); }
     rect(ctx, bx + 6, by + 4, Math.max(4, w - 12), 2, highlight);
     rimLight(ctx, bx + 4, by, w - 8, 3, highlight, 'top');
-    furRegion(bx + 3, by + 6, w - 6, h - 12, Math.PI / 2);
+    drawFurTexture(ctx, bx + 3, by + 6, w - 6, h - 12, body, Math.PI / 2);
     if (params.spots) {
       rect(ctx, bx + 6, by + 6, 3, 3, accent);
       rect(ctx, bx + w - 9, by + 10, 2, 2, accent);
@@ -236,29 +189,13 @@ export function drawQuadruped(ctx, params, dir, frame) {
     rect(ctx, hx + 4, hy + 2, headW - 8, 2, highlight);
     // Ears
     if (params.earH) {
-      const earH = params.earH;
-      for (let e = 0; e < earH; e++) {
-        const ew = params.pointedEars
-          ? Math.max(1, 3 - Math.floor(e * 2 / Math.max(1, earH - 1)))
-          : (e < earH - 2 ? 3 : 2);
-        rect(ctx, hx, hy - 1 - e, ew, 1, body);
-        rect(ctx, hx + headW - ew, hy - 1 - e, ew, 1, body);
-      }
+      drawEarPair(ctx, hx, hy, headW, params.earH, body, params.earInner, params.pointedEars);
     }
     if (params.horns) {
-      rect(ctx, hx - 3, hy - 2, 3, 3, '#d0d0d0');
-      rect(ctx, hx + headW, hy - 2, 3, 3, '#d0d0d0');
-      rect(ctx, hx - 3, hy - 5, 3, 3, '#e8e8e8');
-      rect(ctx, hx + headW, hy - 5, 3, 3, '#e8e8e8');
+      drawHorns(ctx, hx, hy - 2, headW, 3, '#d0d0d0', '#e8e8e8');
     }
     if (params.antlers) {
-      const ac = '#b08050', al = '#c09868';
-      rect(ctx, hx - 3, hy - 3, 3, 3, ac);
-      rect(ctx, hx + headW, hy - 3, 3, 3, ac);
-      rect(ctx, hx - 3, hy - 7, 3, 4, ac);
-      rect(ctx, hx + headW, hy - 7, 3, 4, ac);
-      rect(ctx, hx - 6, hy - 7, 3, 3, al);
-      rect(ctx, hx + headW + 3, hy - 7, 3, 3, al);
+      drawAntlers(ctx, hx, hy - 3, headW, '#b08050', '#c09868', '#d0b080');
     }
 
     // -- Front legs --

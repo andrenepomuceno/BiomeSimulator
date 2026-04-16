@@ -15,7 +15,9 @@
     "profile:headless:ci": "node scripts/headlessProfile.mjs --ci",
     "profile:cpu:analyze": "node scripts/analyzeCpuProfile.mjs",
     "profile:phase2": "node scripts/headlessProfile.mjs --scenario phase2",
-    "capture": "node scripts/captureScenes.mjs"
+    "capture": "node scripts/captureScenes.mjs --mode all",
+    "capture:ingame": "node scripts/captureScenes.mjs --mode ingame",
+    "capture:sprites": "node scripts/captureScenes.mjs --mode sprites"
   },
   "dependencies": {
     "@pixi/utils": "^7.4.2",

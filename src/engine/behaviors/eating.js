@@ -4,6 +4,10 @@ import { idxToXY } from '../helpers.js';
 import { STAGE_LOG_NAMES, STAGE_NUTRITION, _plantEnergyGain, _plantHungerReduction } from './utils.js';
 
 export function _eatPlantTile(animal, world, idx) {
+  const preHunger = animal.hunger;
+  const preEnergy = animal.energy;
+  const preHp = animal.hp;
+  const preState = animal.state;
   const ptype = world.plantType[idx];
   const stage = world.plantStage[idx];
   const nutr = STAGE_NUTRITION[stage] || { hunger: 20, energy: 3 };
@@ -23,5 +27,14 @@ export function _eatPlantTile(animal, world, idx) {
   world.plantAge[idx] = 0;
   world.activePlantTiles.delete(idx);
   world.plantChanges.push([x, y, P_NONE, S_NONE]);
+  if (!world.plantConsumptionClaims) world.plantConsumptionClaims = [];
+  world.plantConsumptionClaims.push({
+    animalId: animal.id,
+    idx,
+    preHunger,
+    preEnergy,
+    preHp,
+    preState,
+  });
   world.plantEvents.deaths_eaten[ptype] = (world.plantEvents.deaths_eaten[ptype] || 0) + 1;
 }

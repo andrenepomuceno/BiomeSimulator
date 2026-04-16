@@ -13,7 +13,7 @@
  *
  * Responses:
  *   { cmd: 'ready' }
- *   { cmd: 'tickResult', deltas, births, plantChanges, deadIds }
+ *   { cmd: 'tickResult', deltas, births, plantChanges, deadIds, plantConsumptionClaims }
  */
 
 import { World } from '../engine/world.js';
@@ -103,6 +103,7 @@ self.onmessage = function (e) {
       world.thirstMultiplier = e.data.thirstMultiplier;
       world.resetDeathsThisTick();
       world.plantChanges = [];
+      world.plantConsumptionClaims = [];
       world.resetPlantEvents();
       world.activePlantTiles = new Set(e.data.activePlantIndices);
 
@@ -130,14 +131,14 @@ self.onmessage = function (e) {
 
       // Process only the assigned chunk
       const chunkIds = new Set(e.data.chunkIds);
-      const deadIds = [];
 
       for (const animal of allAnimals) {
         if (!animal.alive || !chunkIds.has(animal.id)) continue;
         decideAndAct(animal, world, spatialHash);
         spatialHash.update(animal);
-        if (!animal.alive) deadIds.push(animal.id);
       }
+
+      const deadIds = world.consumeDeathsThisTick().map(entity => entity.id);
 
       // Collect deltas for processed chunk animals
       const deltas = [];
@@ -190,6 +191,7 @@ self.onmessage = function (e) {
         deltas,
         births,
         plantChanges: world.plantChanges,
+        plantConsumptionClaims: world.plantConsumptionClaims,
         deadIds,
       });
       break;

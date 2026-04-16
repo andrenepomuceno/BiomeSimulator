@@ -146,11 +146,11 @@ async function doParallelFauna() {
       };
       const onError = () => {
         // Fall back to empty result for this chunk instead of hanging the tick.
-        finish({ deltas: [], births: [], plantChanges: [], deadIds: [] });
+        finish({ deltas: [], births: [], plantChanges: [], deadIds: [], plantConsumptionClaims: [] });
       };
       const timeoutId = setTimeout(() => {
         // Sub-worker may have been terminated during world regeneration.
-        finish({ deltas: [], births: [], plantChanges: [], deadIds: [] });
+        finish({ deltas: [], births: [], plantChanges: [], deadIds: [], plantConsumptionClaims: [] });
       }, FAUNA_TICK_TIMEOUT_MS);
       worker.addEventListener('message', handler);
       worker.addEventListener('error', onError);

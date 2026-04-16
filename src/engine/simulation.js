@@ -79,7 +79,6 @@ export class SimulationEngine {
     this.world._benchmarkCollector = this._benchmarkCollector;
     this.supervisor.reset();
     const { terrain, waterProximity, heightmap, seed } = generateTerrain(this.config);
-    this.world.terrain = terrain;
     this.world.waterProximity = waterProximity;
     this.world.heightmap = heightmap;
 
@@ -239,21 +238,63 @@ export class SimulationEngine {
 
   /**
    * Phase 2 (parallel): Apply merged results from fauna sub-workers.
-   * @param {Array} results — array of { deltas, births, plantChanges, deadIds } from each sub-worker.
+  * @param {Array} results — array of { deltas, births, plantChanges, deadIds, plantConsumptionClaims } from each sub-worker.
    */
   applyFaunaResults(results) {
     const w = this.world;
     const animalsById = new Map();
     for (const a of w.animals) animalsById.set(a.id, a);
 
-    // Collect and sort all deltas by id for deterministic merge order
+    // Collect all deltas from sub-workers.
     const allDeltas = [];
     for (const r of results) {
       if (!r.deltas) continue;
       for (const d of r.deltas) allDeltas.push(d);
     }
-    allDeltas.sort((a, b) => a.id - b.id);
+
+    // Resolve contested plant consumption before applying deltas.
+    const rejectedPlantClaims = [];
+    const claimedPlants = new Set();
+    for (const r of results) {
+      if (!r.plantConsumptionClaims) continue;
+      for (const claim of r.plantConsumptionClaims) {
+        if (claim?.idx == null) continue;
+        if (claimedPlants.has(claim.idx)) {
+          rejectedPlantClaims.push(claim);
+          continue;
+        }
+        claimedPlants.add(claim.idx);
+      }
+    }
+
+    // Any reported death wins globally, even if another chunk returned stale alive state.
+    const mergedDeadIds = new Set();
+    for (const r of results) {
+      if (!r.deadIds) continue;
+      for (const id of r.deadIds) mergedDeadIds.add(id);
+    }
+
     const deltaById = new Map(allDeltas.map(delta => [delta.id, delta]));
+
+    for (const claim of rejectedPlantClaims) {
+      const delta = deltaById.get(claim.animalId);
+      if (!delta) continue;
+      delta.hunger = claim.preHunger;
+      delta.energy = claim.preEnergy;
+      delta.hp = claim.preHp;
+      delta.state = claim.preState;
+    }
+
+    for (const id of mergedDeadIds) {
+      const delta = deltaById.get(id);
+      if (!delta) continue;
+      delta.alive = false;
+      delta.state = AnimalState.DEAD;
+      if (delta._deathTick == null) delta._deathTick = w.clock.tick;
+    }
+
+    // Sort by id for deterministic merge order.
+    allDeltas.sort((a, b) => a.id - b.id);
 
     // Reset occupancy grids — we'll rebuild them
     w.animalGrid.fill(0);
@@ -352,7 +393,7 @@ export class SimulationEngine {
     // Add births — reassign proper IDs from the main world counter (with pop cap)
     for (const wantsEggBirths of [true, false]) {
       for (const r of results) {
-        if (!r.births) continue;
+          if (!r.births) continue;
         for (const bd of r.births) {
           if (isEggStageSnapshot(bd) !== wantsEggBirths) continue;
         const sc = w.config.animal_species[bd.species];

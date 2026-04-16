@@ -101,6 +101,7 @@ export class World {
 
     // Plant changes per tick (delta for renderer)
     this.plantChanges = [];
+    this.plantConsumptionClaims = [];
 
     // Plant event counters (accumulated between stats snapshots)
     this.plantEvents = { births: {}, deaths_terrain: {}, deaths_water: {}, deaths_age: {}, deaths_eaten: {}, matured: {} };

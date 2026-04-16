@@ -78,6 +78,7 @@ export function useAudio() {
       store.setAudioSettings({ unlocked });
     }
     if (unlocked) {
+      await manager.preGenerateProceduralCache();
       manager.preloadSamples();
     }
     return unlocked;

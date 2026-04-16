@@ -211,6 +211,7 @@ export default function App() {
 
   function _handlePause() {
     playUiClick();
+    playWorldEffect({ type: 'pause' });
     autoPausedRef.current = false;
     postCmd('pause');
     useSimStore.getState().setSimState({ paused: true });
@@ -218,6 +219,7 @@ export default function App() {
 
   function _handleResume() {
     playUiClick();
+    playWorldEffect({ type: 'resume' });
     autoPausedRef.current = false;
     postCmd('resume');
     useSimStore.getState().setSimState({ paused: false });

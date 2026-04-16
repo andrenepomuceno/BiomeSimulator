@@ -276,7 +276,6 @@ export class EntityLayer {
           if (!this._fleeBuckets.has(bucketKey)) {
             this._fleeBuckets.add(bucketKey);
             if (this._animationLayer) this._animationLayer.spawnFlee(a.x, a.y);
-            this._emitEffectEvent('flee', a.x, a.y, a.species, currentTick);
           }
         }
       }

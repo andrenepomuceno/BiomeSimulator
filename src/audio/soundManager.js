@@ -1,4 +1,12 @@
-import { getSoundEventConfig, SOUND_EVENTS, SPECIES_AUDIO_SCALE, SPECIES_SOUND_GROUP, SOUND_GROUP_PARAMS, AMBIENCE_SAMPLES } from './soundEvents.js';
+import {
+  getSoundEventConfig,
+  SOUND_EVENTS,
+  SPECIES_AUDIO_SCALE,
+  SPECIES_SOUND_GROUP,
+  SOUND_GROUP_PARAMS,
+  AMBIENCE_SAMPLES,
+  AUDIO_PIPELINE_DEFAULTS,
+} from './soundEvents.js';
 import { clamp, computePositionalMix, shouldMutePositionalSfx } from './soundMath.js';
 
 const MAX_ACTIVE_VOICES = 24;
@@ -9,6 +17,16 @@ const PLAYBACK_RATE_MAX = 1.1;
 const PITCH_JITTER = 0.05;
 const BUS_RAMP_SECONDS = 0.05;
 const AMBIENCE_FADE_SECONDS = 1.2;
+const PROCEDURAL_VARIANT_COUNT = 3;
+
+function hashString(value) {
+  if (!value) return 0;
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
 
 function rampParam(param, value, time, duration = BUS_RAMP_SECONDS) {
   if (!param) return;
@@ -68,6 +86,13 @@ export class SoundManager {
     this._ambienceSampleLayers = null;   // { birds, insects, crickets, wind } loaded AudioBufferSourceNodes
     this._ecoMood = null;                // { biodiversity, population, trend } from computeEcoMood
     this._logger = null;
+
+    this._pipelineOptions = {
+      proceduralOnly: AUDIO_PIPELINE_DEFAULTS.proceduralOnly,
+      sampleFallbackEnabled: AUDIO_PIPELINE_DEFAULTS.sampleFallbackEnabled,
+    };
+    this._proceduralCache = new Map();
+    this._proceduralCacheWarmed = false;
 
     /** @type {Map<string, AudioBuffer>} URL → decoded AudioBuffer cache */
     this._sampleBuffers = new Map();
@@ -135,11 +160,14 @@ export class SoundManager {
   }
 
   async preloadSamples() {
+    if (!this._pipelineOptions.sampleFallbackEnabled) return;
+
     const context = this._ensureContext();
     if (!context) return;
 
     const urls = [];
     for (const cfg of Object.values(SOUND_EVENTS)) {
+      if (cfg?.enabled === false) continue;
       if (Array.isArray(cfg.samples)) {
         for (const url of cfg.samples) urls.push(url);
       }
@@ -148,6 +176,154 @@ export class SoundManager {
 
     await Promise.allSettled(urls.map((url) => this._loadSample(url)));
     this._ensureAmbienceSampleLayers();
+  }
+
+  async preGenerateProceduralCache() {
+    const context = this._ensureContext();
+    if (!context || !this.settings.unlocked || this._proceduralCacheWarmed) return;
+
+    const groupNames = [null, ...Object.keys(SOUND_GROUP_PARAMS)];
+    const jobs = [];
+
+    for (const config of Object.values(SOUND_EVENTS)) {
+      if (!config || config.enabled === false || !config.preset) continue;
+      const preset = config.preset;
+      const targets = config.positional ? groupNames : [null];
+      for (const groupName of targets) {
+        for (let variant = 0; variant < PROCEDURAL_VARIANT_COUNT; variant++) {
+          jobs.push({ preset, groupName, variant });
+        }
+      }
+    }
+
+    for (const job of jobs) {
+      const key = this._cacheKey(job.preset, job.groupName, job.variant);
+      if (this._proceduralCache.has(key)) continue;
+      const buffer = await this._renderProceduralBuffer(job.preset, job.groupName, job.variant);
+      if (buffer) {
+        this._proceduralCache.set(key, buffer);
+      }
+    }
+    this._proceduralCacheWarmed = true;
+  }
+
+  _cacheKey(preset, groupName, variant) {
+    return `${preset}::${groupName || 'none'}::${variant}`;
+  }
+
+  _pickVariant(eventType, species, tick) {
+    const seed = `${eventType || ''}|${species || ''}|${Number.isFinite(tick) ? tick : -1}`;
+    return hashString(seed) % PROCEDURAL_VARIANT_COUNT;
+  }
+
+  _getCachedProceduralBuffer(preset, groupName, variant) {
+    const exact = this._proceduralCache.get(this._cacheKey(preset, groupName, variant));
+    if (exact) return exact;
+    return this._proceduralCache.get(this._cacheKey(preset, null, variant)) || null;
+  }
+
+  async _renderProceduralBuffer(preset, groupName, variant) {
+    if (typeof window === 'undefined') return null;
+    const OfflineCtor = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OfflineCtor || !this.context) return null;
+
+    const sampleRate = this.context.sampleRate;
+    const length = Math.ceil(sampleRate * 1.25);
+    const offline = new OfflineCtor(1, length, sampleRate);
+    const gainNode = offline.createGain();
+    gainNode.gain.value = ZERO_GAIN;
+    gainNode.connect(offline.destination);
+
+    const group = groupName ? SOUND_GROUP_PARAMS[groupName] : null;
+    const pm = group ? group.pitchMul : 1;
+    const gm = group ? group.gainMul : 1;
+    const tt = group ? group.toneType : 'triangle';
+    const variantShift = 1 + (variant - 1) * 0.04;
+    const now = 0;
+
+    const addOsc = (type, startHz, endHz, level, dur, detune = 0) => {
+      const osc = offline.createOscillator();
+      osc.type = type;
+      osc.frequency.setValueAtTime(startHz * pm * variantShift, now);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(40, endHz * pm * variantShift), now + dur);
+      osc.detune.value = detune + (variant - 1) * 5;
+      const g = offline.createGain();
+      g.gain.value = level;
+      osc.connect(g);
+      g.connect(gainNode);
+      osc.start(now);
+      osc.stop(now + dur + 0.02);
+    };
+
+    let duration = 0.1;
+    switch (preset) {
+      case 'attack':
+        duration = 0.14;
+        addOsc(tt, 640, 220, 0.55, 0.08, -3);
+        addOsc('square', 1280, 520, 0.22, 0.06, 7);
+        addOsc('triangle', 220, 120, 0.2, 0.11);
+        break;
+      case 'death':
+        duration = 0.34;
+        addOsc(tt, 180, 48, 0.62, 0.34);
+        addOsc('sine', 84, 38, 0.35, 0.3, -6);
+        break;
+      case 'eat':
+        duration = 0.1;
+        addOsc('square', 520, 330, 0.42, 0.07, 5);
+        addOsc('sine', 230, 180, 0.24, 0.1);
+        break;
+      case 'drink':
+        duration = 0.13;
+        addOsc('triangle', 160, 90, 0.38, 0.1, -4);
+        addOsc('sine', 420, 260, 0.16, 0.08);
+        break;
+      case 'mate':
+        duration = 0.2;
+        addOsc(tt, 360, 860, 0.45, 0.2, 2);
+        addOsc('sine', 620, 1180, 0.24, 0.14, 9);
+        break;
+      case 'fruit':
+        duration = 0.2;
+        addOsc('sine', 760, 1220, 0.42, 0.2);
+        addOsc('triangle', 1140, 1480, 0.2, 0.16, 5);
+        break;
+      case 'extinctionWarning':
+        duration = 0.45;
+        addOsc('sine', 260, 74, 0.7, 0.45);
+        addOsc('triangle', 520, 160, 0.2, 0.34);
+        break;
+      case 'populationBoom':
+        duration = 0.38;
+        addOsc('triangle', 340, 680, 0.52, 0.38);
+        addOsc('sine', 510, 980, 0.26, 0.3);
+        break;
+      case 'ecosystemCollapse':
+        duration = 0.62;
+        addOsc('sawtooth', 120, 86, 0.45, 0.62, -2);
+        addOsc('triangle', 96, 62, 0.35, 0.56, 2);
+        break;
+      case 'pause':
+        duration = 0.22;
+        addOsc('triangle', 780, 320, 0.52, 0.2, -2);
+        addOsc('sine', 450, 220, 0.26, 0.22);
+        break;
+      case 'resume':
+        duration = 0.24;
+        addOsc('triangle', 280, 760, 0.5, 0.22, 3);
+        addOsc('sine', 420, 940, 0.23, 0.18, 6);
+        break;
+      case 'uiClick':
+      default:
+        duration = 0.09;
+        addOsc('triangle', 640, 430, 0.6, 0.09, 6);
+        addOsc('sine', 920, 660, 0.2, 0.09);
+        break;
+    }
+
+    setEnvelope(gainNode.gain, now, 0.55 * gm, duration);
+    const rendered = await offline.startRendering();
+    return rendered || null;
   }
 
   async _loadSample(url) {
@@ -184,7 +360,7 @@ export class SoundManager {
     }
 
     const config = getSoundEventConfig(event.type);
-    if (!config) return false;
+    if (!config || config.enabled === false) return false;
 
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const lastPlayed = this._lastPlayedAt.get(event.type) || 0;
@@ -258,7 +434,15 @@ export class SoundManager {
       }
     }
 
-    const played = this._playPreset(config.preset, gain, pan, speciesScale, event.species || null);
+    const played = this._playPreset(
+      config.preset,
+      gain,
+      pan,
+      speciesScale,
+      event.species || null,
+      event.type,
+      Number.isFinite(event.tick) ? event.tick : -1,
+    );
     if (played) {
       const soundGroup = event.species ? (SPECIES_SOUND_GROUP[event.species] || null) : null;
       this._emitLog({
@@ -655,11 +839,26 @@ export class SoundManager {
     return true;
   }
 
-  _playPreset(preset, gain, pan, speciesScale = null, species = null) {
-    // Try sample-based playback first; fall back to procedural synthesis
-    const sampleBuf = this._getSampleBuffer(preset);
-    if (sampleBuf) {
-      return this._playSample(sampleBuf, gain, pan, speciesScale);
+  _playPreset(preset, gain, pan, speciesScale = null, species = null, eventType = null, tick = -1) {
+    const groupName = species ? SPECIES_SOUND_GROUP[species] : null;
+    const variant = this._pickVariant(eventType || preset, species, tick);
+
+    // Procedural-first: play from pre-generated procedural cache when available.
+    const cachedProcedural = this._getCachedProceduralBuffer(preset, groupName, variant);
+    if (cachedProcedural) {
+      return this._playSample(cachedProcedural, gain, pan, speciesScale);
+    }
+
+    // Optional sample fallback path for future assets A/B testing.
+    const sampleCfg = getSoundEventConfig(eventType || '');
+    const allowSampleFallback = this._pipelineOptions.sampleFallbackEnabled
+      && !this._pipelineOptions.proceduralOnly
+      && sampleCfg?.sampleFallbackEnabled === true;
+    if (allowSampleFallback) {
+      const sampleBuf = this._getSampleBuffer(preset);
+      if (sampleBuf) {
+        return this._playSample(sampleBuf, gain, pan, speciesScale);
+      }
     }
 
     const context = this.context;
@@ -667,13 +866,14 @@ export class SoundManager {
     let duration = 0.12;
 
     // Resolve species group modifiers (default to smallMammal-like neutral)
-    const groupName = species ? SPECIES_SOUND_GROUP[species] : null;
     const gp = groupName ? SOUND_GROUP_PARAMS[groupName] : null;
     const pm = gp ? gp.pitchMul : 1;       // pitch multiplier
     const gm = gp ? gp.gainMul : 1;        // gain multiplier
     const nb = gp ? gp.noiseBand : null;    // noise filter type override
     const nf = gp ? gp.noiseFreq : 0;       // noise frequency override
     const tt = gp ? gp.toneType : null;     // oscillator type override
+    const variantDetune = (variant - 1) * 6;
+    const variantPitch = 1 + (variant - 1) * 0.05;
 
     const effectiveGain = gain * gm;
 
@@ -715,79 +915,95 @@ export class SoundManager {
     };
 
     // Helper: apply group pitch multiplier to a frequency
-    const pf = (freq) => freq * pm;
+    const pf = (freq) => freq * pm * variantPitch;
 
     switch (preset) {
       case 'attack':
-        // Scratch/cut: filtered noise burst + short square transient
-        duration = 0.11;
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 2200, 1.8, 0.6, 0.07, now));
-        addOscillator(tt || 'square', pf(520), pf(180), 0.35, 0.05);
+        // Retro+modern bite: layered transient, texture burst, and low thump.
+        duration = 0.14;
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 2600, 2.1, 0.52, 0.06, now));
+        collectBurst(this._addNoiseBurst(voiceGain, 'highpass', 4200, 1.4, 0.25, 0.035, now));
+        addOscillator(tt || 'square', pf(680), pf(240), 0.42, 0.07, variantDetune - 4);
+        addOscillator('triangle', pf(220), pf(110), 0.18, 0.1, variantDetune + 3);
         break;
       case 'death':
-        // Fall/thud: steep pitch-drop impact + muffled noise + sub layer
-        duration = 0.30;
-        collectBurst(this._addImpact(voiceGain, pf(180), 0.7, 0.30, now));
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 400, 0.6, 0.35, 0.12, now));
-        addOscillator(tt || 'triangle', pf(120), pf(40), 0.2, 0.30, -10);
+        // Weighted collapse with sub impact and filtered dust tail.
+        duration = 0.34;
+        collectBurst(this._addImpact(voiceGain, pf(190), 0.75, 0.34, now));
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 500, 0.75, 0.38, 0.16, now));
+        addOscillator(tt || 'triangle', pf(140), pf(44), 0.24, 0.3, -10 + variantDetune);
+        addOscillator('sine', pf(72), pf(42), 0.16, 0.28, variantDetune - 3);
         break;
       case 'eat':
-        // Bite/peck: sharp dry noise snap + minimal tonal body
-        duration = 0.07;
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'highpass', nf || 3000, 2.0, 0.5, 0.04, now));
-        addOscillator(tt || 'sine', pf(380), pf(250), 0.4, 0.07);
+        // Short crisp nibble with tonal click.
+        duration = 0.1;
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'highpass', nf || 3300, 2.2, 0.46, 0.04, now));
+        addOscillator(tt || 'square', pf(540), pf(300), 0.28, 0.065, variantDetune + 6);
+        addOscillator('sine', pf(300), pf(210), 0.24, 0.1, variantDetune - 2);
         break;
       case 'fruit':
         // Organic sparkle: not species-dependent (plant event)
-        duration = 0.18;
-        addOscillator('sine', 680, 1100, 0.5, 0.18, 3);
-        addOscillator('triangle', 1020, 1400, 0.2, 0.18);
-        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 4500, 3.0, 0.15, 0.06, now));
+        duration = 0.22;
+        addOscillator('sine', 740 * variantPitch, 1160 * variantPitch, 0.48, 0.2, 4 + variantDetune);
+        addOscillator('triangle', 1040 * variantPitch, 1520 * variantPitch, 0.22, 0.2, variantDetune + 8);
+        collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 4800, 3.1, 0.14, 0.07, now));
         break;
       case 'mate':
         // Soft chirp — group-coloured tone
-        duration = 0.15;
-        addOscillator(tt || 'sine', pf(400), pf(800), 0.6, 0.15, 3);
-        addOscillator(tt || 'sine', pf(800), pf(1200), 0.2, 0.12);
+        duration = 0.2;
+        addOscillator(tt || 'sine', pf(380), pf(860), 0.54, 0.2, 4 + variantDetune);
+        addOscillator('sine', pf(640), pf(1220), 0.2, 0.14, 11 + variantDetune);
+        addOscillator('triangle', pf(220), pf(310), 0.13, 0.16, variantDetune - 8);
         break;
       case 'drink':
         // Splash — group filter colours the water sound
-        duration = 0.10;
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 500, 0.8, 0.5, 0.08, now));
-        addOscillator(tt || 'sine', pf(80), pf(60), 0.25, 0.06);
+        duration = 0.13;
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 640, 0.9, 0.46, 0.09, now));
+        addOscillator(tt || 'sine', pf(120), pf(70), 0.22, 0.08, variantDetune - 5);
+        addOscillator('triangle', pf(260), pf(170), 0.15, 0.1, variantDetune + 2);
         break;
       case 'flee':
-        // Urgent rustle — group-coloured noise and pitch
         duration = 0.09;
-        collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 1800, 1.5, 0.55, 0.06, now));
-        addOscillator(tt || 'sawtooth', pf(500), pf(300), 0.3, 0.04);
+        collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 1800, 1.5, 0.5, 0.05, now));
+        addOscillator(tt || 'sawtooth', pf(450), pf(280), 0.22, 0.04, variantDetune);
         break;
       case 'extinctionWarning':
         // Ominous descending tone (ecosystem event, no species variation)
-        duration = 0.40;
-        addOscillator('sine', 250, 80, 0.7, 0.40);
-        addOscillator('sine', 60, 45, 0.3, 0.35);
+        duration = 0.45;
+        addOscillator('sine', 260, 78, 0.68, 0.45);
+        addOscillator('triangle', 520, 160, 0.2, 0.34, variantDetune);
+        addOscillator('sine', 62, 42, 0.22, 0.39, variantDetune - 3);
         break;
       case 'populationBoom':
         // Ascending chord
-        duration = 0.35;
-        addOscillator('sine', 400, 600, 0.5, 0.35);
-        addOscillator('sine', 600, 900, 0.3, 0.30);
-        addOscillator('sine', 800, 1200, 0.15, 0.25);
+        duration = 0.38;
+        addOscillator('triangle', 360, 700, 0.46, 0.38, variantDetune);
+        addOscillator('sine', 560, 980, 0.26, 0.32, variantDetune + 5);
+        addOscillator('sine', 840, 1320, 0.16, 0.26, variantDetune - 4);
         break;
       case 'ecosystemCollapse':
         // Dissonant drone
-        duration = 0.60;
-        addOscillator('sine', 90, 85, 0.6, 0.60);
-        addOscillator('sine', 95, 90, 0.5, 0.55);
-        addOscillator('sine', 135, 125, 0.35, 0.50);
-        collectBurst(this._addNoiseBurst(voiceGain, 'lowpass', 150, 0.4, 0.25, 0.40, now));
+        duration = 0.62;
+        addOscillator('sawtooth', 120, 86, 0.45, 0.62, variantDetune - 3);
+        addOscillator('triangle', 96, 62, 0.35, 0.56, variantDetune + 2);
+        addOscillator('sine', 170, 110, 0.17, 0.5, variantDetune + 8);
+        collectBurst(this._addNoiseBurst(voiceGain, 'lowpass', 210, 0.5, 0.26, 0.44, now));
+        break;
+      case 'pause':
+        duration = 0.22;
+        addOscillator('triangle', 780, 320, 0.52, 0.2, variantDetune - 2);
+        addOscillator('sine', 450, 220, 0.25, 0.22, variantDetune + 4);
+        break;
+      case 'resume':
+        duration = 0.24;
+        addOscillator('triangle', 280, 760, 0.5, 0.22, variantDetune + 3);
+        addOscillator('sine', 420, 940, 0.22, 0.18, variantDetune + 8);
         break;
       case 'uiClick':
       default:
-        duration = 0.08;
-        addOscillator('triangle', 620, 410, 0.8, 0.08);
-        addOscillator('sine', 860, 620, 0.2, 0.08, 7);
+        duration = 0.09;
+        addOscillator('triangle', 640, 430, 0.68, 0.09, 4 + variantDetune);
+        addOscillator('sine', 920, 660, 0.2, 0.09, 10 + variantDetune);
         break;
     }
 

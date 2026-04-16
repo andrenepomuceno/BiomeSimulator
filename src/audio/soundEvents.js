@@ -69,6 +69,15 @@ export const SOUND_GROUP_PARAMS = {
   },
 };
 
+/**
+ * Audio pipeline defaults.
+ * We currently run procedural-first and keep sample playback as an explicit fallback.
+ */
+export const AUDIO_PIPELINE_DEFAULTS = {
+  proceduralOnly: true,
+  sampleFallbackEnabled: false,
+};
+
 export const SOUND_EVENTS = {
   uiClick: {
     category: 'ui',
@@ -76,6 +85,22 @@ export const SOUND_EVENTS = {
     positional: false,
     cooldownMs: 40,
     baseGain: 0.16,
+    priority: 0,
+  },
+  pause: {
+    category: 'ui',
+    preset: 'pause',
+    positional: false,
+    cooldownMs: 120,
+    baseGain: 0.18,
+    priority: 0,
+  },
+  resume: {
+    category: 'ui',
+    preset: 'resume',
+    positional: false,
+    cooldownMs: 120,
+    baseGain: 0.18,
     priority: 0,
   },
   attack: {
@@ -139,6 +164,7 @@ export const SOUND_EVENTS = {
     samples: ['/audio/drink-1.wav', '/audio/drink-2.wav'],
   },
   flee: {
+    enabled: false,
     category: 'sfx',
     preset: 'flee',
     positional: true,

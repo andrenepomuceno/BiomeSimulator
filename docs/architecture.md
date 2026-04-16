@@ -47,6 +47,14 @@ block-beta
 | **Renderer** (`src/renderer/`) | Pixi.js only. No game logic. Reads data, draws frames. |
 | **Components** (`src/components/`) | React + Bootstrap UI. Read store, dispatch commands via hooks. App owns transient modal state for major overlays such as GameMenu, HelpModal, SimulationConfigModal, SimulationReport, and EntitySummaryWindow. |
 
+### Audio Runtime Boundary
+
+- Audio runs only on the main thread (`src/audio/` + `src/hooks/useAudio.js`) and does not execute in workers.
+- The simulation and renderer emit semantic events (`attack`, `death`, `pause`, etc.); `SoundManager` maps these to procedural synthesis.
+- The current pipeline is procedural-first: sounds are synthesized and cached after audio unlock.
+- Sample/WAV loading is retained as a future fallback path, but disabled by default.
+- Flee state still exists in simulation and visuals, but flee SFX is disabled in the audio pipeline.
+
 ---
 
 ## Source Graph

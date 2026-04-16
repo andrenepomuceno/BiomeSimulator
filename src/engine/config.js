@@ -49,6 +49,11 @@ const BASE_CONFIG = {
   movement_sub_ticks: 5,
   flee_lock_ticks: 5,   // ticks to commit to fleeing the same threat before re-evaluating
   chase_lock_ticks: 5,  // ticks to commit to chasing the same prey before re-evaluating
+  carnivore_retreat_hp_normal_threshold: 0.30,     // flee if hp < 30% (normal)
+  carnivore_retreat_hp_desperate_threshold: 0.40,  // flee if hp < 40% when hungry/thirsty
+  carnivore_retreat_power_margin: 3,               // flee only if threat.attack > animal.attack + margin
+  carnivore_retreat_desperate_hunger: 45,          // hunger level that triggers desperate mode
+  carnivore_retreat_desperate_thirst: 55,          // thirst level that triggers desperate mode
 
   // Flora
   initial_plant_density: 0.10,

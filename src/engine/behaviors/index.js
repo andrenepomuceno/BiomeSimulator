@@ -3,7 +3,7 @@ import { DIET } from '../animalSpecies.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from '../benchmarkProfiler.js';
 import { S_ADULT, S_SEED } from '../flora.js';
 import { DEEP_WATER, WATER } from '../world.js';
-import { _findNearestThreat, _isThreatValidFor } from './combat.js';
+import { _findNearestThreat, _isThreatValidFor, _shouldRetreatFromCarnivore } from './combat.js';
 import { _eatPlantTile } from './eating.js';
 import { _computePath, _fleeFrom, _randomWalk, _reusePathIfValid, _walkPath } from './movement.js';
 import { _findMate, _doMate, giveBirth } from './reproduce.js';
@@ -157,6 +157,31 @@ export function decideAndAct(animal, world, spatialHash) {
       // No threat — clear flee episode
       animal._fleeTargetId = null;
       animal._fleeLockUntilTick = 0;
+    }
+
+    // Carnivore/omnivore retreat: flee from a stronger predator when badly wounded
+    if (animal.diet === DIET.CARNIVORE || animal.diet === DIET.OMNIVORE) {
+      const tick = world.clock.tick;
+      const fleeLockTicks = animal._config.flee_lock_ticks ?? world.config.flee_lock_ticks ?? 5;
+      let retreatThreat = null;
+      if (tick < animal._fleeLockUntilTick && _isThreatValidFor(animal, animal._cachedThreat, vision)
+          && _shouldRetreatFromCarnivore(animal, animal._cachedThreat, world)) {
+        retreatThreat = animal._cachedThreat;
+      } else {
+        const candidate = _findNearestThreat(animal, world, spatialHash, vision);
+        if (candidate && _shouldRetreatFromCarnivore(animal, candidate, world)) {
+          retreatThreat = candidate;
+        }
+      }
+      if (retreatThreat) {
+        if (retreatThreat.id !== animal._fleeTargetId) {
+          animal.logAction(tick, 'FLED', { from: retreatThreat.species, threatId: retreatThreat.id });
+          animal._fleeTargetId = retreatThreat.id;
+        }
+        animal._fleeLockUntilTick = tick + fleeLockTicks;
+        _fleeFrom(animal, retreatThreat, world);
+        return;
+      }
     }
 
     if (animal.hunger > (_decisionThresholds(animal).critical_hunger ?? 45)) {

@@ -75,6 +75,18 @@ export function _isThreatValidFor(animal, threat, vision) {
   return false;
 }
 
+export function _shouldRetreatFromCarnivore(animal, threat, world) {
+  if (!threat || !threat.alive || threat.id === animal.id) return false;
+  const desperate = animal.hunger > (world.config.carnivore_retreat_desperate_hunger ?? 45)
+    || animal.thirst > (world.config.carnivore_retreat_desperate_thirst ?? 55);
+  const hpThreshold = desperate
+    ? (world.config.carnivore_retreat_hp_desperate_threshold ?? 0.40)
+    : (world.config.carnivore_retreat_hp_normal_threshold ?? 0.30);
+  if (animal.hp >= animal.maxHp * hpThreshold) return false;
+  const powerMargin = world.config.carnivore_retreat_power_margin ?? 3;
+  return threat._config.attack_power > animal._config.attack_power + powerMargin;
+}
+
 export function _findNearestThreat(animal, world, spatialHash, vision) {
   const collector = spatialHash._benchmarkCollector;
   const startedAt = benchmarkStart(collector);

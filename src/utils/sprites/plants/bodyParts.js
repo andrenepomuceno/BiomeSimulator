@@ -50,7 +50,9 @@ export function drawCapTexture(ctx, x, y, w, h, cap, capDark) {
  * @param {number} h     - rect height (default 4)
  */
 export function drawGroundBase(ctx, cx, baseY, w, stemColor, h = 4) {
-  rect(ctx, cx, baseY, w, h, darken(stemColor, 0.30));
+  // Renderer already draws world shadows; keep only a very subtle contact hint.
+  const hintW = Math.max(1, w - 2);
+  rect(ctx, cx + 1, baseY, hintW, 1, 'rgba(0,0,0,0.06)');
 }
 
 // ─── Bush foliage ───────────────────────────────────────────────────────────
@@ -299,11 +301,40 @@ export function drawSeedHead(ctx, tipX, tipY, seedColor) {
  * Draw a low herb canopy with layered color and texture.
  */
 export function drawHerbCanopy(ctx, x, y, w, h, leaf, leafDark) {
-  rect(ctx, x, y, w, h, leaf);
-  rect(ctx, x + 2, y - 4, Math.max(4, w - 4), 4, leaf);
-  rect(ctx, x + 3, y + 2, Math.max(4, w - 6), 2, leafDark);
-  drawLeafTexture(ctx, x, y - 4, w, h + 4, leaf, leafDark);
-  ao(ctx, x + 1, y + h - 1, Math.max(2, w - 2), 2, 0.08);
+  const cx = x + Math.floor(w / 2);
+  const cy = y + Math.floor(h / 2);
+  const rx = Math.max(3, Math.floor(w * 0.32));
+  const ry = Math.max(2, Math.floor(h * 0.36));
+
+  function texEllipse(ex, ey, erx, ery, colors, density) {
+    for (let dy = -ery; dy <= ery; dy++) {
+      const hw = Math.round(erx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ery * ery))));
+      if (hw > 0) speckle(ctx, ex - hw, ey + dy, hw * 2 + 1, 1, colors, density);
+    }
+  }
+
+  // Back leaves
+  ellipse(ctx, cx - Math.max(2, Math.floor(rx * 0.9)), cy + 1, Math.max(2, Math.floor(rx * 0.95)), ry, leafDark);
+  ellipse(ctx, cx + Math.max(2, Math.floor(rx * 0.9)), cy + 1, Math.max(2, Math.floor(rx * 0.95)), ry, leafDark);
+
+  // Main crown
+  ellipse(ctx, cx, cy, rx, ry, leaf);
+  ellipse(ctx, cx, cy - Math.max(1, Math.floor(ry * 0.85)), Math.max(2, Math.floor(rx * 0.72)), Math.max(1, Math.floor(ry * 0.62)), lighten(leaf, 0.15));
+
+  // Lower shade for depth
+  for (let dy = Math.max(1, Math.floor(ry * 0.25)); dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+    if (hw > 0) rect(ctx, cx - hw, cy + dy, hw * 2 + 1, 1, darken(leaf, 0.06 + dy * 0.012));
+  }
+
+  // Texture clipped to each lobe to avoid rectangular artifacts.
+  const frontCols = [leafDark, darken(leaf, 0.10), lighten(leaf, 0.06)];
+  const backCols = [darken(leafDark, 0.08), lighten(leafDark, 0.05)];
+  texEllipse(cx, cy, rx, ry, frontCols, 0.22);
+  texEllipse(cx - Math.max(2, Math.floor(rx * 0.9)), cy + 1, Math.max(2, Math.floor(rx * 0.95)), ry, backCols, 0.17);
+  texEllipse(cx + Math.max(2, Math.floor(rx * 0.9)), cy + 1, Math.max(2, Math.floor(rx * 0.95)), ry, backCols, 0.17);
+
+  ao(ctx, cx - Math.floor(rx * 1.9), y + h - 1, Math.max(2, Math.floor(rx * 3.8)), 2, 0.08);
 }
 
 /**

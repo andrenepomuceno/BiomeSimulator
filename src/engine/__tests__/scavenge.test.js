@@ -138,9 +138,9 @@ describe('scavenge behaviors', () => {
     expect(egg.alive).toBe(false);
     expect(egg.state).toBe(AnimalState.DEAD);
     expect(egg._deathTick).toBe(61);
-    // Egg eating no longer grants hunger/energy; only EAT action cost is applied
-    expect(animal.hunger).toBe(50);
-    expect(animal.energy).toBe(38); // 40 - 2 (EAT cost)
+    // hunger -20, energy +10, then EAT cost -2
+    expect(animal.hunger).toBe(30);
+    expect(animal.energy).toBe(48); // 40 + 10 - 2
     expect(animal.state).toBe(AnimalState.EATING);
     expect(movementMocks.computePath).not.toHaveBeenCalled();
     expect(world.vacateEgg).toHaveBeenCalledWith(egg.x, egg.y);

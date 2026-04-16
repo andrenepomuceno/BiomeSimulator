@@ -48,6 +48,11 @@ const BASE_CONFIG = {
   sleep_threshold_offset_wrong_period: 10,
   activity_energy_penalty_wrong_period: 1.3,
   movement_sub_ticks: 5,
+  scavenge_corpse_hunger_restore: 60,  // hunger reduced when eating a corpse
+  scavenge_corpse_energy_restore: 15,  // energy gained when eating a corpse
+  scavenge_corpse_hp_restore: 8,       // hp gained when eating a corpse
+  scavenge_egg_hunger_restore: 20,     // hunger reduced when eating an egg
+  scavenge_egg_energy_restore: 10,     // energy gained when eating an egg
   flee_lock_ticks: 5,   // ticks to commit to fleeing the same threat before re-evaluating
   chase_lock_ticks: 5,  // ticks to commit to chasing the same prey before re-evaluating
   carnivore_retreat_hp_normal_threshold: 0.30,     // flee if hp < 30% (normal)

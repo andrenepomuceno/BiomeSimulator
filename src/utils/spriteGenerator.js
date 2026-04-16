@@ -75,6 +75,36 @@ const TEMPLATE_DRAW = {
   snake: drawSnake,
 };
 
+function normalizeSleepTemplate(template) {
+  switch (template) {
+    case 'crow':
+      return 'bird';
+    case 'beetle':
+    case 'mosquito':
+      return 'insect';
+    case 'crocodile':
+    case 'lizard':
+    case 'snake':
+      return 'reptile';
+    default:
+      return template;
+  }
+}
+
+export function getSleepingTextureKeyForSpecies(species) {
+  return `${species}_SLEEPING`;
+}
+
+function getSleepingParamsForSpecies(species) {
+  const params = SPECIES_PARAMS[species];
+  if (!params) return null;
+  return {
+    sleepTemplate: normalizeSleepTemplate(params.template),
+    body: params.body,
+    accent: params.accent,
+  };
+}
+
 /**
  * Draw a single sprite frame onto the given context at (0,0).
  * @param {CanvasRenderingContext2D} ctx - cleared 64×64 context
@@ -86,8 +116,17 @@ export function drawSpeciesFrame(ctx, species, direction, frame) {
   ctx.clearRect(0, 0, DESIGN * SCALE, DESIGN * SCALE);
   ctx.imageSmoothingEnabled = false;
 
+  if (species.endsWith('_SLEEPING')) {
+    const baseSpecies = species.slice(0, -9);
+    const sleepingParams = getSleepingParamsForSpecies(baseSpecies);
+    if (!sleepingParams) return;
+    drawSleeping(ctx, sleepingParams);
+    addOutline(ctx);
+    return;
+  }
+
   switch (species) {
-    case 'SLEEPING': drawSleeping(ctx); break;
+    case 'SLEEPING': drawSleeping(ctx, { sleepTemplate: 'quadruped' }); break;
     case 'DEAD':     drawDead(ctx); break;
     case 'EGG':      drawEgg(ctx); break;
     case 'PUPA':     drawPupa(ctx); break;

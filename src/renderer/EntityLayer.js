@@ -5,6 +5,7 @@
  */
 import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures.js';
+import { getSleepingTextureKeyForSpecies } from '../utils/spriteGenerator.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
 import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
 import { FRAME_SIZE } from '../utils/spriteAtlas.js';
@@ -158,7 +159,7 @@ export class EntityLayer {
   _getTexKey(a, direction, animFrame) {
     if (a.lifeStage === -1) return 'EGG'; // LifeStage.EGG = -1
     if (a.state === 9) return 'DEAD';
-    if (a.state === 5) return 'SLEEPING';
+    if (a.state === 5) return getSleepingTextureKeyForSpecies(a.species);
     if (a.lifeStage === 4) return 'PUPA';
     return `${a.species}_${DIR_NAMES[direction] || 'DOWN'}_${animFrame}`;
   }

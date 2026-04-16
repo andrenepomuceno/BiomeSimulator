@@ -9,6 +9,25 @@ import { drawFurTexture } from '../bodyParts.js';
  * Draw a sleeping animal as a curled lump with Zzz.
  */
 export function drawSleeping(ctx, params = {}) {
+  const sleepTemplate = params.sleepTemplate || 'quadruped';
+
+  if (sleepTemplate === 'bird') {
+    drawSleepingBird(ctx, params);
+    return;
+  }
+  if (sleepTemplate === 'reptile') {
+    drawSleepingReptile(ctx, params);
+    return;
+  }
+  if (sleepTemplate === 'insect') {
+    drawSleepingInsect(ctx, params);
+    return;
+  }
+
+  drawSleepingQuadruped(ctx, params);
+}
+
+function drawSleepingQuadruped(ctx, params = {}) {
   const body = params.body || '#808080';
   const shadow = darken(body, 0.15);
   const highlight = lighten(body, 0.10);
@@ -40,6 +59,69 @@ export function drawSleeping(ctx, params = {}) {
   drawZ(ctx, cx + 10, cy - 12, 5, outline);
   drawZ(ctx, cx + 16, cy - 18, 4, shadow);
   drawZ(ctx, cx + 20, cy - 23, 3, highlight);
+}
+
+function drawSleepingBird(ctx, params = {}) {
+  const body = params.body || '#5c5f64';
+  const wing = params.accent || darken(body, 0.12);
+  const beak = '#d3aa5a';
+  const shadow = darken(body, 0.16);
+  const highlight = lighten(body, 0.10);
+  const outline = darken(body, 0.30);
+  const cx = 32;
+  const cy = 33;
+
+  ellipse(ctx, cx - 1, cy + 1, 9, 7, body);
+  ellipse(ctx, cx - 4, cy + 1, 6, 5, wing);
+  ellipse(ctx, cx + 4, cy - 1, 4, 4, body);
+  ellipse(ctx, cx + 2, cy - 3, 3, 2, highlight);
+  rect(ctx, cx + 8, cy, 3, 2, beak);
+  px(ctx, cx + 11, cy, darken(beak, 0.18));
+  rect(ctx, cx - 6, cy + 8, 12, 1, shadow);
+
+  drawZ(ctx, cx + 10, cy - 12, 4, outline);
+  drawZ(ctx, cx + 15, cy - 17, 3, shadow);
+}
+
+function drawSleepingReptile(ctx, params = {}) {
+  const body = params.body || '#6f8a59';
+  const shadow = darken(body, 0.15);
+  const highlight = lighten(body, 0.10);
+  const stripe = params.accent || darken(body, 0.10);
+  const outline = darken(body, 0.32);
+  const cx = 32;
+  const cy = 34;
+
+  ellipse(ctx, cx - 3, cy + 1, 11, 5, body);
+  ellipse(ctx, cx + 6, cy - 1, 7, 4, body);
+  ellipse(ctx, cx - 8, cy + 2, 5, 3, body);
+  rect(ctx, cx - 10, cy + 1, 16, 1, stripe);
+  rect(ctx, cx - 8, cy + 3, 12, 1, stripe);
+  rect(ctx, cx + 6, cy - 1, 2, 1, highlight);
+  px(ctx, cx + 10, cy - 1, '#111111');
+  rect(ctx, cx - 8, cy + 7, 16, 1, shadow);
+
+  drawZ(ctx, cx + 9, cy - 11, 4, outline);
+}
+
+function drawSleepingInsect(ctx, params = {}) {
+  const body = params.body || '#525252';
+  const accent = params.accent || darken(body, 0.08);
+  const shadow = darken(body, 0.18);
+  const highlight = lighten(body, 0.10);
+  const outline = darken(body, 0.30);
+  const cx = 32;
+  const cy = 33;
+
+  ellipse(ctx, cx - 3, cy + 1, 4, 4, accent);
+  ellipse(ctx, cx + 2, cy + 1, 5, 5, body);
+  ellipse(ctx, cx + 8, cy + 1, 4, 4, accent);
+  rect(ctx, cx - 1, cy - 4, 8, 2, highlight);
+  rect(ctx, cx - 6, cy + 5, 3, 1, shadow);
+  rect(ctx, cx + 8, cy + 5, 3, 1, shadow);
+  px(ctx, cx + 9, cy, '#111111');
+
+  drawZ(ctx, cx + 10, cy - 12, 4, outline);
 }
 
 function drawZ(ctx, x, y, size, color) {

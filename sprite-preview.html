@@ -46,13 +46,13 @@
     const FRAME = 256;
 
     // ── Fauna Atlas ──────────────────────────────────────────────────
-    const FAUNA_COLS = 12;
     const SPECIES = [
       'RABBIT','SQUIRREL','BEETLE','GOAT','DEER','FOX','WOLF','BOAR',
       'BEAR','RACCOON','CROW','MOSQUITO','CATERPILLAR','CRICKET','LIZARD',
       'SNAKE','HAWK','CROCODILE'
     ];
-    const SPECIALS = ['SLEEPING','DEAD','EGG','PUPA'];
+    const SPECIALS = ['DEAD','EGG','PUPA'];
+    const FAUNA_COLS = 13;
     const FAUNA_ROWS = SPECIES.length + 1;
 
     const faunaAtlas = document.createElement('canvas');
@@ -77,16 +77,18 @@
           col++;
         }
       }
+      drawSpeciesFrame(cctx, `${species}_SLEEPING`, 0, 0);
+      fctx.drawImage(cell, 12 * FRAME, r * FRAME);
     }
     for (let s = 0; s < SPECIALS.length; s++) {
       drawSpeciesFrame(cctx, SPECIALS[s], 0, 0);
       fctx.drawImage(cell, s * FRAME, SPECIES.length * FRAME);
     }
 
-    const faunaTotal = SPECIES.length * 12 + SPECIALS.length;
+    const faunaTotal = SPECIES.length * 13 + SPECIALS.length;
     document.getElementById('fauna-info').textContent =
       `${faunaAtlas.width}×${faunaAtlas.height} px | ${FAUNA_COLS} cols × ${FAUNA_ROWS} rows | ${faunaTotal} frames | ` +
-      `Row format: DOWN₀ DOWN₁ DOWN₂  LEFT₀ LEFT₁ LEFT₂  RIGHT₀ RIGHT₁ RIGHT₂  UP₀ UP₁ UP₂`;
+      `Row format: DOWN₀ DOWN₁ DOWN₂  LEFT₀ LEFT₁ LEFT₂  RIGHT₀ RIGHT₁ RIGHT₂  UP₀ UP₁ UP₂  SLEEPING | specials na última linha`;
 
     // ── Flora Atlas ─────────────────────────────────────────────────
     const FLORA_COLS = 18; // 6 stages × 3 frames

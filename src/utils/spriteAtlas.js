@@ -1,9 +1,9 @@
 /**
  * Sprite atlas frame registry and loader.
  *
- * Fauna atlas: 18 species × 4 directions × 3 walk frames = 216 walk frames +
- * 4 special states (SLEEPING, DEAD, EGG, PUPA) = 220 total frames.
- * Layout: 12 columns × 19 rows (one row per species, last row for specials).
+ * Fauna atlas: 18 species × (12 walk frames + 1 sleeping frame) = 234 frames +
+ * 3 global special states (DEAD, EGG, PUPA) = 237 total frames.
+ * Layout: 13 columns × 19 rows (one row per species, last row for specials).
  *
  * Flora atlas: 15 plant types × 6 stages × 3 frames = 270 frames.
  * Layout: 18 columns × 15 rows (one row per species).
@@ -20,13 +20,13 @@ import { drawPlantFrame } from './plantSpriteGenerator.js';
 
 // ── Atlas geometry ──────────────────────────────────────────────────
 export const FRAME_SIZE = 256;           // px per frame in the atlas
-const FAUNA_COLS = 12;                    // 4 dirs × 3 frames per species row
 const FLORA_COLS = 18;                    // 6 stages × 3 frames per species row
 
 // ── Fauna frame map ─────────────────────────────────────────────────
-// Row per species (0..17): 12 cells = DOWN_0..2, LEFT_0..2, RIGHT_0..2, UP_0..2
-// Row 18: specials — SLEEPING, DEAD, EGG, PUPA (4 cells)
-const FAUNA_SPECIAL_KEYS = ['SLEEPING', 'DEAD', 'EGG', 'PUPA'];
+// Row per species (0..17): 13 cells = 12 directional walk frames + SLEEPING
+// Row 18: global specials — DEAD, EGG, PUPA
+const FAUNA_SPECIAL_KEYS = ['DEAD', 'EGG', 'PUPA'];
+const FAUNA_COLS = 13;
 const SPECIES_ORDER = Object.keys(SPECIES_INFO);  // 18 species
 
 function buildFaunaFrames() {
@@ -44,6 +44,9 @@ function buildFaunaFrames() {
         idx++;
       }
     }
+    const sleepKey = `${species}_SLEEPING`;
+    map[sleepKey] = { col: 12, row, x: 12 * FRAME_SIZE, y: row * FRAME_SIZE };
+    idx++;
   }
   // Special states (single frame each) on the last row
   const specRow = SPECIES_ORDER.length;
@@ -115,6 +118,13 @@ function buildFaunaAtlasCanvas() {
         drawSpeciesFrame(cellCtx, species, d, f);
         ctx.drawImage(cell, frame.x, frame.y);
       }
+    }
+
+    const sleepKey = `${species}_SLEEPING`;
+    const sleepFrame = map[sleepKey];
+    if (sleepFrame) {
+      drawSpeciesFrame(cellCtx, sleepKey, 0, 0);
+      ctx.drawImage(cell, sleepFrame.x, sleepFrame.y);
     }
   }
 
@@ -189,6 +199,11 @@ export async function loadFaunaAtlas() {
         baseTexture.once('loaded', resolve);
         baseTexture.once('error', reject);
       });
+    }
+    const expectedW = FAUNA_FRAMES.cols * FRAME_SIZE;
+    const expectedH = FAUNA_FRAMES.rows * FRAME_SIZE;
+    if (baseTexture.width < expectedW || baseTexture.height < expectedH) {
+      throw new Error('fauna atlas dimensions do not match current frame map');
     }
   } catch {
     // Fallback: build procedurally

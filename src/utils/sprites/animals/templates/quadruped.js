@@ -23,6 +23,9 @@ export function drawQuadruped(ctx, params, dir, frame) {
   const eyeIris = params.eyeIris || eye;
   const eyeWhite = params.eyeWhite || '#ffffff';
   const furTex = params.furTexture || darken(body, 0.06);
+  const roundedBody = !!params.roundedBody;
+  const heavyPaws = !!params.heavyPaws;
+  const shoulderHump = !!params.shoulderHump;
 
   const cx = 32;
   const cy = 36;
@@ -60,6 +63,15 @@ export function drawQuadruped(ctx, params, dir, frame) {
     ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.08);
     // Fur texture — vertical streaks (head-to-tail direction in top-down view)
     drawFurTexture(ctx, bx + 3, by + 6, w - 6, h - 12, body, Math.PI / 2);
+    if (roundedBody) {
+      rect(ctx, bx + 1, by + 5, 1, h - 10, body);
+      rect(ctx, bx + w - 2, by + 5, 1, h - 10, body);
+      rect(ctx, bx + 5, by - 1, w - 10, 1, highlight);
+    }
+    if (shoulderHump) {
+      rect(ctx, bx + 7, by, w - 14, 1, lighten(body, 0.14));
+      rect(ctx, bx + 8, by + 1, w - 16, 1, highlight2);
+    }
     // Spots (deer)
     if (params.spots) {
       rect(ctx, bx + 6, by + 6, 3, 3, accent);
@@ -138,6 +150,10 @@ export function drawQuadruped(ctx, params, dir, frame) {
     rect(ctx, bx + w - 7, legY + legShift, 4, 4, body);
     rect(ctx, bx + w - 7, legY + 4 + legShift, 4, 3, outline);
     rect(ctx, bx + w - 6, legY + 6 + legShift, 2, 2, pawCol);
+    if (heavyPaws) {
+      rect(ctx, bx + 3, legY + 7 - legShift, 4, 1, pawCol);
+      rect(ctx, bx + w - 7, legY + 7 + legShift, 4, 1, pawCol);
+    }
 
     // -- Tail --
     if (params.tail) {

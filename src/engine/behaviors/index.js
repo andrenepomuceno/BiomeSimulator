@@ -215,9 +215,15 @@ export function decideAndAct(animal, world, spatialHash) {
     if (animal.energy < _calculateEffectiveSleepThreshold(animal, isNight, world.config)) {
       const terrain = world.terrain[world.idx(animal.x, animal.y)];
       if (terrain !== WATER && terrain !== DEEP_WATER) {
-        animal.logAction(world.clock.tick, 'FELL_ASLEEP', { energy: Math.round(animal.energy) });
-        animal.state = AnimalState.SLEEPING;
-        return;
+        // Don't sleep during combat: threat nearby, recently attacked, or HP below full
+        const inCombat = animal.attackCooldown > 0
+          || (world.clock.tick < animal._fleeLockUntilTick && animal._cachedThreat?.alive)
+          || animal.hp < animal.maxHp * (world.config.sleep_block_hp_threshold ?? 0.85);
+        if (!inCombat) {
+          animal.logAction(world.clock.tick, 'FELL_ASLEEP', { energy: Math.round(animal.energy) });
+          animal.state = AnimalState.SLEEPING;
+          return;
+        }
       }
     }
 

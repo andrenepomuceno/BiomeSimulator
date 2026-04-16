@@ -97,6 +97,7 @@ export function useSimulation() {
           }
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
           if (msg.fruitChanges) store.setFruitChanges(msg.fruitChanges);
+          if (msg.itemChanges) store.setItemChanges(msg.itemChanges);
           if (msg.plantsFullSync) {
             store.setPlantSnapshot({
               width: msg.plantsFullSync.width,

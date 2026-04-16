@@ -3,6 +3,8 @@
  */
 import { DEFAULT_DAY_FRACTION, DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 import { DIET } from './animalSpecies.js';
+import { SpatialHash } from './spatialHash.js';
+import { GroundItem, ITEM_TYPE, nextItemId, meatDropRange } from './items.js';
 
 // Terrain types
 export const WATER = 0;
@@ -122,6 +124,13 @@ export class World {
 
     // Entities that died during the current fauna phase.
     this._deathsThisTick = [];
+
+    // Ground items
+    this.items = [];            // GroundItem instances currently alive
+    this.itemChanges = [];      // [{op:'add'|'remove', item: delta}] per tick
+    this._itemById = new Map(); // id → GroundItem for fast lookup
+    this._itemSpatialHash = new SpatialHash(16);
+    this._massDropMap = null;   // lazy-loaded from config; set by simulation.js
   }
 
   nextId() {
@@ -215,9 +224,103 @@ export class World {
     entity.state = 9;
     entity._deathTick = this.clock.tick;
     if (entity.lifeStage === -1) this.vacateEgg(entity.x, entity.y);
-    else this.vacateAnimal(entity.x, entity.y);
+    else {
+      this.vacateAnimal(entity.x, entity.y);
+      this._spawnMeatDrops(entity);
+    }
     this._deathsThisTick.push(entity);
     return true;
+  }
+
+  /** Spawn 0-N meat items in a radius around a dead animal. */
+  _spawnMeatDrops(entity) {
+    if (!this._massDropMap) return;
+    const entry = this._massDropMap[entity.species];
+    if (!entry) return;
+    const [min, max] = entry.dropRange;
+    if (max === 0) return;
+    const count = min + Math.floor(Math.random() * (max - min + 1));
+    const radius = (this.config.item_drop_radius_animal ?? 2);
+    for (let i = 0; i < count; i++) {
+      this.spawnItem(entity.x | 0, entity.y | 0, ITEM_TYPE.MEAT, entity.species, radius);
+    }
+  }
+
+  /**
+   * Spawn a ground item near (cx, cy). Falls back gracefully if no clear tile found.
+   */
+  spawnItem(cx, cy, type, source, radius = 2) {
+    const tile = this._findItemTile(cx, cy, radius);
+    if (!tile) return null;
+    const item = new GroundItem(nextItemId(), tile.x, tile.y, type, source, this.clock.tick);
+    this.items.push(item);
+    this._itemById.set(item.id, item);
+    this._itemSpatialHash.insert(item);
+    this.itemChanges.push({ op: 'add', item: item.toDelta() });
+    return item;
+  }
+
+  /**
+   * Find a random walkable tile within radius for item placement.
+   * Returns {x, y} or null if none found.
+   */
+  _findItemTile(cx, cy, radius) {
+    const candidates = [];
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= this.width || ny >= this.height) continue;
+        const t = this.terrain[ny * this.width + nx];
+        if (t === WATER || t === DEEP_WATER || t === MOUNTAIN) continue;
+        // Avoid stacking items on the same tile
+        if (this._itemSpatialHash.queryRadius(nx + 0.5, ny + 0.5, 0.6).length > 0) continue;
+        candidates.push({ x: nx, y: ny });
+      }
+    }
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  /** Mark an item consumed and remove from all data structures. */
+  removeItem(item) {
+    if (item.consumed) return;
+    item.consumed = true;
+    this._itemById.delete(item.id);
+    this._itemSpatialHash.remove(item);
+    const idx = this.items.indexOf(item);
+    if (idx !== -1) this.items.splice(idx, 1);
+    this.itemChanges.push({ op: 'remove', item: item.toDelta() });
+  }
+
+  /**
+   * Decay and transform ground items each tick.
+   * Called once per tick by the main simulation loop (simulation.js).
+   */
+  tickItemLifecycle(config) {
+    const tick = this.clock.tick;
+    const meatDecay   = config.item_meat_decay_ticks   ?? 300;
+    const fruitToSeed = config.item_fruit_to_seed_ticks ?? 200;
+    const seedGerm    = config.item_seed_germination_ticks ?? 400;
+
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      const item = this.items[i];
+      const age = tick - item.createdTick;
+
+      if (item.type === ITEM_TYPE.MEAT) {
+        if (age >= meatDecay) this.removeItem(item);
+      } else if (item.type === ITEM_TYPE.FRUIT) {
+        if (age >= fruitToSeed) {
+          // Transform fruit → seed in place (reset age clock for seed timer)
+          this._itemSpatialHash.remove(item);
+          item.type = ITEM_TYPE.SEED;
+          item.createdTick = tick;
+          this._itemSpatialHash.insert(item);
+          this.itemChanges.push({ op: 'update', item: item.toDelta() });
+        }
+      } else if (item.type === ITEM_TYPE.SEED) {
+        if (age >= seedGerm) this.removeItem(item);
+      }
+    }
   }
 
   logPlantEvent(idx, event, detail) {

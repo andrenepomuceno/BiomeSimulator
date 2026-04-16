@@ -3,8 +3,12 @@ import { idxToXY, shuffleInPlace } from '../helpers.js';
 import { DIRT, MOUNTAIN, MUD, ROCK } from '../world.js';
 import { P_NONE, S_ADULT, S_FRUIT, S_SEED } from './constants.js';
 import { _canPlantGrow, _countAdjacentPlants } from './helpers.js';
-import { PRODUCTION_CHANCES, REPRODUCTION_MODES, SPECIES_TERRAIN_GROWTH } from './lookups.js';
+import { PRODUCTION_CHANCES, REPRODUCTION_MODES, SPECIES_TERRAIN_GROWTH, TREE_TYPES } from './lookups.js';
 import { _seasonReproMult, getSeason } from './modifiers.js';
+import { ITEM_TYPE } from '../items.js';
+import { buildTreeDropProfiles } from '../plantSpecies.js';
+
+const TREE_DROP_PROFILES = buildTreeDropProfiles();
 
 const DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
 
@@ -76,6 +80,23 @@ export function produceOffspring(world) {
     if (destTerrain === MOUNTAIN && Math.random() > mountainRootChance) continue;
 
     const offspringStage = mode === 'FRUIT' ? S_FRUIT : S_SEED;
+
+    if (TREE_TYPES.has(ptype)) {
+      // Trees drop fruit/seed items instead of creating a plant tile
+      const profile = TREE_DROP_PROFILES[ptype];
+      if (profile) {
+        const [dropMin, dropMax] = profile.countRange;
+        const dropCount = dropMin + Math.floor(Math.random() * (dropMax - dropMin + 1));
+        const itemType = profile.itemType === 'SEED' ? ITEM_TYPE.SEED : ITEM_TYPE.FRUIT;
+        const radius = world.config.item_drop_radius_plant ?? 2;
+        for (let d = 0; d < dropCount; d++) {
+          world.spawnItem(x, y, itemType, ptype, radius);
+        }
+        births++;
+      }
+      continue;
+    }
+
     world.plantType[ni] = ptype;
     world.plantStage[ni] = offspringStage;
     world.plantAge[ni] = 0;

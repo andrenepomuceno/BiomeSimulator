@@ -6,6 +6,7 @@ import { Camera } from './Camera.js';
 import { TerrainLayer } from './TerrainLayer.js';
 import { PlantLayer } from './PlantLayer.js';
 import { EntityLayer } from './EntityLayer.js';
+import { ItemLayer } from './ItemLayer.js';
 import { AnimationLayer } from './AnimationLayer.js';
 import useSimStore from '../store/simulationStore.js';
 import { RENDERER_CONFIG } from '../engine/config.js';
@@ -54,6 +55,7 @@ export class GameRenderer {
       this.terrainLayer.setRenderer(this.app.renderer);
     }
     this.plantLayer = new PlantLayer(this._depthContainer, this._shadowContainer);
+    this.itemLayer = new ItemLayer(this._depthContainer);
     this.animationLayer = new AnimationLayer();
     this.entityLayer = new EntityLayer(
       this.animationLayer,
@@ -65,6 +67,7 @@ export class GameRenderer {
 
     this.worldContainer.addChild(this.terrainLayer.container);
     this.worldContainer.addChild(this.plantLayer.container);  // pixel overlay only
+    this.worldContainer.addChild(this.itemLayer.pixelContainer); // item pixel dots
     this.worldContainer.addChild(this._shadowContainer);
     this.worldContainer.addChild(this._depthContainer);
     this.worldContainer.addChild(this._overlayContainer);
@@ -202,6 +205,13 @@ export class GameRenderer {
         lastTickAt: Date.now(),
       });
     }
+  }
+
+  /** Apply incremental item changes (add/remove/update) from the simulation. */
+  updateItems(itemChanges) {
+    if (!itemChanges || itemChanges.length === 0) return;
+    this.itemLayer.updateItems(itemChanges);
+    this.itemLayer.updateZoom(this.camera.zoom);
   }
 
   updateEntities(animals, renderer, tick, zoom) {

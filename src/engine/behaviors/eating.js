@@ -1,6 +1,7 @@
 import { AnimalState } from '../entities.js';
 import { P_NONE, S_ADULT, S_NONE, S_SEED } from '../flora.js';
 import { idxToXY } from '../helpers.js';
+import { ITEM_NUTRITION } from '../items.js';
 import { STAGE_LOG_NAMES, STAGE_NUTRITION, _plantEnergyGain, _plantHungerReduction } from './utils.js';
 
 export function _eatPlantTile(animal, world, idx) {
@@ -41,4 +42,18 @@ export function _eatPlantTile(animal, world, idx) {
     preAge,
   });
   world.plantEvents.deaths_eaten[ptype] = (world.plantEvents.deaths_eaten[ptype] || 0) + 1;
+}
+
+/**
+ * Consume a ground item. Applies nutrition and removes the item from the world.
+ */
+export function _eatGroundItem(animal, world, item) {
+  const nutr = ITEM_NUTRITION[item.type] || { hunger: 20, energy: 5, hp: 4 };
+  animal.hunger = Math.max(0, animal.hunger - nutr.hunger);
+  animal.energy = Math.min(animal.maxEnergy, animal.energy + nutr.energy);
+  animal.hp = Math.min(animal.maxHp, animal.hp + nutr.hp);
+  animal.state = AnimalState.EATING;
+  animal.applyEnergyCost('EAT');
+  animal.logAction(world.clock.tick, 'EAT_ITEM', { itemType: item.type, itemId: item.id, x: item.x, y: item.y });
+  world.removeItem(item);
 }

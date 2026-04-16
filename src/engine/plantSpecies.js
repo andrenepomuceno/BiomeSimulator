@@ -94,7 +94,8 @@ const PLANT_SPECIES = {
     productionChance: 0.012,
     stageAges: [194, 775, 1938, 8862],
     fruitSpoilAge: 665,
-    edibleStages: [1, 5],
+    edibleStages: [],
+    dropProfile: { itemType: 'FRUIT', countRange: [1, 3] },
     colors: {
       seed:        [80,  110, 55,  35],
       youngSprout: [45,  100, 35,  100],
@@ -119,7 +120,8 @@ const PLANT_SPECIES = {
     productionChance: 0.012,
     stageAges: [222, 997, 2326, 9969],
     fruitSpoilAge: 665,
-    edibleStages: [1, 5],
+    edibleStages: [],
+    dropProfile: { itemType: 'FRUIT', countRange: [1, 3] },
     colors: {
       seed:        [85,  120, 50,  35],
       youngSprout: [50,  108, 30,  100],
@@ -244,7 +246,8 @@ const PLANT_SPECIES = {
     productionChance: 0.008,
     stageAges: [277, 1218, 2769, 13846],
     fruitSpoilAge: 831,
-    edibleStages: [1],
+    edibleStages: [],
+    dropProfile: { itemType: 'SEED', countRange: [1, 3] },
     colors: {
       seed:        [75,  105, 50,  35],
       youngSprout: [40,  95,  30,  100],
@@ -294,7 +297,8 @@ const PLANT_SPECIES = {
     productionChance: 0.005,
     stageAges: [332, 1440, 3212, 13292],
     fruitSpoilAge: 886,
-    edibleStages: [1, 5],
+    edibleStages: [],
+    dropProfile: { itemType: 'FRUIT', countRange: [1, 2] },
     colors: {
       seed:        [90,  120, 55,  35],
       youngSprout: [55,  110, 35,  100],
@@ -369,7 +373,8 @@ const PLANT_SPECIES = {
     productionChance: 0.007,
     stageAges: [305, 1329, 3102, 14400],
     fruitSpoilAge: 858,
-    edibleStages: [1, 5],
+    edibleStages: [],
+    dropProfile: { itemType: 'FRUIT', countRange: [1, 3] },
     colors: {
       seed:        [90,  115, 60,  35],
       youngSprout: [55,  105, 38,  100],
@@ -717,6 +722,20 @@ export function buildPlantPlaceTypes() {
     const uiKey = id === 'GRASS' ? 'GRASS_PLANT' : id;
     return { key: uiKey, emoji: PLANT_UI_DATA[id]?.chartEmoji ?? '🌱', label: sp.name };
   });
+}
+
+/**
+ * Build { [typeId]: { itemType: 'FRUIT'|'SEED', countRange: [min, max] } }
+ * for the 5 tree species. Non-tree entries are omitted.
+ */
+export function buildTreeDropProfiles() {
+  const map = {};
+  for (const sp of Object.values(PLANT_SPECIES)) {
+    if (sp.dropProfile) {
+      map[sp.typeId] = { ...sp.dropProfile };
+    }
+  }
+  return map;
 }
 
 export default PLANT_SPECIES;

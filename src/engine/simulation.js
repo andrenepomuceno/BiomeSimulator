@@ -23,7 +23,7 @@ import {
 } from './flora.js';
 import { decideAndAct, giveBirth } from './behaviors.js';
 import { _walkPath, _randomWalk } from './behaviors/movement.js';
-import { getEffectiveAnimalPopulationCap, normalizeAnimalCountsToBudget } from './animalSpecies.js';
+import { getEffectiveAnimalPopulationCap, normalizeAnimalCountsToBudget, buildMassDropMap } from './animalSpecies.js';
 import {
   createBenchmarkCollector,
   resetBenchmarkCollector,
@@ -85,6 +85,7 @@ export class SimulationEngine {
 
     seedInitialPlants(this.world);
     this._spawnAnimals();
+    this.world._massDropMap = buildMassDropMap();
     this.spatialHash.rebuild(this.world.animals);
     return seed;
   }
@@ -115,6 +116,13 @@ export class SimulationEngine {
     // Reset stats
     w.statsHistory = [];
     w.resetPlantEvents();
+
+    // Reset items
+    w.items = [];
+    w.itemChanges = [];
+    w._itemById.clear();
+    w._itemSpatialHash.clear();
+    w._massDropMap = buildMassDropMap();
 
     // Re-seed plants and animals
     seedInitialPlants(w);
@@ -167,6 +175,7 @@ export class SimulationEngine {
   tickFlora() {
     const w = this.world;
     w.plantChanges = [];
+    w.itemChanges = [];
     this._tickStart = performance.now();
     this._phases = { plantsMs: 0, behaviorMs: 0, spatialMs: 0, cleanupMs: 0, supervisorMs: 0, statsMs: 0 };
 
@@ -380,6 +389,8 @@ export class SimulationEngine {
         if (animal.lifeStage !== LifeStage.EGG) w.placeAnimal(animal.x, animal.y);
       } else {
         this._deadThisTick.push(animal);
+        // Spawn meat drops for parallel-mode deaths (sequential mode handles in markEntityDead)
+        if (!isEggStageSnapshot(delta)) w._spawnMeatDrops(animal);
       }
     }
 
@@ -457,6 +468,9 @@ export class SimulationEngine {
   tickCleanup() {
     const w = this.world;
     const profiling = this.profilingEnabled;
+
+    // Advance item lifecycle (decay, fruit→seed transform, seed germination)
+    w.tickItemLifecycle(this.config);
 
     const cleanupStart = performance.now();
     const deadThisTick = this._deadThisTick || [];

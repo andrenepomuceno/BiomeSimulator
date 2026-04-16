@@ -268,6 +268,10 @@ const useSimStore = create((set, get) => ({
   plantSnapshot: null,
   setPlantSnapshot: (snapshot) => set({ plantSnapshot: snapshot }),
 
+  // Ground item changes (add/remove/update deltas)
+  itemChanges: [],
+  setItemChanges: (c) => set({ itemChanges: c }),
+
   // Stats
   stats: { herbivores: 0, carnivores: 0, plants_total: 0, fruits: 0 },
   statsHistory: [],

@@ -118,6 +118,14 @@ const BASE_CONFIG = {
   season_reproduction_multiplier: [1.5, 1.0, 0.7, 0.2],
   season_death_multiplier: [0.8, 1.0, 1.2, 2.0],
 
+  // Ground items
+  item_meat_decay_ticks: 300,         // ticks until a meat item disappears
+  item_fruit_to_seed_ticks: 200,      // ticks until a fruit item transforms into a seed
+  item_seed_germination_ticks: 400,   // ticks until a seed item germinates
+  item_drop_radius_animal: 2,         // tile radius for radial meat scatter on death
+  item_drop_radius_plant: 2,          // tile radius for radial fruit/seed scatter on reproduction
+  item_max_changes_per_tick: 2000,    // cap for itemChanges delta array per tick
+
   // Fauna — global population budget distributed proportionally per species (0 = use base caps)
   max_animal_population: 10000,
   initial_population_fraction: 0.1,

@@ -1,11 +1,44 @@
 import { AnimalState } from '../entities.js';
 import { S_FRUIT, S_SEED } from '../flora.js';
+import { ITEM_TYPE } from '../items.js';
 import { benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from '../benchmarkProfiler.js';
 import { _attack } from './combat.js';
-import { _eatPlantTile } from './eating.js';
+import { _eatGroundItem, _eatPlantTile } from './eating.js';
 import { _computePath, _pursueTarget, _randomWalk, _reusePathIfValid, _walkPath } from './movement.js';
-import { _tryEatEgg, _tryScavenge } from './scavenge.js';
+import { _tryEatEgg, _tryEatMeatItem, _tryScavenge } from './scavenge.js';
 import { _canEatPlant, _canHunt, _decisionThresholds, _isEdibleStage } from './utils.js';
+
+/**
+ * Try to find and eat a FRUIT or SEED ground item within vision.
+ * Eligible for herbivores and omnivores.
+ */
+function _tryEatFruitItem(animal, world, vision) {
+  if (!world._itemSpatialHash) return false;
+  const nearby = world._itemSpatialHash.queryRadius(animal.x, animal.y, vision);
+  let target = null;
+  let bestDist = Infinity;
+  for (const item of nearby) {
+    if (item.consumed || (item.type !== ITEM_TYPE.FRUIT && item.type !== ITEM_TYPE.SEED)) continue;
+    const dist = Math.abs(item.x + 0.5 - animal.x) + Math.abs(item.y + 0.5 - animal.y);
+    if (dist < bestDist) {
+      bestDist = dist;
+      target = item;
+    }
+  }
+  if (!target) return false;
+
+  if (bestDist <= 1.5) {
+    _eatGroundItem(animal, world, target);
+    return true;
+  }
+
+  _computePath(animal, world, target.x, target.y, 30, 'fruit_item');
+  if (animal.path.length) {
+    _walkPath(animal, world);
+    return true;
+  }
+  return false;
+}
 
 function _findNearestHuntableTarget(animal, spatialHash, vision) {
   const nearby = spatialHash.queryRadius(animal.x, animal.y, vision);
@@ -190,6 +223,9 @@ export function _seekPlantFood(animal, world, vision) {
       }
     }
 
+    // Fallback: try ground fruit/seed items if no plant tile reachable
+    if (_tryEatFruitItem(animal, world, vision)) return;
+
     _randomWalk(animal, world);
   } finally {
     benchmarkEnd(collector, 'seekPlantFood', startedAt);
@@ -230,6 +266,7 @@ export function _seekPrey(animal, world, spatialHash, vision) {
     animal._chaseLockUntilTick = 0;
 
     if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
+    if (_tryEatMeatItem(animal, world, vision)) return;
     if (_tryEatEgg(animal, world, spatialHash, vision)) return;
 
     if (animal.hunger > (_decisionThresholds(animal).desperate_hunger_fallback_food_min ?? 50) && animal._ediblePlants.size > 0) {
@@ -293,6 +330,7 @@ export function _seekOmnivoreFood(animal, world, spatialHash, vision) {
       animal._chaseLockUntilTick = 0;
 
       if (animal._config.can_scavenge && _tryScavenge(animal, world, spatialHash, vision)) return;
+      if (_tryEatMeatItem(animal, world, vision)) return;
       if (_tryEatEgg(animal, world, spatialHash, vision)) return;
     }
 

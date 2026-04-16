@@ -56,7 +56,7 @@ export default function App() {
   const autoPausedRef = useRef(false);
 
   const {
-    terrainData, mapWidth, mapHeight, animals, plantChanges,
+    terrainData, mapWidth, mapHeight, animals, plantChanges, itemChanges,
     clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile, isGeneratingWorld,
   } = useSimStore();
 
@@ -152,6 +152,13 @@ export default function App() {
       rendererRef.current.updatePlants(plantChanges);
     }
   }, [plantChanges]);
+
+  // Update ground item changes
+  useEffect(() => {
+    if (rendererRef.current && itemChanges && itemChanges.length > 0) {
+      rendererRef.current.updateItems(itemChanges);
+    }
+  }, [itemChanges]);
 
   useEffect(() => {
     if (!rendererRef.current || !plantSnapshot) return;

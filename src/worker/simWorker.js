@@ -269,6 +269,7 @@ function postTickState(tickMs = 0) {
     clock: w.clock.toDict(),
     animals,
     plantChanges: plantChangesOverflow ? [] : w.plantChanges,
+    itemChanges: w.itemChanges.length > 0 ? w.itemChanges.slice(0, w.config.item_max_changes_per_tick ?? 2000) : undefined,
     incremental: !isFullSync,
   };
 

@@ -1,5 +1,7 @@
 import { AnimalState, LifeStage } from '../entities.js';
 import { benchmarkAddKeyed } from '../benchmarkProfiler.js';
+import { ITEM_TYPE } from '../items.js';
+import { _eatGroundItem } from './eating.js';
 import { _computePath, _walkPath } from './movement.js';
 
 function _findEggApproachTile(animal, target, world) {
@@ -91,6 +93,38 @@ export function _tryEatEgg(animal, world, spatialHash, vision) {
   if (!approachTile) return false;
 
   _computePath(animal, world, approachTile[0], approachTile[1], 30, 'egg');
+  if (animal.path.length) {
+    _walkPath(animal, world);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Try to find and eat a MEAT ground item within vision.
+ * Eligible for carnivores, omnivores, and scavengers.
+ */
+export function _tryEatMeatItem(animal, world, vision) {
+  if (!world._itemSpatialHash) return false;
+  const nearby = world._itemSpatialHash.queryRadius(animal.x, animal.y, vision);
+  let target = null;
+  let bestDist = Infinity;
+  for (const item of nearby) {
+    if (item.consumed || item.type !== ITEM_TYPE.MEAT) continue;
+    const dist = Math.abs(item.x + 0.5 - animal.x) + Math.abs(item.y + 0.5 - animal.y);
+    if (dist < bestDist) {
+      bestDist = dist;
+      target = item;
+    }
+  }
+  if (!target) return false;
+
+  if (bestDist <= 1.5) {
+    _eatGroundItem(animal, world, target);
+    return true;
+  }
+
+  _computePath(animal, world, target.x, target.y, 30, 'meat_item');
   if (animal.path.length) {
     _walkPath(animal, world);
     return true;

@@ -35,6 +35,7 @@ const BASE_CONFIG = {
   sea_level: 0.38,
   island_count: 5,
   island_size_factor: 0.3,
+  min_land_ratio: 0.5, // adaptive sea_level clamp: guarantees at least this fraction of tiles are land
   seed: null, // null = random
 
   // Simulation

@@ -9,6 +9,7 @@ const defaultParams = {
   sea_level: 0.38,
   island_count: 5,
   island_size_factor: 0.3,
+  min_land_ratio: 0.5,
   seed: '',
   initial_herbivore_count: 50,
   initial_carnivore_count: 15,
@@ -57,6 +58,13 @@ export default function ControlPanel({ onRegenerate }) {
         <input type="range" className="form-range form-range-sm" min={0.1} max={0.8} step={0.05}
           value={params.island_size_factor}
           onChange={e => set('island_size_factor', +e.target.value)} />
+      </div>
+
+      <div className="mb-2">
+        <label className="form-label small mb-0">Min Land Ratio: {params.min_land_ratio.toFixed(2)}</label>
+        <input type="range" className="form-range form-range-sm" min={0} max={0.9} step={0.05}
+          value={params.min_land_ratio}
+          onChange={e => set('min_land_ratio', +e.target.value)} />
       </div>
 
       <div className="mb-2">

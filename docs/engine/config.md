@@ -28,9 +28,10 @@ Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are c
 |----------|-----------|---------|-------------|
 | Map | `map_width` | 500 | Grid width in tiles |
 | Map | `map_height` | 500 | Grid height in tiles |
-| Map | `sea_level` | 0.38 | Height threshold for water (0.0–1.0) |
+| Map | `sea_level` | 0.38 | Maximum height threshold for water (0.0–1.0); may be clamped downward by `min_land_ratio` |
 | Map | `island_count` | 5 | Number of island blobs |
 | Map | `island_size_factor` | 0.3 | Relative island radius |
+| Map | `min_land_ratio` | 0.5 | Minimum fraction of tiles that must be land; the effective sea level is clamped downward until this ratio is met (0 = disabled) |
 | Map | `seed` | null | Random seed (null = random) |
 | Clock | `ticks_per_second` | 10 | Target simulation speed (ticks advanced per real second) |
 | Clock | `ticks_per_day` | 260 | Ticks in one full day/night cycle |

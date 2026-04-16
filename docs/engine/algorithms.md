@@ -45,6 +45,7 @@ flowchart TD
 1. **Perlin noise FBM** — 6 octaves at scale 0.005, persistence 0.5 → heightmap [0, 1]
 2. **Island mask** — Gaussian blobs centered near map center, configurable count and size
 3. **Combine** — `heightmap × islandMask`
+4. **Adaptive sea level** — if `min_land_ratio > 0`, the sorted height distribution is used to find the percentile value at `(1 − minLandRatio)`, and `seaLevel` is clamped downward to that value so the guarantee is met deterministically without retries.
 4. **Classify terrain** by height thresholds:
    - `> seaLevel + 0.45` → ROCK
    - `0.12 – 0.45` → GRASS

@@ -55,6 +55,24 @@ describe('generateTerrain', () => {
     }
     expect(waterCount).toBeGreaterThan(0);
   });
+
+  it('guarantees at least min_land_ratio land tiles across multiple seeds', () => {
+    const seeds = [1, 2, 42, 999, 12345];
+    for (const seed of seeds) {
+      const { terrain } = generateTerrain({ ...config, min_land_ratio: 0.5, seed });
+      let landCount = 0;
+      for (let i = 0; i < terrain.length; i++) {
+        if (terrain[i] !== WATER && terrain[i] !== DEEP_WATER) landCount++;
+      }
+      expect(landCount / terrain.length).toBeGreaterThanOrEqual(0.5);
+    }
+  });
+
+  it('respects min_land_ratio of 0 (no clamping)', () => {
+    // With min_land_ratio=0, result should still be valid terrain
+    const { terrain } = generateTerrain({ ...config, min_land_ratio: 0, seed: 42 });
+    expect(terrain).toHaveLength(64 * 64);
+  });
 });
 
 describe('computeWaterProximity', () => {

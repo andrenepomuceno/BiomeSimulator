@@ -15,6 +15,7 @@ export function generateTerrain(config) {
   const seaLevel = config.sea_level ?? 0.38;
   const islandCount = config.island_count ?? 5;
   const islandSize = config.island_size_factor ?? 0.3;
+  const minLandRatio = config.min_land_ratio ?? 0.5;
   const seed = config.seed ?? Math.floor(Math.random() * 2147483647);
 
   // Base heightmap with multi-octave gradient noise
@@ -49,16 +50,31 @@ export function generateTerrain(config) {
     combined[i] *= edgeFalloff[i];
   }
 
+  // Adaptive sea level: clamp seaLevel downward so that at least
+  // minLandRatio of all tiles classify as land (v > effectiveSeaLevel).
+  // We sort a copy of the heights and find the value at the
+  // (1 - minLandRatio) percentile — that is the highest seaLevel we can
+  // use while still leaving minLandRatio tiles above it.
+  let effectiveSeaLevel = seaLevel;
+  if (minLandRatio > 0) {
+    const sorted = Float64Array.from(combined).sort();
+    const idx = Math.floor((1.0 - minLandRatio) * sorted.length);
+    // Subtract a small epsilon so tiles sitting exactly on the boundary
+    // are counted as land (classification is strict: v > effectiveSeaLevel).
+    const heightAtPercentile = sorted[Math.min(idx, sorted.length - 1)] - 1e-9;
+    effectiveSeaLevel = Math.min(seaLevel, heightAtPercentile);
+  }
+
   // Classify terrain
   const terrain = new Uint8Array(h * w);
   for (let i = 0; i < terrain.length; i++) {
     const v = combined[i];
-    if (v > seaLevel + 0.50) terrain[i] = MOUNTAIN;
-    else if (v > seaLevel + 0.42) terrain[i] = ROCK;
-    else if (v > seaLevel + 0.12) terrain[i] = SOIL;
-    else if (v > seaLevel + 0.05) terrain[i] = DIRT;
-    else if (v > seaLevel) terrain[i] = SAND;
-    else if (v > seaLevel - 0.15) terrain[i] = WATER;
+    if (v > effectiveSeaLevel + 0.50) terrain[i] = MOUNTAIN;
+    else if (v > effectiveSeaLevel + 0.42) terrain[i] = ROCK;
+    else if (v > effectiveSeaLevel + 0.12) terrain[i] = SOIL;
+    else if (v > effectiveSeaLevel + 0.05) terrain[i] = DIRT;
+    else if (v > effectiveSeaLevel) terrain[i] = SAND;
+    else if (v > effectiveSeaLevel - 0.15) terrain[i] = WATER;
     else terrain[i] = DEEP_WATER;
   }
 

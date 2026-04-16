@@ -48,7 +48,8 @@ For setup, build commands, and performance profiling, see [../README.md](../READ
 **Working on rendering:**
 1. [Renderer Overview & Camera](renderer/overview.md)
 2. [Rendering Layers](renderer/layers.md)
-3. [Frontend editor controls](../README.md#editor-controls)
+3. [Sprite Authoring Guide](renderer/sprites.md)
+4. [Frontend editor controls](../README.md#editor-controls)
 
 **Extending the Worker API:**
 1. [Commands reference](api/commands.md)

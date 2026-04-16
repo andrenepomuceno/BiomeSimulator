@@ -11,6 +11,7 @@ The renderer layer (`src/renderer/`) handles all visual output using Pixi.js 7. 
 |----------|-------------|
 | [Overview & Camera](overview.md) | GameRenderer, camera, coordinate system, data flow, viewport culling |
 | [Rendering Layers](layers.md) | TerrainLayer, PlantLayer, EntityLayer, AnimationLayer, emoji textures |
+| [Sprite Authoring Guide](sprites.md) | Reusable workflow, helper catalog, grounding/anchor rules, quality checklist |
 
 See [Architecture](../architecture.md) for how the renderer fits into the broader application flow.
 

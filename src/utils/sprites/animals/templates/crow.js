@@ -8,7 +8,7 @@ import { px, rect, darken, lighten, blend, speckle, DOWN, UP, LEFT } from '../..
 export function drawCrow(ctx, params, dir, frame) {
   const { body, accent, eye, beak } = params;
   const cx = 32;
-  const cy = 33;
+  const cy = 44;  // shifted down so feet/legs land near y≈55, reducing floating
   const shadow = darken(body, 0.20);
   const shadow2 = darken(body, 0.32);
   const highlight = lighten(body, 0.11);

@@ -90,7 +90,8 @@ export function drawCrocodile(ctx, params, dir, frame) {
     const flip = dir === LEFT;
     const f = flip ? (x) => 63 - x : (x) => x;
     const bx = cx - 8;
-    const by = cy - 5;
+    // Shift body down so belly/legs are near y≈55-58 (grounded, not floating)
+    const by = cy + 11;
 
     // Long low torso
     lowBody(bx, by, 18, 10);

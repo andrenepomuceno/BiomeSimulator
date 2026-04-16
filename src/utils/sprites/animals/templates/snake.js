@@ -14,7 +14,7 @@ export function drawSnake(ctx, params, dir, frame) {
   const outline = darken(body, 0.32);
   const patternDark = pattern ? darken(pattern, 0.1) : null;
   const cx = 32;
-  const cy = 32;
+  const cy = 37;  // shifted down: vertical view head at y≈6, tail at y≈55
   const phase = (frame / 3) * Math.PI * 2;
   const isVert = dir === DOWN || dir === UP;
 
@@ -119,10 +119,12 @@ export function drawSnake(ctx, params, dir, frame) {
     let prevX = null;
     let prevY = null;
     let prevR = null;
+    // Shift side body toward bottom so the snake appears grounded (≈y 41-53)
+    const sideY = cy + 10;
 
     for (let i = 0; i < segCount; i++) {
       const xOff = startX + i * spacing;
-      const yOff = cy + Math.round(Math.sin(phase + i * 0.6) * 6);
+      const yOff = sideY + Math.round(Math.sin(phase + i * 0.6) * 6);
       const r = Math.max(2, Math.round(sw * 0.5 + (i < 2 ? 2 - i : i > segCount - 3 ? (segCount - 1 - i) * 0.6 : 0)));
       const col = i % 3 === 0 && pattern ? pattern : (i % 2 === 0 ? body : accent);
       const secCol = i % 3 === 0 && patternDark ? patternDark : shadow;
@@ -174,7 +176,7 @@ export function drawSnake(ctx, params, dir, frame) {
     const hw = headW || 10;
     const hh = headH || 7;
     const headX = startX + segCount * spacing + 1;
-    const hy = cy - Math.floor(hh / 2);
+    const hy = sideY - Math.floor(hh / 2);
 
     ellipse(ctx, f(headX + Math.floor(hw / 2)), hy + Math.floor(hh / 2), Math.max(4, Math.floor(hw / 2)), Math.max(3, Math.floor(hh / 2)), body);
     ellipse(ctx, f(headX + Math.floor(hw / 2)), hy + 1, Math.max(3, Math.floor(hw / 2) - 2), 1, highlight);
@@ -186,9 +188,9 @@ export function drawSnake(ctx, params, dir, frame) {
     px(ctx, f(headX + hw - 3), hy + 1, '#ffffff');
 
     // Forked tongue
-    px(ctx, f(headX + hw), cy, '#cc2222');
-    px(ctx, f(headX + hw + 1), cy, '#cc2222');
-    px(ctx, f(headX + hw + 2), cy - 1, '#cc2222');
-    px(ctx, f(headX + hw + 2), cy + 1, '#cc2222');
+    px(ctx, f(headX + hw), sideY, '#cc2222');
+    px(ctx, f(headX + hw + 1), sideY, '#cc2222');
+    px(ctx, f(headX + hw + 2), sideY - 1, '#cc2222');
+    px(ctx, f(headX + hw + 2), sideY + 1, '#cc2222');
   }
 }

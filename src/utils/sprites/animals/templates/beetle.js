@@ -88,7 +88,8 @@ export function drawBeetle(ctx, params, dir, frame) {
 
     // Elytra — dome-shaped oval profile
     const bCx = cx - 3, bW = 22, bH = 12;
-    const by  = cy - Math.floor(bH / 2);
+    // Shift body toward bottom so beetle appears grounded (feet near y≈58)
+    const by  = cy + 8;
     for (let dy = 0; dy < bH; dy++) {
       const nt = 2 * (dy / (bH - 1)) - 1;          // −1…+1
       const hw = Math.round((bW / 2) * Math.sqrt(Math.max(0, 1 - nt * nt)));

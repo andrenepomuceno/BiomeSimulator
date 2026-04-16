@@ -12,10 +12,12 @@
 import { DESIGN, SCALE, addOutline } from './sprites/helpers.js';
 import { drawQuadruped } from './sprites/animals/templates/quadruped.js';
 import { drawBird } from './sprites/animals/templates/bird.js';
+import { drawCrow } from './sprites/animals/templates/crow.js';
 import { drawInsect } from './sprites/animals/templates/insect.js';
 import { drawBeetle } from './sprites/animals/templates/beetle.js';
 import { drawMosquito } from './sprites/animals/templates/mosquito.js';
 import { drawReptile } from './sprites/animals/templates/reptile.js';
+import { drawCrocodile } from './sprites/animals/templates/crocodile.js';
 import { drawSnake } from './sprites/animals/templates/snake.js';
 import { drawSleeping, drawDead, drawEgg, drawPupa } from './sprites/animals/templates/specials.js';
 
@@ -62,10 +64,12 @@ const SPECIES_PARAMS = {
 const TEMPLATE_DRAW = {
   quadruped: drawQuadruped,
   bird: drawBird,
+  crow: drawCrow,
   insect: drawInsect,
   beetle: drawBeetle,
   mosquito: drawMosquito,
   reptile: drawReptile,
+  crocodile: drawCrocodile,
   snake: drawSnake,
 };
 

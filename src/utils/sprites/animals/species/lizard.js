@@ -1,5 +1,5 @@
 export default {
-  template: 'reptile',
+  template: 'lizard',
   body: '#36aa36', accent: '#56ca56', eye: '#ffdd00',
-  w: 28, h: 16, tailLen: 16, spine: '#288828',
+  spine: '#1a7a1a', belly: '#a0d870',
 };

@@ -18,6 +18,7 @@ import { drawBeetle } from './sprites/animals/templates/beetle.js';
 import { drawMosquito } from './sprites/animals/templates/mosquito.js';
 import { drawReptile } from './sprites/animals/templates/reptile.js';
 import { drawCrocodile } from './sprites/animals/templates/crocodile.js';
+import { drawLizard } from './sprites/animals/templates/lizard.js';
 import { drawSnake } from './sprites/animals/templates/snake.js';
 import { drawSleeping, drawDead, drawEgg, drawPupa } from './sprites/animals/templates/specials.js';
 
@@ -70,6 +71,7 @@ const TEMPLATE_DRAW = {
   mosquito: drawMosquito,
   reptile: drawReptile,
   crocodile: drawCrocodile,
+  lizard: drawLizard,
   snake: drawSnake,
 };
 

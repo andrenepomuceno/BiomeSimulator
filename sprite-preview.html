@@ -39,9 +39,21 @@
   </div>
   <canvas id="flora-zoomed" class="atlas-canvas"></canvas>
 
+  <h2>Items Sprite Atlas</h2>
+  <div class="info" id="items-info"></div>
+  <div class="controls">
+    <button id="btn-download-items">Download Items PNG</button>
+    <div class="zoom-group" id="items-zoom-group">
+      <label>Zoom:</label>
+    </div>
+  </div>
+  <canvas id="items-zoomed" class="atlas-canvas"></canvas>
+
   <script type="module">
     import { drawSpeciesFrame, DIR_NAMES } from './src/utils/spriteGenerator.js';
     import { drawPlantFrame } from './src/utils/plantSpriteGenerator.js';
+    import { drawItemFrame } from './src/utils/itemSpriteGenerator.js';
+    import { ITEM_ORDER } from './src/utils/sprites/items/catalog.js';
 
     const FRAME = 256;
 
@@ -124,6 +136,28 @@
       `${floraAtlas.width}×${floraAtlas.height} px | ${FLORA_COLS} cols × ${FLORA_ROWS} rows | ${floraTotal} frames | ` +
       `Row format: SEED₀₁₂  YOUNG₀₁₂  ADULT_SPROUT₀₁₂  ADULT₀₁₂  FRUIT₀₁₂  DEAD₀₁₂`;
 
+    // ── Items Atlas ────────────────────────────────────────────────
+    const ITEM_COLS = 5;
+    const ITEM_ROWS = Math.ceil(ITEM_ORDER.length / ITEM_COLS);
+
+    const itemsAtlas = document.createElement('canvas');
+    itemsAtlas.width = ITEM_COLS * FRAME;
+    itemsAtlas.height = ITEM_ROWS * FRAME;
+    const itctx = itemsAtlas.getContext('2d');
+    itctx.imageSmoothingEnabled = false;
+
+    for (let i = 0; i < ITEM_ORDER.length; i++) {
+      const itemKey = ITEM_ORDER[i];
+      const col = i % ITEM_COLS;
+      const row = Math.floor(i / ITEM_COLS);
+      drawItemFrame(cctx, itemKey, 0);
+      itctx.drawImage(cell, col * FRAME, row * FRAME);
+    }
+
+    document.getElementById('items-info').textContent =
+      `${itemsAtlas.width}×${itemsAtlas.height} px | ${ITEM_COLS} cols × ${ITEM_ROWS} rows | ${ITEM_ORDER.length} frames | ` +
+      `Frutas (6), sementes (6), carnes (3), 1 frame por item`;
+
     // ── Zoomed rendering helper ─────────────────────────────────────
     function renderZoomed(atlas, canvas, cols, rows, zoom, labels) {
       const labelScale = Math.max(zoom, 0.5); // keep labels legible at tiny zoom
@@ -194,6 +228,12 @@
     buildZoomButtons('flora-zoom-group', renderFloraZoom, 0.5);
     renderFloraZoom(0.5);
 
+    // ── Items zoom ─────────────────────────────────────────────────
+    const itemsZoomed = document.getElementById('items-zoomed');
+    function renderItemsZoom(z) { renderZoomed(itemsAtlas, itemsZoomed, ITEM_COLS, ITEM_ROWS, z, ITEM_ORDER); }
+    buildZoomButtons('items-zoom-group', renderItemsZoom, 1);
+    renderItemsZoom(1);
+
     // ── Downloads ───────────────────────────────────────────────────
     document.getElementById('btn-download-fauna').onclick = () => {
       const link = document.createElement('a');
@@ -207,11 +247,18 @@
       link.href = floraAtlas.toDataURL('image/png');
       link.click();
     };
+    document.getElementById('btn-download-items').onclick = () => {
+      const link = document.createElement('a');
+      link.download = 'items-atlas.png';
+      link.href = itemsAtlas.toDataURL('image/png');
+      link.click();
+    };
 
     // Dev automation bridge for capture scripts
     window.__ecoAtlasCapture = {
       getFaunaDataUrl: () => faunaAtlas.toDataURL('image/png'),
       getFloraDataUrl: () => floraAtlas.toDataURL('image/png'),
+      getItemsDataUrl: () => itemsAtlas.toDataURL('image/png'),
     };
   </script>
 </body>

@@ -6,7 +6,7 @@
  *
  * Modes:
  *   ingame   — in-game scene captures only (default if omitted together with sprites)
- *   sprites  — sprite atlas captures only (fauna + flora)
+ *   sprites  — sprite atlas captures only (fauna + flora + items)
  *   all      — both ingame and sprites (default when no --mode is given)
  *
  * Examples:
@@ -229,6 +229,11 @@ async function runSprites(page, baseUrl, runDir, manifest) {
   fs.writeFileSync(path.join(runDir, 'flora-atlas.png'), dataUrlToBuffer(floraDataUrl));
   console.log('  Saved: flora-atlas.png');
   manifest.push({ scene: 'flora-atlas', file: 'flora-atlas.png', capturedAt: new Date().toISOString() });
+
+  const itemsDataUrl = await page.evaluate(() => window.__ecoAtlasCapture.getItemsDataUrl());
+  fs.writeFileSync(path.join(runDir, 'items-atlas.png'), dataUrlToBuffer(itemsDataUrl));
+  console.log('  Saved: items-atlas.png');
+  manifest.push({ scene: 'items-atlas', file: 'items-atlas.png', capturedAt: new Date().toISOString() });
 }
 
 // ── Main ────────────────────────────────────────────────────────────

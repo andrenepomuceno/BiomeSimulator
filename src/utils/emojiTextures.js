@@ -7,7 +7,7 @@
  * texture switches. When real pixel-art PNGs land in public/sprites/, the atlas
  * loader in spriteAtlas.js will pick them up automatically.
  */
-import { buildFaunaAtlasSync, buildFloraAtlasSync } from './spriteAtlas.js';
+import { buildFaunaAtlasSync, buildFloraAtlasSync, buildItemAtlasSync } from './spriteAtlas.js';
 
 /**
  * Generate PixiJS textures for all animal species + special states.
@@ -23,4 +23,12 @@ export function generateEmojiTextures() {
  */
 export function generatePlantEmojiTextures() {
   return buildFloraAtlasSync();
+}
+
+/**
+ * Generate PixiJS textures for drops/items atlas keys.
+ * Returns { "FRUIT_STRAWBERRY_0": Texture, ... }
+ */
+export function generateItemEmojiTextures() {
+  return buildItemAtlasSync();
 }

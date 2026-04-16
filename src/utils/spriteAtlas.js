@@ -17,10 +17,13 @@ import { SPECIES_INFO } from './terrainColors.js';
 import { buildPlantEmojiMap } from '../engine/plantSpecies.js';
 import { drawSpeciesFrame, DIR_NAMES } from './spriteGenerator.js';
 import { drawPlantFrame } from './plantSpriteGenerator.js';
+import { drawItemFrame } from './itemSpriteGenerator.js';
+import { ITEM_ORDER } from './sprites/items/catalog.js';
 
 // ── Atlas geometry ──────────────────────────────────────────────────
 export const FRAME_SIZE = 256;           // px per frame in the atlas
 const FLORA_COLS = 18;                    // 6 stages × 3 frames per species row
+const ITEM_COLS = 5;                      // compact grid for 15 items (5 × 3)
 
 // ── Fauna frame map ─────────────────────────────────────────────────
 // Row per species (0..17): 13 cells = 12 directional walk frames + SLEEPING
@@ -88,6 +91,26 @@ function buildFloraFrames() {
 
 export const FAUNA_FRAMES = buildFaunaFrames();
 export const FLORA_FRAMES = buildFloraFrames();
+
+// ── Item frame map ──────────────────────────────────────────────────
+// 15 drops (6 fruits + 6 seeds + 3 meats), 1 frame each.
+// Layout: 5 columns × 3 rows.
+function buildItemFrames() {
+  const keys = [];
+  const map = {};
+  for (let i = 0; i < ITEM_ORDER.length; i++) {
+    const item = ITEM_ORDER[i];
+    const col = i % ITEM_COLS;
+    const row = Math.floor(i / ITEM_COLS);
+    const key = `${item}_0`;
+    keys.push(key);
+    map[key] = { col, row, x: col * FRAME_SIZE, y: row * FRAME_SIZE };
+  }
+  const rows = Math.ceil(ITEM_ORDER.length / ITEM_COLS);
+  return { keys, map, cols: ITEM_COLS, rows };
+}
+
+export const ITEMS_FRAMES = buildItemFrames();
 
 // ── Fallback: build fauna atlas procedurally ────────────────────────
 function buildFaunaAtlasCanvas() {
@@ -165,6 +188,34 @@ function buildFloraAtlasCanvas() {
   return canvas;
 }
 
+// ── Fallback: build items atlas procedurally ───────────────────────
+function buildItemAtlasCanvas() {
+  const { keys, map, cols, rows } = ITEMS_FRAMES;
+  const w = cols * FRAME_SIZE;
+  const h = rows * FRAME_SIZE;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const cell = document.createElement('canvas');
+  cell.width = FRAME_SIZE;
+  cell.height = FRAME_SIZE;
+  const cellCtx = cell.getContext('2d', { willReadFrequently: true });
+  cellCtx.imageSmoothingEnabled = false;
+
+  for (const key of keys) {
+    const [itemKey, frameRaw] = key.split(/_(?=[^_]+$)/);
+    const frame = Number(frameRaw);
+    const pos = map[key];
+    if (!pos) continue;
+    drawItemFrame(cellCtx, itemKey, frame);
+    ctx.drawImage(cell, pos.x, pos.y);
+  }
+  return canvas;
+}
+
 // ── Slice atlas BaseTexture into individual Textures ────────────────
 function sliceAtlas(baseTexture, frames) {
   const textures = {};
@@ -179,6 +230,7 @@ function sliceAtlas(baseTexture, frames) {
 
 let _faunaTextures = null;
 let _floraTextures = null;
+let _itemTextures = null;
 
 /**
  * Load or build the fauna atlas and return { RABBIT: Texture, …, DEAD: Texture }.
@@ -243,6 +295,38 @@ export async function loadFloraAtlas() {
 }
 
 /**
+ * Load or build the items atlas and return { "ITEM_FOO_0": Texture, ... }.
+ * Tries loading public/sprites/items.png first; falls back to procedural atlas.
+ */
+export async function loadItemAtlas() {
+  if (_itemTextures) return _itemTextures;
+
+  let baseTexture;
+  try {
+    baseTexture = await PIXI.BaseTexture.from('/sprites/items.png', {
+      scaleMode: PIXI.SCALE_MODES.NEAREST,
+    });
+    if (!baseTexture.valid) {
+      await new Promise((resolve, reject) => {
+        baseTexture.once('loaded', resolve);
+        baseTexture.once('error', reject);
+      });
+    }
+    const expectedW = ITEMS_FRAMES.cols * FRAME_SIZE;
+    const expectedH = ITEMS_FRAMES.rows * FRAME_SIZE;
+    if (baseTexture.width < expectedW || baseTexture.height < expectedH) {
+      throw new Error('items atlas dimensions do not match current frame map');
+    }
+  } catch {
+    const canvas = buildItemAtlasCanvas();
+    baseTexture = PIXI.BaseTexture.from(canvas, { scaleMode: PIXI.SCALE_MODES.NEAREST });
+  }
+
+  _itemTextures = sliceAtlas(baseTexture, ITEMS_FRAMES);
+  return _itemTextures;
+}
+
+/**
  * Synchronous fauna atlas — builds procedurally.
  * Used when async loading isn't practical (EntityLayer._ensureTextures).
  */
@@ -264,4 +348,15 @@ export function buildFloraAtlasSync() {
   const baseTexture = PIXI.BaseTexture.from(canvas, { scaleMode: PIXI.SCALE_MODES.NEAREST });
   _floraTextures = sliceAtlas(baseTexture, FLORA_FRAMES);
   return _floraTextures;
+}
+
+/**
+ * Synchronous items atlas — builds procedurally.
+ */
+export function buildItemAtlasSync() {
+  if (_itemTextures) return _itemTextures;
+  const canvas = buildItemAtlasCanvas();
+  const baseTexture = PIXI.BaseTexture.from(canvas, { scaleMode: PIXI.SCALE_MODES.NEAREST });
+  _itemTextures = sliceAtlas(baseTexture, ITEMS_FRAMES);
+  return _itemTextures;
 }

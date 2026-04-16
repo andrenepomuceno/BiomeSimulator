@@ -179,8 +179,9 @@ describe('decideAndAct', () => {
   it('continues sleeping before evaluating higher-priority needs', () => {
     const animal = createAnimal({ state: AnimalState.SLEEPING, thirst: 80, hunger: 80 });
     const world = createWorld({ isWaterAdjacent: () => true });
+    const spatialHash = { queryRadius: vi.fn(() => []) };
 
-    decideAndAct(animal, world, {});
+    decideAndAct(animal, world, spatialHash);
 
     expect(stateMocks.doSleep).toHaveBeenCalledWith(animal, world);
     expect(seekMocks.seekWater).not.toHaveBeenCalled();

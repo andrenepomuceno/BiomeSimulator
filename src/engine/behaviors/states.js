@@ -5,7 +5,9 @@ export function _doSleep(animal, world) {
   const recovery = _recoveryConfig(animal);
   animal.applyEnergyCost('SLEEP');
   animal.hp = Math.min(animal.maxHp, animal.hp + (recovery.sleep_hp ?? 0.8));
-  if (animal.energy >= (recovery.sleep_exit_energy ?? 70)) {
+  // Cap wake target by species max energy to avoid impossible wake-up thresholds.
+  const wakeTargetEnergy = Math.min(animal.maxEnergy, recovery.sleep_exit_energy ?? 70);
+  if (animal.energy >= wakeTargetEnergy) {
     animal.state = AnimalState.IDLE;
     animal.logAction(world.clock.tick, 'WOKE_UP', { energy: Math.round(animal.energy) });
   }

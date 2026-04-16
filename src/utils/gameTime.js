@@ -23,6 +23,17 @@ export function gameMinuteArrayToTicks(values, ticksPerGameMinute = DEFAULT_TICK
     : [];
 }
 
+/**
+ * Scale a per-tick rate that was tuned at DEFAULT_TICKS_PER_GAME_MINUTE
+ * so it produces the same per-game-minute effect at any tick rate.
+ *
+ * At the default tick rate the factor is 1.0 — existing tuned values are unchanged.
+ */
+export function scaleRateForTicks(value, ticksPerGameMinute = DEFAULT_TICKS_PER_GAME_MINUTE) {
+  if (!Number.isFinite(value) || ticksPerGameMinute <= 0) return value;
+  return value * (DEFAULT_TICKS_PER_GAME_MINUTE / ticksPerGameMinute);
+}
+
 export function convertGameTimeFieldsToTicks(source, options = {}, ticksPerGameMinute = DEFAULT_TICKS_PER_GAME_MINUTE) {
   const { fields = [], arrayFields = [], nestedFields = {} } = options;
   const converted = { ...source };

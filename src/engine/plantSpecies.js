@@ -7,7 +7,7 @@
  */
 import { TERRAIN_IDS } from './world.js';
 import { DEFAULT_TICKS_PER_GAME_MINUTE } from '../constants/simulation.js';
-import { gameMinuteArrayToTicks, gameMinutesToTicks } from '../utils/gameTime.js';
+import { gameMinuteArrayToTicks, gameMinutesToTicks, scaleRateForTicks } from '../utils/gameTime.js';
 
 const PLANT_SPECIES = {
   GRASS: {
@@ -570,10 +570,10 @@ export function buildFruitEmojiMap() {
  * Build the PRODUCTION_CHANCE map indexed by typeId.
  * Returns { 1: 0.008, 2: 0.005, ... }
  */
-export function buildProductionChances() {
+export function buildProductionChances(ticksPerGameMinute = DEFAULT_TICKS_PER_GAME_MINUTE) {
   const map = {};
   for (const sp of Object.values(PLANT_SPECIES)) {
-    map[sp.typeId] = sp.productionChance;
+    map[sp.typeId] = scaleRateForTicks(sp.productionChance, ticksPerGameMinute);
   }
   return map;
 }

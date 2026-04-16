@@ -10,7 +10,7 @@
 import { TERRAIN_IDS } from './world.js';
 import { PLANT_IDS } from './plantSpecies.js';
 import { DEFAULT_TICKS_PER_GAME_MINUTE } from '../constants/simulation.js';
-import { convertGameTimeFieldsToTicks, gameMinutesToTicks } from '../utils/gameTime.js';
+import { convertGameTimeFieldsToTicks, gameMinutesToTicks, scaleRateForTicks } from '../utils/gameTime.js';
 
 /** Diet enum — canonical source for diet strings used across the codebase. */
 export const DIET = Object.freeze({
@@ -96,13 +96,33 @@ const DEFAULT_HISTORY = {
 
 const GAME_TIME_FIELDS = ['max_age', 'mature_age', 'mate_cooldown', 'decision_interval', 'gestation_period', 'incubation_period', 'pupa_age', 'pupa_duration'];
 const GAME_TIME_ARRAY_FIELDS = ['life_stage_ages'];
+// Per-tick rates tuned at the default tick rate; scale inversely with ticksPerGameMinute.
+const GAME_RATE_FIELDS = ['hunger_rate', 'thirst_rate'];
+const RECOVERY_RATE_FIELDS = ['idle_energy', 'idle_hp', 'sleep_hp'];
 
 function _convertAnimalGameTimeToTicks(simParams, ticksPerGameMinute = DEFAULT_TICKS_PER_GAME_MINUTE) {
-  return convertGameTimeFieldsToTicks(simParams, {
+  let converted = convertGameTimeFieldsToTicks(simParams, {
     fields: GAME_TIME_FIELDS,
     arrayFields: GAME_TIME_ARRAY_FIELDS,
     nestedFields: { combat: ['attack_cooldown'] },
   }, ticksPerGameMinute);
+
+  // Scale per-tick metabolic rates so they are invariant to ticks_per_day.
+  for (const field of GAME_RATE_FIELDS) {
+    if (converted[field] != null) {
+      converted[field] = scaleRateForTicks(converted[field], ticksPerGameMinute);
+    }
+  }
+  if (converted.recovery) {
+    converted = { ...converted, recovery: { ...converted.recovery } };
+    for (const field of RECOVERY_RATE_FIELDS) {
+      if (converted.recovery[field] != null) {
+        converted.recovery[field] = scaleRateForTicks(converted.recovery[field], ticksPerGameMinute);
+      }
+    }
+  }
+
+  return converted;
 }
 
 function _mergeAnimalDefaults(simParams) {

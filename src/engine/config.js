@@ -2,9 +2,9 @@
  * Default simulation configuration.
  */
 import { buildAnimalSpeciesConfig, buildProportionalAnimalCounts, normalizeAnimalCountsToBudget } from './animalSpecies.js';
-import { buildFruitSpoilAges, buildInitialPlantCounts, buildStageAges } from './plantSpecies.js';
+import { buildFruitSpoilAges, buildInitialPlantCounts, buildProductionChances, buildStageAges } from './plantSpecies.js';
 import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
-import { gameMinutesToTicks, resolveTicksPerGameMinute } from '../utils/gameTime.js';
+import { gameMinutesToTicks, resolveTicksPerGameMinute, scaleRateForTicks } from '../utils/gameTime.js';
 
 // Sex types
 export const SEX_MALE = 'MALE';
@@ -153,6 +153,11 @@ export function createSimulationConfig(overrides = {}) {
     animal_species: merged.animal_species ?? buildAnimalSpeciesConfig(ticksPerGameMinute),
     plant_stage_ages: merged.plant_stage_ages ?? buildStageAges(ticksPerGameMinute),
     plant_fruit_spoil_ages: merged.plant_fruit_spoil_ages ?? buildFruitSpoilAges(ticksPerGameMinute),
+    plant_production_chances: merged.plant_production_chances ?? buildProductionChances(ticksPerGameMinute),
+    plant_dirt_death_chance_by_stage: merged.plant_dirt_death_chance_by_stage
+      ? Object.fromEntries(Object.entries(merged.plant_dirt_death_chance_by_stage).map(([k, v]) => [k, scaleRateForTicks(v, ticksPerGameMinute)]))
+      : Object.fromEntries(Object.entries(BASE_CONFIG.plant_dirt_death_chance_by_stage).map(([k, v]) => [k, scaleRateForTicks(v, ticksPerGameMinute)])),
+    water_stress_death_rate: scaleRateForTicks(merged.water_stress_death_rate ?? BASE_CONFIG.water_stress_death_rate, ticksPerGameMinute),
   };
 }
 

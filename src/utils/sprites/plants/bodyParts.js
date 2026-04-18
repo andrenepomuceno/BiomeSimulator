@@ -474,3 +474,128 @@ export function drawFlowerCenter(ctx, cx, cy, rx, ry, centerColor, fruitColor = 
     px(ctx, cx + 2, cy - 2, lighten(fruitColor, 0.15));
   }
 }
+
+// ─── Cactus helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Draw a cactus column (trunk or arm segment) with gradient, rim lines,
+ * rib texture, and spines.
+ * @param {number} x         - left edge of column
+ * @param {number} baseY     - ground y (column occupies baseY-h … baseY)
+ * @param {number} w         - column width
+ * @param {number} h         - column height
+ * @param {string} body      - base body colour (for texture derivation)
+ * @param {string} highlight - left-rim highlight colour
+ * @param {string} bodyDark  - right-rim shadow colour
+ * @param {string} spineColor
+ */
+export function drawCactusColumn(ctx, x, baseY, w, h, body, highlight, bodyDark, spineColor) {
+  gradientH(ctx, x, baseY - h, w, h, highlight, bodyDark);
+  rect(ctx, x, baseY - h, 2, h, highlight);
+  rect(ctx, x + w - 2, baseY - h, 2, h, bodyDark);
+  speckle(ctx, x, baseY - h, w, h, [bodyDark, darken(body, 0.12), lighten(body, 0.04)], 0.22);
+  drawCactusSpines(ctx, x, baseY - h, w, h, spineColor);
+}
+
+/**
+ * Draw the left arm of a cactus (elbow joint + vertical upper section).
+ * Arm attaches at cx-8 relative to the main trunk cx.
+ */
+export function drawCactusLeftArm(ctx, cx, baseY, body, highlight, bodyDark, spineColor) {
+  const ax = cx - 8;
+  // Horizontal elbow joint
+  rect(ctx, ax, baseY - 28, 8, 6, body);
+  rect(ctx, ax, baseY - 28, 2, 6, bodyDark);
+  // Vertical upper section
+  rect(ctx, ax, baseY - 34, 6, 8, body);
+  rect(ctx, ax, baseY - 34, 2, 8, highlight);
+  speckle(ctx, ax, baseY - 34, 6, 8, [bodyDark, darken(body, 0.12), lighten(body, 0.04)], 0.22);
+  drawCactusSpines(ctx, ax, baseY - 34, 6, 8, spineColor);
+}
+
+/**
+ * Draw the right arm of a cactus (elbow joint + vertical upper section).
+ * Arm attaches at cx+8 relative to the main trunk cx.
+ */
+export function drawCactusRightArm(ctx, cx, baseY, body, highlight, bodyDark, spineColor) {
+  // Horizontal elbow joint
+  rect(ctx, cx + 8, baseY - 24, 8, 6, body);
+  rect(ctx, cx + 14, baseY - 24, 2, 6, bodyDark);
+  // Vertical upper section
+  rect(ctx, cx + 10, baseY - 32, 6, 10, body);
+  rect(ctx, cx + 10, baseY - 32, 2, 10, highlight);
+  speckle(ctx, cx + 10, baseY - 32, 6, 10, [bodyDark, darken(body, 0.12), lighten(body, 0.04)], 0.22);
+  drawCactusSpines(ctx, cx + 10, baseY - 32, 6, 10, spineColor);
+}
+
+// ─── Palm helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Draw a palm tree trunk with gradient shading, side shadow, bark texture,
+ * and horizontal segment rings.
+ * @param {number} h        - trunk height in pixels
+ * @param {number} shadowH  - height of the left-side shadow stripe
+ * @param {number[]} segments - array of y-offsets from baseY for segment rings
+ */
+export function drawPalmTrunk(ctx, cx, baseY, h, trunk, trunkDark, shadowH, segments = []) {
+  gradientH(ctx, cx + 2, baseY - h, 4, h, trunk, trunkDark);
+  rect(ctx, cx, baseY - shadowH, 2, shadowH, trunkDark);
+  drawBarkTexture(ctx, cx, baseY - h, 6, h, trunk, trunkDark);
+  for (const s of segments) rect(ctx, cx, baseY - s, 8, 2, trunkDark);
+}
+
+// ─── Seed helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Draw an organic seed body: ellipse with shadow crescent, highlight spot,
+ * speckle texture, and root-thread pixels below.
+ * @param {number} srx - seed x-radius
+ * @param {number} sry - seed y-radius
+ * @param {string|null} seedHighlight - override for highlight colour
+ */
+export function drawSeedBody(ctx, cx, cy, srx, sry, seedColor, seedHighlight) {
+  const seedHi = seedHighlight || lighten(seedColor, 0.18);
+  ellipse(ctx, cx, cy, srx, sry, seedColor);
+  for (let dy = 1; dy <= sry; dy++) {
+    const hw = Math.round(srx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (sry * sry))));
+    if (hw > 0) rect(ctx, cx - hw, cy + dy, hw * 2 + 1, 1, darken(seedColor, 0.06 + dy * 0.014));
+  }
+  px(ctx, cx - 2, cy - 2, seedHi);
+  px(ctx, cx - 1, cy - 2, lighten(seedHi, 0.08));
+  for (let dy = -sry; dy <= sry; dy++) {
+    const hw = Math.round(srx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (sry * sry))));
+    if (hw > 0) speckle(ctx, cx - hw, cy + dy, hw * 2 + 1, 1,
+      [darken(seedColor, 0.12), darken(seedColor, 0.08), lighten(seedColor, 0.04)], 0.20);
+  }
+  px(ctx, cx - 1, cy + sry + 1, darken(seedColor, 0.30));
+  px(ctx, cx + 1, cy + sry + 2, darken(seedColor, 0.22));
+}
+
+/**
+ * Draw the animated sprout emerging from a germinating seed.
+ * Frame 0 → nothing; frame 1 → small shoot + bud; frame 2 → taller shoot + leaves.
+ * @param {number} sry - seed y-radius (sets the base of the sprout)
+ */
+export function drawSeedSprout(ctx, cx, cy, sry, sproutColor, frame) {
+  if (frame < 1) return;
+  const sh = Math.floor(sry * 1.5);
+  for (let i = 0; i < sh; i++) {
+    const t = i / Math.max(1, sh - 1);
+    px(ctx, cx - Math.round(t), cy - sry - 1 - i, blend(sproutColor, lighten(sproutColor, 0.18), t));
+  }
+  px(ctx, cx - 2, cy - sry - 3, sproutColor);
+  px(ctx, cx - 3, cy - sry - 4, darken(sproutColor, 0.08));
+  if (frame < 2) return;
+  const sh2 = sry * 2 + 2;
+  for (let i = 0; i < sh2; i++) {
+    const t = i / Math.max(1, sh2 - 1);
+    px(ctx, cx - Math.round(t * 2), cy - sry - 1 - i, blend(sproutColor, lighten(sproutColor, 0.22), t));
+  }
+  for (let j = 0; j < 4; j++) {
+    px(ctx, cx - 3 - j, cy - sry - sh2 + j, j < 2 ? sproutColor : darken(sproutColor, 0.08));
+  }
+  for (let j = 0; j < 3; j++) {
+    px(ctx, cx + j, cy - sry - sh2 - 1 + j, j === 0 ? lighten(sproutColor, 0.14) : sproutColor);
+  }
+  px(ctx, cx - 2, cy - sry - sh2 - 1, lighten(sproutColor, 0.22));
+}

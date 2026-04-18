@@ -26,21 +26,6 @@ Checked before the priority queue — these trigger immediately when local condi
 
 ---
 
-## Food-Before-Hunt Priority
-
-Carnivores and omnivores prioritise consuming available food in the world before expending energy on active hunting. Within the "seek food" branch, the resolution order is:
-
-1. **Scavenge corpse** — eat a nearby dead animal within vision + adjacent
-2. **Eat meat item** — consume a `MEAT` ground item within vision range
-3. **Eat egg** — attack a nearby rival egg (omnivores and some carnivores)
-4. **Hunt live prey** — chase and attack live animals
-
-Omnivores also check for **fruit items** (`FRUIT` ground items) before scavenging, and will eat plant tiles on their current tile opportunistically.
-
-This ordering ensures that ground items left by recent kills are collected before an animal targets living prey, reducing redundant kills when food is already available.
-
----
-
 ## Priority-Based Decisions
 
 ```mermaid
@@ -146,10 +131,26 @@ Retreat also respects the flee lock-in window (`flee_lock_ticks`), so the animal
 
 Scanning for threats is expensive (spatial hash query + diet validation per neighbor). To reduce cost:
 
-- Results are cached for **4 ticks** per animal (`threatCacheTTL`)
+- Results are cached for **10 ticks** per animal (`threat_cache_ttl`)
+- After a scan returns "no threat found", rescans are throttled for **8 ticks** (`threat_scan_cooldown_ticks`)
 - Cache stores: threat entity ref, distance, direction vector
 - Cache is invalidated early if the animal crosses a tile boundary
 - Each species has a staggered decision interval (e.g., insects decide every 2 ticks, large predators every tick)
+
+---
+
+## Food-Before-Hunt Priority
+
+Carnivore and omnivore seek logic now prioritizes **visible nearby food** before pursuing prey. This reduces unnecessary chase churn and makes high-density item/corpse environments more stable.
+
+Priority order inside `_seekPrey` / `_seekOmnivoreFood`:
+
+1. Scavenge corpse (species with `can_scavenge: true`)
+2. Eat nearby `MEAT` ground item
+3. Eat nearby rival egg
+4. Hunt prey only if no higher-priority food source is available in vision
+
+Omnivores also check plant and fruit-item options before entering desperate hunt mode.
 
 ---
 

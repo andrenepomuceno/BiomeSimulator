@@ -21,15 +21,16 @@ worker.postMessage({
     island_count: 8,
     island_size_factor: 0.24,
     min_land_ratio: 0.35,
+    river_count: 4,
     seed: 42,
     initial_plant_density: 0.10,
     max_animal_population: 10000,
     animal_global_vision_multiplier: 1.2,
     initial_animal_counts: {
-      RABBIT: 100, SQUIRREL: 60, BEETLE: 80, GOAT: 35, DEER: 35,
+      RABBIT: 100, SQUIRREL: 60, BEETLE: 100, GOAT: 35, DEER: 50,
       FOX: 28, WOLF: 20, SNAKE: 20, HAWK: 15, CROCODILE: 10,
-      BOAR: 30, BEAR: 12, RACCOON: 25, CROW: 35,
-      MOSQUITO: 60, CATERPILLAR: 70,
+      BOAR: 30, BEAR: 12, RACCOON: 25, CROW: 40, LIZARD: 35,
+      MOSQUITO: 120, CATERPILLAR: 120, CRICKET: 90,
     },
   }
 });
@@ -43,6 +44,7 @@ worker.postMessage({
 | `config.island_count` | int | 8 | Number of island blobs |
 | `config.island_size_factor` | float | 0.24 | Relative island radius (0.0–1.0) |
 | `config.min_land_ratio` | float | 0.35 | Minimum fraction of tiles that must remain land; sea level is clamped downward to satisfy this floor (0 disables clamping) |
+| `config.river_count` | int | 4 | Number of rivers carved from highland sources toward existing water (0 disables river carving) |
 | `config.seed` | int\|null | null | Random seed (null = random) |
 | `config.initial_plant_density` | float | 0.10 | Fraction of eligible tiles seeded |
 | `config.max_animal_population` | int | 10000 | Global animal population budget (0 = use per-species defaults) |

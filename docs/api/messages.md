@@ -17,9 +17,13 @@ Sent after a `generate` or `loadState` command completes.
   width: 500,
   height: 500,
   seed: 42,
+  config: { ... },
   max_animal_population: 10000,
+  hungerMultiplier: 1.6,
+  thirstMultiplier: 1.6,
   terrain: ArrayBuffer,        // Uint8Array, flat [height × width], row-major
   waterProximity: ArrayBuffer, // Uint8Array, flat [height × width]
+  heightmap: ArrayBuffer,      // Float32Array, optional renderer shading map
   plantType: ArrayBuffer,      // Uint8Array, flat [height × width]
   plantStage: ArrayBuffer,     // Uint8Array, flat [height × width]
   animals: [ ... ],
@@ -28,18 +32,18 @@ Sent after a `generate` or `loadState` command completes.
     day: 0,
     tick_in_day: 0,
     is_night: false,
-    ticks_per_day: 200,
+    ticks_per_day: 260,
   }
 }
 ```
 
-The `terrain`, `waterProximity`, `plantType`, and `plantStage` fields are `ArrayBuffer`s — wrap with `new Uint8Array(buffer)`.
+The `terrain`, `waterProximity`, `plantType`, and `plantStage` fields are `ArrayBuffer`s — wrap with `new Uint8Array(buffer)`. `heightmap` (when present) should be wrapped with `new Float32Array(buffer)`.
 
 ---
 
 ## `tick`
 
-Sent after each simulation tick.
+Sent after each worker loop iteration. At high TPS, one message may represent multiple simulated ticks because the worker caps UI update rate to 30 Hz and batches ticks internally.
 
 ```javascript
 {
@@ -49,7 +53,7 @@ Sent after each simulation tick.
     day: 0,
     tick_in_day: 143,
     is_night: false,
-    ticks_per_day: 200,
+    ticks_per_day: 260,
   },
   animals: [
     {
@@ -64,7 +68,7 @@ Sent after each simulation tick.
       age: 143,
       alive: true,
       lifeStage: 2,
-      actionHistory: [        // Last 100 actions (FIFO ring buffer)
+      actionHistory: [        // Last N actions (ring buffer; default 150)
         { tick: 140, action: 'Eat', detail: 'Strawberry (Fruit) hunger=22' },
       ],
     }
@@ -78,6 +82,28 @@ Sent after each simulation tick.
     { op: 'remove', item: { id: 2000000001, consumed: true } },
     { op: 'update', item: { id: 2000000002, type: 'SEED', createdTick: 720 } },  // fruit → seed decay
   ],
+  incremental: true,      // false on full sync boundary (every 30 ticks or forced)
+  animalsDead: [12, 55],  // optional: IDs explicitly removed from client caches
+  plantsFullSync: {       // optional: present when plantChanges overflows max budget
+    width: 500,
+    height: 500,
+    plantType: ArrayBuffer,
+    plantStage: ArrayBuffer,
+  },
+  itemsFullSync: [ ... ], // optional: present when itemChanges overflows max budget
+  phases: {               // per-phase timing telemetry from engine
+    floraMs: 1.5,
+    behaviorMs: 7.2,
+    cleanupMs: 0.8,
+    spatialMs: 0.6,
+    totalMs: 10.4,
+  },
+  supervisorReport: {     // optional: only when sampled audit finds issues
+    tick: 143,
+    issueCount: 2,
+    countsByType: { animal_numeric: 1, plant_grid: 1 },
+    samples: { ... },
+  },
   // Included every 10 ticks:
   stats: {
     tick: 140,
@@ -85,15 +111,15 @@ Sent after each simulation tick.
     carnivores: 10,
     plants_total: 100000,
     fruits: 15000,
+    tickMs: 12.5,
+    animalCount: 59,
+    activePlants: 80000,
   },
   statsHistory: [ ... ],  // Last 1000 stat snapshots
-  animalCount: 59,        // Total alive animals
-  activePlants: 80000,    // Non-dead plants
-  tickMs: 12.5,           // Tick processing time in ms
 }
 ```
 
-`itemChanges` is an incremental delta list of ground item events since the last tick. Each entry has:
+`itemChanges` is an incremental delta list of ground item events since the last posted worker update. Each entry has:
 
 | Field | Description |
 |-------|-------------|
@@ -101,7 +127,11 @@ Sent after each simulation tick.
 | `item` | Partial or full `GroundItem` delta (always includes `id`) |
 
 On `'add'`, the full item fields (`x`, `y`, `type`, `source`, `createdTick`, `germinationTicks`) are included. On `'remove'`, only `id` and `consumed` are guaranteed. On `'update'`, only changed fields plus `id` are included.
-```
+
+When change lists exceed configured caps, delta arrays are intentionally dropped and replaced by full-sync payloads:
+
+- `plantsFullSync` replaces `plantChanges`
+- `itemsFullSync` replaces `itemChanges`
 
 Animals may be a full array or an incremental delta list (dirty-flag based; full sync every 30 ticks).
 
@@ -116,17 +146,25 @@ Response to a `getTileInfo` command.
   type: 'tileInfo',
   x: 100, y: 200,
   info: {
-    terrain: 'grass',
+    terrain: 'soil',
+    terrainId: 3,
     waterProximity: 5,
     plant: {
       type: 2,    // 0=none, 1–15 (see Plant Types below)
       stage: 3,   // 0=none, 1=seed, 2=young_sprout, 3=adult_sprout, 4=adult, 5=fruit, 6=dead
       age: 245,
-      fruit: 0,
+      log: [ ... ],
     },
+    adjacentPlants: 4,
+    neighbors: [3,3,2,3,3,2,1,1,0],
+    neighborPlants: [null,{type:1,stage:4}, ...],
+    waterAdjacent: true,
     animals: [
       { id: 1, species: 'RABBIT', x: 100, y: 200, ... }
-    ]
+    ],
+    items: [
+      { id: 2000000001, type: 'MEAT', x: 100, y: 200, source: 'WOLF', createdTick: 500 }
+    ],
   }
 }
 ```

@@ -201,14 +201,16 @@ sequenceDiagram
     E->>E: remove dead, adaptive cleanup, record stats
     W->>W: serialize full or incremental state
 
-    W->>M: postMessage({type: 'tick', clock, animals, plantChanges, stats})
+    W->>M: postMessage({type: 'tick', clock, animals, plantChanges, itemChanges, incremental})
     M->>S: setAnimals() or mergeAnimalDeltas()
-    M->>S: setClock(), setPlantChanges(), setStats()
+    M->>S: setClock(), setPlantChanges(), setItemChanges(), setStats()
     S->>R: entityLayer.update(animals)
     S->>R: updatePlants(plantChanges)
     S->>R: setNight(is_night)
     R->>R: render at 60fps
 ```
+
+At high TPS, the worker batches multiple simulation ticks per loop and posts one consolidated `tick` message (UI rate capped at 30 Hz). Plant/item deltas are accumulated across the batch; crossing a full-sync boundary forces a full animal sync.
 
 Animals may be a full array or an incremental delta list (dirty-flag based; full sync every 30 ticks).
 
@@ -248,7 +250,7 @@ flowchart LR
     Init["new Worker('simWorker.js')"] --> Idle["Idle\n(awaiting commands)"]
     Idle -->|"cmd: generate"| Gen["Generate World"]
     Gen -->|"worldReady"| Ready["Ready"]
-    Ready -->|"cmd: start"| Running["Tick Loop\n(setInterval)"]
+    Ready -->|"cmd: start"| Running["Tick Loop\n(setTimeout, adaptive/batched)"]
     Running -->|"cmd: pause"| Paused["Paused"]
     Paused -->|"cmd: resume"| Running
     Running -->|"cmd: step"| Running
@@ -264,9 +266,9 @@ flowchart LR
 | 5–8 | 3 |
 | > 8 | 4 |
 
-**Timeout handling:** If a parallel fauna tick exceeds **800ms**, the main worker falls back to applying partial results and logs a warning. This prevents UI freezes on large populations.
+**Timeout handling:** Each fauna sub-worker chunk has an **800ms** timeout budget. Timed-out chunks resolve to empty results for that cycle, allowing the tick to complete without stalling.
 
-**Incremental serialization:** Animals have a dirty flag incremented on state changes. Only dirty animals are sent per tick. A full sync is forced every **30 ticks** to prevent desynchronization.
+**Incremental serialization:** Animals have a dirty flag incremented on state changes. Only dirty animals are sent in incremental mode. A full sync is forced every **30 ticks** (or when a full-sync boundary is crossed during a batched loop iteration).
 
 ---
 

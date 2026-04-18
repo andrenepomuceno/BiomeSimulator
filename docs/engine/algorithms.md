@@ -7,7 +7,7 @@ Return to [Documentation Home](../README.md).
 
 ## Terrain Generation (`mapGenerator.js`)
 
-### `generateTerrain(config)` → `{terrain, waterProximity, seed}`
+### `generateTerrain(config)` → `{terrain, waterProximity, heightmap, seed}`
 
 ```mermaid
 flowchart TD
@@ -24,19 +24,25 @@ flowchart TD
     Edge --> Combine
 
     Combine --> Classify{"Classify by\nheight thresholds"}
-    Classify -->|"> seaLevel + 0.45"| Rock["🪨 ROCK"]
-    Classify -->|"0.12 – 0.45"| Grass["🌿 GRASS"]
-    Classify -->|"0.05 – 0.12"| Dirt["🟫 DIRT"]
-    Classify -->|"0 – 0.05"| Sand["🏖️ SAND"]
-    Classify -->|"≤ 0"| Water["🌊 WATER"]
+    Classify -->|"> seaLevel + 0.50"| Mountain["⛰️ MOUNTAIN"]
+    Classify -->|"+0.42 .. +0.50"| Rock["🪨 ROCK"]
+    Classify -->|"+0.12 .. +0.42"| Soil["🟫 SOIL"]
+    Classify -->|"+0.05 .. +0.12"| Dirt["🟤 DIRT"]
+    Classify -->|"0 .. +0.05"| Sand["🏖️ SAND"]
+    Classify -->|"-0.15 .. 0"| Water["🌊 WATER"]
+    Classify -->|"≤ seaLevel - 0.15"| DeepWater["🌊 DEEP_WATER"]
 
-    Rock --> Detail["Detail Noise\n3-octave FBM on GRASS\nadds DIRT/ROCK variation"]
-    Grass --> Detail
+    Mountain --> Detail
+    Rock --> Detail["Detail Noise\n3-octave FBM on SOIL\nadds DIRT/ROCK variation"]
+    Soil --> Detail
     Dirt --> Detail
     Sand --> Detail
     Water --> Detail
+    DeepWater --> Detail
 
-    Detail --> BFS["Water Proximity BFS\nflood fill from all water tiles\n4-directional"]
+    Detail --> Rivers["River Carving\n(highland sources → downhill\nwith meander noise)"]
+
+    Rivers --> BFS["Water Proximity BFS\nflood fill from all water tiles\n4-directional"]
     BFS --> Result["Final: terrain[] + waterProximity[]"]
 ```
 
@@ -46,14 +52,28 @@ flowchart TD
 2. **Island mask** — Gaussian blobs centered near map center, configurable count and size
 3. **Combine** — `heightmap × islandMask`
 4. **Adaptive sea level** — if `min_land_ratio > 0`, the sorted height distribution is used to find the percentile value at `(1 − minLandRatio)`, and `seaLevel` is clamped downward to that value so the guarantee is met deterministically without retries.
-4. **Classify terrain** by height thresholds:
-   - `> seaLevel + 0.45` → ROCK
-   - `0.12 – 0.45` → GRASS
-   - `0.05 – 0.12` → DIRT
-   - `0 – 0.05` → SAND
-   - `≤ 0` → WATER
-5. **Detail noise** — 3-octave FBM on GRASS tiles adds DIRT/ROCK variation
-6. **Water proximity BFS** — flood fill from all water tiles, 4-directional
+5. **Classify terrain** by thresholds around `effectiveSeaLevel`:
+    - `> sea + 0.50` → `MOUNTAIN`
+    - `> sea + 0.42` → `ROCK`
+    - `> sea + 0.12` → `SOIL`
+    - `> sea + 0.05` → `DIRT`
+    - `> sea` → `SAND`
+    - `> sea - 0.15` → `WATER`
+    - else → `DEEP_WATER`
+6. **Detail noise** — 3-octave FBM on SOIL tiles adds DIRT/ROCK variation
+7. **River carving** — optional `river_count` highland sources are traced downhill with meander noise and carved as `WATER`; lower-course widening adds natural river mouths
+8. **Water proximity BFS** — flood fill from all WATER/DEEP_WATER tiles, 4-directional
+
+### River Generation (`generateRivers`)
+
+Rivers are carved after primary terrain classification and before water-proximity/detail-2 passes:
+
+1. Candidate sources are sampled from `MOUNTAIN`/`ROCK` tiles
+2. Each source greedily descends to the lowest unvisited neighbor (8-way) with small random wiggle (`+ rng()*0.06`) to avoid perfectly straight channels
+3. A river is accepted only if it reaches existing water and path length ≥ 15 tiles
+4. Accepted paths are converted to `WATER`; downstream segments may widen sideways
+
+Because rivers are carved before water-proximity BFS, nearby banks naturally participate in later `MUD` and `FERTILE_SOIL` placement.
 
 ### Noise Functions
 

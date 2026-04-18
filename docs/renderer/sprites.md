@@ -108,11 +108,15 @@ Use cautiously for readability boosts; avoid over-darkening detailed sprites.
 
 ---
 
-## Body Part Catalog (bodyParts.js)
+## Body Part Catalog (bodyParts)
 
-`src/utils/sprites/animals/bodyParts.js` is the **single source of truth** for all reusable anatomy drawing. Templates import helpers from this file and should not duplicate geometry inline.
+`src/utils/sprites/animals/bodyParts.js` remains the stable import surface for templates, and now re-exports modular implementations from:
 
-> Rule: if the same shape appears in two or more templates, it belongs in `bodyParts.js`.
+- `src/utils/sprites/animals/bodyParts/heads.js`
+- `src/utils/sprites/animals/bodyParts/limbs.js`
+- `src/utils/sprites/animals/bodyParts/body.js`
+
+> Rule: if the same shape appears in two or more templates, it belongs in the animal bodyParts modules (imported through `bodyParts.js`).
 
 ### Eyes
 

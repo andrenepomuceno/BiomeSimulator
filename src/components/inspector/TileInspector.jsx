@@ -125,7 +125,7 @@ function TileNeighborhood({ neighbors, neighborPlants, waterAdjacent, adjacentPl
   );
 }
 
-export default function TileInspector({ tile, clearSelection, requestAnimalDetail, setSelectedEntity, setSelectedItem, clock, gameConfig, effectivePlantStageAges, effectivePlantFruitSpoilAges, ticksPerDay, getPlantByTypeId }) {
+export default function TileInspector({ tile, clearSelection, onFocusEntity, requestAnimalDetail, setSelectedEntity, setSelectedItem, clock, gameConfig, effectivePlantStageAges, effectivePlantFruitSpoilAges, ticksPerDay, getPlantByTypeId }) {
   const [tileTab, setTileTab] = useState('terrain');
   const [plantTab, setPlantTab] = useState('info');
   const hasPlant = tile.plant && tile.plant.type !== 0 && tile.plant.type !== 'none';
@@ -184,7 +184,16 @@ export default function TileInspector({ tile, clearSelection, requestAnimalDetai
     <div className="sidebar-section entity-info">
       <div className="d-flex justify-content-between align-items-center mb-2">
         <h6 className="mb-0">Tile ({tile.x}, {tile.y})</h6>
-        <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
+        <div className="d-flex align-items-center gap-1">
+          <button
+            className="btn btn-sm btn-outline-info py-0 px-2"
+            onClick={() => onFocusEntity?.(tile)}
+            disabled={!Number.isFinite(tile.x) || !Number.isFinite(tile.y)}
+          >
+            Focus
+          </button>
+          <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
+        </div>
       </div>
 
       {tileTabs.length > 1 && (

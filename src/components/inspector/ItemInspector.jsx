@@ -22,7 +22,7 @@ function StatRow({ label, value, color }) {
   );
 }
 
-export default function ItemInspector({ item, clearSelection, clock, gameConfig }) {
+export default function ItemInspector({ item, clearSelection, onFocusEntity, clock, gameConfig }) {
   const typeName = ITEM_TYPE_NAMES[item.type] || 'Item';
   const emoji = ITEM_TYPE_EMOJIS[item.type] || '📦';
   const nutr = ITEM_NUTRITION[item.type] || {};
@@ -69,7 +69,16 @@ export default function ItemInspector({ item, clearSelection, clock, gameConfig 
           {emoji} {typeName}{' '}
           <span style={{ color: '#666', fontWeight: 'normal' }}>#{item.id}</span>
         </h6>
-        <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
+        <div className="d-flex align-items-center gap-1">
+          <button
+            className="btn btn-sm btn-outline-info py-0 px-2"
+            onClick={() => onFocusEntity?.(item)}
+            disabled={!Number.isFinite(item.x) || !Number.isFinite(item.y)}
+          >
+            Focus
+          </button>
+          <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
+        </div>
       </div>
 
       <CollapsibleSection title="Identity" icon="📍" defaultOpen={true}>

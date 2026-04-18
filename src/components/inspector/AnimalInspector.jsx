@@ -357,7 +357,16 @@ export default function AnimalInspector({ entity, clearSelection, onFocusEntity,
         <h6 className="mb-0">
           {isEggStage ? '🥚' : info.emoji} {info.name} {isEggStage ? 'Egg' : ''} <span style={{ color: '#666', fontWeight: 'normal' }}>#{entity.id}</span>
         </h6>
-        <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
+        <div className="d-flex align-items-center gap-1">
+          <button
+            className="btn btn-sm btn-outline-info py-0 px-2"
+            onClick={() => onFocusEntity?.(entity)}
+            disabled={!Number.isFinite(entity.x) || !Number.isFinite(entity.y)}
+          >
+            Focus
+          </button>
+          <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={clearSelection}>✕</button>
+        </div>
       </div>
 
       <div className="mb-2">
@@ -385,15 +394,6 @@ export default function AnimalInspector({ entity, clearSelection, onFocusEntity,
       {animalTab === 'status' && (
         <div className="inspector-tab-panel">
           <CollapsibleSection title="Identity" icon="🪪" defaultOpen={true}>
-            <div className="d-flex justify-content-end mb-1">
-              <button
-                className="btn btn-sm btn-outline-info py-0 px-2"
-                onClick={() => onFocusEntity?.(entity)}
-                disabled={!Number.isFinite(entity.x) || !Number.isFinite(entity.y)}
-              >
-                Focus
-              </button>
-            </div>
             <div className="stat-row">
               <span className="stat-label">Diet</span>
               <span className="stat-value" style={{ color: DIET_COLORS[info.diet] || DIET_COLORS.Herbivore }}>{info.diet}</span>

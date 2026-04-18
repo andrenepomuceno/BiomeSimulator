@@ -59,6 +59,7 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
       <ItemInspector
         item={selectedItem}
         clearSelection={clearSelection}
+        onFocusEntity={onFocusEntity}
         clock={clock}
         gameConfig={gameConfig}
       />
@@ -70,6 +71,7 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
       <TileInspector
         tile={selectedTile}
         clearSelection={clearSelection}
+        onFocusEntity={onFocusEntity}
         requestAnimalDetail={requestAnimalDetail}
         setSelectedEntity={setSelectedEntity}
         setSelectedItem={setSelectedItem}

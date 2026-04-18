@@ -2,6 +2,7 @@
  * StatsPanel — live population counters and chart.
  */
 import React, { useEffect, useState, useMemo } from 'react';
+import { usePersistedTab } from '../hooks/usePersistedTab.js';
 import useSimStore from '../store/simulationStore';
 import { ANIMAL_HEX_COLORS, SPECIES_INFO } from '../utils/terrainColors';
 import { getEffectiveAnimalPopulationCap } from '../engine/animalSpecies';
@@ -45,7 +46,7 @@ export default function StatsPanel() {
   } = useSimStore();
   const speciesKeys = useMemo(() => Object.keys(SPECIES_INFO), []);
   const plantTypeKeys = useMemo(() => Object.keys(PLANT_COLORS).map(Number).sort((a, b) => a - b), []);
-  const [statsTab, setStatsTab] = useState('population');
+  const [statsTab, setStatsTab] = usePersistedTab('stats', ['population', 'plants', 'chart', 'settings'], 'population');
   const [history, setHistory] = useState(() => {
     const h = {
       ticks: [],

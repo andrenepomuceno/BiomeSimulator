@@ -1,7 +1,8 @@
 /**
  * SimulationReport — full-screen modal with historical analytics of the simulation.
  */
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
+import { usePersistedTab } from '../hooks/usePersistedTab.js';
 import useSimStore from '../store/simulationStore';
 import { ANIMAL_HEX_COLORS, SPECIES_INFO, PLANT_TYPE_NAMES } from '../utils/terrainColors';
 import { buildSimulationReportText, deriveSimulationReportData, DIET_GROUPS } from '../utils/simulationReportExport';
@@ -55,7 +56,7 @@ const CHART_BASE = {
 };
 
 export default function SimulationReport({ open, onClose }) {
-  const [tab, setTab] = useState('population');
+  const [tab, setTab] = usePersistedTab('report', ['population', 'flora', 'summary'], 'population');
   const modalRef = useRef(null);
   const { statsHistory, clock } = useSimStore();
   const ticksPerDay = resolveTicksPerDay(clock.ticks_per_day);

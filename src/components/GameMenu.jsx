@@ -2,6 +2,7 @@
  * GameMenu — Modal for New Game, Save, and Load.
  */
 import React, { useRef, useState } from 'react';
+import { usePersistedTab } from '../hooks/usePersistedTab.js';
 import useSimStore from '../store/simulationStore';
 import {
   buildProportionalAnimalCounts,
@@ -39,8 +40,8 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const hasWorld = useSimStore((state) => !!state.terrainData || !!state.worldReady || state.animals.length > 0);
   const modalRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [tab, setTab] = useState('new');
-  const [newTab, setNewTab] = useState('map');
+  const [tab, setTab] = usePersistedTab('gameMenu', ['new', 'save', 'load'], 'new');
+  const [newTab, setNewTab] = usePersistedTab('gameMenuNew', ['map', 'fauna', 'flora'], 'map');
   const [isMapSizeLinked, setIsMapSizeLinked] = useState(true);
   const [params, setParams] = useState(() => buildDefaultParams());
   const [pendingNewGameParams, setPendingNewGameParams] = useState(null);

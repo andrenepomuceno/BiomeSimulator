@@ -1,22 +1,5 @@
-import React, { useState } from 'react';
-
-const ANIMAL_TAB_STORAGE_KEY = 'biomeSimulator.inspectorTab.animal';
-const VALID_ANIMAL_TABS = new Set(['status', 'species', 'diet', 'history']);
-
-function loadPersistedAnimalTab() {
-  try {
-    const raw = window.localStorage?.getItem(ANIMAL_TAB_STORAGE_KEY);
-    return raw && VALID_ANIMAL_TABS.has(raw) ? raw : 'status';
-  } catch {
-    return 'status';
-  }
-}
-
-function persistAnimalTab(tab) {
-  try {
-    window.localStorage?.setItem(ANIMAL_TAB_STORAGE_KEY, tab);
-  } catch { /* ignore */ }
-}
+import React from 'react';
+import { usePersistedTab } from '../../hooks/usePersistedTab.js';
 import ANIMAL_SPECIES from '../../engine/animalSpecies';
 import PLANT_SPECIES from '../../engine/plantSpecies';
 import { ANIMAL_STATE_TONES, DIET_COLORS, getBadgeToneStyle } from '../../constants/statusColors';
@@ -349,8 +332,7 @@ function ActionLogEntry({ event, ticksPerDay }) {
 }
 
 export default function AnimalInspector({ entity, clearSelection, onFocusEntity, requestAnimalDetail, setSelectedEntity, clock, gameConfig, speciesConfig, ticksPerDay }) {
-  const [animalTab, setAnimalTab] = useState(loadPersistedAnimalTab);
-  const switchAnimalTab = (tab) => { persistAnimalTab(tab); setAnimalTab(tab); };
+  const [animalTab, switchAnimalTab] = usePersistedTab('animal', ['status', 'species', 'diet', 'history'], 'status');
   const info = SPECIES_INFO[entity.species] || { emoji: '❓', name: entity.species, diet: entity.diet || '?' };
   const maxHunger = speciesConfig?.max_hunger || 100;
   const maxThirst = speciesConfig?.max_thirst || 100;

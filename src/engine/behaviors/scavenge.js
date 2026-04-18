@@ -91,6 +91,13 @@ export function _tryEatEgg(animal, world, spatialHash, vision) {
     world.markEntityDead(target);
     target.consumed = true;
     target._dirty = true;
+    target.logAction(world.clock.tick, 'DIED', {
+      cause: 'eaten',
+      eatenBy: animal.species,
+      eatenById: animal.id,
+      x: eggX,
+      y: eggY,
+    });
     animal.hunger = Math.max(0, animal.hunger - (world.config.scavenge_egg_hunger_restore ?? 20));
     animal.energy = Math.min(animal.maxEnergy, animal.energy + (world.config.scavenge_egg_energy_restore ?? 10));
     animal.state = AnimalState.EATING;

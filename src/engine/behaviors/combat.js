@@ -37,6 +37,8 @@ export function _attack(attacker, defender, world) {
 
   if (damage < (combat.min_damage ?? 1)) damage = combat.min_damage ?? 1;
   defender.hp -= damage;
+  defender._lastAttackerSpecies = attacker.species;
+  defender._lastAttackerId = attacker.id;
 
   attacker.logAction(world.clock.tick, 'ATTACK', {
     target: defender.species,
@@ -53,7 +55,12 @@ export function _attack(attacker, defender, world) {
 
   if (defender.hp <= 0) {
     world.markEntityDead(defender);
-    defender.logAction(world.clock.tick, 'KILLED_BY', { attacker: attacker.species, attackerId: attacker.id });
+    defender.logAction(world.clock.tick, 'KILLED_BY', {
+      attacker: attacker.species,
+      attackerId: attacker.id,
+      x: Math.round(defender.x),
+      y: Math.round(defender.y),
+    });
     attacker.logAction(world.clock.tick, 'KILLED', { target: defender.species, targetId: defender.id });
   }
 }

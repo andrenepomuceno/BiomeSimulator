@@ -296,7 +296,10 @@ function ActionLogEntry({ event, ticksPerDay }) {
   if (action === 'ATTACK') text = `Attacked ${detail.target} #${detail.targetId} (${detail.damage} dmg${detail.crit ? ' CRIT' : ''})`;
   else if (action === 'DEFENDED') text = `Hit by ${detail.attacker} #${detail.attackerId} (${detail.damage} dmg${detail.crit ? ' CRIT' : ''})`;
   else if (action === 'KILLED') text = `Killed ${detail.target} #${detail.targetId}`;
-  else if (action === 'KILLED_BY') text = `Killed by ${detail.attacker} #${detail.attackerId}`;
+  else if (action === 'KILLED_BY') {
+    const where = detail.x != null ? ` at (${detail.x},${detail.y})` : '';
+    text = `Killed by ${detail.attacker} #${detail.attackerId}${where}`;
+  }
   else if (action === 'MATED') text = `Mated with #${detail.partnerId}`;
   else if (action === 'OFFSPRING') text = `Baby #${detail.babyId} born at (${detail.x},${detail.y})`;
   else if (action === 'BORN') text = `Born (parents #${detail.parentA}${detail.parentB != null ? `, #${detail.parentB}` : ''})${pos}`;
@@ -306,7 +309,19 @@ function ActionLogEntry({ event, ticksPerDay }) {
   else if (action === 'ATE_EGG') text = `Ate ${detail.species} egg #${detail.eggId}${pos}`;
   else if (action === 'EAT_ITEM') text = `Ate ${ITEM_TYPE_LABELS[detail.itemType] || `item:${detail.itemType}`} #${detail.itemId}${pos}`;
   else if (action === 'FLED') text = `Fled from ${detail.from} #${detail.threatId}`;
-  else if (action === 'DIED') text = `Died (${detail.cause})`;
+  else if (action === 'DIED') {
+    const where = detail.x != null ? ` at (${detail.x},${detail.y})` : '';
+    const age = detail.age != null ? `, age ${detail.age}` : '';
+    let causeText;
+    if (detail.cause === 'old_age') causeText = 'old age';
+    else if (detail.cause === 'starvation') causeText = 'starvation';
+    else if (detail.cause === 'dehydration') causeText = 'dehydration';
+    else if (detail.cause === 'starvation_dehydration') causeText = 'starvation & dehydration';
+    else if (detail.cause === 'killed_by_predator') causeText = `killed by ${detail.killedBy} #${detail.killedById}`;
+    else if (detail.cause === 'eaten') causeText = `egg eaten by ${detail.eatenBy} #${detail.eatenById}`;
+    else causeText = (detail.cause || 'unknown').replace(/_/g, ' ');
+    text = `Died — ${causeText}${where}${age}`;
+  }
   else if (action === 'FELL_ASLEEP') text = detail.cause === 'exhausted' ? `Fell asleep (exhausted, energy ${detail.energy})` : `Fell asleep (energy ${detail.energy})`;
   else if (action === 'WOKE_UP') text = `Woke up (energy ${detail.energy})`;
   else if (action === 'DRANK') text = `Drank water (thirst −${detail.thirstReduced})`;

@@ -124,6 +124,10 @@ export class Animal {
     this.parentA = null;
     this.parentB = null;
 
+    // Last attacker tracking — used to enrich DIED cause when HP is drained by combat
+    this._lastAttackerSpecies = null;
+    this._lastAttackerId = null;
+
     // Terrain / diet sets for fast O(1) lookups
     this._walkableSet = new Set(config.walkable_terrain || [1, 2, 3, 5, 8]);
     this._ediblePlants = new Set(config.edible_plants || []);

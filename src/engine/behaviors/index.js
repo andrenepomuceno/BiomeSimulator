@@ -71,9 +71,24 @@ export function decideAndAct(animal, world, spatialHash) {
 
     if (animal.age > animal.maxAge || animal.hp <= 0) {
       world.markEntityDead(animal);
-      animal.logAction(world.clock.tick, 'DIED', {
-        cause: animal.age > animal.maxAge ? 'old_age' : 'hp_depleted',
-      });
+      let cause;
+      const deathDetail = { x: Math.round(animal.x), y: Math.round(animal.y), age: animal.age };
+      if (animal.age > animal.maxAge) {
+        cause = 'old_age';
+      } else if (animal._lastAttackerSpecies) {
+        cause = 'killed_by_predator';
+        deathDetail.killedBy = animal._lastAttackerSpecies;
+        deathDetail.killedById = animal._lastAttackerId;
+      } else {
+        const hpt = animal._config.health_penalty?.threshold_fraction ?? 0.8;
+        const isStarving = animal.hunger > animal._config.max_hunger * hpt;
+        const isDehydrating = animal.thirst > animal._config.max_thirst * hpt;
+        if (isStarving && isDehydrating) cause = 'starvation_dehydration';
+        else if (isStarving) cause = 'starvation';
+        else if (isDehydrating) cause = 'dehydration';
+        else cause = 'hp_depleted';
+      }
+      animal.logAction(world.clock.tick, 'DIED', { cause, ...deathDetail });
       return;
     }
 

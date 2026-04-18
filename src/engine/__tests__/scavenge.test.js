@@ -128,6 +128,7 @@ describe('scavenge behaviors', () => {
       hp: 10,
       lifeStage: LifeStage.EGG,
       state: AnimalState.IDLE,
+      logAction: () => {},
     };
     const spatialHash = createSpatialHash([egg]);
 

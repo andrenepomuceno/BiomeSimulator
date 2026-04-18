@@ -46,15 +46,16 @@ export function useSimulation() {
           }
           store.setPlantSnapshot(null);
           // Store plant arrays for renderer (App.jsx reads these)
-          useSimStore.setState({
+          useSimStore.setState((state) => ({
             worldReady: {
               terrain, plantType, plantStage, waterProximity, heightmap,
               width: msg.width, height: msg.height, seed: msg.seed,
             },
+            worldReadyVersion: (state.worldReadyVersion || 0) + 1,
             groundItems: new Map(),
             itemSnapshot: null,
             selectedItem: null,
-          });
+          }));
           break;
         }
 
@@ -123,8 +124,7 @@ export function useSimulation() {
           if (msg.profiling && msg.profiling.engine) {
             store.setEngineProfile(msg.profiling.engine);
           }
-          const isPaintingTerrain = store.tool === 'PAINT_TERRAIN';
-          if (msg.supervisorReport && !isPaintingTerrain) {
+          if (msg.supervisorReport) {
             store.pushSupervisorFlash({
               id: `sv-${msg.supervisorReport.tick}-${Date.now()}`,
               tick: msg.supervisorReport.tick,

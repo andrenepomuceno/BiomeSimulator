@@ -65,10 +65,11 @@ export default function App() {
   const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth < DRAWER_BREAKPOINT);
   const debouncedSpeedChangeRef = useRef(null);
   const autoPausedRef = useRef(false);
+  const lastPreparedWorldVersionRef = useRef(0);
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges, itemChanges,
-    clock, stats, worldReady, plantSnapshot, itemSnapshot, selectedEntity, selectedTile, selectedItem,
+    clock, stats, worldReady, worldReadyVersion, plantSnapshot, itemSnapshot, selectedEntity, selectedTile, selectedItem,
     isGeneratingWorld, isPreparingAssets, assetPreparationTitle, assetPreparationSubtitle,
   } = useSimStore();
 
@@ -143,6 +144,8 @@ export default function App() {
   // When world is ready from worker, set up renderer and prepare visual/audio assets.
   useEffect(() => {
     if (!worldReady || !rendererRef.current) return;
+    if (!Number.isFinite(worldReadyVersion) || worldReadyVersion <= lastPreparedWorldVersionRef.current) return;
+    lastPreparedWorldVersionRef.current = worldReadyVersion;
     const { terrain, plantType, plantStage, width, height, heightmap, waterProximity } = worldReady;
 
     rendererRef.current.setTerrain(terrain, width, height, heightmap, waterProximity);
@@ -183,7 +186,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [worldReady, prepareAudioAssets]);
+  }, [worldReadyVersion, worldReady, prepareAudioAssets]);
 
   // Update entities when animals change
   useEffect(() => {

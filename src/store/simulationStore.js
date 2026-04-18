@@ -170,6 +170,7 @@ const useSimStore = create((set, get) => ({
   mapHeight: 0,
   terrainData: null, // Uint8Array
   worldReady: null,
+  worldReadyVersion: 0,
   isGeneratingWorld: false,
   isPreparingAssets: false,
   assetPreparationTitle: '',

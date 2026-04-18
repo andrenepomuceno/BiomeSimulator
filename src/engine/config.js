@@ -27,6 +27,16 @@ const THREAT_SCAN_COOLDOWN = 11;
 const SCAVENGE_DECAY_WINDOW = 554;
 const SUPERVISOR_FULL_AUDIT_INTERVAL = 166;
 const SUPERVISOR_LOG_COOLDOWN = 665;
+// Item lifecycle durations in game-minutes (invariant to ticks_per_day).
+// Derived by back-converting the original tick values at DEFAULT_TICKS_PER_DAY=500.
+const ITEM_MEAT_DECAY        = 864;  // 300 ticks @ 500tpd ≈ 0.6 game-days
+const ITEM_FRUIT_TO_SEED     = 576;  // 200 ticks @ 500tpd ≈ 0.4 game-days
+const ITEM_SEED_GERMINATION  = 1152; // 400 ticks @ 500tpd ≈ 0.8 game-days
+// Behaviour lock durations in game-minutes.
+const FLEE_LOCK_MINUTES  = 14; //  5 ticks @ 500tpd
+const CHASE_LOCK_MINUTES = 14; //  5 ticks @ 500tpd
+const WATER_LOCK_MINUTES = 86; // 30 ticks @ 500tpd
+const PLANT_LOCK_MINUTES = 58; // 20 ticks @ 500tpd
 
 const BASE_CONFIG = {
   // Map generation
@@ -55,8 +65,7 @@ const BASE_CONFIG = {
   scavenge_egg_hunger_restore: 20,     // hunger reduced when eating an egg
   scavenge_egg_energy_restore: 10,     // energy gained when eating an egg
   item_seed_germination_chance: 0.20,  // probability a SEED item spawns a plant when it expires
-  flee_lock_ticks: 5,   // ticks to commit to fleeing the same threat before re-evaluating
-  chase_lock_ticks: 5,  // ticks to commit to chasing the same prey before re-evaluating
+  // flee_lock_ticks / chase_lock_ticks: computed in createSimulationConfig from game-minute constants
   carnivore_retreat_hp_normal_threshold: 0.30,     // flee if hp < 30% (normal)
   carnivore_retreat_hp_desperate_threshold: 0.40,  // flee if hp < 40% when hungry/thirsty
   carnivore_retreat_power_margin: 3,               // flee only if threat.attack > animal.attack + margin
@@ -65,8 +74,7 @@ const BASE_CONFIG = {
   sleep_block_hp_threshold: 0.85,                  // don't sleep voluntarily if hp < this fraction of maxHp
   threat_cache_ttl: 10,                            // ticks to reuse a found threat before rescanning (was 4)
   threat_scan_cooldown_ticks: 8,                   // ticks to skip scan after "no threat found" (was 2)
-  water_lock_ticks: 30,                            // ticks to commit to a water destination before rescanning
-  plant_lock_ticks: 20,                            // ticks to commit to a plant target before rescanning
+  // water_lock_ticks / plant_lock_ticks: computed in createSimulationConfig from game-minute constants
 
   // Flora
   initial_plant_density: 0.10,
@@ -125,10 +133,7 @@ const BASE_CONFIG = {
   season_reproduction_multiplier: [1.5, 1.0, 0.7, 0.2],
   season_death_multiplier: [0.8, 1.0, 1.2, 2.0],
 
-  // Ground items
-  item_meat_decay_ticks: 300,         // ticks until a meat item disappears
-  item_fruit_to_seed_ticks: 200,      // ticks until a fruit item transforms into a seed
-  item_seed_germination_ticks: 400,   // fallback ticks until a seed item tries to germinate
+  // Ground items — decay durations computed in createSimulationConfig from game-minute constants
   item_drop_radius_animal: 2,         // tile radius for radial meat scatter on death
   item_drop_radius_plant: 2,          // tile radius for radial fruit/seed scatter on reproduction
   item_max_changes_per_tick: 2000,    // cap for itemChanges delta array per tick
@@ -165,6 +170,13 @@ export function createSimulationConfig(overrides = {}) {
     scavenge_decay_ticks: merged.scavenge_decay_ticks ?? gameMinutesToTicks(SCAVENGE_DECAY_WINDOW, ticksPerGameMinute),
     supervisor_full_audit_interval_ticks: merged.supervisor_full_audit_interval_ticks ?? gameMinutesToTicks(SUPERVISOR_FULL_AUDIT_INTERVAL, ticksPerGameMinute),
     supervisor_log_cooldown_ticks: merged.supervisor_log_cooldown_ticks ?? gameMinutesToTicks(SUPERVISOR_LOG_COOLDOWN, ticksPerGameMinute),
+    flee_lock_ticks: merged.flee_lock_ticks ?? gameMinutesToTicks(FLEE_LOCK_MINUTES, ticksPerGameMinute),
+    chase_lock_ticks: merged.chase_lock_ticks ?? gameMinutesToTicks(CHASE_LOCK_MINUTES, ticksPerGameMinute),
+    water_lock_ticks: merged.water_lock_ticks ?? gameMinutesToTicks(WATER_LOCK_MINUTES, ticksPerGameMinute),
+    plant_lock_ticks: merged.plant_lock_ticks ?? gameMinutesToTicks(PLANT_LOCK_MINUTES, ticksPerGameMinute),
+    item_meat_decay_ticks: merged.item_meat_decay_ticks ?? gameMinutesToTicks(ITEM_MEAT_DECAY, ticksPerGameMinute),
+    item_fruit_to_seed_ticks: merged.item_fruit_to_seed_ticks ?? gameMinutesToTicks(ITEM_FRUIT_TO_SEED, ticksPerGameMinute),
+    item_seed_germination_ticks: merged.item_seed_germination_ticks ?? gameMinutesToTicks(ITEM_SEED_GERMINATION, ticksPerGameMinute),
     animal_species: merged.animal_species ?? buildAnimalSpeciesConfig(ticksPerGameMinute),
     plant_stage_ages: merged.plant_stage_ages ?? buildStageAges(ticksPerGameMinute),
     plant_fruit_spoil_ages: merged.plant_fruit_spoil_ages ?? buildFruitSpoilAges(ticksPerGameMinute),

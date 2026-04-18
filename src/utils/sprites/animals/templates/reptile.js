@@ -5,7 +5,7 @@
  * Scale texture via noise, slit-pupil eyes, claw detail, belly plates.
  */
 import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle, thickLine, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawReptileEye, drawTongue } from '../bodyParts.js';
+import { drawReptileEye, drawTongue, drawReptileLegTop, drawReptileLegSide } from '../bodyParts.js';
 
 export function drawReptile(ctx, params, dir, frame) {
   const { body, accent, eye, w, h, tailLen } = params;
@@ -85,22 +85,10 @@ export function drawReptile(ctx, params, dir, frame) {
     // Legs — jointed femur + tibia + claw tip per limb
     const fLegY = by + (dir === DOWN ? 1 : h - 3);
     const bLegY = by + (dir === DOWN ? h - 3 : 1);
-    // Front-left
-    thickLine(ctx, bx,     fLegY + legShift,     bx - 4, fLegY + 2 + legShift, 1, shadow);
-    thickLine(ctx, bx - 4, fLegY + 2 + legShift, bx - 7, fLegY + 4 + legShift, 0, outline);
-    px(ctx, bx - 7, fLegY + 5 + legShift, shadow2);
-    // Front-right
-    thickLine(ctx, bx + w,     fLegY - legShift,     bx + w + 4, fLegY + 2 - legShift, 1, shadow);
-    thickLine(ctx, bx + w + 4, fLegY + 2 - legShift, bx + w + 7, fLegY + 4 - legShift, 0, outline);
-    px(ctx, bx + w + 7, fLegY + 5 - legShift, shadow2);
-    // Back-left
-    thickLine(ctx, bx,     bLegY - legShift,     bx - 4, bLegY + 2 - legShift, 1, shadow);
-    thickLine(ctx, bx - 4, bLegY + 2 - legShift, bx - 7, bLegY + 4 - legShift, 0, outline);
-    px(ctx, bx - 7, bLegY + 5 - legShift, shadow2);
-    // Back-right
-    thickLine(ctx, bx + w,     bLegY + legShift,     bx + w + 4, bLegY + 2 + legShift, 1, shadow);
-    thickLine(ctx, bx + w + 4, bLegY + 2 + legShift, bx + w + 7, bLegY + 4 + legShift, 0, outline);
-    px(ctx, bx + w + 7, bLegY + 5 + legShift, shadow2);
+    drawReptileLegTop(ctx, bx, fLegY, -1, legShift, shadow, outline, shadow2);
+    drawReptileLegTop(ctx, bx + w, fLegY, 1, -legShift, shadow, outline, shadow2);
+    drawReptileLegTop(ctx, bx, bLegY, -1, -legShift, shadow, outline, shadow2);
+    drawReptileLegTop(ctx, bx + w, bLegY, 1, legShift, shadow, outline, shadow2);
   } else {
     // LEFT / RIGHT
     const flip = dir === LEFT;
@@ -157,13 +145,7 @@ export function drawReptile(ctx, params, dir, frame) {
     // Legs
     // Legs — jointed thickLine (rear pair + front pair)
     const bellyY = by + h;
-    // Rear leg (near tail end)
-    thickLine(ctx, f(bx + 3),     bellyY + legShift,     f(bx + 1),     bellyY + 3 + legShift, 1, shadow);
-    thickLine(ctx, f(bx + 1),     bellyY + 3 + legShift, f(bx - 1),     bellyY + 5 + legShift, 0, outline);
-    px(ctx, f(bx - 2), bellyY + 6 + legShift, shadow2);
-    // Front leg (near head end)
-    thickLine(ctx, f(bx + w - 4), bellyY - legShift,     f(bx + w - 2), bellyY + 3 - legShift, 1, shadow);
-    thickLine(ctx, f(bx + w - 2), bellyY + 3 - legShift, f(bx + w),     bellyY + 5 - legShift, 0, outline);
-    px(ctx, f(bx + w + 1), bellyY + 6 - legShift, shadow2);
+    drawReptileLegSide(ctx, f, bx + 3, bellyY, legShift, shadow, outline, shadow2, -2, -4);
+    drawReptileLegSide(ctx, f, bx + w - 4, bellyY, -legShift, shadow, outline, shadow2, 2, 4);
   }
 }

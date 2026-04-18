@@ -5,7 +5,7 @@
  * Shell sheen, translucent wings, segmented antennae, caterpillar prolegs.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawInsectLeg, drawFurTexture, drawCaterpillarChainTop } from '../bodyParts.js';
+import { drawInsectLeg, drawInsectLegSide, drawFurTexture, drawCaterpillarChainTop } from '../bodyParts.js';
 
 export function drawInsect(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -157,13 +157,7 @@ export function drawInsect(ctx, params, dir, frame) {
     for (let i = 0; i < 3; i++) {
       const lx = bx + Math.round(i * (w - 4) / 2) + 2;
       const off = (i === 1) ? -legOff : legOff;
-      rect(ctx, f(lx), by + h + off, 2, 2, shadow);           // femur
-      rect(ctx, f(lx - 1), by + h + 2 + off, 2, 2, outline);  // tibia (angled)
-      px(ctx, f(lx - 2), by + h + 4 + off, outline);           // tarsus tip
-      if (params.jumpLegs && i === 2) {
-        rect(ctx, f(lx), by + h + 2 + off, 3, 2, shadow);
-        rect(ctx, f(lx - 2), by + h + 4 + off, 3, 2, outline);
-      }
+      drawInsectLegSide(ctx, f, lx, by + h, off, shadow, outline, params.jumpLegs && i === 2);
     }
 
     // Wings (side)

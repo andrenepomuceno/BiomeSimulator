@@ -3,7 +3,7 @@
  * 64x64 design grid.
  */
 import { px, rect, darken, lighten, blend, speckle, shadedEllipse, scalePattern, quadraticThick, thickLine, fillPolygon, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawReptileEye, drawArmoredBody, drawScuteRidge } from '../bodyParts.js';
+import { drawReptileEye, drawArmoredBody, drawScuteRidge, drawReptileStubLeg } from '../bodyParts.js';
 
 export function drawCrocodile(ctx, params, dir, frame) {
   const { body, accent, eye } = params;
@@ -68,10 +68,10 @@ export function drawCrocodile(ctx, params, dir, frame) {
 
     // Legs — thickLine: femur + claw stubs
     const legYFront = by + 1, legYBack = by + 7;
-    thickLine(ctx, bx,      legYFront + legOff, bx - 5, legYFront + legOff + 1, 1, outline);
-    thickLine(ctx, bx + 24, legYFront - legOff, bx + 29, legYFront - legOff + 1, 1, outline);
-    thickLine(ctx, bx,      legYBack - legOff,  bx - 5, legYBack - legOff + 1,  1, outline);
-    thickLine(ctx, bx + 24, legYBack + legOff,  bx + 29, legYBack + legOff + 1,  1, outline);
+    drawReptileStubLeg(ctx, bx, legYFront + legOff, bx - 5, legYFront + legOff + 1, outline);
+    drawReptileStubLeg(ctx, bx + 24, legYFront - legOff, bx + 29, legYFront - legOff + 1, outline);
+    drawReptileStubLeg(ctx, bx, legYBack - legOff, bx - 5, legYBack - legOff + 1, outline);
+    drawReptileStubLeg(ctx, bx + 24, legYBack + legOff, bx + 29, legYBack + legOff + 1, outline);
 
   } else {
     const flip = dir === LEFT;
@@ -112,9 +112,9 @@ export function drawCrocodile(ctx, params, dir, frame) {
     }
 
     // Legs — thickLine femur + tibia, reaches y≈50
-    thickLine(ctx, f(bx + 3),  by + 9, f(bx + 1),  by + 13, 1, outline);
-    thickLine(ctx, f(bx + 8),  by + 9, f(bx + 6),  by + 13, 1, outline);
-    thickLine(ctx, f(bx + 13), by + 9, f(bx + 11), by + 13, 1, outline);
-    thickLine(ctx, f(bx + 17), by + 9, f(bx + 15), by + 13, 1, outline);
+    drawReptileStubLeg(ctx, f(bx + 3), by + 9, f(bx + 1), by + 13, outline);
+    drawReptileStubLeg(ctx, f(bx + 8), by + 9, f(bx + 6), by + 13, outline);
+    drawReptileStubLeg(ctx, f(bx + 13), by + 9, f(bx + 11), by + 13, outline);
+    drawReptileStubLeg(ctx, f(bx + 17), by + 9, f(bx + 15), by + 13, outline);
   }
 }

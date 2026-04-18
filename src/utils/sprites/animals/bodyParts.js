@@ -10,7 +10,7 @@
  *   drawHead(ctx, x, y, width, height, bodyColor, highlight, shadow);
  */
 
-import { px, rect, darken, lighten, rimLight, ao, anisotropicSpeckle, ellipse, speckle, fillPolygon, blend } from '../helpers.js';
+import { px, rect, darken, lighten, rimLight, ao, anisotropicSpeckle, ellipse, speckle, fillPolygon, blend, thickLine } from '../helpers.js';
 
 /**
  * Draw a single eye with sclera, iris, pupil, and highlight.
@@ -96,6 +96,27 @@ export function drawInsectLeg(ctx, x, y, rightSide, femurColor, tibiaColor, tars
   rect(ctx, x + dir * extension, y + 1, 3, 2, tibiaColor);
   // Tarsus (tip)
   px(ctx, x + dir * (extension + 3), y + 2, tarsusColor);
+}
+
+/**
+ * Draw side-view insect leg used by non-overhead templates.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - x-flip function
+ * @param {number} x - hip x (before flip)
+ * @param {number} y - body baseline y
+ * @param {number} off - gait offset
+ * @param {string} femurColor
+ * @param {string} tibiaColor
+ * @param {boolean} jumpLeg
+ */
+export function drawInsectLegSide(ctx, f, x, y, off, femurColor, tibiaColor, jumpLeg = false) {
+  rect(ctx, f(x), y + off, 2, 2, femurColor);
+  rect(ctx, f(x - 1), y + 2 + off, 2, 2, tibiaColor);
+  px(ctx, f(x - 2), y + 4 + off, tibiaColor);
+  if (jumpLeg) {
+    rect(ctx, f(x), y + 2 + off, 3, 2, femurColor);
+    rect(ctx, f(x - 2), y + 4 + off, 3, 2, tibiaColor);
+  }
 }
 
 /**
@@ -698,6 +719,64 @@ export function drawSegmentHighlights(ctx, pts, radii, highlightColor, isHorizon
       px(ctx, sx + ox, sy - r + 1, highlightColor);
     }
   }
+}
+
+/**
+ * Draw a two-segment reptile leg with a claw tip (top/down views).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} hipX
+ * @param {number} hipY
+ * @param {number} dirX - -1 for left, +1 for right
+ * @param {number} swing
+ * @param {string} upperColor
+ * @param {string} lowerColor
+ * @param {string} clawColor
+ */
+export function drawReptileLegTop(ctx, hipX, hipY, dirX, swing, upperColor, lowerColor, clawColor) {
+  const kneeX = hipX + dirX * 4;
+  const kneeY = hipY + 2 + swing;
+  const footX = hipX + dirX * 7;
+  const footY = hipY + 4 + swing;
+  thickLine(ctx, hipX, hipY + swing, kneeX, kneeY, 1, upperColor);
+  thickLine(ctx, kneeX, kneeY, footX, footY, 0, lowerColor);
+  px(ctx, footX, footY + 1, clawColor);
+}
+
+/**
+ * Draw a side-view reptile leg with a claw tip.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - x-flip function
+ * @param {number} hipX
+ * @param {number} hipY
+ * @param {number} swing
+ * @param {string} upperColor
+ * @param {string} lowerColor
+ * @param {string} clawColor
+ * @param {number} kneeDx
+ * @param {number} footDx
+ */
+export function drawReptileLegSide(ctx, f, hipX, hipY, swing, upperColor, lowerColor, clawColor, kneeDx = -2, footDx = -4) {
+  const kneeX = hipX + kneeDx;
+  const kneeY = hipY + 3 + swing;
+  const footX = hipX + footDx;
+  const footY = hipY + 5 + swing;
+  const clawX = footX + (footDx >= 0 ? 1 : -1);
+  thickLine(ctx, f(hipX), hipY + swing, f(kneeX), kneeY, 1, upperColor);
+  thickLine(ctx, f(kneeX), kneeY, f(footX), footY, 0, lowerColor);
+  px(ctx, f(clawX), footY + 1, clawColor);
+}
+
+/**
+ * Draw a short reptile/crocodile limb stub.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x0
+ * @param {number} y0
+ * @param {number} x1
+ * @param {number} y1
+ * @param {string} color
+ */
+export function drawReptileStubLeg(ctx, x0, y0, x1, y1, color) {
+  thickLine(ctx, x0, y0, x1, y1, 1, color);
 }
 
 // ─── Bird helpers ──────────────────────────────────────────────────────────

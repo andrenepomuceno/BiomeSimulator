@@ -411,15 +411,15 @@ export class GameRenderer {
   async prepareAssets(onStep) {
     const report = typeof onStep === 'function' ? onStep : () => {};
 
-    report('Compilando texturas de animais', 'Montando atlas procedural da fauna.');
+    report('Compiling animal textures', 'Building procedural fauna atlas.');
     generateEmojiTextures();
     await this._yieldForUi();
 
-    report('Compilando texturas de plantas', 'Montando atlas procedural da flora.');
+    report('Compiling plant textures', 'Building procedural flora atlas.');
     generatePlantEmojiTextures();
     await this._yieldForUi();
 
-    report('Compilando texturas de itens', 'Montando atlas procedural de drops.');
+    report('Compiling item textures', 'Building procedural item drop atlas.');
     generateItemEmojiTextures();
     await this._yieldForUi();
   }

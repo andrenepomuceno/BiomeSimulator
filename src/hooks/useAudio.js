@@ -69,14 +69,14 @@ export function useAudio() {
     const store = useSimStore.getState();
 
     if (!store.audioSettings.unlocked) {
-      report('Preparando cache de áudio procedural', 'Áudio bloqueado pelo navegador; etapa será concluída após unlock.');
+      report('Preparing procedural audio cache', 'Audio locked by browser; step will complete after unlock.');
       return false;
     }
 
-    report('Preparando cache de áudio procedural', 'Gerando variações procedurais de efeitos sonoros.');
+    report('Preparing procedural audio cache', 'Generating procedural sound effect variations.');
     await manager.preGenerateProceduralCache();
 
-    report('Carregando/preparando samples de áudio', 'Pré-carregando fallback de samples e camadas de ambiente.');
+    report('Loading audio samples', 'Pre-loading sample fallbacks and ambient layers.');
     await manager.preloadSamples();
 
     return true;

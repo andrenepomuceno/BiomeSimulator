@@ -39,7 +39,7 @@ export function buildEntitySummaryGroups(entries, selectedEntity, selectedTile, 
   }
 
   return Array.from(groups.values()).sort((left, right) => {
-    const labelCompare = left.label.localeCompare(right.label, 'pt-BR', { sensitivity: 'base' });
+    const labelCompare = left.label.localeCompare(right.label, 'en', { sensitivity: 'base' });
     if (labelCompare !== 0) return labelCompare;
     return left.key.localeCompare(right.key);
   });

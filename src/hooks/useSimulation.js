@@ -193,26 +193,33 @@ export function useSimulation() {
 
         case 'entityPlaced': {
           const placed = msg.entity;
-          if (placed && placed.id != null) {
-            const pending = store.pendingEntityPlacement;
-            if (pending?.targetStack === 'undo') {
-              store.updateTopEntityUndoEntryId(placed.id);
-              store.clearPendingEntityPlacement();
-              break;
-            }
-            if (pending?.targetStack === 'redo') {
-              store.updateTopEntityRedoEntryId(placed.id);
-              store.clearPendingEntityPlacement();
-              break;
-            }
-            store.pushEntityUndoEntry({
-              kind: 'placedAnimal',
-              entityId: placed.id,
-              species: placed.species,
-              x: placed.x | 0,
-              y: placed.y | 0,
+          const pending = store.shiftPendingEntityPlacement();
+
+          if (!placed || placed.id == null) {
+            store.pushUiToast({
+              variant: 'warning',
+              title: 'Placement failed',
+              message: msg.error || 'Cannot place entity on this tile.',
             });
+            break;
           }
+
+          if (pending?.targetStack === 'undo') {
+            store.updateTopEntityUndoEntryId(placed.id);
+            break;
+          }
+          if (pending?.targetStack === 'redo') {
+            store.updateTopEntityRedoEntryId(placed.id);
+            break;
+          }
+
+          store.pushEntityUndoEntry({
+            kind: 'placedAnimal',
+            entityId: placed.id,
+            species: placed.species,
+            x: placed.x | 0,
+            y: placed.y | 0,
+          });
           break;
         }
 

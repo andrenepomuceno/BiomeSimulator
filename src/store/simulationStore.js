@@ -156,7 +156,7 @@ const useSimStore = create((set, get) => ({
   _actionSeq: 0,
   entityUndoStack: [],
   entityRedoStack: [],
-  pendingEntityPlacement: null,
+  pendingEntityPlacementQueue: [],
   setTerrain: (data, w, h) => set({ terrainData: data, mapWidth: w, mapHeight: h }),
   setGeneratingWorld: (isGeneratingWorld) => set({ isGeneratingWorld: !!isGeneratingWorld }),
   applyTerrainChanges: (changes) => set((state) => {
@@ -243,14 +243,30 @@ const useSimStore = create((set, get) => ({
     next[next.length - 1] = { ...next[next.length - 1], entityId };
     return { entityRedoStack: next };
   }),
-  setPendingEntityPlacement: (pending) => set({ pendingEntityPlacement: pending || null }),
-  clearPendingEntityPlacement: () => set({ pendingEntityPlacement: null }),
+  enqueuePendingEntityPlacement: (pending) => set((state) => {
+    if (!pending) return {};
+    return {
+      pendingEntityPlacementQueue: [...state.pendingEntityPlacementQueue, pending].slice(-TERRAIN_HISTORY_LIMIT),
+    };
+  }),
+  peekPendingEntityPlacement: () => {
+    const queue = get().pendingEntityPlacementQueue;
+    return queue.length > 0 ? queue[0] : null;
+  },
+  shiftPendingEntityPlacement: () => {
+    const state = get();
+    if (state.pendingEntityPlacementQueue.length === 0) return null;
+    const [head, ...rest] = state.pendingEntityPlacementQueue;
+    set({ pendingEntityPlacementQueue: rest });
+    return head;
+  },
+  clearPendingEntityPlacements: () => set({ pendingEntityPlacementQueue: [] }),
   clearTerrainHistory: () => set({
     terrainUndoStack: [],
     terrainRedoStack: [],
     entityUndoStack: [],
     entityRedoStack: [],
-    pendingEntityPlacement: null,
+    pendingEntityPlacementQueue: [],
     _actionSeq: 0,
   }),
 
@@ -473,6 +489,19 @@ const useSimStore = create((set, get) => ({
   })),
   dismissSupervisorFlash: (id) => set(state => ({
     supervisorFlashes: state.supervisorFlashes.filter(f => f.id !== id),
+  })),
+
+  // Generic UI toasts (placement errors, transient warnings)
+  uiToasts: [],
+  pushUiToast: (toast) => set((state) => {
+    if (!toast) return {};
+    const id = toast.id || `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return {
+      uiToasts: [...state.uiToasts, { variant: 'warning', ...toast, id }].slice(-5),
+    };
+  }),
+  dismissUiToast: (id) => set((state) => ({
+    uiToasts: state.uiToasts.filter(t => t.id !== id),
   })),
 
   // Save callback (set temporarily when saving)

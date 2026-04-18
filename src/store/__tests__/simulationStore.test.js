@@ -16,6 +16,8 @@ function resetStore() {
     audioLog: [],
     selectedEntity: null,
     selectedTile: null,
+    pendingEntityPlacementQueue: [],
+    uiToasts: [],
   });
 }
 
@@ -140,5 +142,33 @@ describe('simulationStore mergeAnimalDeltas', () => {
       sfxEnabled: false,
       unlocked: false,
     });
+  });
+
+  it('queues pending entity placements in FIFO order', () => {
+    const store = useSimStore.getState();
+
+    store.enqueuePendingEntityPlacement({ targetStack: 'undo', tag: 1 });
+    store.enqueuePendingEntityPlacement({ targetStack: 'redo', tag: 2 });
+
+    expect(store.peekPendingEntityPlacement()).toMatchObject({ targetStack: 'undo', tag: 1 });
+
+    const first = store.shiftPendingEntityPlacement();
+    const second = store.shiftPendingEntityPlacement();
+    const third = store.shiftPendingEntityPlacement();
+
+    expect(first).toMatchObject({ targetStack: 'undo', tag: 1 });
+    expect(second).toMatchObject({ targetStack: 'redo', tag: 2 });
+    expect(third).toBeNull();
+  });
+
+  it('clears all pending placements with clearPendingEntityPlacements', () => {
+    const store = useSimStore.getState();
+
+    store.enqueuePendingEntityPlacement({ targetStack: 'undo' });
+    store.enqueuePendingEntityPlacement({ targetStack: 'redo' });
+    store.clearPendingEntityPlacements();
+
+    expect(useSimStore.getState().pendingEntityPlacementQueue).toEqual([]);
+    expect(store.shiftPendingEntityPlacement()).toBeNull();
   });
 });

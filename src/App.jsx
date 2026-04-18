@@ -16,6 +16,7 @@ import EntityInspector from './components/EntityInspector';
 import StatsPanel from './components/StatsPanel';
 import Minimap from './components/Minimap';
 import FlashMessages from './components/FlashMessages';
+import UiToasts from './components/UiToasts';
 import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
 import HelpModal from './components/HelpModal';
@@ -391,7 +392,7 @@ export default function App() {
         const sel = store.selectedEntity;
         if (sel && sel.id === entry.entityId) store.clearSelection();
       } else if (entry.kind === 'erasedAnimal') {
-        store.setPendingEntityPlacement({ targetStack: 'redo' });
+        store.enqueuePendingEntityPlacement({ targetStack: 'redo' });
         if (store.worker) {
           store.worker.postMessage({ cmd: 'placeEntity', entityType: entry.species, x: entry.x, y: entry.y });
         }
@@ -417,7 +418,7 @@ export default function App() {
       if (!entry) return;
       playUiClick();
       if (entry.kind === 'placedAnimal') {
-        store.setPendingEntityPlacement({ targetStack: 'undo' });
+        store.enqueuePendingEntityPlacement({ targetStack: 'undo' });
         if (store.worker) {
           store.worker.postMessage({ cmd: 'placeEntity', entityType: entry.species, x: entry.x, y: entry.y });
         }
@@ -541,6 +542,7 @@ export default function App() {
             <TerrainEditor />
           </div>
           <FlashMessages />
+          <UiToasts />
           {isGeneratingWorld && (
             <div className="world-loading-overlay" role="status" aria-live="polite" aria-label="Generating world">
               <div className="world-loading-card">

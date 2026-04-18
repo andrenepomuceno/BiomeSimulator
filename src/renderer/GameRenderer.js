@@ -88,6 +88,7 @@ export class GameRenderer {
     this._isDragging = false;
     this._isEntityBrushing = false;
     this._lastEntityBrushTile = null;
+    this._lastTool = useSimStore.getState().tool;
 
     // Camera
     this.camera = new Camera(this.worldContainer, this.app.screen, () => {
@@ -113,10 +114,16 @@ export class GameRenderer {
       const frameDelta = frameNow - this._frameLastAt;
       this._frameLastAt = frameNow;
       this._frameWindow.frames++;
+      const store = useSimStore.getState();
+      if (store.tool !== this._lastTool) {
+        if (store.tool === 'PLACE_ENTITY' || this._lastTool === 'PLACE_ENTITY') {
+          this._resetEntityBrushState();
+        }
+        this._lastTool = store.tool;
+      }
       if (frameNow - this._frameWindow.startedAt >= 1000) {
         const elapsed = frameNow - this._frameWindow.startedAt;
         const fps = elapsed > 0 ? (this._frameWindow.frames * 1000) / elapsed : 0;
-        const store = useSimStore.getState();
         if (store.profilingEnabled) {
           store.setRendererProfile({
             ...store.profiling.renderer,
@@ -258,6 +265,11 @@ export class GameRenderer {
     this.entityLayer.setSelectedId(null);
     this._tileSelectionGfx.visible = false;
     this._selectedTile = null;
+  }
+
+  _resetEntityBrushState() {
+    this._isEntityBrushing = false;
+    this._lastEntityBrushTile = null;
   }
 
   _updateBrushPreview() {
@@ -406,6 +418,7 @@ export class GameRenderer {
 
     this._onDragPointerDown = (e) => {
       if (e.button === 0 || e.button === 1) {
+        this._lastEntityBrushTile = null;
         const tool = useSimStore.getState().tool;
         if (e.button === 0 && tool === 'PLACE_ENTITY') {
           // Entity brush: capture drag to place entities tile-by-tile instead of panning
@@ -451,7 +464,7 @@ export class GameRenderer {
     this._onPointerUp = () => {
       dragging = false;
       this._isDragging = false;
-      this._isEntityBrushing = false;
+      this._resetEntityBrushState();
     };
     window.addEventListener('pointerup', this._onPointerUp);
   }
@@ -499,6 +512,7 @@ export class GameRenderer {
       this._hoverTile = null;
       this._brushPreviewSignature = '';
       this._brushPreviewGfx.visible = false;
+      this._resetEntityBrushState();
     };
     this.app.view.addEventListener('pointerleave', this._onPointerLeaveCanvas);
   }

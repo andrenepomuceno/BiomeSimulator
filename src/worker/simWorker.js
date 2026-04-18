@@ -597,8 +597,20 @@ self.onmessage = function (e) {
 
     case 'placeEntity': {
       if (!engine) break;
-      const result = engine.placeEntity(e.data.entityType, e.data.x, e.data.y);
-      self.postMessage({ type: 'entityPlaced', entity: result });
+      const { entityType, x, y } = e.data;
+      const result = engine.placeEntity(entityType, x, y);
+      let error = null;
+      if (!result && engine.world) {
+        const w = engine.world;
+        if (!w.isInBounds(x, y)) {
+          error = 'Target tile is out of bounds.';
+        } else if (w.config?.animal_species?.[entityType] && w.isTileBlocked(x, y)) {
+          error = 'Target tile is occupied.';
+        } else {
+          error = 'Entity placement was rejected.';
+        }
+      }
+      self.postMessage({ type: 'entityPlaced', entity: result, error });
       break;
     }
 

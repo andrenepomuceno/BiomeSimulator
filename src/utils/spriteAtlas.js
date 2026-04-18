@@ -69,7 +69,7 @@ function buildFaunaFrames() {
 // Keys: "typeId_stage_frame" e.g. "1_1_0", "1_1_1", "1_1_2", "1_2_0" …
 const FLORA_FRAMES_PER_STAGE = 3;
 const FLORA_STAGES = 6;
-const FLORA_SPECIES_COUNT = 15;
+const FLORA_SPECIES_COUNT = 16;
 
 function buildFloraFrames() {
   const keys = [];

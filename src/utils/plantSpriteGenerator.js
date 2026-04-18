@@ -37,6 +37,7 @@ import coconut_palm from './sprites/plants/species/coconut_palm.js';
 import potato from './sprites/plants/species/potato.js';
 import chili_pepper from './sprites/plants/species/chili_pepper.js';
 import olive_tree from './sprites/plants/species/olive_tree.js';
+import edelweiss from './sprites/plants/species/edelweiss.js';
 
 /** Keyed by typeId (1-15). */
 export const PLANT_SPECIES_PARAMS = {
@@ -55,6 +56,7 @@ export const PLANT_SPECIES_PARAMS = {
   13: potato,
   14: chili_pepper,
   15: olive_tree,
+  16: edelweiss,
 };
 
 const TEMPLATE_DRAW = {

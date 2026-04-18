@@ -19,6 +19,15 @@ npm run dev
 
 Vite dev server starts on **http://localhost:3000**.
 
+For a production build targeting a GitHub Pages project path:
+
+```bash
+$env:VITE_BASE_PATH='/BiomeSimulator/'
+npm run build
+```
+
+If `VITE_BASE_PATH` is not provided, build output defaults to `/`.
+
 ---
 
 ## In-App Help
@@ -60,6 +69,18 @@ While dragging in PLACE_ENTITY mode, placement is emitted once per tile transiti
 | `npm run profile:headless:ci` | Run headless profiling in CI mode (fails on threshold regression) |
 | `npm run profile:cpu:analyze -- --input perf-reports/<file>.cpuprofile --top 20` | Analyze a saved V8 CPU profile |
 | `npm run profile:phase2` | Run dense benchmark matrix (500/1000 maps with 10k/20k animals) |
+
+### CI quality gates used before deploy
+
+- `npm run build` (with `VITE_BASE_PATH=/BiomeSimulator/`)
+- `npm run test:run`
+- `npm run test:perf:small`
+- `npm run test:perf:medium`
+
+Workflows live under `.github/workflows/`:
+
+- `ci.yml` for pull requests and pushes to `main`
+- `deploy-pages.yml` for Pages publish after successful CI on `main`
 
 ---
 
@@ -162,6 +183,44 @@ npm run profile:cpu:analyze -- --input perf-reports/cpu-500x500-30d.cpuprofile -
 
 ---
 
+## GitHub Pages Deployment
+
+This repository is configured for **project Pages** deployment under:
+
+- `https://<user>.github.io/BiomeSimulator/`
+
+Expected GitHub repository settings:
+
+1. `Settings -> Pages -> Source`: `GitHub Actions`
+2. Default branch: `main`
+3. Workflow permissions enabled to deploy Pages
+
+Deployment flow:
+
+1. Push to `main`
+2. `CI` workflow runs all gates
+3. If CI succeeds, `Deploy Pages` publishes `dist/` artifact
+
+---
+
+## Runtime Feature Flags
+
+Flags are read from Vite env vars (`import.meta.env`) in `src/config/featureFlags.js`.
+
+- `VITE_FF_AUDIO_LOG_UI`: controls audio log UI and log collection (default `true` in dev, `false` in prod)
+- `VITE_FF_CAPTURE_BRIDGE`: controls `window.__ecoCapture` debug bridge (default `true` in dev, `false` in prod)
+
+Examples:
+
+```bash
+# Force audio log UI on a production build
+$env:VITE_FF_AUDIO_LOG_UI='true'
+$env:VITE_BASE_PATH='/BiomeSimulator/'
+npm run build
+```
+
+---
+
 ## License
 
-This project is provided as-is for educational and personal use.
+This project is licensed under the MIT License. See the `LICENSE` file.

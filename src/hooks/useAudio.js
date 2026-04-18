@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { SoundManager } from '../audio/soundManager.js';
 import { computeEcoMood, detectMacroEvents } from '../audio/soundMath.js';
 import useSimStore from '../store/simulationStore.js';
+import { FF_AUDIO_LOG_UI } from '../config/featureFlags.js';
 
 const ECO_MOOD_INTERVAL_MS = 2000;
 
@@ -94,6 +95,10 @@ export function useAudio() {
   }, []);
 
   const setAudioLogging = useCallback((enabled) => {
+    if (!FF_AUDIO_LOG_UI) {
+      ensureManager().setLogger(null);
+      return;
+    }
     const manager = ensureManager();
     if (enabled) {
       manager.setLogger(

@@ -21,6 +21,7 @@ import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
 import HelpModal from './components/HelpModal';
 import SimulationConfigModal from './components/SimulationConfigModal';
+import { FF_AUDIO_LOG_UI, FF_CAPTURE_BRIDGE } from './config/featureFlags.js';
 
 const MODALS = {
   MENU: 'menu',
@@ -96,7 +97,7 @@ export default function App() {
     rendererRef.current = renderer;
 
     // Dev-only automation bridge for capture scripts
-    if (import.meta.env.DEV) {
+    if (FF_CAPTURE_BRIDGE) {
       window.__ecoCapture = {
         getState: () => useSimStore.getState(),
         _subscribe: (fn) => useSimStore.subscribe(fn),
@@ -124,7 +125,7 @@ export default function App() {
     postCmd('generate');
 
     return () => {
-      if (import.meta.env.DEV) delete window.__ecoCapture;
+      if (FF_CAPTURE_BRIDGE) delete window.__ecoCapture;
       renderer.destroy();
       rendererRef.current = null;
     };
@@ -489,7 +490,7 @@ export default function App() {
         onClose={_closeModal}
         onUnlock={_handleUnlockAudio}
         onToggleBackground={_handleToggleBackground}
-        onAudioLogging={setAudioLogging}
+        onAudioLogging={FF_AUDIO_LOG_UI ? setAudioLogging : undefined}
       />
       <SimulationReport open={activeModal === MODALS.REPORT} onClose={_closeModal} />
       <EntitySummaryWindow

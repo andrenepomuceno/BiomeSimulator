@@ -4,6 +4,7 @@
  * Derived from the canonical ANIMAL_SPECIES registry.
  */
 import { buildSpeciesAudioScale, buildSpeciesSoundGroup, buildSpeciesVocalProfile } from '../engine/animalSpecies.js';
+import { toAssetUrl } from '../utils/assetUrl.js';
 export const SPECIES_AUDIO_SCALE = buildSpeciesAudioScale();
 
 /**
@@ -79,6 +80,8 @@ export const AUDIO_PIPELINE_DEFAULTS = {
   sampleFallbackEnabled: false,
 };
 
+const audio = (file) => toAssetUrl(`audio/${file}`);
+
 export const SOUND_EVENTS = {
   uiClick: {
     category: 'ui',
@@ -112,7 +115,7 @@ export const SOUND_EVENTS = {
     baseGain: 0.44,
     audibleRadiusTiles: 24,
     priority: 2,
-    samples: ['/audio/attack-1.wav', '/audio/attack-2.wav', '/audio/attack-3.wav'],
+    samples: [audio('attack-1.wav'), audio('attack-2.wav'), audio('attack-3.wav')],
   },
   attackVocal: {
     category: 'vocal',
@@ -131,7 +134,7 @@ export const SOUND_EVENTS = {
     baseGain: 0.56,
     audibleRadiusTiles: 28,
     priority: 1,
-    samples: ['/audio/death-1.wav', '/audio/death-2.wav', '/audio/death-3.wav'],
+    samples: [audio('death-1.wav'), audio('death-2.wav'), audio('death-3.wav')],
   },
   eat: {
     category: 'sfx',
@@ -141,7 +144,7 @@ export const SOUND_EVENTS = {
     baseGain: 0.28,
     audibleRadiusTiles: 18,
     priority: 3,
-    samples: ['/audio/eat-1.wav', '/audio/eat-2.wav', '/audio/eat-3.wav'],
+    samples: [audio('eat-1.wav'), audio('eat-2.wav'), audio('eat-3.wav')],
   },
   fruit: {
     category: 'sfx',
@@ -151,7 +154,7 @@ export const SOUND_EVENTS = {
     baseGain: 0.36,
     audibleRadiusTiles: 20,
     priority: 3,
-    samples: ['/audio/fruit-1.wav', '/audio/fruit-2.wav', '/audio/fruit-3.wav'],
+    samples: [audio('fruit-1.wav'), audio('fruit-2.wav'), audio('fruit-3.wav')],
   },
   mate: {
     category: 'sfx',
@@ -161,7 +164,7 @@ export const SOUND_EVENTS = {
     baseGain: 0.32,
     audibleRadiusTiles: 22,
     priority: 2,
-    samples: ['/audio/mate-1.wav', '/audio/mate-2.wav'],
+    samples: [audio('mate-1.wav'), audio('mate-2.wav')],
   },
   drink: {
     category: 'sfx',
@@ -171,7 +174,7 @@ export const SOUND_EVENTS = {
     baseGain: 0.24,
     audibleRadiusTiles: 16,
     priority: 3,
-    samples: ['/audio/drink-1.wav', '/audio/drink-2.wav'],
+    samples: [audio('drink-1.wav'), audio('drink-2.wav')],
   },
   idleVocal: {
     category: 'vocal',
@@ -191,7 +194,7 @@ export const SOUND_EVENTS = {
     baseGain: 0.12,
     audibleRadiusTiles: 20,
     priority: 3,
-    samples: ['/audio/flee-1.wav', '/audio/flee-2.wav'],
+    samples: [audio('flee-1.wav'), audio('flee-2.wav')],
   },
   extinctionWarning: {
     category: 'macro',
@@ -200,7 +203,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 5000,
     baseGain: 0.5,
     priority: 1,
-    samples: ['/audio/extinction-warning.wav'],
+    samples: [audio('extinction-warning.wav')],
   },
   populationBoom: {
     category: 'macro',
@@ -209,7 +212,7 @@ export const SOUND_EVENTS = {
     cooldownMs: 5000,
     baseGain: 0.4,
     priority: 2,
-    samples: ['/audio/population-boom.wav'],
+    samples: [audio('population-boom.wav')],
   },
   ecosystemCollapse: {
     category: 'macro',
@@ -218,16 +221,16 @@ export const SOUND_EVENTS = {
     cooldownMs: 8000,
     baseGain: 0.56,
     priority: 1,
-    samples: ['/audio/ecosystem-collapse.wav'],
+    samples: [audio('ecosystem-collapse.wav')],
   },
 };
 
 /** Ambience loop sample URLs loaded by the multi-layer ambience system. */
 export const AMBIENCE_SAMPLES = [
-  '/audio/ambience-birds.wav',
-  '/audio/ambience-insects.wav',
-  '/audio/ambience-crickets.wav',
-  '/audio/ambience-wind.wav',
+  audio('ambience-birds.wav'),
+  audio('ambience-insects.wav'),
+  audio('ambience-crickets.wav'),
+  audio('ambience-wind.wav'),
 ];
 
 export function getSoundEventConfig(type) {

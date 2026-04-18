@@ -8,6 +8,7 @@ import {
   AUDIO_PIPELINE_DEFAULTS,
 } from './soundEvents.js';
 import { clamp, computePositionalMix } from './soundMath.js';
+import { toAssetUrl } from '../utils/assetUrl.js';
 
 const MAX_ACTIVE_VOICES = 24;
 const MAX_SFX_PER_TICK = 4;
@@ -575,10 +576,10 @@ export class SoundManager {
     };
 
     this._ambienceSampleLayers = {
-      birds: makeLayer('/audio/ambience-birds.wav'),
-      insects: makeLayer('/audio/ambience-insects.wav'),
-      crickets: makeLayer('/audio/ambience-crickets.wav'),
-      wind: makeLayer('/audio/ambience-wind.wav'),
+      birds: makeLayer(toAssetUrl('audio/ambience-birds.wav')),
+      insects: makeLayer(toAssetUrl('audio/ambience-insects.wav')),
+      crickets: makeLayer(toAssetUrl('audio/ambience-crickets.wav')),
+      wind: makeLayer(toAssetUrl('audio/ambience-wind.wav')),
     };
     this._syncAmbienceSampleLayers();
   }

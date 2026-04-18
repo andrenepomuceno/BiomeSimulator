@@ -10,6 +10,7 @@ import {
   formatAudioLogEventTime,
 } from '../utils/audioLogExport.js';
 import { useModalA11y } from '../hooks/useModalA11y.js';
+import { FF_AUDIO_LOG_UI } from '../config/featureFlags.js';
 
 const PANEL_TABS = {
   CONFIG: 'config',
@@ -56,11 +57,17 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
     setActiveAudioTab(AUDIO_TABS.SETTINGS);
   }, [open]);
 
+  useEffect(() => {
+    if (!FF_AUDIO_LOG_UI && activeAudioTab !== AUDIO_TABS.SETTINGS) {
+      setActiveAudioTab(AUDIO_TABS.SETTINGS);
+    }
+  }, [activeAudioTab]);
+
   // Enable audio logging only while the log tab is visible to avoid
   // unnecessary Zustand updates and re-renders during normal gameplay.
   useEffect(() => {
     if (!onAudioLogging) return;
-    const logVisible = open && activeAudioTab === AUDIO_TABS.LOG;
+    const logVisible = FF_AUDIO_LOG_UI && open && activeAudioTab === AUDIO_TABS.LOG;
     onAudioLogging(logVisible);
     return () => onAudioLogging(false);
   }, [open, activeAudioTab, onAudioLogging]);
@@ -217,14 +224,16 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
                 >
                   Settings
                 </button>
-                <button
-                  className={`audio-tab ${activeAudioTab === AUDIO_TABS.LOG ? 'active' : ''}`}
-                  onClick={() => setActiveAudioTab(AUDIO_TABS.LOG)}
-                  role="tab"
-                  aria-selected={activeAudioTab === AUDIO_TABS.LOG}
-                >
-                  Log
-                </button>
+                {FF_AUDIO_LOG_UI ? (
+                  <button
+                    className={`audio-tab ${activeAudioTab === AUDIO_TABS.LOG ? 'active' : ''}`}
+                    onClick={() => setActiveAudioTab(AUDIO_TABS.LOG)}
+                    role="tab"
+                    aria-selected={activeAudioTab === AUDIO_TABS.LOG}
+                  >
+                    Log
+                  </button>
+                ) : null}
               </div>
 
               <div className="audio-body">

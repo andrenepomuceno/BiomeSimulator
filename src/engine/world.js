@@ -282,6 +282,8 @@ export class World {
         if (t === WATER || t === DEEP_WATER || t === MOUNTAIN) continue;
         // Keep item tiles visually distinct from existing plants.
         if (this.plantType[idx] !== P_NONE) continue;
+        // Avoid overlap with incubating eggs.
+        if (this.eggGrid[idx] > 0) continue;
         // O(1) anti-stacking check via tile index set
         if (this._itemTiles.has(idx)) continue;
         candidates.push({ x: nx, y: ny });

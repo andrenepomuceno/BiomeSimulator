@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import ANIMAL_SPECIES from '../../engine/animalSpecies';
 import { getPlantByTypeId } from '../../engine/plantSpecies';
-import { DEFAULT_SEASON_LENGTH_DAYS } from '../../constants/simulation.js';
 import { PLANT_STAGE_NAMES, SPECIES_INFO } from '../../utils/terrainColors';
 import { formatGameDuration, formatTickTimestamp, resolveTicksPerDay } from '../../utils/time';
 import { CollapsibleSection, formatTickDurationLabel } from './InspectorShared.jsx';

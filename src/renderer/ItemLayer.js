@@ -1,5 +1,5 @@
 /**
- * ItemLayer — renders ground items (meat, fruit, seed) as emoji sprites
+ * ItemLayer — renders ground items (meat, fruit, seed) as atlas sprites
  * at high zoom and colored pixel dots at low zoom.
  *
  * Follows the PlantLayer / EntityLayer pattern:
@@ -8,9 +8,32 @@
  * - Pixel overlay Graphics for low-zoom rendering.
  */
 import * as PIXI from 'pixi.js';
+import { generateItemEmojiTextures } from '../utils/emojiTextures.js';
+import { FRAME_SIZE } from '../utils/spriteAtlas.js';
+import { buildMassDropMap } from '../engine/animalSpecies.js';
 
-/** Minimum zoom to show emoji sprites instead of pixel dots. */
-const ITEM_EMOJI_ZOOM = 6;
+/** Minimum zoom to show item sprites instead of pixel dots. */
+const ITEM_SPRITE_ZOOM = 6;
+
+const FRUIT_KEYS_BY_SOURCE = {
+  2: 'FRUIT_STRAWBERRY_0',
+  3: 'FRUIT_BLUEBERRY_0',
+  4: 'FRUIT_APPLE_0',
+  5: 'FRUIT_MANGO_0',
+  12: 'FRUIT_COCONUT_0',
+  15: 'FRUIT_OLIVE_0',
+};
+
+const SEED_KEYS_BY_SOURCE = {
+  2: 'SEED_STRAWBERRY_0',
+  3: 'SEED_BLUEBERRY_0',
+  4: 'SEED_APPLE_0',
+  5: 'SEED_MANGO_0',
+  12: 'SEED_COCONUT_0',
+  15: 'SEED_OLIVE_0',
+};
+
+const MASS_DROP_MAP = buildMassDropMap();
 
 /** Item type → emoji and pixel color. */
 const ITEM_DISPLAY = {
@@ -19,7 +42,23 @@ const ITEM_DISPLAY = {
   3: { emoji: '🌰', color: 0xaa8833 }, // SEED
 };
 
-const SPRITE_SCALE = 0.5; // half a tile
+const ITEM_TILE_SIZE = 0.5; // approximately half a tile
+const SPRITE_SCALE = ITEM_TILE_SIZE / FRAME_SIZE;
+
+function getMeatTextureKey(sourceSpecies) {
+  const massInfo = MASS_DROP_MAP[sourceSpecies];
+  const category = massInfo?.category || 'medium';
+  if (category === 'small') return 'MEAT_SMALL_0';
+  if (category === 'large') return 'MEAT_LARGE_0';
+  return 'MEAT_MEDIUM_0';
+}
+
+function getItemTextureKey(item) {
+  if (item.type === 1) return getMeatTextureKey(item.source);
+  if (item.type === 2) return FRUIT_KEYS_BY_SOURCE[item.source] || 'FRUIT_STRAWBERRY_0';
+  if (item.type === 3) return SEED_KEYS_BY_SOURCE[item.source] || 'SEED_STRAWBERRY_0';
+  return 'MEAT_MEDIUM_0';
+}
 
 export class ItemLayer {
   /**
@@ -35,13 +74,16 @@ export class ItemLayer {
     this._pixelContainer.zIndex = -500000; // below animals, above terrain
 
     // Per-item sprite tracking
-    this._sprites = new Map(); // id → PIXI.Text
+    this._sprites = new Map(); // id → PIXI.Sprite
 
     // Current item data for pixel overlay redraw
     this._items = new Map(); // id → {x, y, type}
 
     // Sprite pool
     this._pool = [];
+
+    // Atlas textures (lazy)
+    this._itemTextures = null;
   }
 
   /** Returns the pixel overlay container (added to worldContainer). */
@@ -90,10 +132,10 @@ export class ItemLayer {
    * Called each frame when zoom changes.
    */
   updateZoom(zoom) {
-    const showEmoji = zoom >= ITEM_EMOJI_ZOOM;
-    this._pixelContainer.visible = !showEmoji;
+    const showSprites = zoom >= ITEM_SPRITE_ZOOM;
+    this._pixelContainer.visible = !showSprites;
     for (const sprite of this._sprites.values()) {
-      sprite.visible = showEmoji;
+      sprite.visible = showSprites;
     }
   }
 
@@ -111,25 +153,26 @@ export class ItemLayer {
 
   _addItem(item) {
     if (item.consumed) return;
-    const display = ITEM_DISPLAY[item.type] || ITEM_DISPLAY[1];
+    if (!this._itemTextures) this._itemTextures = generateItemEmojiTextures();
+
+    const texKey = getItemTextureKey(item);
+    const texture = this._itemTextures[texKey] || this._itemTextures.MEAT_MEDIUM_0;
+    if (!texture) return;
 
     // Reuse pooled sprite or create new
     let sprite = this._pool.pop();
     if (sprite) {
-      sprite.text = display.emoji;
+      sprite.texture = texture;
     } else {
-      sprite = new PIXI.Text(display.emoji, {
-        fontSize: 14,
-        align: 'center',
-      });
+      sprite = new PIXI.Sprite(texture);
       sprite.anchor.set(0.5, 0.5);
       this._depthContainer.addChild(sprite);
     }
 
     sprite.x = item.x + 0.5;
     sprite.y = item.y + 0.5;
-    sprite.scale.set(SPRITE_SCALE / 14); // normalize to world units
-    sprite.zIndex = (item.y + 0.5) * 10;
+    sprite.scale.set(SPRITE_SCALE);
+    sprite.zIndex = Math.round((item.y + 0.5) * 1000);
     sprite.visible = false; // set by updateZoom
 
     this._sprites.set(item.id, sprite);

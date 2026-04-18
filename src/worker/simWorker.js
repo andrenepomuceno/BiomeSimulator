@@ -88,15 +88,23 @@ async function doTick() {
     // Without this, at high TPS only the last tick's deltas are posted.
     const batchedPlantChanges = [];
     const batchedItemChanges = [];
+    // Pin the engine for this loop; async awaits can interleave with generate/load/reset.
+    const tickEngine = engine;
+    let aborted = false;
 
     // Detect if any full-sync boundary is crossed in this batch.
-    const tickBefore = engine.world.clock.tick;
+    const tickBefore = tickEngine.world.clock.tick;
 
     for (let i = 0; i < ticksPerLoop; i++) {
       // Respect pending pause between individual ticks for fast response.
       if (pendingPause) break;
 
-      const w = engine.world;
+      if (engine !== tickEngine || !tickEngine.world) {
+        aborted = true;
+        break;
+      }
+
+      const w = tickEngine.world;
       let aliveCount = 0;
       for (const a of w.animals) if (a.alive) aliveCount++;
       const useParallel = faunaWorkersReady
@@ -104,35 +112,48 @@ async function doTick() {
         && aliveCount >= MIN_ANIMALS_FOR_PARALLEL;
 
       if (useParallel) {
-        engine.tickFlora();
+        tickEngine.tickFlora();
         const behaviorStart = performance.now();
-        await doParallelFauna();
-        engine._phases.behaviorMs = performance.now() - behaviorStart;
-        engine._phases.spatialMs = 0;
-        engine.tickCleanup();
+        const merged = await doParallelFauna(tickEngine);
+        if (!merged || engine !== tickEngine || !tickEngine.world || !tickEngine._phases) {
+          aborted = true;
+          break;
+        }
+        tickEngine._phases.behaviorMs = performance.now() - behaviorStart;
+        tickEngine._phases.spatialMs = 0;
+        tickEngine.tickCleanup();
       } else {
-        engine.tick();
+        tickEngine.tick();
       }
 
-      if (engine.world.plantChanges.length > 0) {
-        batchedPlantChanges.push(...engine.world.plantChanges);
+      if (engine !== tickEngine || !tickEngine.world) {
+        aborted = true;
+        break;
       }
-      if (engine.world.itemChanges.length > 0) {
-        batchedItemChanges.push(...engine.world.itemChanges);
+
+      if (tickEngine.world.plantChanges.length > 0) {
+        batchedPlantChanges.push(...tickEngine.world.plantChanges);
+      }
+      if (tickEngine.world.itemChanges.length > 0) {
+        batchedItemChanges.push(...tickEngine.world.itemChanges);
       }
 
       // Movement sub-ticks: only post for the last sim tick in the batch to avoid
       // flooding the main thread with intermediate position updates.
       const isLastInBatch = (i === ticksPerLoop - 1) || pendingPause;
-      const subTicks = engine.world.config.movement_sub_ticks || 1;
+      const subTicks = tickEngine.world.config.movement_sub_ticks || 1;
       for (let s = 1; s < subTicks; s++) {
-        engine.tickMovementOnly();
+        tickEngine.tickMovementOnly();
         if (isLastInBatch) postSubTickState();
       }
     }
 
+    if (aborted || engine !== tickEngine || !tickEngine.world) {
+      return;
+    }
+
     // If a full-sync boundary was crossed during the batch, force full sync now.
-    const tickAfter = engine.world.clock.tick;
+    const tickAfter = tickEngine.world.clock.tick;
     const hadFullSync =
       Math.floor(tickAfter / FULL_SYNC_INTERVAL) > Math.floor(tickBefore / FULL_SYNC_INTERVAL);
 
@@ -151,8 +172,9 @@ async function doTick() {
   }
 }
 
-async function doParallelFauna() {
-  const w = engine.world;
+async function doParallelFauna(targetEngine = engine) {
+  if (!targetEngine || !targetEngine.world) return false;
+  const w = targetEngine.world;
   const alive = [];
   for (const a of w.animals) if (a.alive) alive.push(a);
 
@@ -221,7 +243,11 @@ async function doParallelFauna() {
   });
 
   const results = await Promise.all(resultPromises);
-  engine.applyFaunaResults(results);
+  if (engine !== targetEngine || !targetEngine.world) {
+    return false;
+  }
+  targetEngine.applyFaunaResults(results);
+  return true;
 }
 
 function initFaunaWorkers(config, terrain, waterProximity, heightmap) {

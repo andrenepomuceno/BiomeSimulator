@@ -46,6 +46,7 @@ export class SimulationEngine {
     this.spatialHash = new SpatialHash(16);
     this.profilingEnabled = false;
     this._latestProfile = null;
+    this._phases = { plantsMs: 0, behaviorMs: 0, spatialMs: 0, cleanupMs: 0, supervisorMs: 0, statsMs: 0 };
     this._benchmarkCollector = createBenchmarkCollector();
     this.supervisor = createSimulationSupervisor(config);
     this._latestSupervisorReport = null;

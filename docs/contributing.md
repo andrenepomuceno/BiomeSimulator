@@ -166,6 +166,7 @@ Workflows live under `.github/workflows/`:
 
 - `ci.yml` — runs all gates on pull requests and pushes to `main`
 - `deploy-pages.yml` — publishes `dist/` to GitHub Pages after CI passes on `main`
+- `release.yml` — creates tag `v{package.json version}` and a draft GitHub Release after CI passes on `main`, only when `package.json` version changes
 
 ---
 
@@ -180,6 +181,8 @@ Required GitHub settings:
 3. Workflow write permissions enabled for Pages
 
 Deployment flow: push to `main` → CI passes → `deploy-pages.yml` publishes `dist/`.
+
+Draft release flow: push to `main` with a `package.json` version bump → CI passes → `release.yml` creates `vX.Y.Z` tag and a draft release with auto-generated notes.
 
 ---
 

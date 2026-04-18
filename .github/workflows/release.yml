@@ -1,0 +1,89 @@
+name: Draft Release
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: draft-release
+  cancel-in-progress: false
+
+jobs:
+  draft-release:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Resolve version and release guard
+        id: guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          CURRENT_VERSION="$(node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));process.stdout.write(String(pkg.version||''));")"
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "package.json version is empty."
+            exit 1
+          fi
+
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "package.json version '$CURRENT_VERSION' is not semver-like."
+            exit 1
+          fi
+
+          TAG="v$CURRENT_VERSION"
+          SHOULD_RELEASE=true
+          REASON="version changed"
+
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            PREVIOUS_VERSION="$(git show HEAD^:package.json 2>/dev/null | node -e "let input='';process.stdin.on('data',c=>input+=c);process.stdin.on('end',()=>{try{const pkg=JSON.parse(input);process.stdout.write(String(pkg.version||''));}catch{}})")"
+            if [ "$CURRENT_VERSION" = "$PREVIOUS_VERSION" ]; then
+              SHOULD_RELEASE=false
+              REASON="package.json version did not change ($CURRENT_VERSION)"
+            fi
+          fi
+
+          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q "refs/tags/$TAG$"; then
+            SHOULD_RELEASE=false
+            REASON="tag $TAG already exists on origin"
+          fi
+
+          echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "should_release=$SHOULD_RELEASE" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Skip release summary
+        if: steps.guard.outputs.should_release != 'true'
+        run: echo "Skipping draft release: ${{ steps.guard.outputs.reason }}"
+
+      - name: Create and push tag
+        if: steps.guard.outputs.should_release == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.guard.outputs.tag }}" -m "Release ${{ steps.guard.outputs.tag }}"
+          git push origin "${{ steps.guard.outputs.tag }}"
+
+      - name: Create draft GitHub release
+        if: steps.guard.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.guard.outputs.tag }}
+          name: ${{ steps.guard.outputs.tag }}
+          draft: true
+          generate_release_notes: true
+          target_commitish: ${{ github.event.workflow_run.head_sha }}

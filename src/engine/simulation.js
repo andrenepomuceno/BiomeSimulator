@@ -280,14 +280,17 @@ export class SimulationEngine {
 
     // Resolve contested item consumption (first-claim-wins per itemId).
     // Accepted claims: actually remove the item from the main world.
-    // Rejected claims: the item stays; animal keeps its updated state (it "thought" it ate).
-    // Note: item nutrition already applied in the worker — rejected animal just got a free meal
-    // this tick, which is acceptable (rare conflict, cheaper than full rollback).
+    // Rejected claims: the item stays; animal delta is rolled back to pre-eat state.
+    const rejectedItemClaims = [];
     const claimedItems = new Set();
     for (const r of results) {
       if (!r.itemConsumptionClaims) continue;
       for (const claim of r.itemConsumptionClaims) {
-        if (!claim?.itemId || claimedItems.has(claim.itemId)) continue;
+        if (!claim?.itemId) continue;
+        if (claimedItems.has(claim.itemId)) {
+          rejectedItemClaims.push(claim);
+          continue;
+        }
         claimedItems.add(claim.itemId);
         const item = w._itemById.get(claim.itemId);
         if (item && !item.consumed) w.removeItem(item);
@@ -318,6 +321,17 @@ export class SimulationEngine {
         w.plantAge[claim.idx] = claim.preAge;
         if (claim.preType !== 0) w.activePlantTiles.add(claim.idx);
       }
+    }
+
+    for (const claim of rejectedItemClaims) {
+      if (claim.animalId == null) continue;
+      const delta = deltaById.get(claim.animalId);
+      if (!delta) continue;
+      // Restore animal state — item was consumed by a competing worker
+      if (claim.preHunger != null) delta.hunger = claim.preHunger;
+      if (claim.preEnergy != null) delta.energy = claim.preEnergy;
+      if (claim.preHp != null) delta.hp = claim.preHp;
+      if (claim.preState != null) delta.state = claim.preState;
     }
 
     for (const id of mergedDeadIds) {

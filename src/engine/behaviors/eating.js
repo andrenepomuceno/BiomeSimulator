@@ -48,6 +48,10 @@ export function _eatPlantTile(animal, world, idx) {
  * Consume a ground item. Applies nutrition and removes the item from the world.
  */
 export function _eatGroundItem(animal, world, item) {
+  const preHunger = animal.hunger;
+  const preEnergy = animal.energy;
+  const preHp = animal.hp;
+  const preState = animal.state;
   const nutr = ITEM_NUTRITION[item.type] || { hunger: 20, energy: 5, hp: 4 };
   animal.hunger = Math.max(0, animal.hunger - nutr.hunger);
   animal.energy = Math.min(animal.maxEnergy, animal.energy + nutr.energy);
@@ -55,5 +59,5 @@ export function _eatGroundItem(animal, world, item) {
   animal.state = AnimalState.EATING;
   animal.applyEnergyCost('EAT');
   animal.logAction(world.clock.tick, 'EAT_ITEM', { itemType: item.type, itemId: item.id, x: item.x, y: item.y });
-  world.removeItem(item);
+  world.removeItem(item, { animalId: animal.id, preHunger, preEnergy, preHp, preState });
 }

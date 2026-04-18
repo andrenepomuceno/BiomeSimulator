@@ -297,11 +297,18 @@ export class World {
   /** Mark an item consumed and remove from all data structures.
    * In parallel (_itemClaimMode) mode, records a claim instead of removing.
    */
-  removeItem(item) {
+  removeItem(item, claimData = null) {
     if (item.consumed) return;
     if (this._itemClaimMode) {
       // Parallel: record claim for merge resolution; don't modify shared snapshot
-      this.itemConsumptionClaims.push({ itemId: item.id });
+      this.itemConsumptionClaims.push({
+        itemId: item.id,
+        animalId: claimData?.animalId,
+        preHunger: claimData?.preHunger,
+        preEnergy: claimData?.preEnergy,
+        preHp: claimData?.preHp,
+        preState: claimData?.preState,
+      });
       item.consumed = true; // mark locally so same worker doesn't try twice
       return;
     }

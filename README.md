@@ -8,6 +8,8 @@ The goal is to watch the ecosystem self-regulate: populations rise and collapse,
 ![Stack](https://img.shields.io/badge/React-18-61dafb?logo=react)
 ![Stack](https://img.shields.io/badge/PixiJS-7-e91e63?logo=webgl)
 
+**[Live demo →](https://andrenepomuceno.github.io/BiomeSimulator/)**
+
 ---
 
 ## What's in the simulation

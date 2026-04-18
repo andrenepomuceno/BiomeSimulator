@@ -68,10 +68,6 @@ jobs:
           echo "should_release=$SHOULD_RELEASE" >> "$GITHUB_OUTPUT"
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
 
-      - name: Skip release summary
-        if: steps.guard.outputs.should_release == 'false'
-        run: echo 'Skipping draft release:' ${{ steps.guard.outputs.reason }}
-
       - name: Create and push tag
         if: steps.guard.outputs.should_release == 'true'
         shell: bash

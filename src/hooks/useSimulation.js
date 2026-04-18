@@ -123,7 +123,8 @@ export function useSimulation() {
           if (msg.profiling && msg.profiling.engine) {
             store.setEngineProfile(msg.profiling.engine);
           }
-          if (msg.supervisorReport) {
+          const isPaintingTerrain = store.tool === 'PAINT_TERRAIN';
+          if (msg.supervisorReport && !isPaintingTerrain) {
             store.pushSupervisorFlash({
               id: `sv-${msg.supervisorReport.tick}-${Date.now()}`,
               tick: msg.supervisorReport.tick,

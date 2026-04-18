@@ -222,12 +222,14 @@ describe('simulationStore — terrain editing', () => {
     expect(useSimStore.getState().terrainData).toEqual(new Uint8Array([1, 2, 3, 4]));
   });
 
-  it('applyTerrainChanges updates worldReady.terrain when worldReady exists', () => {
-    useSimStore.setState({ worldReady: { terrain: new Uint8Array([1, 2, 3, 4]), other: 'x' } });
+  it('applyTerrainChanges does not mutate worldReady snapshot', () => {
+    const snapshot = { terrain: new Uint8Array([1, 2, 3, 4]), other: 'x' };
+    useSimStore.setState({ worldReady: snapshot });
     useSimStore.getState().applyTerrainChanges([{ x: 0, y: 1, terrain: 7 }]);
-    const { worldReady } = useSimStore.getState();
-    expect(worldReady.terrain[2]).toBe(7); // x=0, y=1 → idx=2
-    expect(worldReady.other).toBe('x'); // other fields preserved
+    const { worldReady, terrainData } = useSimStore.getState();
+    expect(terrainData[2]).toBe(7); // x=0, y=1 → idx=2
+    expect(worldReady).toBe(snapshot);
+    expect(worldReady.terrain[2]).toBe(3);
   });
 
   it('pushTerrainHistoryEntry appends to undo stack and clears redo stack', () => {

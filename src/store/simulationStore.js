@@ -206,10 +206,7 @@ const useSimStore = create((set, get) => ({
         nextTerrain[idx] = change.terrain;
       }
     }
-    const nextWorldReady = state.worldReady
-      ? { ...state.worldReady, terrain: new Uint8Array(nextTerrain) }
-      : state.worldReady;
-    return { terrainData: nextTerrain, worldReady: nextWorldReady };
+    return { terrainData: nextTerrain };
   }),
   pushTerrainHistoryEntry: (entry) => set((state) => {
     if (!entry?.undo?.length || !entry?.redo?.length) return {};

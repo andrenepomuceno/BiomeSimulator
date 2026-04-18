@@ -2,6 +2,7 @@ import React from 'react';
 import { usePersistedTab } from '../../hooks/usePersistedTab.js';
 import ANIMAL_SPECIES from '../../engine/animalSpecies';
 import PLANT_SPECIES from '../../engine/plantSpecies';
+import { LifeStage } from '../../engine/entities';
 import { ANIMAL_STATE_TONES, DIET_COLORS, getBadgeToneStyle } from '../../constants/statusColors';
 import { LIFE_STAGE_NAMES, PLANT_STAGE_NAMES, SEX_NAMES, SPECIES_INFO, STATE_NAMES } from '../../utils/terrainColors';
 import { formatTickTimestamp, ticksToDay } from '../../utils/time';
@@ -265,11 +266,15 @@ function AnimalStatusChips({ entity, speciesConfig, clock }) {
     chips.push({ label: '💧 Critical Thirst', tone: 'info' });
   }
 
-  if (entity.alive && entity.lifeStage >= 3) {
+  if (entity.alive) {
     const reasons = [];
+    if (entity.lifeStage !== LifeStage.ADULT) {
+      reasons.push(`Life stage ${LIFE_STAGE_NAMES[entity.lifeStage] || entity.lifeStage}`);
+    }
     if (entity.mateCooldown > 0) reasons.push(`Cooldown ${entity.mateCooldown}t`);
+    if (entity.pregnant) reasons.push('Pregnant');
     const mateEnergyMin = speciesDetails.decision_thresholds?.mate_energy_min ?? 50;
-    if (entity.energy < mateEnergyMin) reasons.push(`Low energy (${Math.round(entity.energy)}/${mateEnergyMin})`);
+    if (!(entity.energy > mateEnergyMin)) reasons.push(`Low energy (${Math.round(entity.energy)}/${mateEnergyMin + 1}+)`);
     if (reasons.length === 0) chips.push({ label: '💕 Can Mate', tone: 'success' });
     else chips.push({ label: `💕 Can't Mate: ${reasons.join(', ')}`, tone: 'neutral' });
   }
@@ -470,7 +475,7 @@ export default function AnimalInspector({ entity, clearSelection, onFocusEntity,
               {entity.pregnant && (
                 <>
                   <div className="stat-row"><span className="stat-label">🤰 Pregnant</span><span className="stat-value" style={{ color: '#ff99cc' }}>{entity._gestationLitterSize || '?'} offspring</span></div>
-                  <Bar icon="🤰" label="Gestation" value={entity.gestationTimer || 0} max={speciesConfig?.gestation_period || entity.gestationTimer || 1} color="#ff99cc" />
+                  <Bar icon="🤰" label="Gestation remaining" value={entity.gestationTimer || 0} max={speciesConfig?.gestation_period || entity.gestationTimer || 1} color="#ff99cc" />
                 </>
               )}
               {entity.lifeStage === 4 && <div className="stat-row"><span className="stat-label">🫘 Pupa</span><span className="stat-value" style={{ color: '#aa88cc' }}>Metamorphosing</span></div>}

@@ -206,8 +206,18 @@ export function useSimulation() {
 
           // Plant placements return { type, x, y } and do not participate in entity undo stacks.
           if (placed.id == null) {
+            if (Array.isArray(msg.plantChange) && msg.plantChange.length === 4) {
+              store.setPltChanges([msg.plantChange]);
+            }
+            const selectedTile = store.selectedTile;
+            if (selectedTile && selectedTile.x === (placed.x | 0) && selectedTile.y === (placed.y | 0)) {
+              workerRef.current?.postMessage({ cmd: 'getTileInfo', x: selectedTile.x, y: selectedTile.y });
+            }
             break;
           }
+
+          // Animal placements should appear immediately instead of waiting for next tick payload.
+          store.mergeAnimalDeltas([placed], []);
 
           if (pending?.targetStack === 'undo') {
             store.updateTopEntityUndoEntryId(placed.id);

@@ -206,6 +206,7 @@ describe('useEditor — PLACE_ENTITY tool', () => {
       entityType: 'WOLF',
       x: 3,
       y: 4,
+      source: 'editor',
     });
   });
 });

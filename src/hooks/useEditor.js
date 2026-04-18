@@ -49,7 +49,7 @@ export function useEditor(rendererRef) {
       }
 
       case 'PLACE_ENTITY':
-        worker.postMessage({ cmd: 'placeEntity', entityType: state.placeEntityType, x, y });
+        worker.postMessage({ cmd: 'placeEntity', entityType: state.placeEntityType, x, y, source: 'editor' });
         break;
 
       case 'ERASE': {

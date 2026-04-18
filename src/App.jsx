@@ -51,7 +51,15 @@ export default function App() {
   const rendererRef = useRef(null);
   const { postCmd, requestTileInfo, requestAnimalDetail } = useSimulation();
   const { handleTileClick } = useEditor(rendererRef);
-  const { unlockAudio, updateListenerViewport, playUiClick, playWorldEffect, syncAmbience, setAudioLogging } = useAudio();
+  const {
+    unlockAudio,
+    prepareAudioAssets,
+    updateListenerViewport,
+    playUiClick,
+    playWorldEffect,
+    syncAmbience,
+    setAudioLogging,
+  } = useAudio();
   const [activeModal, setActiveModal] = useState(null);
   const [activeDrawer, setActiveDrawer] = useState(null);
   const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth < DRAWER_BREAKPOINT);
@@ -60,7 +68,8 @@ export default function App() {
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges, itemChanges,
-    clock, stats, worldReady, plantSnapshot, itemSnapshot, selectedEntity, selectedTile, selectedItem, isGeneratingWorld,
+    clock, stats, worldReady, plantSnapshot, itemSnapshot, selectedEntity, selectedTile, selectedItem,
+    isGeneratingWorld, isPreparingAssets, assetPreparationTitle, assetPreparationSubtitle,
   } = useSimStore();
 
   useEffect(() => {
@@ -131,7 +140,7 @@ export default function App() {
     };
   }, []);
 
-  // When world is ready from worker, set up renderer
+  // When world is ready from worker, set up renderer and prepare visual/audio assets.
   useEffect(() => {
     if (!worldReady || !rendererRef.current) return;
     const { terrain, plantType, plantStage, width, height, heightmap, waterProximity } = worldReady;
@@ -139,7 +148,42 @@ export default function App() {
     rendererRef.current.setTerrain(terrain, width, height, heightmap, waterProximity);
     rendererRef.current.plantLayer.setFromArrays(plantType, plantStage, width, height);
     rendererRef.current.setItems([]);
-  }, [worldReady]);
+
+    let cancelled = false;
+
+    const runPreparation = async () => {
+      const store = useSimStore.getState();
+      store.startAssetPreparation('Preparing assets', 'Compiling textures and audio cache.');
+
+      // Let React paint the overlay before running expensive synchronous builds.
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      if (cancelled || !rendererRef.current) return;
+
+      try {
+        await rendererRef.current.prepareAssets((title, subtitle) => {
+          if (cancelled) return;
+          useSimStore.getState().updateAssetPreparation(title, subtitle);
+        });
+
+        if (cancelled) return;
+
+        await prepareAudioAssets((title, subtitle) => {
+          if (cancelled) return;
+          useSimStore.getState().updateAssetPreparation(title, subtitle);
+        });
+      } finally {
+        if (!cancelled) {
+          useSimStore.getState().finishAssetPreparation();
+        }
+      }
+    };
+
+    void runPreparation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [worldReady, prepareAudioAssets]);
 
   // Update entities when animals change
   useEffect(() => {
@@ -544,13 +588,24 @@ export default function App() {
           </div>
           <FlashMessages />
           <UiToasts />
-          {isGeneratingWorld && (
-            <div className="world-loading-overlay" role="status" aria-live="polite" aria-label="Generating world">
+          {(isGeneratingWorld || isPreparingAssets) && (
+            <div
+              className="world-loading-overlay"
+              role="status"
+              aria-live="polite"
+              aria-label={isGeneratingWorld ? 'Generating world' : 'Preparing assets'}
+            >
               <div className="world-loading-card">
                 <div className="spinner-border text-info" aria-hidden="true" />
                 <div>
-                  <div className="world-loading-title">Generating world</div>
-                  <div className="world-loading-subtitle">Building terrain, plants, and starting populations.</div>
+                  <div className="world-loading-title">
+                    {isGeneratingWorld ? 'Generating world' : (assetPreparationTitle || 'Preparing assets')}
+                  </div>
+                  <div className="world-loading-subtitle">
+                    {isGeneratingWorld
+                      ? 'Building terrain, plants, and starting populations.'
+                      : (assetPreparationSubtitle || 'Compiling textures and audio cache.')}
+                  </div>
                 </div>
               </div>
             </div>

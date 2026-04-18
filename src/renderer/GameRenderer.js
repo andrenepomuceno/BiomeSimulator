@@ -11,6 +11,11 @@ import { AnimationLayer } from './AnimationLayer.js';
 import useSimStore from '../store/simulationStore.js';
 import { RENDERER_CONFIG } from '../engine/config.js';
 import { TERRAIN_COLORS } from '../utils/terrainColors.js';
+import {
+  generateEmojiTextures,
+  generatePlantEmojiTextures,
+  generateItemEmojiTextures,
+} from '../utils/emojiTextures.js';
 
 export class GameRenderer {
   constructor(container, onViewportChange, onTileClick, onEffectEvent) {
@@ -403,6 +408,28 @@ export class GameRenderer {
     this.onEffectEvent(event);
   }
 
+  async prepareAssets(onStep) {
+    const report = typeof onStep === 'function' ? onStep : () => {};
+
+    report('Compilando texturas de animais', 'Montando atlas procedural da fauna.');
+    generateEmojiTextures();
+    await this._yieldForUi();
+
+    report('Compilando texturas de plantas', 'Montando atlas procedural da flora.');
+    generatePlantEmojiTextures();
+    await this._yieldForUi();
+
+    report('Compilando texturas de itens', 'Montando atlas procedural de drops.');
+    generateItemEmojiTextures();
+    await this._yieldForUi();
+  }
+
+  _yieldForUi() {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  }
+
   _onViewportChanged() {
     const vp = { ...this.camera.getViewportTiles(), zoom: this.camera.zoom };
     if (this.onViewportChange) {
@@ -436,6 +463,10 @@ export class GameRenderer {
           this._lastEntityBrushTile = null;
           lastX = e.clientX;
           lastY = e.clientY;
+          return;
+        }
+        // Left-click in edit tools should act on tiles, not pan the camera.
+        if (e.button === 0 && tool !== 'SELECT') {
           return;
         }
         dragging = true;

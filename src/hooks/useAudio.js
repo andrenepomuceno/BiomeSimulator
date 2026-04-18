@@ -63,6 +63,25 @@ export function useAudio() {
     };
   }, []);
 
+  const prepareAudioAssets = useCallback(async (onStep) => {
+    const manager = ensureManager();
+    const report = typeof onStep === 'function' ? onStep : () => {};
+    const store = useSimStore.getState();
+
+    if (!store.audioSettings.unlocked) {
+      report('Preparando cache de áudio procedural', 'Áudio bloqueado pelo navegador; etapa será concluída após unlock.');
+      return false;
+    }
+
+    report('Preparando cache de áudio procedural', 'Gerando variações procedurais de efeitos sonoros.');
+    await manager.preGenerateProceduralCache();
+
+    report('Carregando/preparando samples de áudio', 'Pré-carregando fallback de samples e camadas de ambiente.');
+    await manager.preloadSamples();
+
+    return true;
+  }, []);
+
   const unlockAudio = useCallback(async () => {
     const manager = ensureManager();
 
@@ -72,11 +91,10 @@ export function useAudio() {
       store.setAudioSettings({ unlocked });
     }
     if (unlocked) {
-      await manager.preGenerateProceduralCache();
-      manager.preloadSamples();
+      await prepareAudioAssets();
     }
     return unlocked;
-  }, []);
+  }, [prepareAudioAssets]);
 
   const updateListenerViewport = useCallback((viewport) => {
     ensureManager().setViewport(viewport);
@@ -123,6 +141,7 @@ export function useAudio() {
 
   return {
     unlockAudio,
+    prepareAudioAssets,
     updateListenerViewport,
     playUiClick,
     playWorldEffect,

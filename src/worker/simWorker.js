@@ -40,6 +40,9 @@ let pendingPause = false;
 const FULL_SYNC_INTERVAL = 30;
 const FAUNA_TICK_TIMEOUT_MS = 800;
 const MAX_PLANT_CHANGES_PER_TICK = 5000;
+const ANIMAL_PLACE_RATE_WINDOW_MS = 1000;
+const ANIMAL_PLACE_RATE_LIMIT = 30;
+const recentAnimalPlacementTimes = [];
 // Cap the postMessage rate to main thread regardless of TPS.
 // At TPS > MAX_UI_UPDATE_HZ the loop batches multiple sim ticks per iteration.
 const MAX_UI_UPDATE_HZ = 30;
@@ -598,10 +601,27 @@ self.onmessage = function (e) {
     case 'placeEntity': {
       if (!engine) break;
       const { entityType, x, y } = e.data;
+      const w = engine.world;
+      const isAnimalType = !!w?.config?.animal_species?.[entityType];
+      if (isAnimalType && e.data.source === 'editor') {
+        const now = performance.now();
+        while (recentAnimalPlacementTimes.length > 0 && (now - recentAnimalPlacementTimes[0]) > ANIMAL_PLACE_RATE_WINDOW_MS) {
+          recentAnimalPlacementTimes.shift();
+        }
+        if (recentAnimalPlacementTimes.length >= ANIMAL_PLACE_RATE_LIMIT) {
+          self.postMessage({
+            type: 'entityPlaced',
+            entity: null,
+            error: `Too many animal placements. Max ${ANIMAL_PLACE_RATE_LIMIT}/s.`,
+          });
+          break;
+        }
+        recentAnimalPlacementTimes.push(now);
+      }
+
       const result = engine.placeEntity(entityType, x, y);
       let error = null;
-      if (!result && engine.world) {
-        const w = engine.world;
+      if (!result && w) {
         if (!w.isInBounds(x, y)) {
           error = 'Target tile is out of bounds.';
         } else if (w.config?.animal_species?.[entityType] && w.isTileBlocked(x, y)) {
@@ -610,7 +630,12 @@ self.onmessage = function (e) {
           error = 'Entity placement was rejected.';
         }
       }
-      self.postMessage({ type: 'entityPlaced', entity: result, error });
+      let plantChange = null;
+      if (result && result.id == null && w && w.isInBounds(x, y)) {
+        const idx = w.idx(x, y);
+        plantChange = [x | 0, y | 0, w.plantType[idx], w.plantStage[idx]];
+      }
+      self.postMessage({ type: 'entityPlaced', entity: result, error, plantChange });
       break;
     }
 

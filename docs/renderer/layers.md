@@ -105,6 +105,19 @@ Renders animals as procedural pixel-art sprites with depth-sorted rendering.
 | Method | Description |
 |--------|-------------|
 | `update(animals, renderer, currentTick, zoom)` | Reposition sprites, manage sprite pool, apply scaling, update shadows |
+| `setShowAnimalHpBars(enabled)` | Toggle HP bar overlay visibility at runtime |
+
+### Asset Preparation Stage
+
+The app now runs a short blocking UI stage after `worldReady` to avoid first-frame hitches:
+
+- Compilando texturas de animais
+- Compilando texturas de plantas
+- Compilando texturas de itens
+- Preparando cache de áudio procedural
+- Carregando/preparando samples de áudio
+
+This stage is separate from world generation. World generation runs in the worker, while asset preparation runs on the main thread (renderer + audio manager).
 
 ### Variable Animal Sizing
 

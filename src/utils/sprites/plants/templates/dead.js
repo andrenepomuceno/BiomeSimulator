@@ -3,15 +3,35 @@
  * 64×64 design grid.
  */
 import { px, rect, speckle, quadraticThick, thickLine, ao } from '../../helpers.js';
-import { drawGroundBase } from '../bodyParts.js';
+import { drawGroundBase, drawGrassBlade } from '../bodyParts.js';
 
 export function drawDead(ctx, params, frame) {
+  const cx   = 28;
+  const baseY = 56;
+
+  // ── Grass variant: collapsed dry blades, no tree silhouette ─────────
+  if (params.template === 'grass') {
+    const dStem = '#8a6a28';
+    const dLeaf = '#b09040';
+    const dDark = '#906828';
+    const leanX = frame === 1 ? 1 : frame === 2 ? -1 : 0;
+    drawGrassBlade(ctx, 16 + leanX, baseY,  7, -7, dStem, dLeaf, dDark, true);
+    drawGrassBlade(ctx, 20 + leanX, baseY,  9, -5, dStem, dLeaf, dDark, false);
+    drawGrassBlade(ctx, 24 + leanX, baseY, 10, -3, dStem, dLeaf, dDark, false);
+    drawGrassBlade(ctx, 28 + leanX, baseY, 11,  0, dStem, dLeaf, dDark, true);
+    drawGrassBlade(ctx, 32 + leanX, baseY, 10,  3, dStem, dLeaf, dDark, false);
+    drawGrassBlade(ctx, 36 + leanX, baseY,  9,  5, dStem, dLeaf, dDark, false);
+    drawGrassBlade(ctx, 40 + leanX, baseY,  7,  7, dStem, dLeaf, dDark, true);
+    speckle(ctx, 12, baseY + 1, 30, 2, [dLeaf, dDark, '#c8b060'], 0.18);
+    drawGroundBase(ctx, 12, baseY, 30, dDark, 2);
+    ao(ctx, 12, baseY + 2, 30, 2, 0.08);
+    return;
+  }
+
   const brown     = '#8a7a55';
   const darkBrown = '#6a5a40';
   const dryLeaf   = '#a09060';
   const dryTip    = '#c8b870';
-  const cx   = 28;
-  const baseY = 56;
 
   // Wind-lean offset varies per frame
   const leanX = frame === 1 ? 2 : frame === 2 ? -2 : 0;

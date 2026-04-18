@@ -77,6 +77,11 @@ export const POPULATION_STATUS_THRESHOLDS = {
   critical: 0.8,
 };
 
+export const PLANT_PRESENCE_THRESHOLDS = {
+  dominant: 0.2,
+  common: 0.08,
+};
+
 export const DIET_COLORS = {
   Herbivore: STATUS_COLORS_HEX.herbivore,
   Carnivore: STATUS_COLORS_HEX.critical,
@@ -105,4 +110,18 @@ export function getPresenceStatusTone({ current = 0, peak = 0 }) {
   if (peak === 0) return 'neutral';
   if (current === 0) return 'danger';
   return 'success';
+}
+
+export function getPlantPresenceStatus({ current = 0, total = 0 }) {
+  if (total <= 0) return { tone: 'neutral', label: 'No data' };
+  if (current <= 0) return { tone: 'danger', label: 'Extinct' };
+
+  const ratio = current / total;
+  if (ratio >= PLANT_PRESENCE_THRESHOLDS.dominant) {
+    return { tone: 'accent', label: 'Dominant' };
+  }
+  if (ratio >= PLANT_PRESENCE_THRESHOLDS.common) {
+    return { tone: 'success', label: 'Common' };
+  }
+  return { tone: 'warning', label: 'Rare' };
 }

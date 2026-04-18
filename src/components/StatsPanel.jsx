@@ -9,7 +9,7 @@ import { getEffectiveAnimalPopulationCap } from '../engine/animalSpecies';
 import { Chart as ChartJS, LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { STATS_PANEL_HISTORY_LIMIT } from '../constants/simulation';
-import { getBadgeToneStyle, getPopulationStatusColor, getPopulationStatusTone } from '../constants/statusColors';
+import { getBadgeToneStyle, getPopulationStatusColor, getPopulationStatusTone, getPlantPresenceStatus } from '../constants/statusColors';
 import { buildPlantChartColors, buildPlantChartEmojis, getPlantByTypeId } from '../engine/plantSpecies.js';
 
 const PLANT_COLORS = buildPlantChartColors();  // typeId → hex color
@@ -284,7 +284,7 @@ export default function StatsPanel() {
         const speciesColor = ANIMAL_HEX_COLORS[k] || '#66cc66';
         const barColor = getPopulationStatusColor(pct, speciesColor);
         const tone = getPopulationStatusTone(pct);
-        const statusLabel = tone === 'danger' ? 'High pressure' : tone === 'warning' ? 'Watch' : 'Stable';
+        const statusLabel = tone === 'danger' ? 'Crowded' : tone === 'warning' ? 'Watch' : 'Stable';
         return (
           <div key={k} className="stats-species-row">
             <div className="stat-row">
@@ -329,9 +329,8 @@ export default function StatsPanel() {
               const color = PLANT_COLORS[typeId] || '#88cc44';
               const emoji = PLANT_EMOJIS[typeId] || '🌱';
               const pct = stats.plants_total > 0 ? count / stats.plants_total : 0;
-              const tone = count > 0 ? 'success' : 'danger';
               const barColor = getPopulationStatusColor(pct, color);
-              const statusLabel = count > 0 ? 'Alive' : 'Extinct';
+              const presence = getPlantPresenceStatus({ current: count, total: stats.plants_total || 0 });
               return (
                 <div key={typeId} className="stats-species-row">
                   <div className="stat-row">
@@ -341,7 +340,7 @@ export default function StatsPanel() {
                     </span>
                   </div>
                   <div className="stats-species-meta">
-                    <span className="stats-status-badge" style={getBadgeToneStyle(tone)}>{statusLabel}</span>
+                    <span className="stats-status-badge" style={getBadgeToneStyle(presence.tone)}>{presence.label}</span>
                     <span className="stats-species-percent">{Math.round(pct * 100)}%</span>
                   </div>
                   <div className="stats-progress-track">

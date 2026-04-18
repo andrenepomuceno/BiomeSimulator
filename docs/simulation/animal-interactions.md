@@ -69,7 +69,10 @@ Defaults: `threshold_fraction = 0.8`, `max_penalty = 0.5`.
 | Eating plant (Adult stage) | +5 | Moderate |
 | Eating plant (Seed stage) | +3 | Minimal |
 | Ongoing eating state | +2 per tick | While in EATING state |
-| Scavenging corpse | +8 | Corpse consumption |
+| Eating meat item (ground) | +12 | Dropped by animal deaths |
+| Eating fruit item (ground) | +6 | Decayed from plant fruit stage |
+| Eating seed item (ground) | +2 | Decayed from fruit items |
+| Scavenging corpse | +4 | Corpse direct consumption; lower than meat item to avoid double nutrition |
 | Killing prey | +15 | Attacker bonus on kill |
 
 #### Death Conditions

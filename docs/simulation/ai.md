@@ -26,6 +26,21 @@ Checked before the priority queue — these trigger immediately when local condi
 
 ---
 
+## Food-Before-Hunt Priority
+
+Carnivores and omnivores prioritise consuming available food in the world before expending energy on active hunting. Within the "seek food" branch, the resolution order is:
+
+1. **Scavenge corpse** — eat a nearby dead animal within vision + adjacent
+2. **Eat meat item** — consume a `MEAT` ground item within vision range
+3. **Eat egg** — attack a nearby rival egg (omnivores and some carnivores)
+4. **Hunt live prey** — chase and attack live animals
+
+Omnivores also check for **fruit items** (`FRUIT` ground items) before scavenging, and will eat plant tiles on their current tile opportunistically.
+
+This ordering ensures that ground items left by recent kills are collected before an animal targets living prey, reducing redundant kills when food is already available.
+
+---
+
 ## Priority-Based Decisions
 
 ```mermaid

@@ -55,6 +55,13 @@ Holds the entire world state using flat TypedArrays for memory efficiency. Grid 
 | `animalGrid` | `Uint8Array` | Count of living animals occupying each tile |
 | `eggGrid` | `Uint8Array` | Count of egg-stage animals on each tile |
 | `activePlantTiles` | `Set<number>` | Flat indices of tiles that have a living plant — avoids iterating the full grid each tick |
+| `items` | `GroundItem[]` | All active ground items (meat, fruit, seed) |
+| `itemChanges` | `object[]` | Per-tick item deltas `{op:'add'|'remove'|'update', item}` sent to the renderer |
+| `_itemById` | `Map<id, GroundItem>` | Fast O(1) item lookup by numeric ID |
+| `_itemSpatialHash` | `SpatialHash` | 16-unit-cell spatial index for item proximity queries |
+| `_itemTiles` | `Set<number>` | Flat tile indices where an item sits — O(1) anti-stacking check in `_findItemTile()` |
+| `itemConsumptionClaims` | `object[]` | `{itemId}` records written by fauna sub-workers; merged in `applyFaunaResults()` |
+| `_itemClaimMode` | `boolean` | When `true` (parallel path), `removeItem()` records a claim instead of removing immediately |
 
 All `World` methods that accept `(x, y)` coordinates **floor float inputs** internally using `| 0`. This allows sub-tile animal positions (e.g. `5.75, 3.25`) to be passed directly.
 
@@ -73,6 +80,58 @@ All `World` methods that accept `(x, y)` coordinates **floor float inputs** inte
 | `vacateAnimal(x, y)` | — | Decrement `animalGrid` count at that tile |
 | `getAliveSpeciesCount(species)` | `→ number` | Alive count for a species (lazily cached once per tick via `_speciesPopCache`) |
 | `getStats()` | `→ object` | Population counts, plant totals, and event tallies |
+| `spawnItem(type, x, y, source, tick, germinationTicks?)` | `→ GroundItem\|null` | Place a ground item at or near `(x, y)`, avoiding occupied tiles (uses `_findItemTile`); returns `null` if no free tile found within `item_drop_radius_animal` |
+| `removeItem(item)` | `→ void` | Remove an item from all structures; in claim mode (`_itemClaimMode=true`) records a claim instead |
+| `tickItemLifecycle(config)` | `→ void` | Decay MEAT after `item_meat_decay_ticks`; transform FRUIT → SEED after `item_fruit_to_seed_ticks`; attempt seed germination when SEED age ≥ `germinationTicks` |
+
+---
+
+## Ground Items (`items.js`)
+
+Ground items are physical objects lying on tiles that animals can pick up and eat. They are created on animal death or plant fruit drop and expire after a fixed number of ticks.
+
+### Item Types
+
+| Constant | Type | Nutrition (hunger / energy / HP) | Source |
+|----------|------|----------------------------------|--------|
+| `ITEM_TYPE.MEAT` | 🥩 Meat | −65 hunger / +20 energy / +12 HP | Animal death |
+| `ITEM_TYPE.FRUIT` | 🍎 Fruit | −40 hunger / +6 energy / +6 HP | Plant fruit stage (via flora seeding system) |
+| `ITEM_TYPE.SEED` | 🌱 Seed | −15 hunger / +2 energy / +2 HP | Fruit → Seed decay |
+
+### Meat Drop Ranges (by animal mass)
+
+| Size class | `mass_kg` threshold | Drops |
+|------------|--------------------|----|
+| Small | < 5 kg | Exactly **1** meat |
+| Medium | 5 – 79 kg | **1 – 2** meat |
+| Large | ≥ 80 kg | **2 – 3** meat |
+
+All size classes guarantee at least 1 meat drop. Drop counts use `meatDropRange(mass_kg)` from `items.js`.
+
+### Seed Germination
+
+When a SEED item's age reaches its `germinationTicks` threshold (per-species value from `plantSpecies.js`, fallback `item_seed_germination_ticks = 400`), `tickItemLifecycle()` rolls a germination chance (default `item_seed_germination_chance = 0.20`). On success:
+
+1. `plantType[tileIdx]` is set to the seed's source plant type (`item.source`)
+2. `plantStage[tileIdx]` is set to `S_SEED` (stage 1)
+3. `plantAge[tileIdx]` is reset to 0
+4. The tile is added to `activePlantTiles`
+5. A `[x, y, type, stage]` entry is pushed to `plantChanges` for the renderer
+6. A `GERMINATED` plant event is logged
+
+Regardless of whether germination succeeds, the SEED item is removed.
+
+### `GroundItem` Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `number` | Unique ID from `nextItemId()` (base 2,000,000,000) |
+| `x`, `y` | `number` | Tile position (integer) |
+| `type` | `ITEM_TYPE` | `MEAT`, `FRUIT`, or `SEED` |
+| `source` | `number\|string` | Species name (meat) or plant typeId (fruit/seed) |
+| `createdTick` | `number` | Tick when the item was spawned (used for age calculation) |
+| `germinationTicks` | `number` | Ticks until seed germination attempt (0 = use config fallback) |
+| `consumed` | `boolean` | Marked `true` when eaten or removed; prevents double-removal |
 
 ---
 

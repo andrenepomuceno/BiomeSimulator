@@ -73,6 +73,11 @@ Sent after each simulation tick.
     [10, 20, 2, 3],   // [x, y, plantType, plantStage]
     [15, 25, 0, 0],
   ],
+  itemChanges: [
+    { op: 'add',    item: { id: 2000000001, x: 42, y: 17, type: 'MEAT', source: 'WOLF', createdTick: 500, germinationTicks: 0 } },
+    { op: 'remove', item: { id: 2000000001, consumed: true } },
+    { op: 'update', item: { id: 2000000002, type: 'SEED', createdTick: 720 } },  // fruit → seed decay
+  ],
   // Included every 10 ticks:
   stats: {
     tick: 140,
@@ -86,6 +91,16 @@ Sent after each simulation tick.
   activePlants: 80000,    // Non-dead plants
   tickMs: 12.5,           // Tick processing time in ms
 }
+```
+
+`itemChanges` is an incremental delta list of ground item events since the last tick. Each entry has:
+
+| Field | Description |
+|-------|-------------|
+| `op` | `'add'` — item spawned; `'remove'` — item consumed or decayed; `'update'` — item type changed (e.g. fruit→seed) |
+| `item` | Partial or full `GroundItem` delta (always includes `id`) |
+
+On `'add'`, the full item fields (`x`, `y`, `type`, `source`, `createdTick`, `germinationTicks`) are included. On `'remove'`, only `id` and `consumed` are guaranteed. On `'update'`, only changed fields plus `id` are included.
 ```
 
 Animals may be a full array or an incremental delta list (dirty-flag based; full sync every 30 ticks).

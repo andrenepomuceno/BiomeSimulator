@@ -93,6 +93,24 @@ Plants within `water_proximity_threshold` (default 10) tiles of water receive a 
 
 ---
 
+## Seed Germination via Ground Items
+
+Fruit-producing plants drop **fruit items** on adjacent tiles when their flora seeding system runs. These items follow a two-step decay:
+
+```
+FRUIT item  →  (after item_fruit_to_seed_ticks = 200 ticks)
+SEED item   →  (after germinationTicks, rolls 20% chance)
+New plant at S_SEED stage   OR   item removed (80%)
+```
+
+The `germinationTicks` value is taken from the plant species' `seedGerminationTicks` field in `plantSpecies.js`. If the field is absent, the engine falls back to `config.item_seed_germination_ticks` (default 400 ticks). The germination chance is controlled by `config.item_seed_germination_chance` (default 0.20).
+
+Germination succeeds only if the target tile currently has no plant (`plantType = P_NONE`). A successful germination writes the new plant at stage `S_SEED` (stage 1) with age 0, from which it advances through the normal flora lifecycle.
+
+This mechanism supplements the existing in-engine plant reproduction (which spreads seeds to adjacent tiles) and creates a distinct pathway for new plants to appear at locations where animals have carried or dropped fruit.
+
+---
+
 ## Terrain Growth Modifiers
 
 Each plant species defines a per-terrain growth multiplier in `terrainGrowth`. Growth rate is multiplied by the terrain factor each tick. A value of `0.0` means the plant cannot grow on that terrain at all.

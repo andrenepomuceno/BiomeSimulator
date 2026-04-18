@@ -61,6 +61,11 @@ Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are c
 | Fauna — Caching | `threat_cache_ttl` | 10 | Ticks to reuse a found threat result before rescanning |
 | Fauna — Caching | `threat_scan_cooldown_ticks` | 8 | Ticks to skip a scan after returning "no threat found" |
 | Fauna — Scavenging | `scavenge_decay_ticks` | ~100 | **(derived)** Fresh-corpse window for scavenging (from 554 game minutes) |
+| Fauna — Scavenging | `scavenge_corpse_hunger_restore` | 35 | Hunger reduced when an animal scavenges a corpse (lower than meat item to avoid double nutrition) |
+| Fauna — Scavenging | `scavenge_corpse_energy_restore` | 8 | Energy gained from corpse scavenging |
+| Fauna — Scavenging | `scavenge_corpse_hp_restore` | 4 | HP gained from corpse scavenging |
+| Fauna — Scavenging | `scavenge_egg_hunger_restore` | 20 | Hunger reduced when eating a rival egg |
+| Fauna — Scavenging | `scavenge_egg_energy_restore` | 10 | Energy gained from eating an egg |
 | Fauna — Supervisor | `supervisor_enabled` | `true` | Enable the sampled consistency supervisor |
 | Fauna — Supervisor | `supervisor_full_audit_interval_ticks` | ~30 | **(derived)** Full audit interval (from 166 game minutes) |
 | Fauna — Supervisor | `supervisor_sample_limit` | 5 | Max logged samples per issue category per audit |
@@ -82,5 +87,12 @@ Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are c
 | Flora — Spread | `plant_offspring_max_spread` | 3 | Max tile radius for seed/fruit offspring placement |
 | Flora — Derived | `plant_stage_ages` | `{1: [...], ...}` | **(derived)** Tick-based stage thresholds per typeId from `plantSpecies.js` |
 | Flora — Derived | `plant_fruit_spoil_ages` | `{1: N, ...}` | **(derived)** Tick-based fruit decay thresholds per typeId from `plantSpecies.js` |
+| Ground Items | `item_meat_decay_ticks` | 300 | Ticks before a dropped meat item decays and is removed |
+| Ground Items | `item_fruit_to_seed_ticks` | 200 | Ticks for a fruit item to decay into a seed item |
+| Ground Items | `item_seed_germination_ticks` | 400 | Fallback ticks before a seed item attempts germination (overridden per species) |
+| Ground Items | `item_seed_germination_chance` | 0.20 | Probability (0–1) that a seed item germinates into a plant tile when it expires |
+| Ground Items | `item_drop_radius_animal` | 2 | Tile search radius when placing a dropped item near an animal death position |
+| Ground Items | `item_drop_radius_plant` | 2 | Tile search radius when placing a fruit/seed item from a plant |
+| Ground Items | `item_max_changes_per_tick` | 2000 | Maximum item change events collected per tick before further changes are dropped |
 
 The supervisor is designed to stay off the hot path: it runs full audits on a configurable interval and records timing separately in profiling output as `supervisorMs`.

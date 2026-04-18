@@ -54,9 +54,13 @@ When fauna sub-workers are active, the main worker calls `applyFaunaResults(resu
 - Sorts all deltas by `animal.id` for a deterministic merge order — this ensures that movement conflict resolution and birth ID assignment produce the same outcome regardless of which sub-worker finished first
 - Rebuilds the occupancy grid from scratch
 - Resolves movement conflicts (first delta wins)
+- Resolves **plant consumption claims** (first-claim-wins per tile index; rejected animals have their state rolled back to pre-consumption values)
+- Resolves **item consumption claims** (first-claim-wins per `itemId`; winning claims trigger `world.removeItem()` on the main world; rejected claims are accepted without rollback — the animal keeps its nutrition, which is acceptable given the rarity of the conflict)
 - Deduplicates plant eating (Set-based tracking)
 - Reassigns proper IDs to births from the main world counter
 - Rebuilds the spatial hash after merge
+
+Each fauna sub-worker receives a read-only snapshot of all active ground items (`items: itemsSnapshot`). Workers run in **claim mode** (`world._itemClaimMode = true`), so `removeItem()` records a `{itemId}` claim rather than mutating the shared state. Claims are merged back in `applyFaunaResults`.
 
 ---
 

@@ -119,7 +119,24 @@ Some species can eat decomposing bodies (dead animals still on the map).
 |--------------|----------------|
 | Beetle, Fox, Wolf, Boar, Bear, Raccoon, Crow, Crocodile | Rabbit, Squirrel, Goat, Deer, Mosquito, Caterpillar, Snake, Hawk |
 
-Only species with `can_scavenge: true` in the species registry can scavenge. The `scavenge_decay_ticks` config parameter (default 100) defines the fresh-corpse window.
+Only species with `can_scavenge: true` in the species registry can scavenge. The `scavenge_decay_ticks` config parameter (default ~100 ticks) defines the fresh-corpse window.
+
+Scavenging a corpse and eating meat ground items are intentionally distinct sources with different nutrition values to avoid double nutrition. Ground items (which persist after scavenging) offer higher nutrition:
+
+| Source | Hunger restored | Energy | HP |
+|--------|----------------|--------|----|
+| Scavenge corpse | 35 | +8 | +4 |
+| Eat MEAT item | 65 | +20 | +12 |
+| Eat FRUIT item | 40 | +6 | +6 |
+| Eat SEED item | 15 | +2 | +2 |
+
+---
+
+## Ground Items
+
+When an animal dies it drops **meat items** on adjacent tiles (see [World & Entities: Ground Items](../engine/world.md#ground-items-itemsjs)). Animals with the appropriate diet will prioritise eating nearby items before hunting (see [AI: Food-Before-Hunt Priority](ai.md#food-before-hunt-priority)).
+
+Item nutrition values are defined in `ITEM_NUTRITION` in `items.js` and are the same regardless of which species originally dropped the item.
 
 ---
 

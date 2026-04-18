@@ -194,10 +194,10 @@ export const STATE_NAMES = {
 
 // Animal life stage names
 export const LIFE_STAGE_NAMES = {
-  [-1]: '🥚 Ovo',
-  0: '🍼 Filhote',
-  1: '🌱 Jovem',
-  2: '🌿 Adulto Jovem',
-  3: '🌳 Adulto',
+  [-1]: '🥚 Egg',
+  0: '🍼 Baby',
+  1: '🌱 Young',
+  2: '🌿 Young Adult',
+  3: '🌳 Adult',
   4: '🐛 Pupa',
 };

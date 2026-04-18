@@ -116,6 +116,25 @@ function persistRateMultipliers(hunger, thirst) {
 
 const _persistedRateMultipliers = loadPersistedRateMultipliers();
 
+const PROFILING_STORAGE_KEY = 'biomeSimulator.profilingEnabled';
+
+function loadPersistedProfiling() {
+  if (typeof window === 'undefined' || !window.localStorage) return false;
+  try {
+    const raw = window.localStorage.getItem(PROFILING_STORAGE_KEY);
+    return raw === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function persistProfiling(enabled) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(PROFILING_STORAGE_KEY, String(!!enabled));
+  } catch { /* ignore */ }
+}
+
 const useSimStore = create((set, get) => ({
 
   // Worker reference (set once by useSimulation)
@@ -345,7 +364,7 @@ const useSimStore = create((set, get) => ({
   setStatsHistory: (h) => set({ statsHistory: h }),
 
   // Profiling (engine + renderer)
-  profilingEnabled: false,
+  profilingEnabled: loadPersistedProfiling(),
   profiling: {
     engine: {
       tick: 0,
@@ -371,7 +390,7 @@ const useSimStore = create((set, get) => ({
       lastTickAt: 0,
     },
   },
-  setProfilingEnabled: (enabled) => set({ profilingEnabled: !!enabled }),
+  setProfilingEnabled: (enabled) => { persistProfiling(enabled); set({ profilingEnabled: !!enabled }); },
   setEngineProfile: (engine) => set(state => ({ profiling: { ...state.profiling, engine } })),
   setRendererProfile: (renderer) => set(state => ({ profiling: { ...state.profiling, renderer } })),
 

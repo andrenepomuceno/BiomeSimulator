@@ -2,7 +2,7 @@
  * Canid drawing template — fox/wolf focused silhouette.
  */
 import { px, rect, ellipse, darken, lighten, gradientV, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawFurTexture, drawEyeSide } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawFurTexture, drawEyeSide, drawCanidHeadTop, drawCanidHeadSide } from '../bodyParts.js';
 
 export function drawCanid(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -40,8 +40,7 @@ export function drawCanid(ctx, params, dir, frame) {
     const headW = 12;
     const hx = cx - Math.floor(headW / 2);
     const hy = by - 7;
-    ellipse(ctx, cx, hy + 4, 6, 4, body);
-    rect(ctx, hx + 2, hy + 1, headW - 4, 2, highlight);
+    drawCanidHeadTop(ctx, cx, hy, headW, body, highlight);
     drawEyePair(ctx, hx, hy + 2, headW, 3, 0, eyeWhite, eyeIris, 3);
     if (params.cheeks) drawCheekPair(ctx, hx + 1, hy + 4, headW - 2, 0, params.cheeks);
     if (params.noseColor) {
@@ -90,9 +89,7 @@ export function drawCanid(ctx, params, dir, frame) {
   // Head (longer snout)
   const headX = bx + w - 1;
   const headY = by - 2;
-  ellipse(ctx, f(headX + 4), headY + 6, 5, 5, body);
-  rect(ctx, f(headX + 7), headY + 7, 3, 2, darken(body, 0.05));
-  if (params.noseColor) rect(ctx, f(headX + 9), headY + 7, 2, 2, params.noseColor);
+  drawCanidHeadSide(ctx, f, headX, headY, body, params.noseColor || null);
   drawEyeSide(ctx, f, headX + 2, headY + 5, eyeWhite, eyeIris);
   if (params.earH) {
     rect(ctx, f(headX + 2), headY - 2, 2, 4, body);

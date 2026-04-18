@@ -239,8 +239,14 @@ export function drawQuadrupedLegSide(ctx, f, x, y, upperColor, jointColor, pawCo
 export function drawHoofLeg(ctx, x, y, legLength, legColor, shadowColor, hoofColor) {
   const upper = Math.max(2, Math.floor(legLength * 0.45));
   const lower = Math.max(2, legLength - upper - 1);
-  rect(ctx, x + 1, y, 2, upper, legColor);
-  rect(ctx, x + 1, y + upper, 2, lower, shadowColor);
+  _drawJointedLegCore(
+    ctx, _id,
+    x + 1, y,
+    x + 1, y + upper,
+    x + 1, y + upper + lower,
+    legColor, shadowColor,
+    { upperThickness: 1, lowerThickness: 1, claw: { x: x, y: y + upper + lower, color: hoofColor } },
+  );
   rect(ctx, x, y + upper + lower, 4, 1, hoofColor);
 }
 
@@ -270,6 +276,84 @@ export function drawHead(ctx, x, y, width, height, bodyColor, highlightColor, sh
     px(ctx, x + 1, y + r, shadowColor);
   }
   px(ctx, x + width - 1, y + 3, shadowColor);
+}
+
+/**
+ * Draw a canid top-view head: ellipse skull + highlight ridge + optional nose + optional ears.
+ * Caller is responsible for eyes (drawEyePair) and cheeks (drawCheekPair) after this call.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} cx - horizontal center
+ * @param {number} hy - head top y
+ * @param {number} headW - head width (default 12)
+ * @param {string} body - body color
+ * @param {string} highlight - highlight color
+ */
+export function drawCanidHeadTop(ctx, cx, hy, headW, body, highlight) {
+  ellipse(ctx, cx, hy + 4, Math.floor(headW / 2), 4, body);
+  rect(ctx, cx - Math.floor(headW / 2) + 2, hy + 1, headW - 4, 2, highlight);
+}
+
+/**
+ * Draw a canid side-view head: ellipse cranium + snout rect + optional nose.
+ * Caller places eye (drawEyeSide) and ear rects separately.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - horizontal flip function
+ * @param {number} headX - logical left x of head block
+ * @param {number} headY - top y of head
+ * @param {string} body - body color
+ * @param {string|null} noseColor - nose color, or null to skip
+ */
+export function drawCanidHeadSide(ctx, f, headX, headY, body, noseColor) {
+  ellipse(ctx, f(headX + 4), headY + 6, 5, 5, body);
+  rect(ctx, f(headX + 7), headY + 7, 3, 2, darken(body, 0.05));
+  if (noseColor) rect(ctx, f(headX + 9), headY + 7, 2, 2, noseColor);
+}
+
+/**
+ * Draw a lizard top-view triangular head (fillPolygon wedge) with highlight and optional eyes.
+ * Derives colors internally from body.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} cx - horizontal center
+ * @param {number} headBase - y coordinate of the base (neck end)
+ * @param {number} headTip - y coordinate of the pointed snout
+ * @param {string} body
+ * @param {string} highlight
+ * @param {string} eye - iris color
+ * @param {boolean} showEyes
+ */
+export function drawLizardHeadTop(ctx, cx, headBase, headTip, body, highlight, eye, showEyes) {
+  fillPolygon(ctx, [
+    [cx - 4, headBase],
+    [cx + 4, headBase],
+    [cx + 1, headTip],
+    [cx - 1, headTip],
+  ], blend(body, darken(body, 0.16), 0.5));
+  rect(ctx, cx - 3, headBase, 7, 1, highlight);
+  if (showEyes) {
+    drawReptileEye(ctx, cx - 5, headBase + 1, eye);
+    drawReptileEye(ctx, cx + 3, headBase + 1, eye);
+  }
+}
+
+/**
+ * Draw a lizard side-view triangular head (fillPolygon wedge) with highlight and eye.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - horizontal flip function
+ * @param {number} hBaseX - logical left edge of head base
+ * @param {number} by - body top y
+ * @param {number} bH - body height
+ * @param {string} body
+ * @param {string} highlight
+ * @param {string} eye
+ */
+export function drawLizardHeadSide(ctx, f, hBaseX, by, bH, body, highlight, eye) {
+  fillPolygon(ctx, [
+    [f(hBaseX),      by + 1],
+    [f(hBaseX + 10), by + 4],
+    [f(hBaseX),      by + bH - 1],
+  ], blend(body, darken(body, 0.15), 0.5));
+  rect(ctx, f(hBaseX), by + 1, 3, 1, highlight);
+  drawReptileEye(ctx, f(hBaseX + 2), by + 1, eye);
 }
 
 /**

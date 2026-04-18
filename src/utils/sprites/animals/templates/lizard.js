@@ -1,8 +1,8 @@
 /**
  * Lizard drawing template -- 64x64 design grid.
  */
-import { px, rect, darken, lighten, blend, shadedEllipse, scalePattern, quadraticThick, thickLine, fillPolygon, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawReptileEye, drawTongue, drawLizardLegTop, drawLizardLegSide } from '../bodyParts.js';
+import { px, rect, darken, lighten, blend, shadedEllipse, scalePattern, quadraticThick, thickLine, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawReptileEye, drawTongue, drawLizardLegTop, drawLizardLegSide, drawLizardHeadTop, drawLizardHeadSide } from '../bodyParts.js';
 
 export function drawLizard(ctx, params, dir, frame) {
   const { body, accent, eye } = params;
@@ -39,21 +39,10 @@ export function drawLizard(ctx, params, dir, frame) {
 
     const headBase = neckY0 + 5 * neckDir;
     const headTip  = headBase + 9 * neckDir;
-    fillPolygon(ctx, [
-      [cx - 4, headBase],
-      [cx + 4, headBase],
-      [cx + 1, headTip],
-      [cx - 1, headTip],
-    ], blend(body, darken(body, 0.16), 0.5));
-    rect(ctx, cx - 3, headBase, 7, 1, highlight);
-
-    if (facingDown) {
-      drawReptileEye(ctx, cx - 5, headBase + 1, eye);
-      drawReptileEye(ctx, cx + 3, headBase + 1, eye);
-      if (frame === 2) {
-        const tipY = headTip + neckDir;
-        drawTongue(ctx, cx, tipY, 3, neckDir);
-      }
+    drawLizardHeadTop(ctx, cx, headBase, headTip, body, highlight, eye, facingDown);
+    if (facingDown && frame === 2) {
+      const tipY = headTip + neckDir;
+      drawTongue(ctx, cx, tipY, 3, neckDir);
     }
 
     const tailBaseY = facingDown ? bCy + bRy + 1 : bCy - bRy - 1;
@@ -88,13 +77,7 @@ export function drawLizard(ctx, params, dir, frame) {
     }
 
     const hBaseX = bx + bW;
-    fillPolygon(ctx, [
-      [f(hBaseX),      by + 1],
-      [f(hBaseX + 10), by + 4],
-      [f(hBaseX),      by + bH - 1],
-    ], blend(body, darken(body, 0.15), 0.5));
-    rect(ctx, f(hBaseX), by + 1, 3, 1, highlight);
-    drawReptileEye(ctx, f(hBaseX + 2), by + 1, eye);
+    drawLizardHeadSide(ctx, f, hBaseX, by, bH, body, highlight, eye);
     if (frame === 2) {
       thickLine(ctx, f(hBaseX + 9), by + bH - 2, f(hBaseX + 11), by + bH - 3, 0, '#cc2222');
       thickLine(ctx, f(hBaseX + 9), by + bH - 2, f(hBaseX + 11), by + bH - 1, 0, '#cc2222');

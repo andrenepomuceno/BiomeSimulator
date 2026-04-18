@@ -24,6 +24,36 @@ function _drawIrisPupilHighlight(ctx, f, x, y, w, h, irisColor, pupil, highlight
   }
 }
 
+function _drawJointedLegCore(ctx, f, hipX, hipY, kneeX, kneeY, footX, footY, upperColor, lowerColor, options = {}) {
+  const {
+    upperThickness = 1,
+    lowerThickness = 0,
+    claw = null,
+    toes = null,
+  } = options;
+
+  thickLine(ctx, f(hipX), hipY, f(kneeX), kneeY, upperThickness, upperColor);
+  thickLine(ctx, f(kneeX), kneeY, f(footX), footY, lowerThickness, lowerColor);
+
+  if (claw) {
+    px(ctx, f(claw.x), claw.y, claw.color);
+  }
+
+  if (toes) {
+    for (const toe of toes) {
+      thickLine(
+        ctx,
+        f(toe.x0),
+        toe.y0,
+        f(toe.x1),
+        toe.y1,
+        toe.thickness ?? 0,
+        toe.color || lowerColor,
+      );
+    }
+  }
+}
+
 /**
  * Draw a single eye with sclera, iris, pupil, and highlight.
  * @param {CanvasRenderingContext2D} ctx
@@ -779,9 +809,11 @@ export function drawReptileLegTop(ctx, hipX, hipY, dirX, swing, upperColor, lowe
   const kneeY = hipY + 2 + swing;
   const footX = hipX + dirX * 7;
   const footY = hipY + 4 + swing;
-  thickLine(ctx, hipX, hipY + swing, kneeX, kneeY, 1, upperColor);
-  thickLine(ctx, kneeX, kneeY, footX, footY, 0, lowerColor);
-  px(ctx, footX, footY + 1, clawColor);
+  _drawJointedLegCore(ctx, _id, hipX, hipY + swing, kneeX, kneeY, footX, footY, upperColor, lowerColor, {
+    upperThickness: 1,
+    lowerThickness: 0,
+    claw: { x: footX, y: footY + 1, color: clawColor },
+  });
 }
 
 /**
@@ -803,9 +835,11 @@ export function drawReptileLegSide(ctx, f, hipX, hipY, swing, upperColor, lowerC
   const footX = hipX + footDx;
   const footY = hipY + 5 + swing;
   const clawX = footX + (footDx >= 0 ? 1 : -1);
-  thickLine(ctx, f(hipX), hipY + swing, f(kneeX), kneeY, 1, upperColor);
-  thickLine(ctx, f(kneeX), kneeY, f(footX), footY, 0, lowerColor);
-  px(ctx, f(clawX), footY + 1, clawColor);
+  _drawJointedLegCore(ctx, f, hipX, hipY + swing, kneeX, kneeY, footX, footY, upperColor, lowerColor, {
+    upperThickness: 1,
+    lowerThickness: 0,
+    claw: { x: clawX, y: footY + 1, color: clawColor },
+  });
 }
 
 /**
@@ -818,7 +852,10 @@ export function drawReptileLegSide(ctx, f, hipX, hipY, swing, upperColor, lowerC
  * @param {string} color
  */
 export function drawReptileStubLeg(ctx, x0, y0, x1, y1, color) {
-  thickLine(ctx, x0, y0, x1, y1, 1, color);
+  _drawJointedLegCore(ctx, _id, x0, y0, x1, y1, x1, y1, color, color, {
+    upperThickness: 1,
+    lowerThickness: 0,
+  });
 }
 
 /**
@@ -837,9 +874,11 @@ export function drawLizardLegTop(ctx, hipX, hipY, dirX, swing, upperColor, lower
   const footX = hipX + dirX * 6;
   const footY = hipY + 5 + swing;
   const toeX = hipX + dirX * 4;
-  thickLine(ctx, hipX, hipY + swing, kneeX, kneeY, 1, upperColor);
-  thickLine(ctx, kneeX, kneeY, footX, footY, 0, lowerColor);
-  thickLine(ctx, toeX, footY, toeX + dirX, footY + 2, 0, lowerColor);
+  _drawJointedLegCore(ctx, _id, hipX, hipY + swing, kneeX, kneeY, footX, footY, upperColor, lowerColor, {
+    upperThickness: 1,
+    lowerThickness: 0,
+    toes: [{ x0: toeX, y0: footY, x1: toeX + dirX, y1: footY + 2, thickness: 0 }],
+  });
 }
 
 /**
@@ -858,11 +897,15 @@ export function drawLizardLegSide(ctx, f, hipX, hipY, swing, upperColor, lowerCo
   const kneeY = hipY + 2 + swing;
   const footX = hipX + dirX * 5;
   const footY = hipY + 4 + swing;
-  thickLine(ctx, f(hipX), hipY, f(kneeX), kneeY, 1, upperColor);
-  thickLine(ctx, f(kneeX), kneeY, f(footX), footY, 0, lowerColor);
-  thickLine(ctx, f(footX), footY, f(footX + dirX * 2), footY + 1, 0, lowerColor);
-  thickLine(ctx, f(footX), footY, f(footX), footY + 2, 0, lowerColor);
-  thickLine(ctx, f(footX), footY, f(footX - dirX * 2), footY + 2, 0, lowerColor);
+  _drawJointedLegCore(ctx, f, hipX, hipY, kneeX, kneeY, footX, footY, upperColor, lowerColor, {
+    upperThickness: 1,
+    lowerThickness: 0,
+    toes: [
+      { x0: footX, y0: footY, x1: footX + dirX * 2, y1: footY + 1, thickness: 0 },
+      { x0: footX, y0: footY, x1: footX, y1: footY + 2, thickness: 0 },
+      { x0: footX, y0: footY, x1: footX - dirX * 2, y1: footY + 2, thickness: 0 },
+    ],
+  });
 }
 
 // ─── Bird helpers ──────────────────────────────────────────────────────────

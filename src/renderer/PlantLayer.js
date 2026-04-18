@@ -16,6 +16,7 @@ import { buildFloraAtlasSync, FRAME_SIZE } from '../utils/spriteAtlas.js';
 import { buildSwayStages, buildTreeTypes, buildLowPlantTypes } from '../engine/plantSpecies.js';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
+const EMOJI_OVERLAY_FADE_RANGE = 2;
 const MAX_EMOJI_SPRITES = 8000;
 const BASE_EMOJI_SCALE = 1.0 / FRAME_SIZE;
 
@@ -39,6 +40,14 @@ function swayFrame(tick, idx) {
   const t = (tick + phase) % period;
   const third = period / 3;
   return t < third ? 0 : (t < third * 2 ? 1 : 2);
+}
+
+function getStageSpriteAlpha(stage) {
+  if (stage === 1) return 0.75;
+  if (stage === 2) return 0.85;
+  if (stage === 3) return 0.92;
+  if (stage === 5) return 0.96;
+  return 1.0;
 }
 
 export class PlantLayer {
@@ -216,7 +225,7 @@ export class PlantLayer {
     // Fade pixel overlay as zoom increases past threshold
     if (this.sprite) {
       const fadeStart = EMOJI_ZOOM_THRESHOLD;
-      const fadeEnd = EMOJI_ZOOM_THRESHOLD + 4;
+      const fadeEnd = EMOJI_ZOOM_THRESHOLD + EMOJI_OVERLAY_FADE_RANGE;
       this.sprite.alpha = zoom >= fadeEnd ? 0 : Math.max(0, 1 - (zoom - fadeStart) / (fadeEnd - fadeStart));
     }
 
@@ -406,7 +415,7 @@ export class PlantLayer {
     sprite.y = y + 1.0;
     sprite.anchor.set(0.5, 1.0);
     sprite.scale.set(sc);
-    sprite.alpha = stage === 1 ? 0.5 : (stage === 2 ? 0.6 : (stage === 3 ? 0.8 : (stage === 5 ? 0.9 : 1.0)));
+    sprite.alpha = getStageSpriteAlpha(stage);
     // Y-sort: higher Y values render in front
     sprite.zIndex = Math.round((y + 1.0) * 1000);
 

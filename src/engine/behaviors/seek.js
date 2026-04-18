@@ -134,7 +134,7 @@ export function _seekWater(animal, world, vision) {
   }
 }
 
-export function _seekPlantFood(animal, world, vision) {
+export function _seekPlantFood(animal, world, vision, skipGroundItems = false) {
   const collector = world._benchmarkCollector;
   const startedAt = benchmarkStart(collector);
   try {
@@ -224,7 +224,7 @@ export function _seekPlantFood(animal, world, vision) {
     }
 
     // Fallback: try ground fruit/seed items if no plant tile reachable
-    if (_tryEatFruitItem(animal, world, vision)) return;
+    if (!skipGroundItems && _tryEatFruitItem(animal, world, vision)) return;
 
     _randomWalk(animal, world);
   } finally {
@@ -350,7 +350,7 @@ export function _seekOmnivoreFood(animal, world, spatialHash, vision) {
       animal._chaseLockUntilTick = 0;
     }
 
-    _seekPlantFood(animal, world, vision);
+    _seekPlantFood(animal, world, vision, true);
   } finally {
     benchmarkEnd(collector, 'seekOmnivoreFood', startedAt);
   }

@@ -50,6 +50,7 @@ export default function StatsPanel() {
     const h = {
       ticks: [],
       plants: [],
+      animalsTotal: [],
       performance: {
         tickMs: [],
         fps: [],
@@ -67,9 +68,13 @@ export default function StatsPanel() {
 
   useEffect(() => {
     setHistory(prev => {
+      const animalsTotalNow = speciesKeys.reduce(
+        (sum, k) => sum + ((stats.species && stats.species[k]) || 0), 0,
+      );
       const newH = {
         ticks: [...prev.ticks, clock.tick].slice(-STATS_PANEL_HISTORY_LIMIT),
         plants: [...(prev.plants || []), stats.plants_total || 0].slice(-STATS_PANEL_HISTORY_LIMIT),
+        animalsTotal: [...(prev.animalsTotal || []), animalsTotalNow].slice(-STATS_PANEL_HISTORY_LIMIT),
         performance: {
           tickMs: [...(prev.performance?.tickMs || []), profiling?.engine?.tickMs || stats.tickMs || 0].slice(-STATS_PANEL_HISTORY_LIMIT),
           fps: [...(prev.performance?.fps || []), profiling?.renderer?.fps || 0].slice(-STATS_PANEL_HISTORY_LIMIT),
@@ -129,6 +134,28 @@ export default function StatsPanel() {
           tension: 0.3,
         };
       }),
+  };
+
+  const totalChartData = {
+    labels: history.ticks.map(() => ''),
+    datasets: [
+      {
+        label: 'Animals',
+        data: history.animalsTotal || [],
+        borderColor: '#7fc8ff',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+      },
+      {
+        label: 'Plants',
+        data: history.plants || [],
+        borderColor: '#88cc44',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+      },
+    ],
   };
 
   const chartOptions = {
@@ -327,7 +354,12 @@ export default function StatsPanel() {
       {/* === Chart tab === */}
       {statsTab === 'chart' && (
         <div className="stats-tab-panel">
-          <h6 className="stats-section-title">Animal Population</h6>
+          <h6 className="stats-section-title">Total Population</h6>
+          <div className="stats-chart-block-compact" style={{ marginBottom: 4 }}>
+            <Line data={totalChartData} options={chartOptions} />
+          </div>
+          <ChartLegend datasets={totalChartData.datasets} />
+          <h6 className="stats-section-title" style={{ marginTop: 10 }}>Animal Population</h6>
           <div className="stats-chart-block" style={{ marginBottom: 4 }}>
             <Line data={animalChartData} options={chartOptions} />
           </div>

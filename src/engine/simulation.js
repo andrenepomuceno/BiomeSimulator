@@ -680,6 +680,45 @@ export class SimulationEngine {
   }
 
   /**
+   * Erase plant/item content at tile (x, y). Returns applied deltas.
+   */
+  eraseAt(x, y) {
+    const w = this.world;
+    if (!w || !w.isInBounds(x, y)) {
+      return { ok: false, x, y, plantChange: null, itemChanges: [] };
+    }
+
+    const idx = w.idx(x, y);
+    let plantChange = null;
+    if (w.plantType[idx] !== 0 || w.plantStage[idx] !== 0) {
+      w.plantType[idx] = 0;
+      w.plantStage[idx] = 0;
+      w.plantAge[idx] = 0;
+      w.activePlantTiles.delete(idx);
+      w.clearPlantLog(idx);
+      plantChange = [x | 0, y | 0, 0, 0];
+      w.plantChanges.push(plantChange);
+    }
+
+    const itemChangesStart = w.itemChanges.length;
+    for (let i = w.items.length - 1; i >= 0; i--) {
+      const item = w.items[i];
+      if (!item || item.consumed) continue;
+      if ((item.x | 0) !== (x | 0) || (item.y | 0) !== (y | 0)) continue;
+      w.removeItem(item);
+    }
+    const itemChanges = w.itemChanges.slice(itemChangesStart);
+
+    return {
+      ok: !!plantChange || itemChanges.length > 0,
+      x: x | 0,
+      y: y | 0,
+      plantChange,
+      itemChanges,
+    };
+  }
+
+  /**
    * Remove an entity by ID.
    */
   removeEntity(entityId) {

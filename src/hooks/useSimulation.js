@@ -245,6 +245,20 @@ export function useSimulation() {
           }
           break;
 
+        case 'tileErased': {
+          if (Array.isArray(msg.plantChange) && msg.plantChange.length === 4) {
+            store.setPltChanges([msg.plantChange]);
+          }
+          if (Array.isArray(msg.itemChanges) && msg.itemChanges.length > 0) {
+            store.setItemChanges(msg.itemChanges);
+          }
+          const selectedTile = store.selectedTile;
+          if (selectedTile && selectedTile.x === (msg.x | 0) && selectedTile.y === (msg.y | 0)) {
+            workerRef.current?.postMessage({ cmd: 'getTileInfo', x: selectedTile.x, y: selectedTile.y });
+          }
+          break;
+        }
+
         case 'savedState': {
           const cb = store._saveCallback;
           if (cb && msg.data) {

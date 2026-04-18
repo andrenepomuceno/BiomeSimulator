@@ -68,6 +68,8 @@ export function useEditor(rendererRef) {
             y: target.y | 0,
           });
           worker.postMessage({ cmd: 'removeEntity', entityId: target.id });
+        } else {
+          worker.postMessage({ cmd: 'eraseAt', x, y });
         }
         break;
       }

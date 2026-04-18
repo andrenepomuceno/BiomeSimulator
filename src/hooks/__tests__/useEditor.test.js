@@ -260,7 +260,11 @@ describe('useEditor — ERASE tool', () => {
     });
     const { handleTileClick } = useEditor(makeRendererRef());
     handleTileClick(3, 4);
-    expect(worker.postMessage).not.toHaveBeenCalled();
+    expect(worker.postMessage).toHaveBeenCalledWith({
+      cmd: 'eraseAt',
+      x: 3,
+      y: 4,
+    });
   });
 
   it('does nothing when the clicked tile is empty', () => {
@@ -273,7 +277,11 @@ describe('useEditor — ERASE tool', () => {
     });
     const { handleTileClick } = useEditor(makeRendererRef());
     handleTileClick(0, 0);
-    expect(worker.postMessage).not.toHaveBeenCalled();
+    expect(worker.postMessage).toHaveBeenCalledWith({
+      cmd: 'eraseAt',
+      x: 0,
+      y: 0,
+    });
   });
 
   it('pushes an entity undo entry when erasing', () => {

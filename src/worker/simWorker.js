@@ -646,6 +646,14 @@ self.onmessage = function (e) {
       break;
     }
 
+    case 'eraseAt': {
+      if (!engine) break;
+      const { x, y } = e.data;
+      const result = engine.eraseAt(x, y);
+      self.postMessage({ type: 'tileErased', ...result });
+      break;
+    }
+
     case 'getTileInfo': {
       if (!engine) break;
       const w = engine.world;

@@ -137,7 +137,7 @@ export class PlantLayer {
       // Mark cell dirty for incremental sprite update
       this._dirtyCells.add(idx);
 
-      if (ptype === 0 || stage === 0 || stage === 6) {
+      if (ptype === 0 || stage === 0) {
         this._pixels[i] = 0;
         this._pixels[i + 1] = 0;
         this._pixels[i + 2] = 0;
@@ -173,7 +173,7 @@ export class PlantLayer {
     for (let i = 0; i < types.length; i++) {
       const t = types[i];
       const s = stages[i];
-      if (t === 0 || s === 0 || s === 6) continue;
+      if (t === 0 || s === 0) continue;
       const key = `${t}_${s}`;
       const color = PLANT_COLORS[key] || [100, 200, 100, 150];
       const pi = i * 4;
@@ -268,11 +268,11 @@ export class PlantLayer {
 
         const ptype = this._types[idx];
         const stage = this._stages[idx];
-        const baseKey = (ptype === 0 || stage === 0 || stage === 6) ? null : `${ptype}_${stage}`;
+        const baseKey = (ptype === 0 || stage === 0) ? null : `${ptype}_${stage}`;
         const existing = this._spriteMap.get(idx);
 
         if (!baseKey) {
-          // Plant removed/dead — release sprite
+          // Plant removed/empty — release sprite
           if (existing) {
             this._releaseEntry(existing);
             this._spriteMap.delete(idx);
@@ -316,7 +316,7 @@ export class PlantLayer {
 
           const ptype = this._types[idx];
           const stage = this._stages[idx];
-          if (ptype === 0 || stage === 0 || stage === 6) continue;
+          if (ptype === 0 || stage === 0) continue;
 
           const baseKey = `${ptype}_${stage}`;
           const canSway = swayMap[ptype] && swayMap[ptype].has(stage);

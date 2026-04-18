@@ -54,7 +54,7 @@ Holds the entire world state using flat TypedArrays for memory efficiency. Grid 
 | `plantFruit` | `Uint8Array` | Boolean fruit flag (0 or 1) |
 | `animalGrid` | `Uint8Array` | Count of living animals occupying each tile |
 | `eggGrid` | `Uint8Array` | Count of egg-stage animals on each tile |
-| `activePlantTiles` | `Set<number>` | Flat indices of tiles that have a living plant — avoids iterating the full grid each tick |
+| `activePlantTiles` | `Set<number>` | Flat indices of tiles with active plant state (living + temporary dead-stage plants pending cleanup) — avoids iterating the full grid each tick |
 | `items` | `GroundItem[]` | All active ground items (meat, fruit, seed) |
 | `itemChanges` | `object[]` | Per-tick item deltas `{op:'add'|'remove'|'update', item}` sent to the renderer |
 | `_itemById` | `Map<id, GroundItem>` | Fast O(1) item lookup by numeric ID |

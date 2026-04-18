@@ -87,6 +87,7 @@ const BASE_CONFIG = {
   initial_plant_stage_distribution: [0.25, 0.25, 0.25, 0.25],
   initial_plant_adult_age_fraction: 0.3,
   plant_tick_phases: 4,
+  plant_dead_stage_duration_ticks: 100,
   plant_dirt_death_chance_by_stage: {
     1: 0.003,
     2: 0.002,

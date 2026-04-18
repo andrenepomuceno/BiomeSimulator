@@ -13,6 +13,7 @@ export function processPlants(world) {
   const width = world.width;
   const height = world.height;
   const wpThreshold = world.config.water_proximity_threshold ?? 10;
+  const deadStageDurationTicks = world.config.plant_dead_stage_duration_ticks ?? 100;
   const plantTickPhases = world.config.plant_tick_phases ?? 4;
   const currentPhase = world.clock.tick % plantTickPhases;
   world.plantChanges = [];
@@ -31,12 +32,29 @@ export function processPlants(world) {
 
     const ptype = world.plantType[idx];
     const stage = world.plantStage[idx];
-    if (ptype === P_NONE || stage === S_NONE || stage >= S_DEAD) {
+    if (ptype === P_NONE || stage === S_NONE) {
+      world.activePlantTiles.delete(idx);
+      continue;
+    }
+    if (stage > S_DEAD) {
       world.activePlantTiles.delete(idx);
       continue;
     }
 
     world.plantAge[idx] += plantTickPhases;
+
+    if (stage === S_DEAD) {
+      if (world.plantAge[idx] >= deadStageDurationTicks) {
+        const [x, y] = idxToXY(idx, width);
+        world.plantType[idx] = P_NONE;
+        world.plantStage[idx] = S_NONE;
+        world.plantAge[idx] = 0;
+        world.plantChanges.push([x, y, P_NONE, S_NONE]);
+        world.clearPlantLog(idx);
+        world.activePlantTiles.delete(idx);
+      }
+      continue;
+    }
 
     const terrain = world.terrain[idx];
     const speciesGrowth = SPECIES_TERRAIN_GROWTH[ptype];
@@ -52,6 +70,7 @@ export function processPlants(world) {
           : (harshTerrainMult.default ?? 1.0);
       if (deathChance > 0 && Math.random() < deathChance * plantTickPhases * harshMult * seasonDeath) {
         world.plantStage[idx] = S_DEAD;
+        world.plantAge[idx] = 0;
         world.plantEvents.deaths_terrain[ptype] = (world.plantEvents.deaths_terrain[ptype] || 0) + 1;
         world.logPlantEvent(idx, 'DIED', { cause: 'harsh_terrain' });
         const [x, y] = idxToXY(idx, width);
@@ -84,6 +103,7 @@ export function processPlants(world) {
       const affinityMult = affinity === 3 ? (world.config.water_stress_high_affinity_multiplier ?? 1.5) : 1.0;
       if (Math.random() < stressRate * plantTickPhases * severeMult * affinityMult * seasonDeath) {
         world.plantStage[idx] = S_DEAD;
+        world.plantAge[idx] = 0;
         world.plantEvents.deaths_water[ptype] = (world.plantEvents.deaths_water[ptype] || 0) + 1;
         world.logPlantEvent(idx, 'DIED', { cause: 'water_stress' });
         const [x, y] = idxToXY(idx, width);
@@ -126,6 +146,7 @@ export function processPlants(world) {
     if (newStage !== stage) {
       world.plantStage[idx] = newStage;
       if (newStage === S_DEAD) {
+        world.plantAge[idx] = 0;
         world.plantEvents.deaths_age[ptype] = (world.plantEvents.deaths_age[ptype] || 0) + 1;
         world.logPlantEvent(idx, 'DIED', { cause: 'old_age' });
       } else if (newStage === S_ADULT) {
@@ -137,22 +158,6 @@ export function processPlants(world) {
       const [x, y] = idxToXY(idx, width);
       world.plantChanges.push([x, y, ptype, newStage]);
     }
-  }
-
-  const toRemove = [];
-  for (const idx of world.activePlantTiles) {
-    if (world.plantStage[idx] === S_DEAD) {
-      const [x, y] = idxToXY(idx, width);
-      world.plantType[idx] = P_NONE;
-      world.plantStage[idx] = S_NONE;
-      world.plantAge[idx] = 0;
-      world.plantChanges.push([x, y, P_NONE, S_NONE]);
-      world.clearPlantLog(idx);
-      toRemove.push(idx);
-    }
-  }
-  for (const idx of toRemove) {
-    world.activePlantTiles.delete(idx);
   }
 
   produceOffspring(world);

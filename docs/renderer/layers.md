@@ -66,7 +66,8 @@ Dual-mode rendering for performance across all zoom levels.
 
 - 1 pixel per tile, colored by plant type and stage
 - Uses `PLANT_COLORS['${type}_${stage}']` lookup
-- Dead plants (stage 5) and empty tiles are transparent
+- Empty tiles are transparent
+- Dead plants (stage 6) remain visible using the dead-stage color/sprite while they are pending cleanup
 
 ### Emoji Overlay (Zoom ≥ 6 Only)
 

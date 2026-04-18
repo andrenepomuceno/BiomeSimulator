@@ -520,6 +520,8 @@ export function buildPlantColors() {
     stageNames.forEach((name, i) => {
       map[`${sp.typeId}_${i + 1}`] = sp.colors[name];
     });
+    // Stage 6 (dead) uses a shared desaturated palette for all species.
+    map[`${sp.typeId}_6`] = [138, 122, 85, 170];
   }
   return map;
 }

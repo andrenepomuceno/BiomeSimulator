@@ -131,6 +131,7 @@ export function useSimulation() {
             const filtered = { ...msg.info };
             if (!targets.animals) filtered.animals = [];
             if (!targets.plants) filtered.plant = null;
+            if (!targets.items) filtered.items = [];
 
             if (msg.refreshOnly) {
               // Periodic refresh — only update if still viewing the same tile

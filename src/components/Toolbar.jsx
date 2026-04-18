@@ -16,6 +16,7 @@ const SELECT_FILTERS = [
   { key: 'animals', label: 'Animals', icon: 'bi-bug-fill' },
   { key: 'plants', label: 'Plants', icon: 'bi-flower1' },
   { key: 'terrain', label: 'Terrain', icon: 'bi-grid-3x3-gap-fill' },
+  { key: 'items', label: 'Items', icon: 'bi-box-seam-fill' },
 ];
 
 export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onLeftSidebarToggle, onRightSidebarToggle }) {

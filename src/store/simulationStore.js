@@ -376,7 +376,7 @@ const useSimStore = create((set, get) => ({
   setPlaceEntityType: (t) => set({ placeEntityType: t }),
 
   // Selection target filters (what the SELECT tool picks)
-  selectionTargets: { animals: true, plants: true, terrain: true },
+  selectionTargets: { animals: true, plants: true, terrain: true, items: true },
   setSelectionTarget: (key, value) => set(state => ({
     selectionTargets: { ...state.selectionTargets, [key]: value },
   })),

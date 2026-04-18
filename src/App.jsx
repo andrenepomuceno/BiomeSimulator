@@ -57,7 +57,7 @@ export default function App() {
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges, itemChanges,
-    clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile, isGeneratingWorld,
+    clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile, selectedItem, isGeneratingWorld,
   } = useSimStore();
 
   useEffect(() => {
@@ -201,12 +201,14 @@ export default function App() {
     if (!rendererRef.current) return;
     if (selectedEntity) {
       rendererRef.current.setSelectedEntity(selectedEntity.id);
+    } else if (selectedItem) {
+      rendererRef.current.setSelectedTile(selectedItem.x | 0, selectedItem.y | 0);
     } else if (selectedTile) {
       rendererRef.current.setSelectedTile(selectedTile.x, selectedTile.y);
     } else {
       rendererRef.current.clearSelection();
     }
-  }, [selectedEntity, selectedTile]);
+  }, [selectedEntity, selectedItem, selectedTile]);
 
   // --- Actions ---
 

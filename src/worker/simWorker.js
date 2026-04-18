@@ -84,6 +84,10 @@ async function doTick() {
     // When TPS > MAX_UI_UPDATE_HZ we batch multiple ticks and post once,
     // keeping the main thread message rate capped at MAX_UI_UPDATE_HZ.
     const ticksPerLoop = Math.max(1, Math.round(tps / MAX_UI_UPDATE_HZ));
+    // Aggregate flora/item deltas across all simulated ticks in this UI loop.
+    // Without this, at high TPS only the last tick's deltas are posted.
+    const batchedPlantChanges = [];
+    const batchedItemChanges = [];
 
     // Detect if any full-sync boundary is crossed in this batch.
     const tickBefore = engine.world.clock.tick;
@@ -110,6 +114,13 @@ async function doTick() {
         engine.tick();
       }
 
+      if (engine.world.plantChanges.length > 0) {
+        batchedPlantChanges.push(...engine.world.plantChanges);
+      }
+      if (engine.world.itemChanges.length > 0) {
+        batchedItemChanges.push(...engine.world.itemChanges);
+      }
+
       // Movement sub-ticks: only post for the last sim tick in the batch to avoid
       // flooding the main thread with intermediate position updates.
       const isLastInBatch = (i === ticksPerLoop - 1) || pendingPause;
@@ -126,7 +137,7 @@ async function doTick() {
       Math.floor(tickAfter / FULL_SYNC_INTERVAL) > Math.floor(tickBefore / FULL_SYNC_INTERVAL);
 
     const tickMs = performance.now() - t0;
-    postTickState(tickMs, hadFullSync);
+    postTickState(tickMs, hadFullSync, batchedPlantChanges, batchedItemChanges);
   } finally {
     _ticking = false;
   }
@@ -264,13 +275,15 @@ function disposeFaunaWorkers() {
   faunaWorkersReady = false;
 }
 
-function postTickState(tickMs = 0, forceFullSync = false) {
+function postTickState(tickMs = 0, forceFullSync = false, batchedPlantChanges = null, batchedItemChanges = null) {
   const w = engine.world;
   const tick = w.clock.tick;
   const isFullSync = forceFullSync || tick % FULL_SYNC_INTERVAL === 0;
-  const plantChangesOverflow = w.plantChanges.length > MAX_PLANT_CHANGES_PER_TICK;
+  const plantChanges = batchedPlantChanges || w.plantChanges;
+  const itemChanges = batchedItemChanges || w.itemChanges;
+  const plantChangesOverflow = plantChanges.length > MAX_PLANT_CHANGES_PER_TICK;
   const itemMaxChanges = w.config.item_max_changes_per_tick ?? 2000;
-  const itemChangesOverflow = w.itemChanges.length > itemMaxChanges;
+  const itemChangesOverflow = itemChanges.length > itemMaxChanges;
 
   let animals;
   let animalsDead;
@@ -303,8 +316,8 @@ function postTickState(tickMs = 0, forceFullSync = false) {
     type: 'tick',
     clock: w.clock.toDict(),
     animals,
-    plantChanges: plantChangesOverflow ? [] : w.plantChanges,
-    itemChanges: itemChangesOverflow ? [] : (w.itemChanges.length > 0 ? w.itemChanges : undefined),
+    plantChanges: plantChangesOverflow ? [] : plantChanges,
+    itemChanges: itemChangesOverflow ? [] : (itemChanges.length > 0 ? itemChanges : undefined),
     incremental: !isFullSync,
   };
 

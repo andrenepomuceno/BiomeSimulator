@@ -18,8 +18,8 @@ const PLANT_SPECIES = {
     fruitEmoji: '🌾',
     sex: 'ASEXUAL',
     reproduction: 'SEED',
-    productionChance: 0.042,
-    stageAges: [24, 84, 160, 1240],
+    productionChance: 0.038,
+    stageAges: [24, 84, 160, 1050],
     fruitSpoilAge: 443,    edibleStages: [1, 4],    colors: {
       seed:        [130, 170, 80,  40],
       youngSprout: [90,  165, 60,  100],
@@ -429,7 +429,7 @@ const LOW_PLANTS = ['GRASS', 'MUSHROOM', 'CARROT', 'POTATO'];
 const DESERT_PLANTS = ['CACTUS', 'COCONUT_PALM', 'CHILI_PEPPER'];
 
 const SPAWN_WEIGHTS = {
-  GRASS: { near: 9, mid: 16, far: 22 },
+  GRASS: { near: 8, mid: 14, far: 20 },
   STRAWBERRY: { near: 7, mid: 6, far: 5 },
   BLUEBERRY: { near: 7, mid: 6, far: 5 },
   APPLE_TREE: { near: 8, mid: 8, far: 4 },

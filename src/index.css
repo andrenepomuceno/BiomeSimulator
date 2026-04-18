@@ -56,6 +56,79 @@ html, body, #root {
   background: var(--sim-bg-canvas);
 }
 
+/* Flash messages — supervisor audit notifications */
+.flash-container {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(400px, 90%);
+  pointer-events: none;
+}
+
+.flash-message {
+  pointer-events: all;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  animation: flash-in 0.2s ease-out;
+}
+
+@keyframes flash-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.flash-warning {
+  background: rgba(40, 28, 8, 0.92);
+  border-color: rgba(220, 160, 40, 0.45);
+  color: #f5d078;
+}
+
+.flash-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flash-icon {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.flash-title {
+  flex: 1;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.flash-close {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.flash-close:hover { opacity: 1; }
+
+.flash-body {
+  margin-top: 4px;
+  padding-left: 20px;
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
 .world-loading-overlay {
   position: absolute;
   inset: 0;

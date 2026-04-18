@@ -15,6 +15,7 @@ import TerrainEditor from './components/TerrainEditor';
 import EntityInspector from './components/EntityInspector';
 import StatsPanel from './components/StatsPanel';
 import Minimap from './components/Minimap';
+import FlashMessages from './components/FlashMessages';
 import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
 import HelpModal from './components/HelpModal';
@@ -538,6 +539,7 @@ export default function App() {
             <EntityInspector onFocusEntity={_handleFocusEntity} requestAnimalDetail={requestAnimalDetail} />
             <TerrainEditor />
           </div>
+          <FlashMessages />
           {isGeneratingWorld && (
             <div className="world-loading-overlay" role="status" aria-live="polite" aria-label="Generating world">
               <div className="world-loading-card">

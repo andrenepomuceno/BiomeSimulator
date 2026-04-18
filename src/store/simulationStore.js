@@ -404,6 +404,15 @@ const useSimStore = create((set, get) => ({
   viewport: { x: 0, y: 0, w: 100, h: 100, zoom: 4 },
   setViewport: (v) => set({ viewport: v }),
 
+  // Supervisor flash messages
+  supervisorFlashes: [],
+  pushSupervisorFlash: (flash) => set(state => ({
+    supervisorFlashes: [...state.supervisorFlashes, flash].slice(-5),
+  })),
+  dismissSupervisorFlash: (id) => set(state => ({
+    supervisorFlashes: state.supervisorFlashes.filter(f => f.id !== id),
+  })),
+
   // Save callback (set temporarily when saving)
   _saveCallback: null,
   setSaveCallback: (fn) => set({ _saveCallback: fn }),

@@ -121,6 +121,16 @@ export function useSimulation() {
           if (msg.profiling && msg.profiling.engine) {
             store.setEngineProfile(msg.profiling.engine);
           }
+          if (msg.supervisorReport) {
+            store.pushSupervisorFlash({
+              id: `sv-${msg.supervisorReport.tick}-${Date.now()}`,
+              tick: msg.supervisorReport.tick,
+              issueCount: msg.supervisorReport.issueCount,
+              countsByType: msg.supervisorReport.countsByType,
+              samples: msg.supervisorReport.samples,
+              at: Date.now(),
+            });
+          }
           // Refresh selected tile info each tick so plant data stays current
           {
             const tile = store.selectedTile;

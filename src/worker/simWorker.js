@@ -365,6 +365,17 @@ function postTickState(tickMs = 0, forceFullSync = false, batchedPlantChanges = 
     msg.statsHistory = w.statsHistory;
   }
 
+  // Include supervisor report when it has issues worth logging
+  const supervisorReport = engine._latestSupervisorReport;
+  if (supervisorReport && supervisorReport.shouldLog && supervisorReport.issueCount > 0) {
+    msg.supervisorReport = {
+      tick: supervisorReport.tick,
+      issueCount: supervisorReport.issueCount,
+      countsByType: supervisorReport.countsByType,
+      samples: supervisorReport.samples,
+    };
+  }
+
   self.postMessage(msg);
 }
 

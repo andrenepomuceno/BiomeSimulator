@@ -267,7 +267,7 @@ describe('useEditor — ERASE tool', () => {
     });
   });
 
-  it('does nothing when the clicked tile is empty', () => {
+  it('delegates empty tile erase to worker via eraseAt', () => {
     const worker = makeWorker();
     useSimStore.setState({
       tool: 'ERASE',

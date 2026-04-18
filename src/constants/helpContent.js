@@ -311,6 +311,14 @@ export const HELP_TABS = [
           'Raise the speed, wait for a shift in population, then pause and inspect the busiest tile cluster.',
         ],
       },
+      {
+        heading: 'Project links',
+        body: 'Open the repository if you want the source code, issue history, or project updates outside the game.',
+        link: {
+          label: 'View BiomeSimulator on GitHub',
+          href: 'https://github.com/andrenepomuceno/BiomeSimulator',
+        },
+      },
     ],
   },
   {

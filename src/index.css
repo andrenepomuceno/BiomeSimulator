@@ -2219,6 +2219,27 @@ html, body, #root {
   margin-bottom: 12px;
 }
 
+.help-section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(83, 168, 182, 0.35);
+  border-radius: 999px;
+  background: rgba(17, 24, 44, 0.92);
+  color: #dff8ff;
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 600;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.help-section-link:hover {
+  background: rgba(26, 35, 62, 0.98);
+  border-color: var(--sim-accent);
+  color: #ffffff;
+}
+
 .help-bullet-list {
   display: flex;
   flex-direction: column;

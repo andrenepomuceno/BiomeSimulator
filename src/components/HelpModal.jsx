@@ -38,6 +38,16 @@ function HelpSection({ section }) {
         <h6>{section.heading}</h6>
       </div>
       {section.body ? <p className="help-section-body">{section.body}</p> : null}
+      {section.link ? (
+        <a
+          className="help-section-link"
+          href={section.link.href}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {section.link.label}
+        </a>
+      ) : null}
       {section.bullets ? (
         <div className="help-bullet-list">
           {section.bullets.map((bullet) => (

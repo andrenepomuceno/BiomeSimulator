@@ -84,29 +84,34 @@ Animal positions are **sub-tile floats** (e.g. `5.5, 3.25`), already centered at
 ```mermaid
 flowchart TD
     Worker["simWorker\npostMessage({type: 'tick'})"] --> Hook["useSimulation hook"]
-    Hook --> Store["Zustand Store\n(animals, plantChanges, clock)"]
+    Hook --> Store["Zustand Store\n(animals, items, plantChanges, clock)"]
 
     Store --> UE["App.jsx useEffect hooks"]
 
     UE --> EL["entityLayer.update()\nSprite pool + state textures\n+ life stage scaling"]
     UE --> PL["updatePlants()\nPixel overlay + emoji sprites"]
+    UE --> IL["itemLayer.updateItems()\nSprite pool + pixel overlay"]
     UE --> Night["setNight()\nOverlay alpha 0–35%"]
 
     subgraph Layers["Pixi.js Layer Stack (back → front)"]
         direction TB
         L1["1. TerrainLayer\n1px/tile RGBA texture"]
         L2["2. PlantLayer pixel overlay\n(always visible)"]
-        L3["3. PlantLayer emoji sprites\n(zoom ≥ 6 only)"]
-        L4["4. EntityLayer\nanimal emoji sprites"]
-        L5["5. AnimationLayer\nparticle effects"]
-        L6["6. Night Overlay\nsemi-transparent rectangle"]
-        L1 --- L2 --- L3 --- L4 --- L5 --- L6
+        L3["3. ItemLayer pixel overlay\n(always visible)"]
+        L4["4. PlantLayer emoji sprites\n(zoom ≥ 6 only)"]
+        L5["5. ItemLayer emoji sprites\n(zoom ≥ 6 only)"]
+        L6["6. EntityLayer\nanimal emoji sprites"]
+        L7["7. AnimationLayer\nparticle effects"]
+        L8["8. Night Overlay\nsemi-transparent rectangle"]
+        L1 --- L2 --- L3 --- L4 --- L5 --- L6 --- L7 --- L8
     end
 
-    EL --> L4
+    EL --> L6
     PL --> L2
-    PL --> L3
-    Night --> L6
+    PL --> L4
+    IL --> L3
+    IL --> L5
+    Night --> L8
 
     Layers --> Render["GPU renders at 60fps"]
 ```
@@ -116,8 +121,10 @@ flowchart TD
 ## Viewport Culling
 
 - Animals are filtered to the current viewport in the worker (`getStateForViewport`) — includes both alive and recently dead animals
+- Items are filtered to the current viewport in the worker
 - Plant emojis are viewport-scoped in `PlantLayer.updateEmojis()`
-- Terrain and plant pixel overlays cover the full map (single texture each)
+- Item emojis are updated in `ItemLayer.updateItems()` as part of the simulation tick
+- Terrain and plant/item pixel overlays cover the full map (single texture each)
 
 ---
 

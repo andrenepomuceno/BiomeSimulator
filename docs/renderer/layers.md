@@ -11,14 +11,15 @@ Return to [Documentation Home](../README.md).
 worldContainer
   ├── TerrainLayer.container       — pixel terrain (1px / tile)
   ├── PlantLayer.container         — plant pixel overlay (1px / tile, fades at zoom ≥ 6)
+  ├── ItemLayer.pixelContainer     — item pixel overlay (1px / tile, fades at zoom ≥ 6)
   ├── _shadowContainer             — ground-level shadows for ALL plants and animals
-  ├── _depthContainer              — Y-sorted: plant emoji sprites + animal sprites
+  ├── _depthContainer              — Y-sorted: plant emoji sprites + item sprites + animal sprites
   │     (sortableChildren = true, zIndex = y * 1000)
   ├── _overlayContainer            — HP bars, entity selection marker
   └── AnimationLayer.container     — particle effects (attack, birth, death, etc.)
 ```
 
-**Depth sorting**: `_depthContainer` uses Pixi.js `sortableChildren`. Both plant emoji sprites and animal sprites share this container, with `zIndex` set to the Y coordinate × 1000 each frame. Entities with a higher Y (lower on screen) render in front, giving natural depth ordering where animals can appear in front of or behind plants.
+**Depth sorting**: `_depthContainer` uses Pixi.js `sortableChildren`. Plant emoji sprites, item sprites, and animal sprites share this container, with `zIndex` set to the Y coordinate × 1000 each frame. Entities with a higher Y (lower on screen) render in front, giving natural depth ordering where animals and items can appear in front of or behind plants.
 
 ---
 
@@ -154,6 +155,55 @@ When zoomed out below the sprite threshold (zoom < 6), animals are rendered as c
 - **Zoom ≥ 10**: Only sprites visible
 
 Each animal is drawn as a 0.8×0.8 tile colored rectangle at its floor position, using the species `color` from `animalSpecies.js`.
+
+---
+
+## ItemLayer
+
+Renders ground items (meat, fruit, seeds) using a dual-mode rendering approach for performance across all zoom levels.
+
+### Pixel Overlay (Always Active)
+
+- 1×1 colored rectangles per item
+- Position: `(item.x + 0.25, item.y + 0.25)` — centered within tile
+- Size: `0.5 × 0.5` tile units
+- Color by type:
+  - Meat (type 1): `0xcc4444` (red)
+  - Fruit (type 2): `0xffaa33` (orange)
+  - Seed (type 3): `0xaa8833` (brown)
+- Alpha: **0.85**
+- Z-index: **-500000** (below animals, above terrain)
+
+Redrawn whenever items change (add, remove, update).
+
+### Emoji Overlay (Zoom ≥ 6 Only)
+
+- Sprites added to shared `_depthContainer` for Y-sorted depth
+- Sprite pool with recycling
+- Anchor: `(0.5, 0.5)` — center alignment
+- Scale: `(1.0 / FRAME_SIZE) × 0.85` — slightly smaller than animal sprites
+- Z-index: `Math.round((item.y + 0.5) * 1000)` — Y-sorted depth
+- Visibility: Toggled by `updateZoom(zoom)`
+
+### Item Types & Textures
+
+| Type | Emoji | Pixel Color | Texture Keys |
+|------|-------|-------------|--------------|
+| Meat | 🥩 | Red | `MEAT_SMALL_0`, `MEAT_MEDIUM_0`, `MEAT_LARGE_0` (by source animal mass category) |
+| Fruit | 🍑 | Orange | Per-plant-species texture (e.g., `FRUIT_STRAWBERRY_0`) from `buildFruitKeysBySource()` |
+| Seed | 🌰 | Brown | Per-plant-species texture (e.g., `SEED_STRAWBERRY_0`) from `buildSeedKeysBySource()` |
+
+### Zoom Threshold
+
+- **Zoom < 6:** Pixel overlay visible, sprites hidden
+- **Zoom ≥ 6:** Sprites visible, pixel overlay hidden
+
+### Sprite Pooling
+
+Items use efficient sprite recycling:
+- Pooled sprites are mutated (texture, position) rather than recreated
+- Reduces GC pressure and memory allocations
+- Pool grows as needed but is never cleared, stabilizing at max active items in viewport
 
 ---
 

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const combatMocks = vi.hoisted(() => ({
   findNearestThreat: vi.fn(),
+  isThreatValidFor: vi.fn(() => false),
+  shouldRetreatFromCarnivore: vi.fn(() => false),
 }));
 
 const eatingMocks = vi.hoisted(() => ({
@@ -44,7 +46,10 @@ const utilsMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../behaviors/combat.js', () => ({
+  _attack: vi.fn(),
   _findNearestThreat: combatMocks.findNearestThreat,
+  _isThreatValidFor: combatMocks.isThreatValidFor,
+  _shouldRetreatFromCarnivore: combatMocks.shouldRetreatFromCarnivore,
 }));
 
 vi.mock('../behaviors/eating.js', () => ({
@@ -232,8 +237,8 @@ describe('decideAndAct', () => {
     expect(seekMocks.seekOmnivoreFood).not.toHaveBeenCalled();
   });
 
-  it('flees from nearby threats before seeking food', () => {
-    const animal = createAnimal({ thirst: 0, hunger: 80, diet: 'OMNIVORE' });
+  it('flees from nearby threats before seeking food when HP is low', () => {
+    const animal = createAnimal({ thirst: 0, hunger: 80, diet: 'OMNIVORE', hp: 6 }); // 6/20 = 30% < 40% threshold
     const threat = { id: 99, x: 3.5, y: 2.5 };
     const world = createWorld();
     combatMocks.findNearestThreat.mockReturnValue(threat);
@@ -243,6 +248,18 @@ describe('decideAndAct', () => {
     expect(combatMocks.findNearestThreat).toHaveBeenCalledWith(animal, world, {}, animal.visionRange);
     expect(movementMocks.fleeFrom).toHaveBeenCalledWith(animal, threat, world);
     expect(seekMocks.seekOmnivoreFood).not.toHaveBeenCalled();
+  });
+
+  it('fights back against adjacent predators when HP is above threshold', () => {
+    const animal = createAnimal({ thirst: 0, hunger: 80, diet: 'HERBIVORE', hp: 20 }); // 20/20 = 100% > 40%
+    const threat = { id: 99, x: 3.5, y: 2.5 };
+    const world = createWorld();
+    combatMocks.findNearestThreat.mockReturnValue(threat);
+
+    decideAndAct(animal, world, {});
+
+    expect(combatMocks._attack ?? combatMocks.findNearestThreat).toBeDefined();
+    expect(movementMocks.fleeFrom).not.toHaveBeenCalled();
   });
 
   it('reuses existing paths on staggered ticks instead of evaluating decisions', () => {

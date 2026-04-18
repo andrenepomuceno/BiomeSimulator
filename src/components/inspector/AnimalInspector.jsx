@@ -22,6 +22,7 @@ const ACTION_ICONS = {
   FELL_ASLEEP: '💤', WOKE_UP: '☀️', DRANK: '💧', LIFE_STAGE: '⭐',
   ATTACK_MISS: '💨', DODGED: '🌀',
   EAT_ITEM: '🍽️', ATE_EGG: '🥚', PREGNANT: '🤰', LAID: '🥚', LAID_EGGS: '🥚', GAVE_BIRTH: '👶',
+  FOUGHT_BACK: '🐾',
 };
 const ACTION_COLORS = {
   ATTACK: '#ff4444', DEFENDED: '#ffaa33', KILLED: '#ff2222', KILLED_BY: '#cc0000',
@@ -30,6 +31,7 @@ const ACTION_COLORS = {
   FELL_ASLEEP: '#6688bb', WOKE_UP: '#88ccff', DRANK: '#44aaff', LIFE_STAGE: '#ffdd44',
   ATTACK_MISS: '#ffaa66', DODGED: '#aaccff',
   EAT_ITEM: '#d9b34c', ATE_EGG: '#f1d37a', PREGNANT: '#ff99cc', LAID: '#f1d37a', LAID_EGGS: '#f1d37a', GAVE_BIRTH: '#88dd66',
+  FOUGHT_BACK: '#ff9933',
 };
 const ITEM_TYPE_LABELS = {
   1: 'meat',
@@ -320,6 +322,7 @@ function ActionLogEntry({ event, ticksPerDay }) {
     text = `Laid ${detail.count} eggs${tiles}`;
   }
   else if (action === 'GAVE_BIRTH') text = `Gave birth to ${detail.count} offspring${pos}`;
+  else if (action === 'FOUGHT_BACK') text = `Fought back against ${detail.attacker} #${detail.attackerId}`;
 
   const timestamp = formatTickTimestamp(tick, ticksPerDay);
   return (

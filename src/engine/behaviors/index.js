@@ -3,7 +3,7 @@ import { DIET } from '../animalSpecies.js';
 import { benchmarkAdd, benchmarkAddKeyed, benchmarkEnd, benchmarkStart } from '../benchmarkProfiler.js';
 import { S_ADULT, S_SEED } from '../flora.js';
 import { DEEP_WATER, WATER } from '../world.js';
-import { _findNearestThreat, _isThreatValidFor, _shouldRetreatFromCarnivore } from './combat.js';
+import { _attack, _findNearestThreat, _isThreatValidFor, _shouldRetreatFromCarnivore } from './combat.js';
 import { _eatPlantTile } from './eating.js';
 import { _computePath, _fleeFrom, _randomWalk, _reusePathIfValid, _walkPath } from './movement.js';
 import { _findMate, _doMate, giveBirth } from './reproduce.js';
@@ -182,6 +182,24 @@ export function decideAndAct(animal, world, spatialHash) {
         threat = _findNearestThreat(animal, world, spatialHash, vision);
       }
       if (threat) {
+        const fightBackThreshold = thresholds.fight_back_hp_threshold ?? 0.40;
+        const dist = Math.abs(threat.x - animal.x) + Math.abs(threat.y - animal.y);
+        // Only herbivores fight back defensively; omnivores use the carnivore retreat block below
+        const canFightBack = animal.diet === DIET.HERBIVORE
+          && fightBackThreshold > 0
+          && animal.attackCooldown <= 0
+          && dist <= 1.5
+          && animal.hp >= animal.maxHp * fightBackThreshold;
+        if (canFightBack) {
+          // Predator is in melee range and animal is healthy enough — fight back
+          if (threat.id !== animal._fleeTargetId) {
+            animal.logAction(tick, 'FOUGHT_BACK', { attacker: threat.species, attackerId: threat.id });
+            animal._fleeTargetId = threat.id;
+          }
+          animal._fleeLockUntilTick = tick + fleeLockTicks;
+          _attack(animal, threat, world);
+          return;
+        }
         if (threat.id !== animal._fleeTargetId) {
           // New flee episode — log once
           animal.logAction(tick, 'FLED', { from: threat.species, threatId: threat.id });

@@ -54,6 +54,9 @@ const DEFAULT_DECISION_THRESHOLDS = {
   desperate_hunger_fallback_food_min: 50,
   desperate_seed_hunger_min: 60,
   expanded_plant_search_hunger: 65,
+  // HP fraction above which the animal fights back when a predator is in melee range.
+  // Set to 0 to disable fight-back entirely for a species.
+  fight_back_hp_threshold: 0.40,
 };
 
 const DEFAULT_INITIAL_STATE = {

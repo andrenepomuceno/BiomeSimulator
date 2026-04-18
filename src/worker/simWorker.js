@@ -27,6 +27,7 @@ import { SimulationEngine } from '../engine/simulation.js';
 import { createSimulationConfig, DEFAULT_CONFIG } from '../engine/config.js';
 import { TERRAIN_NAMES, World } from '../engine/world.js';
 import { Animal } from '../engine/entities.js';
+import { GroundItem } from '../engine/items.js';
 
 let engine = null;
 let running = false;
@@ -727,6 +728,7 @@ self.onmessage = function (e) {
         hungerMultiplier: sw.hungerMultiplier,
         thirstMultiplier: sw.thirstMultiplier,
         statsHistory: sw.statsHistory,
+        items: sw.items.filter(i => !i.consumed).map(i => i.toDelta()),
       };
       self.postMessage({ type: 'savedState', data: saveData });
       break;
@@ -774,6 +776,17 @@ self.onmessage = function (e) {
         lw._nextId = Math.max(...lw.animals.map(a => a.id), 0) + 1;
       }
       lw.rebuildDerivedState();
+
+      // Restore ground items
+      if (d.items) {
+        for (const id of d.items) {
+          const item = new GroundItem(id.id, id.x, id.y, id.type, id.source, id.createdTick, id.germinationTicks || 0);
+          lw.items.push(item);
+          lw._itemById.set(item.id, item);
+          lw._itemSpatialHash.insert(item);
+          lw._itemTiles.add(item.y * lw.width + item.x);
+        }
+      }
 
       engine.world = lw;
       engine.spatialHash.rebuild(lw.animals.filter(a => a.alive));

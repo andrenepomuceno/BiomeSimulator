@@ -48,6 +48,7 @@ const MAX_FAUNA_WORKERS = 4;
 let faunaWorkers = [];
 let faunaWorkersReady = false;
 let _ticking = false;
+let tickBatchCarry = 0;
 
 function startLoop() {
   stopLoop();
@@ -70,6 +71,21 @@ function scheduleNextTick() {
   tickTimeoutId = setTimeout(doTick, intervalMs);
 }
 
+function computeTicksPerLoop() {
+  // At low TPS we run one simulation tick per loop and clear any carry
+  // from previous high-speed batching.
+  if (tps <= MAX_UI_UPDATE_HZ) {
+    tickBatchCarry = 0;
+    return 1;
+  }
+
+  // Keep average TPS accurate by carrying fractional ticks between loops.
+  const exactTicksPerLoop = (tps / MAX_UI_UPDATE_HZ) + tickBatchCarry;
+  const ticksPerLoop = Math.max(1, Math.floor(exactTicksPerLoop));
+  tickBatchCarry = exactTicksPerLoop - ticksPerLoop;
+  return ticksPerLoop;
+}
+
 async function doTick() {
   if (!engine || !engine.world) return;
   if (_ticking) {
@@ -83,7 +99,7 @@ async function doTick() {
     // Number of sim ticks to run per loop iteration.
     // When TPS > MAX_UI_UPDATE_HZ we batch multiple ticks and post once,
     // keeping the main thread message rate capped at MAX_UI_UPDATE_HZ.
-    const ticksPerLoop = Math.max(1, Math.round(tps / MAX_UI_UPDATE_HZ));
+    const ticksPerLoop = computeTicksPerLoop();
     // Aggregate flora/item deltas across all simulated ticks in this UI loop.
     // Without this, at high TPS only the last tick's deltas are posted.
     const batchedPlantChanges = [];
@@ -454,6 +470,7 @@ self.onmessage = function (e) {
       const seed = engine.generateWorld();
       const w = engine.world;
       tps = config.ticks_per_second || 10;
+      tickBatchCarry = 0;
 
       // Initialize fauna sub-workers for parallel processing
       initFaunaWorkers(config, w.terrain, w.waterProximity, w.heightmap);
@@ -541,6 +558,7 @@ self.onmessage = function (e) {
 
     case 'setSpeed':
       tps = Math.max(1, Math.min(120, e.data.tps));
+      tickBatchCarry = 0;
       if (running && !paused) {
         stopLoop();
         scheduleNextTick();

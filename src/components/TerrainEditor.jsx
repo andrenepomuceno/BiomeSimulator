@@ -29,8 +29,8 @@ export default function TerrainEditor() {
 
   if (tool === 'PAINT_TERRAIN') {
     return (
-      <div className="sidebar-section">
-        <h6>Terrain Brush</h6>
+      <div className="sidebar-section entity-info">
+        <h6 className="inspector-subtitle">🎨 Terrain Brush</h6>
         <div className="terrain-palette mb-2">
           {TERRAIN_TYPES.map(t => (
             <div
@@ -57,8 +57,8 @@ export default function TerrainEditor() {
     const ANIMAL_TYPES = Object.keys(SPECIES_INFO);
     const PLANT_PLACE_TYPES = buildPlantPlaceTypes();
     return (
-      <div className="sidebar-section">
-        <h6>Place Entity</h6>
+      <div className="sidebar-section entity-info">
+        <h6 className="inspector-subtitle">🐾 Place Entity</h6>
         <div className="small text-muted mb-1">Animals</div>
         <div className="d-flex flex-wrap gap-1 mb-2">
           {ANIMAL_TYPES.map(t => (

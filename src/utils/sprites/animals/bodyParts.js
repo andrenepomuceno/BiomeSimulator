@@ -713,6 +713,71 @@ export function drawReptileEye(ctx, x, y, irisColor) {
 }
 
 /**
+ * Draw a reptile top/down-view head with optional snout brows, scale texture, eyes, and teeth.
+ * Derives shadow and scale-texture tones internally from body color.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} cx - horizontal center of the head
+ * @param {number} headY - top-left y of the head block
+ * @param {number} headW - total head width in pixels
+ * @param {string} body - main body color
+ * @param {string} eye - iris color
+ * @param {boolean} facingDown - true for DOWN direction (show eyes/teeth)
+ * @param {object} [opts]
+ * @param {boolean} [opts.snout] - add brow shadow above each eye position
+ * @param {boolean} [opts.teeth] - add tooth nubs at the jaw
+ */
+export function drawReptileHeadTop(ctx, cx, headY, headW, body, eye, facingDown, opts = {}) {
+  const hx = cx - Math.floor(headW / 2);
+  const shadow = darken(body, 0.15);
+  const scaleTex = darken(body, 0.07);
+  const nibY = facingDown ? headY - 3 : headY;
+  rect(ctx, hx + 1, headY, headW - 2, 3, body);
+  rect(ctx, hx, headY + 3, headW, 4, body);
+  rect(ctx, hx + 3, nibY, 3, 3, body);
+  rect(ctx, hx + headW - 6, nibY, 3, 3, body);
+  speckle(ctx, hx + 1, headY + 1, headW - 2, 4, [scaleTex, darken(body, 0.12), lighten(body, 0.04)], 0.28);
+  if (facingDown) {
+    drawReptileEye(ctx, hx + 3, headY + 3, eye);
+    drawReptileEye(ctx, hx + headW - 6, headY + 3, eye);
+    if (opts.snout) {
+      rect(ctx, hx + 3, headY, 3, 2, shadow);
+      rect(ctx, hx + headW - 6, headY, 3, 2, shadow);
+    }
+    if (opts.teeth) {
+      rect(ctx, hx + 3, headY + 7, 2, 2, '#f0f0e0');
+      rect(ctx, hx + headW - 5, headY + 7, 2, 2, '#f0f0e0');
+      px(ctx, hx + 5, headY + 7, '#f0f0e0');
+      px(ctx, hx + headW - 7, headY + 7, '#f0f0e0');
+    }
+  }
+}
+
+/**
+ * Draw a reptile side-view head block with highlight, slit-pupil eye, and optional teeth.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - horizontal flip function (identity or 63−x mirror)
+ * @param {number} headX - logical left edge of the head block
+ * @param {number} by - top y of the head (same as body top)
+ * @param {number} headW - head width in pixels
+ * @param {number} h - head/body height
+ * @param {string} body - main body color
+ * @param {string} highlight - highlight color for the snout tip
+ * @param {string} eye - iris color
+ * @param {object} [opts]
+ * @param {boolean} [opts.teeth] - draw tooth nubs at the jaw line
+ */
+export function drawReptileHeadSide(ctx, f, headX, by, headW, h, body, highlight, eye, opts = {}) {
+  const rx = Math.min(f(headX), f(headX + headW - 1));
+  rect(ctx, rx, by, headW, h, body);
+  rect(ctx, f(headX + headW - 3), by, 3, 2, highlight);
+  drawReptileEye(ctx, f(headX + headW - 3), by + (h > 6 ? 3 : 1), eye);
+  if (opts.teeth) {
+    rect(ctx, f(headX + headW - 2), by + h - 3, 2, 2, '#f0f0e0');
+    rect(ctx, f(headX + headW), by + h - 3, 2, 2, '#f0f0e0');
+  }
+}
+
+/**
  * Draw a forked tongue for snakes.
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} x - base x

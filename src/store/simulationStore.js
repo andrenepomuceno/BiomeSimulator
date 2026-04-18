@@ -87,7 +87,37 @@ function persistAudioSettings(audioSettings) {
   }
 }
 
+const RATE_MULTIPLIERS_STORAGE_KEY = 'biomeSimulator.rateMultipliers';
+
+function loadPersistedRateMultipliers() {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const raw = window.localStorage.getItem(RATE_MULTIPLIERS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      hungerMultiplier: Number.isFinite(parsed.hungerMultiplier) ? parsed.hungerMultiplier : null,
+      thirstMultiplier: Number.isFinite(parsed.thirstMultiplier) ? parsed.thirstMultiplier : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistRateMultipliers(hunger, thirst) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(
+      RATE_MULTIPLIERS_STORAGE_KEY,
+      JSON.stringify({ hungerMultiplier: hunger, thirstMultiplier: thirst }),
+    );
+  } catch { /* ignore */ }
+}
+
+const _persistedRateMultipliers = loadPersistedRateMultipliers();
+
 const useSimStore = create((set, get) => ({
+
   // Worker reference (set once by useSimulation)
   worker: null,
   setWorker: (w) => set({ worker: w }),
@@ -398,10 +428,16 @@ const useSimStore = create((set, get) => ({
   })),
 
   // Global rate multipliers
-  hungerMultiplier: 1.2,
-  thirstMultiplier: 1.25,
-  setHungerMultiplier: (v) => set({ hungerMultiplier: v }),
-  setThirstMultiplier: (v) => set({ thirstMultiplier: v }),
+  hungerMultiplier: _persistedRateMultipliers?.hungerMultiplier ?? 1.2,
+  thirstMultiplier: _persistedRateMultipliers?.thirstMultiplier ?? 1.25,
+  setHungerMultiplier: (v) => set(state => {
+    persistRateMultipliers(v, state.thirstMultiplier);
+    return { hungerMultiplier: v };
+  }),
+  setThirstMultiplier: (v) => set(state => {
+    persistRateMultipliers(state.hungerMultiplier, v);
+    return { thirstMultiplier: v };
+  }),
 
   // Viewport
   viewport: { x: 0, y: 0, w: 100, h: 100, zoom: 4 },

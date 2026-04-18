@@ -364,6 +364,9 @@ const useSimStore = create((set, get) => ({
   pushAudioLog: (entry) => set(state => ({
     audioLog: [entry, ...state.audioLog].slice(0, AUDIO_LOG_LIMIT),
   })),
+  pushAudioLogBatch: (entries) => set(state => ({
+    audioLog: [...entries, ...state.audioLog].slice(0, AUDIO_LOG_LIMIT),
+  })),
   clearAudioLog: () => set({ audioLog: [] }),
 
   // Selected entity / tile / item

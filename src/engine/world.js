@@ -277,10 +277,13 @@ export class World {
       for (let dx = -radius; dx <= radius; dx++) {
         const nx = cx + dx, ny = cy + dy;
         if (nx < 0 || ny < 0 || nx >= this.width || ny >= this.height) continue;
+        const idx = ny * this.width + nx;
         const t = this.terrain[ny * this.width + nx];
         if (t === WATER || t === DEEP_WATER || t === MOUNTAIN) continue;
+        // Keep item tiles visually distinct from existing plants.
+        if (this.plantType[idx] !== P_NONE) continue;
         // O(1) anti-stacking check via tile index set
-        if (this._itemTiles.has(ny * this.width + nx)) continue;
+        if (this._itemTiles.has(idx)) continue;
         candidates.push({ x: nx, y: ny });
       }
     }

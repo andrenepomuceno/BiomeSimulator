@@ -118,6 +118,8 @@ const _persistedRateMultipliers = loadPersistedRateMultipliers();
 
 const PROFILING_STORAGE_KEY = 'biomeSimulator.profilingEnabled';
 
+const SHOW_ANIMAL_HP_BARS_STORAGE_KEY = 'biomeSimulator.showAnimalHpBars';
+
 function loadPersistedProfiling() {
   if (typeof window === 'undefined' || !window.localStorage) return false;
   try {
@@ -132,6 +134,24 @@ function persistProfiling(enabled) {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     window.localStorage.setItem(PROFILING_STORAGE_KEY, String(!!enabled));
+  } catch { /* ignore */ }
+}
+
+function loadPersistedShowAnimalHpBars() {
+  if (typeof window === 'undefined' || !window.localStorage) return true;
+  try {
+    const raw = window.localStorage.getItem(SHOW_ANIMAL_HP_BARS_STORAGE_KEY);
+    if (raw === null) return true;
+    return raw !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+function persistShowAnimalHpBars(enabled) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(SHOW_ANIMAL_HP_BARS_STORAGE_KEY, String(!!enabled));
   } catch { /* ignore */ }
 }
 
@@ -385,6 +405,7 @@ const useSimStore = create((set, get) => ({
 
   // Profiling (engine + renderer)
   profilingEnabled: loadPersistedProfiling(),
+  showAnimalHpBars: loadPersistedShowAnimalHpBars(),
   profiling: {
     engine: {
       tick: 0,
@@ -411,6 +432,7 @@ const useSimStore = create((set, get) => ({
     },
   },
   setProfilingEnabled: (enabled) => { persistProfiling(enabled); set({ profilingEnabled: !!enabled }); },
+  setShowAnimalHpBars: (enabled) => { persistShowAnimalHpBars(enabled); set({ showAnimalHpBars: !!enabled }); },
   setEngineProfile: (engine) => set(state => ({ profiling: { ...state.profiling, engine } })),
   setRendererProfile: (renderer) => set(state => ({ profiling: { ...state.profiling, renderer } })),
 

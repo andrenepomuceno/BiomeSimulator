@@ -53,6 +53,7 @@ export class EntityLayer {
     this._texturesReady = false;
     this._animationLayer = animationLayer || null;
     this._onEffectEvent = onEffectEvent || null;
+    this._showAnimalHpBars = true;
 
     // Track previous state per animal to detect transitions
     this._prevStates = new Map(); // id → state
@@ -221,7 +222,7 @@ export class EntityLayer {
     const showPixelOverlay = zoom < ENTITY_ZOOM_THRESHOLD + 4;
 
     const seen = new Set();
-    const showBars = zoom >= ENTITY_BARS_MIN_ZOOM;
+    const showBars = this._showAnimalHpBars && zoom >= ENTITY_BARS_MIN_ZOOM;
 
     // Clear energy bars (redrawn each frame)
     const barGfx = this._barGfx;
@@ -582,5 +583,12 @@ export class EntityLayer {
     gfx.x = sprite.x;
     gfx.y = sprite.y;
     gfx.visible = true;
+  }
+
+  setShowAnimalHpBars(enabled) {
+    this._showAnimalHpBars = !!enabled;
+    if (!this._showAnimalHpBars) {
+      this._barGfx.clear();
+    }
   }
 }

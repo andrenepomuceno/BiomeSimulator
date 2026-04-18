@@ -42,6 +42,7 @@ export default function StatsPanel() {
     thirstMultiplier,
     worker,
     profilingEnabled,
+    showAnimalHpBars,
     profiling,
   } = useSimStore();
   const speciesKeys = useMemo(() => Object.keys(SPECIES_INFO), []);
@@ -421,6 +422,20 @@ export default function StatsPanel() {
       </div>
 
       <h6 className="stats-section-title" style={{ marginTop: 12 }}>Performance</h6>
+      <div className="stat-row" style={{ marginBottom: 6 }}>
+        <span className="stat-label">Overlay</span>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#aaa', fontSize: '0.82rem' }}>
+          <input
+            type="checkbox"
+            checked={showAnimalHpBars}
+            onChange={(e) => {
+              useSimStore.getState().setShowAnimalHpBars(e.target.checked);
+            }}
+          />
+          Animal HP bars
+        </label>
+      </div>
+
       <div className="stat-row" style={{ marginBottom: 6 }}>
         <span className="stat-label">Profiling</span>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#aaa', fontSize: '0.82rem' }}>

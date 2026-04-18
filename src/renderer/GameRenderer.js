@@ -64,6 +64,8 @@ export class GameRenderer {
       this._shadowContainer,
       this._overlayContainer,
     );
+    this.entityLayer.setShowAnimalHpBars(useSimStore.getState().showAnimalHpBars);
+    this._showAnimalHpBars = useSimStore.getState().showAnimalHpBars;
 
     this.worldContainer.addChild(this.terrainLayer.container);
     this.worldContainer.addChild(this.plantLayer.container);  // pixel overlay only
@@ -115,6 +117,13 @@ export class GameRenderer {
       this._frameLastAt = frameNow;
       this._frameWindow.frames++;
       const store = useSimStore.getState();
+      if (store.showAnimalHpBars !== this._showAnimalHpBars) {
+        this._showAnimalHpBars = store.showAnimalHpBars;
+        this.entityLayer.setShowAnimalHpBars(this._showAnimalHpBars);
+        if (this.entityLayer._lastAnimals) {
+          this.entityLayer.update(this.entityLayer._lastAnimals, this.entityLayer._lastRenderer, this.entityLayer._lastTick, this.camera.zoom);
+        }
+      }
       if (store.tool !== this._lastTool) {
         if (store.tool === 'PLACE_ENTITY' || this._lastTool === 'PLACE_ENTITY') {
           this._resetEntityBrushState();

@@ -5,7 +5,7 @@
  * Shell sheen, translucent wings, segmented antennae, caterpillar prolegs.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawInsectLeg, drawInsectLegSide, drawFurTexture, drawCaterpillarChainTop } from '../bodyParts.js';
+import { drawInsectLeg, drawInsectLegSide, drawFurTexture, drawCaterpillarChainTop, drawCricketJumpLegTop, drawCricketJumpLegSide, drawCerciTop, drawCerciSide, drawCricketWingPads } from '../bodyParts.js';
 
 export function drawInsect(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -56,6 +56,9 @@ export function drawInsect(ctx, params, dir, frame) {
       rect(ctx, bx + 3, by + 3, w - 6, 2, highlight);
     }
 
+    // Wing pads (cricket tegmina, dorsal view)
+    if (params.wingPads) drawCricketWingPads(ctx, bx, w, by, h, body, accent);
+
     // Head
     const headW = Math.min(w, Math.max(8, w - 2));
     const hx = cx - Math.floor(headW / 2);
@@ -86,20 +89,20 @@ export function drawInsect(ctx, params, dir, frame) {
     for (let i = 0; i < 3; i++) {
       const legY = by + Math.round(i * (h - 4) / 2) + 2;
       const off = (i === 1) ? -legOff : legOff;
-      
-      // Left legs
-      drawInsectLeg(ctx, bx - 4, legY + off, false, shadow, outline, outline, 3);
-      
-      // Right legs
-      drawInsectLeg(ctx, bx + w, legY - off, true, shadow, outline, outline, 3);
-      
+
       if (params.jumpLegs && i === 2) {
-        rect(ctx, bx - 9, legY + off + 3, 4, 2, shadow);
-        rect(ctx, bx + w + 5, legY - off + 3, 4, 2, shadow);
-        px(ctx, bx - 10, legY + off + 4, outline);
-        px(ctx, bx + w + 9, legY - off + 4, outline);
+        // Cricket: large hind jump legs replace the normal 3rd pair
+        drawCricketJumpLegTop(ctx, bx, w, by, h, shadow, outline);
+      } else {
+        // Left leg
+        drawInsectLeg(ctx, bx - 4, legY + off, false, shadow, outline, outline, 3);
+        // Right leg
+        drawInsectLeg(ctx, bx + w, legY - off, true, shadow, outline, outline, 3);
       }
     }
+
+    // Cerci (tail feelers)
+    if (params.cerci) drawCerciTop(ctx, cx, by, h, outline);
 
     // Wings (translucent)
     if (params.wings) {
@@ -157,8 +160,15 @@ export function drawInsect(ctx, params, dir, frame) {
     for (let i = 0; i < 3; i++) {
       const lx = bx + Math.round(i * (w - 4) / 2) + 2;
       const off = (i === 1) ? -legOff : legOff;
-      drawInsectLegSide(ctx, f, lx, by + h, off, shadow, outline, params.jumpLegs && i === 2);
+      if (params.jumpLegs && i === 2) {
+        drawCricketJumpLegSide(ctx, f, bx, w, by, h, shadow, outline);
+      } else {
+        drawInsectLegSide(ctx, f, lx, by + h, off, shadow, outline, false);
+      }
     }
+
+    // Cerci (tail feelers)
+    if (params.cerci) drawCerciSide(ctx, f, bx, by, h, outline);
 
     // Wings (side)
     if (params.wings) {

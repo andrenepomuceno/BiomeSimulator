@@ -1288,3 +1288,93 @@ export function drawCaterpillarChainTop(ctx, cx, cy, segments, headAtTop, body, 
     rect(ctx, cx + 6, sy + 1, 2, 2, darken(segColor, 0.24));
   }
 }
+
+// ─── Cricket-specific anatomy ──────────────────────────────────────────────
+
+/**
+ * Draw both cricket hind jump legs for top-down view.
+ * The large femur runs outward-back; the tibia folds further out-down.
+ * @param {number} bx  - body left x
+ * @param {number} w   - body width
+ * @param {number} by  - body top y
+ * @param {number} h   - body height
+ */
+export function drawCricketJumpLegTop(ctx, bx, w, by, h, color, outline) {
+  const legDark = darken(color, 0.12);
+  // Left: femur outward-back, tibia extends further out and down
+  thickLine(ctx, bx - 1, by + h - 6, bx - 10, by + h - 2, 1, color);
+  thickLine(ctx, bx - 10, by + h - 2, bx - 15, by + h + 3, 0, legDark);
+  px(ctx, bx - 16, by + h + 4, outline);
+  // Right (mirror)
+  thickLine(ctx, bx + w, by + h - 6, bx + w + 9, by + h - 2, 1, color);
+  thickLine(ctx, bx + w + 9, by + h - 2, bx + w + 14, by + h + 3, 0, legDark);
+  px(ctx, bx + w + 15, by + h + 4, outline);
+}
+
+/**
+ * Draw one cricket hind jump leg for side view.
+ * Femur rises steeply up-and-back from body rear; tibia folds straight back down.
+ * @param {Function} f - x-flip function (identity for RIGHT, 63-x for LEFT)
+ * @param {number} bx  - body left x (unflipped)
+ * @param {number} w   - body width
+ * @param {number} by  - body top y
+ * @param {number} h   - body height
+ */
+export function drawCricketJumpLegSide(ctx, f, bx, w, by, h, color, outline) {
+  const legDark = darken(color, 0.12);
+  // Femur: thick diagonal rising steeply up-and-back from body rear-bottom
+  thickLine(ctx, f(bx + w - 2), by + h - 2, f(bx + w + 4), by + 2, 1, color);
+  // Tibia: folds from femur tip back down to foot
+  thickLine(ctx, f(bx + w + 4), by + 2, f(bx + w + 6), by + h + 1, 0, legDark);
+  px(ctx, f(bx + w + 6), by + h + 2, outline);
+  px(ctx, f(bx + w + 7), by + h + 1, legDark);
+}
+
+/**
+ * Draw both cricket cerci (backward-facing tail feelers) for top-down view.
+ * @param {number} cx  - horizontal center
+ * @param {number} by  - body top y
+ * @param {number} h   - body height
+ */
+export function drawCerciTop(ctx, cx, by, h, color) {
+  const tip = darken(color, 0.08);
+  // Left cercus
+  thickLine(ctx, cx - 1, by + h, cx - 3, by + h + 4, 0, color);
+  px(ctx, cx - 4, by + h + 5, tip);
+  // Right cercus
+  thickLine(ctx, cx + 2, by + h, cx + 4, by + h + 4, 0, color);
+  px(ctx, cx + 5, by + h + 5, tip);
+}
+
+/**
+ * Draw a single cricket cercus (tail feeler) for side view.
+ * Extends backward from the body tail end.
+ * @param {Function} f - x-flip function
+ * @param {number} bx  - body left x (unflipped)
+ * @param {number} by  - body top y
+ * @param {number} h   - body height
+ */
+export function drawCerciSide(ctx, f, bx, by, h, color) {
+  thickLine(ctx, f(bx - 1), by + h - 6, f(bx - 5), by + h - 2, 0, color);
+  px(ctx, f(bx - 6), by + h - 1, darken(color, 0.08));
+}
+
+/**
+ * Draw flat cricket wing pads (tegmina) for top-down view.
+ * Overlaid on the posterior body; split by a dorsal seam.
+ * @param {string} body   - base body color (for pronotum boundary)
+ * @param {string} accent - wing pad fill color
+ */
+export function drawCricketWingPads(ctx, bx, w, by, h, body, accent) {
+  const padY = by + Math.floor(h * 0.38);
+  const padH = Math.ceil(h * 0.52);
+  const hw = Math.floor((w - 4) / 2);
+  // Left wing pad (slightly lighter)
+  rect(ctx, bx + 2, padY, hw, padH, lighten(accent, 0.06));
+  // Right wing pad
+  rect(ctx, bx + 2 + hw, padY, w - 4 - hw, padH, accent);
+  // Center seam
+  for (let dy = 1; dy < padH - 1; dy++) px(ctx, bx + 2 + hw, padY + dy, darken(accent, 0.12));
+  // Pronotum boundary
+  rect(ctx, bx + 2, padY, w - 4, 1, darken(body, 0.10));
+}

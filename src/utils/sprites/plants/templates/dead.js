@@ -2,7 +2,7 @@
  * Dead template — universal stage 6 for all plant species.
  * 64×64 design grid.
  */
-import { px, rect, speckle, darken, lighten, quadraticThick, thickLine, ao } from '../../helpers.js';
+import { px, rect, ellipse, speckle, darken, lighten, blend, quadraticThick, thickLine, ao } from '../../helpers.js';
 import { drawGroundBase, drawGrassBlade, drawCactusColumn, drawCactusSpines, drawCapTexture, drawPalmTrunk, drawPalmFrond } from '../bodyParts.js';
 
 export function drawDead(ctx, params, frame) {
@@ -25,6 +25,43 @@ export function drawDead(ctx, params, frame) {
     speckle(ctx, 12, baseY + 1, 30, 2, [dLeaf, dDark, '#c8b060'], 0.18);
     drawGroundBase(ctx, 12, baseY, 30, dDark, 2);
     ao(ctx, 12, baseY + 2, 30, 2, 0.08);
+    return;
+  }
+
+  // ── Bush variant: collapsed dried shrub clumps + brittle twigs ──────────
+  if (params.template === 'bush') {
+    const dryStem = '#8a6a3b';
+    const dryLeaf = '#a4884c';
+    const dryDark = '#6b5230';
+    const ash = '#b79f72';
+    const leanX = frame === 1 ? 1 : frame === 2 ? -1 : 0;
+
+    // Rear collapsed clumps
+    ellipse(ctx, cx - 7 + leanX, baseY - 11, 7, 5, dryDark);
+    ellipse(ctx, cx + 9 + leanX, baseY - 11, 7, 5, dryDark);
+    // Main brittle mound with darker lower half
+    ellipse(ctx, cx + 1 + leanX, baseY - 12, 10, 7, dryLeaf);
+    for (let y = 0; y < 4; y++) {
+      rect(ctx, cx - 8 + leanX, baseY - 9 + y, 18, 1, blend(dryLeaf, dryDark, (y + 1) / 5));
+    }
+
+    // Dry texture and sparse highlights
+    speckle(ctx, cx - 14 + leanX, baseY - 16, 30, 12, [dryDark, dryStem, ash], 0.24);
+
+    // Brittle twig skeleton protruding from the mound
+    thickLine(ctx, cx + leanX, baseY - 16, cx + 1 + leanX, baseY - 25, 0, dryStem);
+    thickLine(ctx, cx + 1 + leanX, baseY - 23, cx - 4 + leanX, baseY - 20, 0, dryStem);
+    thickLine(ctx, cx + 1 + leanX, baseY - 22, cx + 6 + leanX, baseY - 19, 0, dryStem);
+    px(ctx, cx - 5 + leanX, baseY - 20, ash);
+    px(ctx, cx + 7 + leanX, baseY - 19, ash);
+
+    // Fallen dry debris at the contact point
+    rect(ctx, cx - 9 + leanX, baseY - 2, 4, 1, dryStem);
+    rect(ctx, cx + 6 + leanX, baseY - 1, 5, 1, dryStem);
+    px(ctx, cx - 1 + leanX, baseY, ash);
+
+    drawGroundBase(ctx, cx - 15 + leanX, baseY, 30, dryDark, 2);
+    ao(ctx, cx - 15 + leanX, baseY + 2, 30, 3, 0.11);
     return;
   }
 

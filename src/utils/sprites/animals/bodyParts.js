@@ -779,6 +779,50 @@ export function drawReptileStubLeg(ctx, x0, y0, x1, y1, color) {
   thickLine(ctx, x0, y0, x1, y1, 1, color);
 }
 
+/**
+ * Draw a lizard top/down leg with extra splayed toe hint.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} hipX
+ * @param {number} hipY
+ * @param {number} dirX - -1 for left, +1 for right
+ * @param {number} swing
+ * @param {string} upperColor
+ * @param {string} lowerColor
+ */
+export function drawLizardLegTop(ctx, hipX, hipY, dirX, swing, upperColor, lowerColor) {
+  const kneeX = hipX + dirX * 3;
+  const kneeY = hipY + 3 + swing;
+  const footX = hipX + dirX * 6;
+  const footY = hipY + 5 + swing;
+  const toeX = hipX + dirX * 4;
+  thickLine(ctx, hipX, hipY + swing, kneeX, kneeY, 1, upperColor);
+  thickLine(ctx, kneeX, kneeY, footX, footY, 0, lowerColor);
+  thickLine(ctx, toeX, footY, toeX + dirX, footY + 2, 0, lowerColor);
+}
+
+/**
+ * Draw a lizard side leg with splayed toe fan.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - x-flip function
+ * @param {number} hipX
+ * @param {number} hipY
+ * @param {number} swing
+ * @param {string} upperColor
+ * @param {string} lowerColor
+ * @param {number} dirX - -1 for rear leg, +1 for front leg
+ */
+export function drawLizardLegSide(ctx, f, hipX, hipY, swing, upperColor, lowerColor, dirX) {
+  const kneeX = hipX + dirX * 3;
+  const kneeY = hipY + 2 + swing;
+  const footX = hipX + dirX * 5;
+  const footY = hipY + 4 + swing;
+  thickLine(ctx, f(hipX), hipY, f(kneeX), kneeY, 1, upperColor);
+  thickLine(ctx, f(kneeX), kneeY, f(footX), footY, 0, lowerColor);
+  thickLine(ctx, f(footX), footY, f(footX + dirX * 2), footY + 1, 0, lowerColor);
+  thickLine(ctx, f(footX), footY, f(footX), footY + 2, 0, lowerColor);
+  thickLine(ctx, f(footX), footY, f(footX - dirX * 2), footY + 2, 0, lowerColor);
+}
+
 // ─── Bird helpers ──────────────────────────────────────────────────────────
 
 /**

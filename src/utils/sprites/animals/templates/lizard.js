@@ -2,7 +2,7 @@
  * Lizard drawing template -- 64x64 design grid.
  */
 import { px, rect, darken, lighten, blend, shadedEllipse, scalePattern, quadraticThick, thickLine, fillPolygon, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawReptileEye, drawTongue } from '../bodyParts.js';
+import { drawReptileEye, drawTongue, drawLizardLegTop, drawLizardLegSide } from '../bodyParts.js';
 
 export function drawLizard(ctx, params, dir, frame) {
   const { body, accent, eye } = params;
@@ -64,19 +64,11 @@ export function drawLizard(ctx, params, dir, frame) {
     px(ctx, cx + 4 * tailSway, tailBaseY + 30 * tailDir, outline);
 
     const fLY = bCy - 3;
-    thickLine(ctx, cx - bRx, fLY + legShift, cx - bRx - 3, fLY + 3 + legShift, 1, shadow);
-    thickLine(ctx, cx - bRx - 3, fLY + 3 + legShift, cx - bRx - 6, fLY + 5 + legShift, 0, outline);
-    thickLine(ctx, cx - bRx - 3, fLY + 5 + legShift, cx - bRx - 4, fLY + 7 + legShift, 0, outline);
-    thickLine(ctx, cx + bRx, fLY - legShift, cx + bRx + 3, fLY + 3 - legShift, 1, shadow);
-    thickLine(ctx, cx + bRx + 3, fLY + 3 - legShift, cx + bRx + 6, fLY + 5 - legShift, 0, outline);
-    thickLine(ctx, cx + bRx + 3, fLY + 5 - legShift, cx + bRx + 4, fLY + 7 - legShift, 0, outline);
+    drawLizardLegTop(ctx, cx - bRx, fLY, -1, legShift, shadow, outline);
+    drawLizardLegTop(ctx, cx + bRx, fLY, 1, -legShift, shadow, outline);
     const rLY = bCy + 5;
-    thickLine(ctx, cx - bRx, rLY - legShift, cx - bRx - 3, rLY + 3 - legShift, 1, shadow);
-    thickLine(ctx, cx - bRx - 3, rLY + 3 - legShift, cx - bRx - 6, rLY + 5 - legShift, 0, outline);
-    thickLine(ctx, cx - bRx - 3, rLY + 5 - legShift, cx - bRx - 4, rLY + 7 - legShift, 0, outline);
-    thickLine(ctx, cx + bRx, rLY + legShift, cx + bRx + 3, rLY + 3 + legShift, 1, shadow);
-    thickLine(ctx, cx + bRx + 3, rLY + 3 + legShift, cx + bRx + 6, rLY + 5 + legShift, 0, outline);
-    thickLine(ctx, cx + bRx + 3, rLY + 5 + legShift, cx + bRx + 4, rLY + 7 + legShift, 0, outline);
+    drawLizardLegTop(ctx, cx - bRx, rLY, -1, -legShift, shadow, outline);
+    drawLizardLegTop(ctx, cx + bRx, rLY, 1, legShift, shadow, outline);
 
   } else {
     const flip = dir === LEFT;
@@ -113,16 +105,8 @@ export function drawLizard(ctx, params, dir, frame) {
     px(ctx, f(bx - 28), by + 7 + droop, outline);
 
     const rLX = bx + 4;
-    thickLine(ctx, f(rLX),     by + bH,     f(rLX - 3), by + bH + 2 + legShift, 1, shadow);
-    thickLine(ctx, f(rLX - 3), by + bH + 2 + legShift, f(rLX - 5), by + bH + 4 + legShift, 0, outline);
-    thickLine(ctx, f(rLX - 5), by + bH + 4 + legShift, f(rLX - 7), by + bH + 5 + legShift, 0, outline);
-    thickLine(ctx, f(rLX - 5), by + bH + 4 + legShift, f(rLX - 5), by + bH + 6 + legShift, 0, outline);
-    thickLine(ctx, f(rLX - 5), by + bH + 4 + legShift, f(rLX - 3), by + bH + 6 + legShift, 0, outline);
+    drawLizardLegSide(ctx, f, rLX, by + bH, legShift, shadow, outline, -1);
     const fLX = bx + bW - 5;
-    thickLine(ctx, f(fLX),     by + bH,     f(fLX + 3), by + bH + 2 - legShift, 1, shadow);
-    thickLine(ctx, f(fLX + 3), by + bH + 2 - legShift, f(fLX + 5), by + bH + 4 - legShift, 0, outline);
-    thickLine(ctx, f(fLX + 5), by + bH + 4 - legShift, f(fLX + 7), by + bH + 5 - legShift, 0, outline);
-    thickLine(ctx, f(fLX + 5), by + bH + 4 - legShift, f(fLX + 5), by + bH + 6 - legShift, 0, outline);
-    thickLine(ctx, f(fLX + 5), by + bH + 4 - legShift, f(fLX + 3), by + bH + 6 - legShift, 0, outline);
+    drawLizardLegSide(ctx, f, fLX, by + bH, -legShift, shadow, outline, 1);
   }
 }

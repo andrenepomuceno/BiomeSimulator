@@ -5,7 +5,7 @@
  * Feather texture, wing layering, detailed beak and eye ring.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawFurTexture, drawBirdFoot, drawRaptorBeak } from '../bodyParts.js';
+import { drawFurTexture, drawBirdFoot, drawRaptorBeak, drawBirdHeadTop, drawBirdWingTop, drawBirdTailUp, drawBirdWingSide, drawBirdTailSide } from '../bodyParts.js';
 
 export function drawBird(ctx, params, dir, frame) {
   const { body, accent, eye, beak, w, h, wingSpan } = params;
@@ -46,17 +46,8 @@ export function drawBird(ctx, params, dir, frame) {
     ao(ctx, bx + 2, by + h - 3, w - 4, 3, 0.08);
 
     // Head
-    rect(ctx, cx - 4, by - 7, 8, 7, body);
-    rect(ctx, cx - 3, by - 9, 6, 3, body);
-    rect(ctx, cx - 2, by - 9, 4, 2, highlight);
+    drawBirdHeadTop(ctx, cx, by, body, highlight, eyeRing, eye, dir === DOWN);
     if (dir === DOWN) {
-      // Eyes with ring
-      rect(ctx, cx - 4, by - 5, 3, 3, eyeRing);
-      rect(ctx, cx + 1, by - 5, 3, 3, eyeRing);
-      px(ctx, cx - 3, by - 4, eye);
-      px(ctx, cx + 2, by - 4, eye);
-      px(ctx, cx - 3, by - 5, '#ffffff');
-      px(ctx, cx + 2, by - 5, '#ffffff');
       // Beak
       rect(ctx, cx - 2, by - 1, 4, 3, beak);
       rect(ctx, cx - 1, by - 1, 2, 2, beakHi);
@@ -65,41 +56,13 @@ export function drawBird(ctx, params, dir, frame) {
 
     // Wings
     const wingY = by + 4 + wingUp;
-    for (let i = 1; i <= wingSpan; i++) {
-      const t = (i - 1) / Math.max(1, wingSpan - 1); // 0=inner covert, 1=primary tip
-      const wc = t < 0.25 ? lighten(accent, 0.10)  // covert (near body)
-               : t < 0.65 ? accent                  // secondary
-               : darken(accent, 0.12);               // primary (tip)
-      const wh = Math.max(1, 5 - Math.round(i * 3 / wingSpan));
-      rect(ctx, bx - i * 3, wingY, 3, wh, wc);
-      rect(ctx, bx + w - 3 + i * 3, wingY, 3, wh, wc);
-      // Leading edge highlight on coverts
-      if (t < 0.3) {
-        px(ctx, bx - i * 3, wingY, lighten(wc, 0.10));
-        px(ctx, bx + w - 3 + i * 3 + 2, wingY, lighten(wc, 0.10));
-      }
-      // Feather separation lines on primaries
-      if (t >= 0.65 && i % 2 === 1) {
-        px(ctx, bx - i * 3, wingY + wh - 1, shadow2);
-        px(ctx, bx + w - 3 + i * 3 + 2, wingY + wh - 1, shadow2);
-      }
-    }
-    // Covert leading edge highlight
-    if (wingSpan > 4) {
-      rect(ctx, bx - 3, wingY - 2, 3, 2, highlight);
-      rect(ctx, bx + w, wingY - 2, 3, 2, highlight);
-      rect(ctx, bx - 5, wingY - 1, 2, 1, highlight2);
-      rect(ctx, bx + w + 3, wingY - 1, 2, 1, highlight2);
-    }
+    drawBirdWingTop(ctx, bx, by, w, wingSpan, wingY, accent, shadow2, highlight, highlight2);
 
     // Tail feathers
     if (dir === UP) {
       const tailLen = params.tailLen || 6;
       const tailCol = params.tailAccent || accent;
-      for (let t = 0; t < tailLen; t += 2) {
-        rect(ctx, cx - 3 + t, by + h + t, 3, 3, tailCol);
-        rect(ctx, cx + 3 - t, by + h + t, 3, 3, tailCol);
-      }
+      drawBirdTailUp(ctx, cx, by, h, tailLen, tailCol);
     }
     // Feet — per-toe detail matching crow.js convention
     const fId = (x) => x;
@@ -154,32 +117,12 @@ export function drawBird(ctx, params, dir, frame) {
     // Wing (folded) — covert, secondary, and primary feather zones
     const wingY = by + 3 - wingUp;
     const wingW = Math.max(6, w - 4);
-    const covW = Math.floor(wingW * 0.3);
-    const priW = Math.floor(wingW * 0.35);
-    for (let i = 0; i < wingW; i++) {
-      const wc = i < covW
-        ? lighten(accent, 0.10)              // covert (lighter, near root)
-        : (i >= wingW - priW ? darken(accent, 0.10) : accent); // primary (darker, tip)
-      px(ctx, f(bx + 2 + i), wingY, lighten(wc, 0.06));
-      px(ctx, f(bx + 2 + i), wingY + 1, wc);
-      px(ctx, f(bx + 2 + i), wingY + 2, darken(wc, 0.08));
-    }
-    // Feather separation lines on primaries
-    for (let i = wingW - priW; i < wingW - 1; i += 2) {
-      px(ctx, f(bx + 2 + i), wingY + 2, shadow2);
-    }
-    // Feather texture overlay (body-symmetric coords)
-    anisotropicSpeckle(ctx, bx + 2, wingY, wingW, 3, [featherTex, darken(accent, 0.06)], 0.16, Math.PI / 2, 2.0);
+    drawBirdWingSide(ctx, f, bx, wingY, wingW, accent, featherTex, shadow2);
 
     // Tail
     const tailLen = params.tailLen || 6;
     const tailCol = params.tailAccent || accent;
-    for (let t = 0; t < tailLen; t++) {
-      px(ctx, f(bx - 3 - t), by + h - 5 + t, tailCol);
-      px(ctx, f(bx - 3 - t), by + h - 4 + t, tailCol);
-      px(ctx, f(bx - 2 - t), by + h - 4 + t, shadow);
-    }
-    rect(ctx, f(bx - tailLen - 2), by + h - 5 + tailLen - 1, 3, 3, darken(tailCol, 0.18));
+    drawBirdTailSide(ctx, f, bx, by, h, tailLen, tailCol, shadow);
 
     // Feet
     drawBirdFoot(ctx, f, bx + 3,  by + h + 1, outline);

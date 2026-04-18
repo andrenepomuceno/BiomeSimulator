@@ -9,7 +9,7 @@
  *   - Inner-ear detail, paw pads, species-specific markings
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, softCircle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawHorns, drawAntlers, drawTusks, drawMask, drawMuzzle, drawFurTexture, drawQuadrupedLeg, drawQuadrupedLegSide, drawEyeSide } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawEarSide, drawNose, drawCheekPair, drawHorns, drawAntlers, drawTusks, drawMask, drawMuzzle, drawFurTexture, drawHead, drawQuadrupedLeg, drawQuadrupedLegSide, drawEyeSide, drawQuadrupedTailTop, drawQuadrupedTailBack, drawQuadrupedTailSide } from '../bodyParts.js';
 
 export function drawQuadruped(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -107,15 +107,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     const headW = Math.max(12, w - 2);
     const hx = cx - Math.floor(headW / 2);
     const hy = by - 8;
-    // Head shape
-    rect(ctx, hx + 2, hy, headW - 4, 3, body);
-    rect(ctx, hx, hy + 3, headW, 5, body);
-    rect(ctx, hx + 1, hy + 1, headW - 2, 2, body);
-    // Head highlight
-    rect(ctx, hx + 3, hy + 1, headW - 6, 2, highlight);
-    // Left/right shadow
-    px(ctx, hx, hy + 4, shadow); px(ctx, hx + 1, hy + 4, shadow);
-    px(ctx, hx, hy + 5, shadow); px(ctx, hx + 1, hy + 5, shadow);
+    drawHead(ctx, hx, hy, headW, 8, body, highlight, shadow);
     // Cheeks
     if (params.cheeks) {
       drawCheekPair(ctx, hx, hy + 4, headW, 0, params.cheeks);
@@ -166,25 +158,16 @@ export function drawQuadruped(ctx, params, dir, frame) {
 
     // -- Tail --
     if (params.tail) {
-      if (params.squirrelTail) {
-        // Large bushy plume at rear (top-down view)
-        rect(ctx, cx - 4, by + h - 1, 9, 8, accent);
-        rect(ctx, cx - 3, by + h + 7, 7, 3, lighten(accent, 0.1));
-        px(ctx, cx - 1, by + h + 1, lighten(accent, 0.18));
-      } else if (params.cottonTail) {
-        rect(ctx, cx - 2, by + h, 4, 4, '#fffff4');
-        px(ctx, cx, by + h + 1, '#ffffff');
-      } else if (params.bushyTail) {
-        rect(ctx, cx - 1, by + h - 3, 4, 4, accent);
-        rect(ctx, cx + 2, by + h - 1, 3, 3, accent);
-        rect(ctx, cx, by + h - 2, 3, 2, lighten(accent, 0.1));
-      } else if (params.tailStripes) {
-        rect(ctx, cx - 1, by + h, 3, 3, body);
-        rect(ctx, cx - 1, by + h + 3, 3, 3, '#333333');
-        rect(ctx, cx - 1, by + h + 6, 3, 2, body);
-      } else {
-        rect(ctx, cx - 1, by + h, 3, 4, shadow);
-      }
+      const tailStyle = params.squirrelTail
+        ? 'squirrel'
+        : params.cottonTail
+          ? 'cotton'
+          : params.bushyTail
+            ? 'bushy'
+            : params.tailStripes
+              ? 'striped'
+              : 'plain';
+      drawQuadrupedTailTop(ctx, cx, by + h, tailStyle, body, accent, shadow);
     }
 
   } else if (dir === UP) {
@@ -221,10 +204,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
     const headW = Math.max(12, w - 2);
     const hx = cx - Math.floor(headW / 2);
     const hy = by - 8;
-    rect(ctx, hx + 3, hy, headW - 6, 3, body);
-    rect(ctx, hx, hy + 3, headW, 5, body);
-    rect(ctx, hx + 1, hy + 1, headW - 2, 2, body);
-    rect(ctx, hx + 4, hy + 2, headW - 8, 2, highlight);
+    drawHead(ctx, hx, hy, headW, 8, body, highlight, shadow);
     // Ears
     if (params.earH) {
       drawEarPair(ctx, hx, hy, headW, params.earH, body, params.earInner, params.pointedEars);
@@ -243,24 +223,16 @@ export function drawQuadruped(ctx, params, dir, frame) {
 
     // -- Tail (back view) --
     if (params.tail) {
-      if (params.squirrelTail) {
-        rect(ctx, cx - 4, hy - 3, 9, 7, accent);
-        rect(ctx, cx - 3, hy + 3, 7, 3, lighten(accent, 0.1));
-        px(ctx, cx - 1, hy - 1, lighten(accent, 0.18));
-      } else if (params.cottonTail) {
-        // White puff visible from back
-        rect(ctx, cx - 2, hy + 2, 5, 5, '#fffff4');
-        px(ctx, cx, hy + 3, '#ffffff');
-        px(ctx, cx - 1, hy + 4, '#ffffff');
-      } else if (params.bushyTail) {
-        rect(ctx, cx - 1, hy, 4, 4, accent);
-        rect(ctx, cx - 3, hy + 1, 3, 3, lighten(accent, 0.08));
-      } else if (params.tailStripes) {
-        rect(ctx, cx - 1, hy, 3, 3, body);
-        rect(ctx, cx - 1, hy - 3, 3, 3, '#333333');
-      } else {
-        rect(ctx, cx - 1, hy + 2, 3, 4, shadow);
-      }
+      const tailStyle = params.squirrelTail
+        ? 'squirrel'
+        : params.cottonTail
+          ? 'cotton'
+          : params.bushyTail
+            ? 'bushy'
+            : params.tailStripes
+              ? 'striped'
+              : 'plain';
+      drawQuadrupedTailBack(ctx, cx, hy, tailStyle, body, accent, shadow);
     }
 
   } else {
@@ -329,20 +301,7 @@ export function drawQuadruped(ctx, params, dir, frame) {
 
     // -- Ear (side) --
     if (params.earH) {
-      const earX = headX + 3;
-      const earH = params.earH;
-      for (let e = 0; e < earH; e++) {
-        const ew = params.pointedEars
-          ? Math.max(1, 3 - Math.floor(e * 2 / Math.max(1, earH - 1)))
-          : 3;
-        for (let i = 0; i < ew; i++) px(ctx, f(earX + i), headY - 2 - e, body);
-      }
-      if (!params.pointedEars && params.earInner && earH >= 6) {
-        for (let e = 1; e < earH - 2; e++) {
-          px(ctx, f(earX + 1), headY - 2 - e, params.earInner);
-          px(ctx, f(earX + 2), headY - 2 - e, params.earInner);
-        }
-      }
+      drawEarSide(ctx, f, headX + 3, headY - 2, params.earH, body, params.earInner, params.pointedEars);
     }
     // Horns (side)
     if (params.horns) {
@@ -386,32 +345,16 @@ export function drawQuadruped(ctx, params, dir, frame) {
     if (params.tail) {
       const tailX = bx - 3;
       const tailY = by + 3;
-      if (params.squirrelTail) {
-        // Iconic arching tail: from rear base, rises above the spine, curls forward
-        rect(ctx, f(tailX - 1), by + Math.floor(h * 0.55), 6, 6, accent);         // root (bushy base)
-        rect(ctx, f(tailX - 4), by + Math.floor(h * 0.2), 5, 6, accent);          // rising section
-        rect(ctx, f(tailX - 3), by - 5, 8, 7, accent);                            // arch above spine
-        rect(ctx, f(tailX + 4), by - 7, 7, 5, lighten(accent, 0.08));             // curl forward
-        rect(ctx, f(tailX + 9), by - 4, 5, 4, lighten(accent, 0.14));             // drooping tip
-        px(ctx, f(tailX - 1), by + Math.floor(h * 0.55) + 1, lighten(accent, 0.18)); // root highlight
-      } else if (params.cottonTail) {
-        // Small round white puff at rear
-        rect(ctx, f(tailX - 1), tailY, 5, 5, '#fffff4');
-        px(ctx, f(tailX + 1), tailY + 1, '#ffffff');
-        px(ctx, f(tailX), tailY + 2, '#ffffff');
-      } else if (params.bushyTail) {
-        rect(ctx, f(tailX), tailY, 4, 4, accent);
-        rect(ctx, f(tailX - 3), tailY, 3, 3, accent);
-        rect(ctx, f(tailX - 3), tailY - 3, 3, 3, lighten(accent, 0.1));
-        px(ctx, f(tailX + 1), tailY + 1, lighten(accent, 0.12));
-      } else if (params.tailStripes) {
-        rect(ctx, f(tailX), tailY, 3, 3, body);
-        rect(ctx, f(tailX - 3), tailY, 3, 3, '#333333');
-        rect(ctx, f(tailX), tailY + 3, 3, 3, '#333333');
-      } else {
-        rect(ctx, f(tailX), tailY, 3, 4, shadow);
-        rect(ctx, f(tailX), tailY + 4, 3, 3, shadow2);
-      }
+      const tailStyle = params.squirrelTail
+        ? 'squirrel'
+        : params.cottonTail
+          ? 'cotton'
+          : params.bushyTail
+            ? 'bushy'
+            : params.tailStripes
+              ? 'striped'
+              : 'plain';
+      drawQuadrupedTailSide(ctx, f, tailX, tailY, tailStyle, body, accent, shadow, shadow2);
     }
   }
 }

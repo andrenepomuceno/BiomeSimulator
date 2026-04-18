@@ -396,6 +396,214 @@ export function drawSimpleBody(ctx, x, y, w, h, bodyColor, highlightColor, shado
   ao(ctx, x + 2, y + h - 3, w - 4, 3, 0.08);
 }
 
+/**
+ * Draw a side-view ear using a shared profile for mammals.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - x-flip function
+ * @param {number} x - base x (before flip)
+ * @param {number} y - base y
+ * @param {number} earH - ear height
+ * @param {string} earColor
+ * @param {string|null} innerColor
+ * @param {boolean} pointed
+ */
+export function drawEarSide(ctx, f, x, y, earH, earColor, innerColor = null, pointed = false) {
+  for (let e = 0; e < earH; e++) {
+    const ew = pointed
+      ? Math.max(1, 3 - Math.floor(e * 2 / Math.max(1, earH - 1)))
+      : 3;
+    for (let i = 0; i < ew; i++) px(ctx, f(x + i), y - e, earColor);
+  }
+  if (!pointed && innerColor && earH >= 6) {
+    for (let e = 1; e < earH - 2; e++) {
+      px(ctx, f(x + 1), y - e, innerColor);
+      px(ctx, f(x + 2), y - e, innerColor);
+    }
+  }
+}
+
+/**
+ * Draw quadruped tail variants for DOWN view.
+ */
+export function drawQuadrupedTailTop(ctx, cx, y, style, bodyColor, accent, shadow) {
+  if (style === 'squirrel') {
+    rect(ctx, cx - 4, y - 1, 9, 8, accent);
+    rect(ctx, cx - 3, y + 7, 7, 3, lighten(accent, 0.1));
+    px(ctx, cx - 1, y + 1, lighten(accent, 0.18));
+    return;
+  }
+  if (style === 'cotton') {
+    rect(ctx, cx - 2, y, 4, 4, '#fffff4');
+    px(ctx, cx, y + 1, '#ffffff');
+    return;
+  }
+  if (style === 'bushy') {
+    rect(ctx, cx - 1, y - 3, 4, 4, accent);
+    rect(ctx, cx + 2, y - 1, 3, 3, accent);
+    rect(ctx, cx, y - 2, 3, 2, lighten(accent, 0.1));
+    return;
+  }
+  if (style === 'striped') {
+    rect(ctx, cx - 1, y, 3, 3, bodyColor);
+    rect(ctx, cx - 1, y + 3, 3, 3, '#333333');
+    rect(ctx, cx - 1, y + 6, 3, 2, bodyColor);
+    return;
+  }
+  rect(ctx, cx - 1, y, 3, 4, shadow);
+}
+
+/**
+ * Draw quadruped tail variants for UP view.
+ */
+export function drawQuadrupedTailBack(ctx, cx, y, style, bodyColor, accent, shadow) {
+  if (style === 'squirrel') {
+    rect(ctx, cx - 4, y - 3, 9, 7, accent);
+    rect(ctx, cx - 3, y + 3, 7, 3, lighten(accent, 0.1));
+    px(ctx, cx - 1, y - 1, lighten(accent, 0.18));
+    return;
+  }
+  if (style === 'cotton') {
+    rect(ctx, cx - 2, y + 2, 5, 5, '#fffff4');
+    px(ctx, cx, y + 3, '#ffffff');
+    px(ctx, cx - 1, y + 4, '#ffffff');
+    return;
+  }
+  if (style === 'bushy') {
+    rect(ctx, cx - 1, y, 4, 4, accent);
+    rect(ctx, cx - 3, y + 1, 3, 3, lighten(accent, 0.08));
+    return;
+  }
+  if (style === 'striped') {
+    rect(ctx, cx - 1, y, 3, 3, bodyColor);
+    rect(ctx, cx - 1, y - 3, 3, 3, '#333333');
+    return;
+  }
+  rect(ctx, cx - 1, y + 2, 3, 4, shadow);
+}
+
+/**
+ * Draw quadruped side tail variants.
+ */
+export function drawQuadrupedTailSide(ctx, f, x, y, style, bodyColor, accent, shadow, shadow2) {
+  if (style === 'squirrel') {
+    rect(ctx, f(x - 1), y + 3, 6, 6, accent);
+    rect(ctx, f(x - 4), y - 1, 5, 6, accent);
+    rect(ctx, f(x - 3), y - 7, 8, 7, accent);
+    rect(ctx, f(x + 4), y - 9, 7, 5, lighten(accent, 0.08));
+    rect(ctx, f(x + 9), y - 6, 5, 4, lighten(accent, 0.14));
+    px(ctx, f(x - 1), y + 4, lighten(accent, 0.18));
+    return;
+  }
+  if (style === 'cotton') {
+    rect(ctx, f(x - 1), y, 5, 5, '#fffff4');
+    px(ctx, f(x + 1), y + 1, '#ffffff');
+    px(ctx, f(x), y + 2, '#ffffff');
+    return;
+  }
+  if (style === 'bushy') {
+    rect(ctx, f(x), y, 4, 4, accent);
+    rect(ctx, f(x - 3), y, 3, 3, accent);
+    rect(ctx, f(x - 3), y - 3, 3, 3, lighten(accent, 0.1));
+    px(ctx, f(x + 1), y + 1, lighten(accent, 0.12));
+    return;
+  }
+  if (style === 'striped') {
+    rect(ctx, f(x), y, 3, 3, bodyColor);
+    rect(ctx, f(x - 3), y, 3, 3, '#333333');
+    rect(ctx, f(x), y + 3, 3, 3, '#333333');
+    return;
+  }
+  rect(ctx, f(x), y, 3, 4, shadow);
+  rect(ctx, f(x), y + 4, 3, 3, shadow2);
+}
+
+/**
+ * Draw bird top-view head and optional eye ring/iris/specular.
+ */
+export function drawBirdHeadTop(ctx, cx, by, bodyColor, highlightColor, eyeRing, eyeColor, withEyes) {
+  rect(ctx, cx - 4, by - 7, 8, 7, bodyColor);
+  rect(ctx, cx - 3, by - 9, 6, 3, bodyColor);
+  rect(ctx, cx - 2, by - 9, 4, 2, highlightColor);
+  if (!withEyes) return;
+  rect(ctx, cx - 4, by - 5, 3, 3, eyeRing);
+  rect(ctx, cx + 1, by - 5, 3, 3, eyeRing);
+  px(ctx, cx - 3, by - 4, eyeColor);
+  px(ctx, cx + 2, by - 4, eyeColor);
+  px(ctx, cx - 3, by - 5, '#ffffff');
+  px(ctx, cx + 2, by - 5, '#ffffff');
+}
+
+/**
+ * Draw bird top-view wings with coverts/secondaries/primaries.
+ */
+export function drawBirdWingTop(ctx, bx, by, w, wingSpan, wingY, accent, shadow2, highlight, highlight2) {
+  for (let i = 1; i <= wingSpan; i++) {
+    const t = (i - 1) / Math.max(1, wingSpan - 1);
+    const wc = t < 0.25 ? lighten(accent, 0.10)
+      : t < 0.65 ? accent
+        : darken(accent, 0.12);
+    const wh = Math.max(1, 5 - Math.round(i * 3 / wingSpan));
+    rect(ctx, bx - i * 3, wingY, 3, wh, wc);
+    rect(ctx, bx + w - 3 + i * 3, wingY, 3, wh, wc);
+    if (t < 0.3) {
+      px(ctx, bx - i * 3, wingY, lighten(wc, 0.10));
+      px(ctx, bx + w - 3 + i * 3 + 2, wingY, lighten(wc, 0.10));
+    }
+    if (t >= 0.65 && i % 2 === 1) {
+      px(ctx, bx - i * 3, wingY + wh - 1, shadow2);
+      px(ctx, bx + w - 3 + i * 3 + 2, wingY + wh - 1, shadow2);
+    }
+  }
+  if (wingSpan > 4) {
+    rect(ctx, bx - 3, wingY - 2, 3, 2, highlight);
+    rect(ctx, bx + w, wingY - 2, 3, 2, highlight);
+    rect(ctx, bx - 5, wingY - 1, 2, 1, highlight2);
+    rect(ctx, bx + w + 3, wingY - 1, 2, 1, highlight2);
+  }
+}
+
+/**
+ * Draw bird UP-view fan tail.
+ */
+export function drawBirdTailUp(ctx, cx, by, h, tailLen, tailColor) {
+  for (let t = 0; t < tailLen; t += 2) {
+    rect(ctx, cx - 3 + t, by + h + t, 3, 3, tailColor);
+    rect(ctx, cx + 3 - t, by + h + t, 3, 3, tailColor);
+  }
+}
+
+/**
+ * Draw folded side wing strip for birds.
+ */
+export function drawBirdWingSide(ctx, f, bx, wingY, wingW, accent, featherTex, shadow2) {
+  const covW = Math.floor(wingW * 0.3);
+  const priW = Math.floor(wingW * 0.35);
+  for (let i = 0; i < wingW; i++) {
+    const wc = i < covW
+      ? lighten(accent, 0.10)
+      : (i >= wingW - priW ? darken(accent, 0.10) : accent);
+    px(ctx, f(bx + 2 + i), wingY, lighten(wc, 0.06));
+    px(ctx, f(bx + 2 + i), wingY + 1, wc);
+    px(ctx, f(bx + 2 + i), wingY + 2, darken(wc, 0.08));
+  }
+  for (let i = wingW - priW; i < wingW - 1; i += 2) {
+    px(ctx, f(bx + 2 + i), wingY + 2, shadow2);
+  }
+  anisotropicSpeckle(ctx, bx + 2, wingY, wingW, 3, [featherTex, darken(accent, 0.06)], 0.16, Math.PI / 2, 2.0);
+}
+
+/**
+ * Draw side-view tail streak for birds.
+ */
+export function drawBirdTailSide(ctx, f, bx, by, h, tailLen, tailColor, shadow) {
+  for (let t = 0; t < tailLen; t++) {
+    px(ctx, f(bx - 3 - t), by + h - 5 + t, tailColor);
+    px(ctx, f(bx - 3 - t), by + h - 4 + t, tailColor);
+    px(ctx, f(bx - 2 - t), by + h - 4 + t, shadow);
+  }
+  rect(ctx, f(bx - tailLen - 2), by + h - 5 + tailLen - 1, 3, 3, darken(tailColor, 0.18));
+}
+
 // ─── Reptile / Snake helpers ───────────────────────────────────────────────
 
 /**

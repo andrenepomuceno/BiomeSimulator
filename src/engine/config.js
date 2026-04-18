@@ -37,6 +37,7 @@ const FLEE_LOCK_MINUTES  = 14; //  5 ticks @ 500tpd
 const CHASE_LOCK_MINUTES = 14; //  5 ticks @ 500tpd
 const WATER_LOCK_MINUTES = 86; // 30 ticks @ 500tpd
 const PLANT_LOCK_MINUTES = 58; // 20 ticks @ 500tpd
+const IDLE_WANDER_LOCK_MINUTES = 43; // 15 ticks @ 500tpd
 
 const BASE_CONFIG = {
   // Map generation
@@ -59,6 +60,10 @@ const BASE_CONFIG = {
   sleep_threshold_offset_wrong_period: 10,
   activity_energy_penalty_wrong_period: 1.3,
   movement_sub_ticks: 5,
+  idle_wander_chance: 0.18,
+  idle_wander_min_dist: 4,
+  idle_wander_max_dist: 14,
+  idle_wander_attempts: 8,
   scavenge_corpse_hunger_restore: 35,  // hunger reduced when eating a corpse (less than item; stacks with drops)
   scavenge_corpse_energy_restore: 8,   // energy gained when eating a corpse
   scavenge_corpse_hp_restore: 4,       // hp gained when eating a corpse
@@ -77,7 +82,7 @@ const BASE_CONFIG = {
   injured_speed_factor: 0.70,                      // speed multiplier when hp is below the injured threshold
   threat_cache_ttl: 10,                            // ticks to reuse a found threat before rescanning (was 4)
   threat_scan_cooldown_ticks: 8,                   // ticks to skip scan after "no threat found" (was 2)
-  // water_lock_ticks / plant_lock_ticks: computed in createSimulationConfig from game-minute constants
+  // water_lock_ticks / plant_lock_ticks / idle_wander_lock_ticks: computed in createSimulationConfig from game-minute constants
 
   // Flora
   initial_plant_density: 0.10,
@@ -193,6 +198,7 @@ export function createSimulationConfig(overrides = {}) {
     chase_lock_ticks: merged.chase_lock_ticks ?? gameMinutesToTicks(CHASE_LOCK_MINUTES, ticksPerGameMinute),
     water_lock_ticks: merged.water_lock_ticks ?? gameMinutesToTicks(WATER_LOCK_MINUTES, ticksPerGameMinute),
     plant_lock_ticks: merged.plant_lock_ticks ?? gameMinutesToTicks(PLANT_LOCK_MINUTES, ticksPerGameMinute),
+    idle_wander_lock_ticks: merged.idle_wander_lock_ticks ?? gameMinutesToTicks(IDLE_WANDER_LOCK_MINUTES, ticksPerGameMinute),
     item_meat_decay_ticks: merged.item_meat_decay_ticks ?? gameMinutesToTicks(ITEM_MEAT_DECAY, ticksPerGameMinute),
     item_fruit_to_seed_ticks: merged.item_fruit_to_seed_ticks ?? gameMinutesToTicks(ITEM_FRUIT_TO_SEED, ticksPerGameMinute),
     item_seed_germination_ticks: merged.item_seed_germination_ticks ?? gameMinutesToTicks(ITEM_SEED_GERMINATION, ticksPerGameMinute),

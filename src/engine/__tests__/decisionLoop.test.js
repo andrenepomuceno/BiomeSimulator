@@ -11,10 +11,13 @@ const eatingMocks = vi.hoisted(() => ({
 }));
 
 const movementMocks = vi.hoisted(() => ({
+  clearWanderTarget: vi.fn(),
+  continueIdleWander: vi.fn(),
   computePath: vi.fn(),
   fleeFrom: vi.fn(),
   randomWalk: vi.fn(),
   reusePathIfValid: vi.fn(),
+  startIdleWander: vi.fn(),
   walkPath: vi.fn(),
 }));
 
@@ -57,10 +60,13 @@ vi.mock('../behaviors/eating.js', () => ({
 }));
 
 vi.mock('../behaviors/movement.js', () => ({
+  _clearWanderTarget: movementMocks.clearWanderTarget,
+  _continueIdleWander: movementMocks.continueIdleWander,
   _computePath: movementMocks.computePath,
   _fleeFrom: movementMocks.fleeFrom,
   _randomWalk: movementMocks.randomWalk,
   _reusePathIfValid: movementMocks.reusePathIfValid,
+  _startIdleWander: movementMocks.startIdleWander,
   _walkPath: movementMocks.walkPath,
 }));
 
@@ -175,7 +181,9 @@ describe('decideAndAct', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     combatMocks.findNearestThreat.mockReturnValue(null);
+    movementMocks.continueIdleWander.mockReturnValue(false);
     movementMocks.reusePathIfValid.mockReturnValue(false);
+    movementMocks.startIdleWander.mockReturnValue(false);
     utilsMocks.calculateEffectiveSleepThreshold.mockReturnValue(20);
     utilsMocks.canEatPlant.mockReturnValue(true);
     utilsMocks.isEdibleStage.mockReturnValue(true);
@@ -235,6 +243,50 @@ describe('decideAndAct', () => {
     expect(seekMocks.seekWater).toHaveBeenCalledWith(animal, world, animal.visionRange);
     expect(seekMocks.seekPlantFood).not.toHaveBeenCalled();
     expect(seekMocks.seekOmnivoreFood).not.toHaveBeenCalled();
+  });
+
+  it('clears idle wander before seeking water', () => {
+    const animal = createAnimal({ thirst: 90, _wanderTargetX: 8, _wanderTargetY: 8, _wanderLockUntilTick: 99 });
+    const world = createWorld();
+
+    decideAndAct(animal, world, {});
+
+    expect(movementMocks.clearWanderTarget).toHaveBeenCalledWith(animal);
+    expect(seekMocks.seekWater).toHaveBeenCalledWith(animal, world, animal.visionRange);
+  });
+
+  it('continues idle wander before starting a new random walk', () => {
+    const animal = createAnimal({ hunger: 0, thirst: 0, path: [] });
+    const world = createWorld();
+    movementMocks.continueIdleWander.mockReturnValue(true);
+
+    decideAndAct(animal, world, {});
+
+    expect(movementMocks.continueIdleWander).toHaveBeenCalledWith(animal, world);
+    expect(movementMocks.startIdleWander).not.toHaveBeenCalled();
+    expect(movementMocks.randomWalk).not.toHaveBeenCalled();
+  });
+
+  it('starts idle wander before falling back to random walk', () => {
+    const animal = createAnimal({ hunger: 0, thirst: 0, path: [] });
+    const world = createWorld();
+    movementMocks.startIdleWander.mockReturnValue(true);
+
+    decideAndAct(animal, world, {});
+
+    expect(movementMocks.continueIdleWander).toHaveBeenCalledWith(animal, world);
+    expect(movementMocks.startIdleWander).toHaveBeenCalledWith(animal, world);
+    expect(movementMocks.randomWalk).not.toHaveBeenCalled();
+  });
+
+  it('falls back to random walk when idle wander is unavailable', () => {
+    const animal = createAnimal({ hunger: 0, thirst: 0, path: [] }, { random_walk_chance: 1 });
+    const world = createWorld();
+
+    decideAndAct(animal, world, {});
+
+    expect(movementMocks.startIdleWander).toHaveBeenCalledWith(animal, world);
+    expect(movementMocks.randomWalk).toHaveBeenCalledWith(animal, world);
   });
 
   it('flees from nearby threats before seeking food when HP is low', () => {

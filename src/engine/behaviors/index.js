@@ -5,7 +5,7 @@ import { S_ADULT, S_SEED } from '../flora.js';
 import { DEEP_WATER, WATER } from '../world.js';
 import { _attack, _findNearestThreat, _isThreatValidFor, _shouldRetreatFromCarnivore } from './combat.js';
 import { _eatPlantTile } from './eating.js';
-import { _computePath, _fleeFrom, _randomWalk, _reusePathIfValid, _walkPath } from './movement.js';
+import { _clearWanderTarget, _computePath, _continueIdleWander, _fleeFrom, _randomWalk, _reusePathIfValid, _startIdleWander, _walkPath } from './movement.js';
 import { _findMate, _doMate, giveBirth } from './reproduce.js';
 import { _seekOmnivoreFood, _seekPlantFood, _seekPrey, _seekWater } from './seek.js';
 import { _doDrink, _doEat, _doSleep } from './states.js';
@@ -95,6 +95,7 @@ export function decideAndAct(animal, world, spatialHash) {
     if (animal.energy <= 0) {
       const terrain = world.terrain[world.idx(animal.x, animal.y)];
       if (terrain !== WATER && terrain !== DEEP_WATER) {
+        _clearWanderTarget(animal);
         if (animal.state !== AnimalState.SLEEPING) {
           animal.logAction(world.clock.tick, 'FELL_ASLEEP', { energy: Math.round(animal.energy), cause: 'exhausted' });
         }
@@ -123,6 +124,7 @@ export function decideAndAct(animal, world, spatialHash) {
           animal.state = AnimalState.IDLE;
           // Fall through to decision tree — flee logic will run
         } else {
+          _clearWanderTarget(animal);
           _doSleep(animal, world);
           return;
         }
@@ -130,10 +132,12 @@ export function decideAndAct(animal, world, spatialHash) {
     }
 
     if (animal.state === AnimalState.EATING) {
+      _clearWanderTarget(animal);
       _doEat(animal);
       return;
     }
     if (animal.state === AnimalState.DRINKING) {
+      _clearWanderTarget(animal);
       _doDrink(animal, world);
       return;
     }
@@ -159,6 +163,7 @@ export function decideAndAct(animal, world, spatialHash) {
     const { vision, isNight, thresholds } = _buildCtx(animal, world);
 
     if (animal.thirst > (thresholds.drink_opportunistic ?? 25) && world.isWaterAdjacent(animal.x, animal.y)) {
+      _clearWanderTarget(animal);
       animal.state = AnimalState.DRINKING;
       animal.applyEnergyCost('DRINK');
       return;
@@ -175,6 +180,7 @@ export function decideAndAct(animal, world, spatialHash) {
             ? (thresholds.eat_adult_plant_min_hunger ?? 35)
             : (thresholds.eat_opportunistic ?? 20);
         if (animal.hunger > minHunger) {
+          _clearWanderTarget(animal);
           _eatPlantTile(animal, world, idx);
           return;
         }
@@ -182,6 +188,7 @@ export function decideAndAct(animal, world, spatialHash) {
     }
 
     if (animal.thirst > (thresholds.critical_thirst ?? 55)) {
+      _clearWanderTarget(animal);
       _seekWater(animal, world, vision);
       return;
     }
@@ -206,6 +213,7 @@ export function decideAndAct(animal, world, spatialHash) {
           && dist <= 1.5
           && animal.hp >= animal.maxHp * fightBackThreshold;
         if (canFightBack) {
+          _clearWanderTarget(animal);
           // Predator is in melee range and animal is healthy enough — fight back
           if (threat.id !== animal._fleeTargetId) {
             animal.logAction(tick, 'FOUGHT_BACK', { attacker: threat.species, attackerId: threat.id });
@@ -221,6 +229,7 @@ export function decideAndAct(animal, world, spatialHash) {
           animal._fleeTargetId = threat.id;
         }
         animal._fleeLockUntilTick = tick + fleeLockTicks;
+        _clearWanderTarget(animal);
         _fleeFrom(animal, threat, world);
         return;
       }
@@ -253,12 +262,14 @@ export function decideAndAct(animal, world, spatialHash) {
           animal._fleeTargetId = retreatThreat.id;
         }
         animal._fleeLockUntilTick = tick + fleeLockTicks;
+        _clearWanderTarget(animal);
         _fleeFrom(animal, retreatThreat, world);
         return;
       }
     }
 
     if (animal.hunger > (thresholds.critical_hunger ?? 45)) {
+      _clearWanderTarget(animal);
       _seekFoodByDiet(animal, world, spatialHash, vision);
       return;
     }
@@ -271,6 +282,7 @@ export function decideAndAct(animal, world, spatialHash) {
           || (world.clock.tick < animal._fleeLockUntilTick && animal._cachedThreat?.alive)
           || animal.hp < animal.maxHp * (world.config.sleep_block_hp_threshold ?? 0.85);
         if (!inCombat) {
+          _clearWanderTarget(animal);
           animal.logAction(world.clock.tick, 'FELL_ASLEEP', { energy: Math.round(animal.energy) });
           animal.state = AnimalState.SLEEPING;
           return;
@@ -283,8 +295,10 @@ export function decideAndAct(animal, world, spatialHash) {
       if (mate) {
         const dist = Math.abs(mate.x - animal.x) + Math.abs(mate.y - animal.y);
         if (dist <= 2) {
+          _clearWanderTarget(animal);
           _doMate(animal, mate, world);
         } else {
+          _clearWanderTarget(animal);
           _computePath(animal, world, mate.x, mate.y, 40, 'mate');
           if (animal.path.length) {
             _walkPath(animal, world);
@@ -297,11 +311,13 @@ export function decideAndAct(animal, world, spatialHash) {
     }
 
     if (animal.hunger > (thresholds.moderate_hunger ?? 30)) {
+      _clearWanderTarget(animal);
       _seekFoodByDiet(animal, world, spatialHash, vision);
       return;
     }
 
     if (animal.thirst > (thresholds.moderate_thirst ?? 35)) {
+      _clearWanderTarget(animal);
       _seekWater(animal, world, vision);
       return;
     }
@@ -322,8 +338,14 @@ export function decideAndAct(animal, world, spatialHash) {
       }
     }
 
+    if (_continueIdleWander(animal, world)) {
+      return;
+    }
+
     if (animal.path.length && animal.pathIndex < animal.path.length) {
       _walkPath(animal, world);
+    } else if (_startIdleWander(animal, world)) {
+      return;
     } else if (Math.random() < (animal._config.random_walk_chance ?? 0.3)) {
       _randomWalk(animal, world);
     } else {

@@ -62,6 +62,9 @@ function reconstructAnimal(ad, speciesConfig) {
   a._eggMaxHp = ad._eggMaxHp || 0;
   a.parentA = ad.parentA ?? null;
   a.parentB = ad.parentB ?? null;
+  a._wanderTargetX = ad._wanderTargetX ?? null;
+  a._wanderTargetY = ad._wanderTargetY ?? null;
+  a._wanderLockUntilTick = ad._wanderLockUntilTick || 0;
   if (a._isEggStage && a._eggMaxHp > 0) {
     a.hp = ad.hp ?? a._eggMaxHp;
   }
@@ -192,6 +195,9 @@ self.onmessage = function (e) {
           _eggMaxHp: animal._eggMaxHp,
           parentA: animal.parentA,
           parentB: animal.parentB,
+          _wanderTargetX: animal._wanderTargetX,
+          _wanderTargetY: animal._wanderTargetY,
+          _wanderLockUntilTick: animal._wanderLockUntilTick,
           direction: animal.direction,
           actionHistory: animal.actionHistory,
         });

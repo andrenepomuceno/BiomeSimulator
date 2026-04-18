@@ -89,6 +89,122 @@ export function _setPath(animal, path, tick) {
   animal._pathTick = tick;
 }
 
+export function _clearWanderTarget(animal) {
+  animal._wanderTargetX = null;
+  animal._wanderTargetY = null;
+  animal._wanderLockUntilTick = 0;
+}
+
+function _idleWanderChance(animal, world) {
+  return animal._config.idle_wander_chance ?? world.config.idle_wander_chance ?? 0.18;
+}
+
+function _idleWanderMinDist(animal, world) {
+  return Math.max(2, animal._config.idle_wander_min_dist ?? world.config.idle_wander_min_dist ?? 4);
+}
+
+function _idleWanderMaxDist(animal, world) {
+  const minDist = _idleWanderMinDist(animal, world);
+  return Math.max(minDist + 1, animal._config.idle_wander_max_dist ?? world.config.idle_wander_max_dist ?? 14);
+}
+
+function _idleWanderAttempts(animal, world) {
+  return Math.max(1, animal._config.idle_wander_attempts ?? world.config.idle_wander_attempts ?? 8);
+}
+
+function _idleWanderLockTicks(animal, world) {
+  return Math.max(1, animal._config.idle_wander_lock_ticks ?? world.config.idle_wander_lock_ticks ?? 15);
+}
+
+function _pickIdleWanderTarget(animal, world) {
+  const attempts = _idleWanderAttempts(animal, world);
+  const minDist = _idleWanderMinDist(animal, world);
+  const maxDist = _idleWanderMaxDist(animal, world);
+  const startTx = animal.x | 0;
+  const startTy = animal.y | 0;
+  let best = null;
+  let bestScore = -Infinity;
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const dx = ((Math.random() * (maxDist * 2 + 1)) | 0) - maxDist;
+    const dy = ((Math.random() * (maxDist * 2 + 1)) | 0) - maxDist;
+    const dist = Math.abs(dx) + Math.abs(dy);
+    if (dist < minDist || dist > maxDist) continue;
+
+    const tx = startTx + dx;
+    const ty = startTy + dy;
+    if (tx < 0 || ty < 0 || tx >= world.width || ty >= world.height) continue;
+    if (tx === startTx && ty === startTy) continue;
+    if (!world.isWalkableFor(tx, ty, animal._walkableSet) || world.isTileBlocked(tx, ty)) continue;
+
+    const homePenalty = (Math.abs(animal.homeX - (tx + 0.5)) + Math.abs(animal.homeY - (ty + 0.5))) * 0.03;
+    const score = dist - homePenalty;
+    if (score > bestScore) {
+      bestScore = score;
+      best = [tx, ty];
+    }
+  }
+
+  return best;
+}
+
+export function _continueIdleWander(animal, world) {
+  const tick = world.clock.tick;
+  if (animal._wanderTargetX == null || animal._wanderTargetY == null) return false;
+  if (tick >= animal._wanderLockUntilTick) {
+    animal.path = [];
+    animal.pathIndex = 0;
+    _clearWanderTarget(animal);
+    return false;
+  }
+
+  const targetX = animal._wanderTargetX;
+  const targetY = animal._wanderTargetY;
+  if ((animal.x | 0) === targetX && (animal.y | 0) === targetY) {
+    animal.path = [];
+    animal.pathIndex = 0;
+    _clearWanderTarget(animal);
+    return false;
+  }
+  if (!world.isWalkableFor(targetX, targetY, animal._walkableSet) || world.isTileBlocked(targetX, targetY)) {
+    animal.path = [];
+    animal.pathIndex = 0;
+    _clearWanderTarget(animal);
+    return false;
+  }
+  if (_reusePathIfValid(animal, world, 'wander')) return true;
+
+  _computePath(animal, world, targetX, targetY, _idleWanderMaxDist(animal, world) + 6, 'wander');
+  if (animal.path.length) {
+    _walkPath(animal, world);
+    return true;
+  }
+
+  animal.path = [];
+  animal.pathIndex = 0;
+  _clearWanderTarget(animal);
+  return false;
+}
+
+export function _startIdleWander(animal, world) {
+  if (Math.random() >= _idleWanderChance(animal, world)) return false;
+
+  const target = _pickIdleWanderTarget(animal, world);
+  if (!target) return false;
+
+  animal._wanderTargetX = target[0];
+  animal._wanderTargetY = target[1];
+  animal._wanderLockUntilTick = world.clock.tick + _idleWanderLockTicks(animal, world);
+  _computePath(animal, world, target[0], target[1], _idleWanderMaxDist(animal, world) + 6, 'wander');
+  if (animal.path.length) {
+    _walkPath(animal, world);
+    return true;
+  }
+
+  _clearWanderTarget(animal);
+  return false;
+}
+
 export function _moveAnimal(animal, nx, ny, world) {
   const oldTx = animal.x | 0;
   const oldTy = animal.y | 0;
@@ -300,6 +416,7 @@ export function _randomWalk(animal, world) {
   const collector = world._benchmarkCollector;
   const startedAt = benchmarkStart(collector);
   try {
+    _clearWanderTarget(animal);
     let moved = false;
     let lastDdx = 0;
     let lastDdy = 0;

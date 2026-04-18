@@ -128,6 +128,11 @@ export class Animal {
     this._lastAttackerSpecies = null;
     this._lastAttackerId = null;
 
+    // Idle wander lock-in — medium-distance roaming target for idle movement
+    this._wanderTargetX = null;
+    this._wanderTargetY = null;
+    this._wanderLockUntilTick = 0;
+
     // Terrain / diet sets for fast O(1) lookups
     this._walkableSet = new Set(config.walkable_terrain || [1, 2, 3, 5, 8]);
     this._ediblePlants = new Set(config.edible_plants || []);
@@ -324,6 +329,9 @@ export class Animal {
       _eggMaxHp: this._eggMaxHp,
       parentA: this.parentA,
       parentB: this.parentB,
+      _wanderTargetX: this._wanderTargetX,
+      _wanderTargetY: this._wanderTargetY,
+      _wanderLockUntilTick: this._wanderLockUntilTick,
       direction: this.direction,
       actionHistory: this.actionHistory,
     };

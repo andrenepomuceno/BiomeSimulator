@@ -422,6 +422,9 @@ export class SimulationEngine {
       animal._eggMaxHp = delta._eggMaxHp || 0;
       animal.parentA = delta.parentA ?? null;
       animal.parentB = delta.parentB ?? null;
+      animal._wanderTargetX = delta._wanderTargetX ?? null;
+      animal._wanderTargetY = delta._wanderTargetY ?? null;
+      animal._wanderLockUntilTick = delta._wanderLockUntilTick || 0;
       animal.direction = delta.direction || 0;
       animal._dirty = true;
 
@@ -481,6 +484,9 @@ export class SimulationEngine {
         baby._eggMaxHp = bd._eggMaxHp || 0;
         baby.parentA = bd.parentA ?? null;
         baby.parentB = bd.parentB ?? null;
+        baby._wanderTargetX = bd._wanderTargetX ?? null;
+        baby._wanderTargetY = bd._wanderTargetY ?? null;
+        baby._wanderLockUntilTick = bd._wanderLockUntilTick || 0;
         if (baby._isEggStage) {
           baby.hp = baby._eggMaxHp;
         }

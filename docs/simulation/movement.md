@@ -49,6 +49,12 @@ Random walk executes `speed ± 1` sub-steps per tick (with terrain adjustment):
 - **Directional inertia:** 50% chance to keep the previous step's direction, producing smoother paths instead of zig-zag
 - Home bias is preserved (60% chance to prefer home direction when far, overrides inertia)
 
+When an animal is truly idle, the AI now prefers a short-lived **wander target** before falling back to pure local random walk:
+
+- Idle wander samples a medium-distance destination tile, computes an A* path, and keeps that target locked for a few ticks
+- This produces visibly longer idle walks instead of repeated local dithering
+- Random walk is still used as the cheap fallback when no viable wander target/path is found or the area is crowded
+
 ---
 
 ## Tile Occupancy

@@ -140,11 +140,11 @@ export function useSimulation() {
                 store.setSelectedTile({ x: msg.x, y: msg.y, ...filtered });
               }
             } else {
-              // Fresh click: auto-select lone animal (alive or corpse); otherwise show tile view
+              // Fresh click: auto-select lone targets only on otherwise empty tiles; mixed tiles open tile view
               const tileAnimals = filtered.animals || [];
               const tileItems = filtered.items || [];
               const hasPlant = !!(filtered.plant?.type);
-              if (tileAnimals.length === 1 && tileItems.length === 0) {
+              if (tileAnimals.length === 1 && !hasPlant && tileItems.length === 0) {
                 store.setSelectedEntity(tileAnimals[0]);
                 // Also request detailed info (actionHistory, nav context)
                 if (workerRef.current) {

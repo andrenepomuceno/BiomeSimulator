@@ -171,6 +171,9 @@ const useSimStore = create((set, get) => ({
   terrainData: null, // Uint8Array
   worldReady: null,
   isGeneratingWorld: false,
+  isPreparingAssets: false,
+  assetPreparationTitle: '',
+  assetPreparationSubtitle: '',
   terrainUndoStack: [],
   terrainRedoStack: [],
   _actionSeq: 0,
@@ -179,6 +182,21 @@ const useSimStore = create((set, get) => ({
   pendingEntityPlacementQueue: [],
   setTerrain: (data, w, h) => set({ terrainData: data, mapWidth: w, mapHeight: h }),
   setGeneratingWorld: (isGeneratingWorld) => set({ isGeneratingWorld: !!isGeneratingWorld }),
+  startAssetPreparation: (title, subtitle = '') => set({
+    isPreparingAssets: true,
+    assetPreparationTitle: title || 'Preparing assets',
+    assetPreparationSubtitle: subtitle || '',
+  }),
+  updateAssetPreparation: (title, subtitle = '') => set((state) => ({
+    isPreparingAssets: true,
+    assetPreparationTitle: title || state.assetPreparationTitle || 'Preparing assets',
+    assetPreparationSubtitle: subtitle || '',
+  })),
+  finishAssetPreparation: () => set({
+    isPreparingAssets: false,
+    assetPreparationTitle: '',
+    assetPreparationSubtitle: '',
+  }),
   applyTerrainChanges: (changes) => set((state) => {
     if (!state.terrainData || !Array.isArray(changes) || changes.length === 0) return {};
     const nextTerrain = new Uint8Array(state.terrainData);

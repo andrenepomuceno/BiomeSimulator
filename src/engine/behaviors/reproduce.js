@@ -95,6 +95,7 @@ function _layEggs(animal, mate, world, clutchSize) {
 
   const offsets = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
   let placed = 0;
+  const laidTiles = [];
   for (const [ddx, ddy] of offsets) {
     if (placed >= clutchSize) break;
     if (_checkPopulationCapWithEggs(animal, world)) break;
@@ -113,15 +114,26 @@ function _layEggs(animal, mate, world, clutchSize) {
       egg.parentA = animal.id;
       egg.parentB = mate.id;
       egg._birthTick = world.clock.tick;
-      egg.logAction(world.clock.tick, 'LAID', { parentA: animal.id, parentB: mate.id });
+      egg.logAction(world.clock.tick, 'LAID', { parentA: animal.id, parentB: mate.id, x: ntx, y: nty });
       world.animals.push(egg);
       world.placeEgg(bx, by);
+      laidTiles.push([ntx, nty]);
       placed++;
     }
   }
   if (placed > 0) {
-    animal.logAction(world.clock.tick, 'LAID_EGGS', { count: placed });
-    mate.logAction(world.clock.tick, 'LAID_EGGS', { count: placed });
+    animal.logAction(world.clock.tick, 'LAID_EGGS', {
+      count: placed,
+      nestX: baseTx,
+      nestY: baseTy,
+      tiles: laidTiles.slice(0, 6),
+    });
+    mate.logAction(world.clock.tick, 'LAID_EGGS', {
+      count: placed,
+      nestX: baseTx,
+      nestY: baseTy,
+      tiles: laidTiles.slice(0, 6),
+    });
   }
 }
 
@@ -145,7 +157,7 @@ export function giveBirth(mother, world) {
       baby.energy = speciesConfig.max_energy * 0.4;
       baby.age = 0;
       baby._birthTick = world.clock.tick;
-      baby.logAction(world.clock.tick, 'BORN', { parentA: mother.id });
+      baby.logAction(world.clock.tick, 'BORN', { parentA: mother.id, x: ntx, y: nty });
       mother.logAction(world.clock.tick, 'OFFSPRING', { babyId: baby.id, x: bx, y: by });
       world.animals.push(baby);
       world.placeAnimal(bx, by);
@@ -156,6 +168,6 @@ export function giveBirth(mother, world) {
   mother.gestationTimer = 0;
   mother._gestationLitterSize = 0;
   if (born > 0) {
-    mother.logAction(world.clock.tick, 'GAVE_BIRTH', { count: born });
+    mother.logAction(world.clock.tick, 'GAVE_BIRTH', { count: born, x: baseTx, y: baseTy });
   }
 }

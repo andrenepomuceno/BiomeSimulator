@@ -49,7 +49,12 @@ export function _tryScavenge(animal, world, spatialHash, vision) {
     animal.hp = Math.min(animal.maxHp, animal.hp + (world.config.scavenge_corpse_hp_restore ?? 8));
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
-    animal.logAction(world.clock.tick, 'SCAVENGED', { corpse: target.species, corpseId: target.id });
+    animal.logAction(world.clock.tick, 'SCAVENGED', {
+      corpse: target.species,
+      corpseId: target.id,
+      x: target.x | 0,
+      y: target.y | 0,
+    });
     target.consumed = true;
     target._dirty = true;
     return true;
@@ -80,6 +85,8 @@ export function _tryEatEgg(animal, world, spatialHash, vision) {
   if (!target) return false;
 
   if (bestDist <= 1.5) {
+    const eggX = target.x | 0;
+    const eggY = target.y | 0;
     target.hp = 0;
     world.markEntityDead(target);
     target.consumed = true;
@@ -88,7 +95,12 @@ export function _tryEatEgg(animal, world, spatialHash, vision) {
     animal.energy = Math.min(animal.maxEnergy, animal.energy + (world.config.scavenge_egg_energy_restore ?? 10));
     animal.state = AnimalState.EATING;
     animal.applyEnergyCost('EAT');
-    animal.logAction(world.clock.tick, 'ATE_EGG', { species: target.species, eggId: target.id });
+    animal.logAction(world.clock.tick, 'ATE_EGG', {
+      species: target.species,
+      eggId: target.id,
+      x: eggX,
+      y: eggY,
+    });
     return true;
   }
 

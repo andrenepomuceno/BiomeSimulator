@@ -20,7 +20,7 @@ const SELECT_FILTERS = [
 ];
 
 export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onLeftSidebarToggle, onRightSidebarToggle }) {
-  const { paused, running, tps, clock, tool, setTool, selectionTargets, setSelectionTarget } = useSimStore();
+  const { paused, running, tps, clock, climate, tool, setTool, selectionTargets, setSelectionTarget } = useSimStore();
 
   return (
     <div className="toolbar">
@@ -56,7 +56,7 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
       <div className="toolbar-group toolbar-group-clock">
         <div className={`day-indicator ${clock.is_night ? 'night' : 'day'}`}>
           <i className={`bi ${clock.is_night ? 'bi-moon-stars-fill' : 'bi-sun-fill'} toolbar-icon`} aria-hidden="true" />
-          <span>{formatTimeOfDay(clock.tick_in_day, clock.ticks_per_day)} · Day {clock.day} · Tick {clock.tick}</span>
+          <span>{formatTimeOfDay(clock.tick_in_day, clock.ticks_per_day)} · Day {clock.day} · Tick {clock.tick} · {climate?.seasonName ?? 'Spring'} · {(climate?.temperature ?? 15).toFixed(0)}°C</span>
         </div>
       </div>
 

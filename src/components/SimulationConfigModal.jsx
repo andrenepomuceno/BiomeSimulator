@@ -34,6 +34,7 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
     gameConfig,
     clock,
     tps,
+    climate,
     hungerMultiplier,
     thirstMultiplier,
     pauseOnBackground,
@@ -67,10 +68,11 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
   const sections = useMemo(() => buildSimulationConfigSections({
     gameConfig,
     clock,
+    climate,
     tps,
     hungerMultiplier,
     thirstMultiplier,
-  }), [gameConfig, clock, tps, hungerMultiplier, thirstMultiplier]);
+  }), [gameConfig, clock, climate, tps, hungerMultiplier, thirstMultiplier]);
 
   const worldSfxMutedByZoom = shouldMutePositionalSfx(viewport);
 

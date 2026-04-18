@@ -39,7 +39,7 @@ export function formatTimeOfDay(tickInDay = 0, ticksPerDay = 260) {
   const nightStart = 0.6; // Night starts at 60% of day cycle
   const dayDurationMinutes = 14.4 * 60; // ~864 minutes (14h 24m)
   const nightDurationMinutes = 9.6 * 60; // ~576 minutes (9h 36m)
-  const dayStartMinutes = 5 * 60 + 36; // 05:36 in minutes from midnight
+  const dayStartMinutes = 6 * 60; // 06:00 in minutes from midnight
   const nightStartMinutes = 20 * 60; // 20:00 in minutes from midnight
 
   let totalMinutes;

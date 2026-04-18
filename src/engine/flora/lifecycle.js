@@ -4,7 +4,7 @@ import { DIRT, MOUNTAIN, MUD, ROCK } from '../world.js';
 import { P_NONE, S_ADULT, S_ADULT_SPROUT, S_DEAD, S_FRUIT, S_NONE, S_SEED, S_YOUNG_SPROUT } from './constants.js';
 import { _canPlantGrow, _countAdjacentPlants } from './helpers.js';
 import { FRUIT_SPOIL_AGES, SPECIES_TERRAIN_GROWTH, STAGE_AGES, WATER_AFFINITY } from './lookups.js';
-import { _dirtDeathChance, _seasonDeathMult, _seasonGrowthMult, getSeason } from './modifiers.js';
+import { _dirtDeathChance, _seasonDeathMult, _seasonGrowthMult, computeTemperature, getTemperatureDeathMult, getTemperatureGrowthMult, getSeason } from './modifiers.js';
 import { produceOffspring } from './reproduction.js';
 
 export function processPlants(world) {
@@ -25,6 +25,14 @@ export function processPlants(world) {
   const seasonGrowth = _seasonGrowthMult(world)[season] ?? 1;
   const seasonDeath = _seasonDeathMult(world)[season] ?? 1;
   const dirtDeathChanceByStage = _dirtDeathChance(world);
+
+  // Temperature — computed once per tick, stored on world for worker/UI access
+  const temperature = computeTemperature(world);
+  world.temperature = temperature;
+  const tempGrowthMult = getTemperatureGrowthMult(temperature, world.config);
+  const tempDeathMult = getTemperatureDeathMult(temperature, world.config);
+  const combinedGrowth = seasonGrowth * tempGrowthMult;
+  const combinedDeath = seasonDeath * tempDeathMult;
 
   const activePlantCount = world.activePlantTiles.size;
   for (const idx of world.activePlantTiles) {
@@ -68,7 +76,7 @@ export function processPlants(world) {
         : terrain === ROCK
           ? (harshTerrainMult.rock ?? 1.5)
           : (harshTerrainMult.default ?? 1.0);
-      if (deathChance > 0 && Math.random() < deathChance * plantTickPhases * harshMult * seasonDeath) {
+      if (deathChance > 0 && Math.random() < deathChance * plantTickPhases * harshMult * combinedDeath) {
         world.plantStage[idx] = S_DEAD;
         world.plantAge[idx] = 0;
         world.plantEvents.deaths_terrain[ptype] = (world.plantEvents.deaths_terrain[ptype] || 0) + 1;
@@ -101,7 +109,7 @@ export function processPlants(world) {
         ? (world.config.water_stress_severe_multiplier ?? 2.0)
         : 1.0;
       const affinityMult = affinity === 3 ? (world.config.water_stress_high_affinity_multiplier ?? 1.5) : 1.0;
-      if (Math.random() < stressRate * plantTickPhases * severeMult * affinityMult * seasonDeath) {
+      if (Math.random() < stressRate * plantTickPhases * severeMult * affinityMult * combinedDeath) {
         world.plantStage[idx] = S_DEAD;
         world.plantAge[idx] = 0;
         world.plantEvents.deaths_water[ptype] = (world.plantEvents.deaths_water[ptype] || 0) + 1;
@@ -129,7 +137,7 @@ export function processPlants(world) {
     const crowdingThreshold = world.config.plant_crowding_neighbor_threshold ?? 5;
     const crowdingMult = crowding >= crowdingThreshold ? (world.config.plant_crowding_growth_penalty ?? 0.7) : 1.0;
 
-    const effectiveAge = Math.floor(world.plantAge[idx] * waterMult * terrainMult * seasonGrowth * crowdingMult);
+    const effectiveAge = Math.floor(world.plantAge[idx] * waterMult * terrainMult * combinedGrowth * crowdingMult);
     const ages = stageAgesMap[ptype];
     let newStage = stage;
 

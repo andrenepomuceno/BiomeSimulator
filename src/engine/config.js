@@ -137,6 +137,21 @@ const BASE_CONFIG = {
   season_reproduction_multiplier: [1.5, 1.0, 0.7, 0.2],
   season_death_multiplier: [0.8, 1.0, 1.2, 2.0],
 
+  // Climate — temperature model (sazonal + ciclo diário determinístico)
+  // Base temperature (°C) per season: [Spring, Summer, Autumn, Winter]
+  temperature_base: [15, 25, 12, 0],
+  // Daily amplitude (°C) per season — peak at solar noon, trough around dawn
+  temperature_amplitude: [8, 10, 7, 5],
+  // Range within which plants grow at full efficiency
+  temperature_optimal_min: 10,   // °C
+  temperature_optimal_max: 30,   // °C
+  // Outer bounds — beyond these, growth efficiency ramps toward a minimum
+  temperature_growth_min: 2,     // °C — cold penalty starts below this
+  temperature_growth_max: 40,    // °C — heat penalty starts above this
+  // Death rate boost thresholds
+  temperature_death_cold_threshold: 4,  // °C — frost mortality starts below this
+  temperature_death_heat_threshold: 35, // °C — heat mortality starts above this
+
   // Ground items — decay durations computed in createSimulationConfig from game-minute constants
   item_drop_radius_animal: 2,         // tile radius for radial meat scatter on death
   item_drop_radius_plant: 2,          // tile radius for radial fruit/seed scatter on reproduction

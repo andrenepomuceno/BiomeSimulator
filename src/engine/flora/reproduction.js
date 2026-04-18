@@ -4,7 +4,7 @@ import { DIRT, MOUNTAIN, MUD, ROCK } from '../world.js';
 import { P_NONE, S_ADULT, S_FRUIT, S_SEED } from './constants.js';
 import { _canPlantGrow, _countAdjacentPlants } from './helpers.js';
 import { PRODUCTION_CHANCES, REPRODUCTION_MODES, SPECIES_TERRAIN_GROWTH, TREE_TYPES } from './lookups.js';
-import { _seasonReproMult, getSeason } from './modifiers.js';
+import { _seasonReproMult, getTemperatureReproMult, getSeason } from './modifiers.js';
 import { ITEM_TYPE } from '../items.js';
 import { buildTreeDropProfiles } from '../plantSpecies.js';
 
@@ -20,6 +20,9 @@ export function produceOffspring(world) {
 
   const season = getSeason(world);
   const seasonRepro = _seasonReproMult(world)[season] ?? 1;
+  // Temperature-based reproduction modifier (already computed in processPlants this tick)
+  const temperature = world.temperature ?? 15;
+  const tempReproMult = getTemperatureReproMult(temperature, world.config);
 
   const adults = [];
   for (const idx of world.activePlantTiles) {
@@ -51,7 +54,7 @@ export function produceOffspring(world) {
     const terrain = world.terrain[idx];
     const speciesGrowth = SPECIES_TERRAIN_GROWTH[ptype];
     const terrainRepro = (speciesGrowth && speciesGrowth[terrain]) || 1.0;
-    const chance = (world.config.plant_production_chances?.[ptype] ?? PRODUCTION_CHANCES[ptype] ?? 0.005) * seasonRepro * terrainRepro;
+    const chance = (world.config.plant_production_chances?.[ptype] ?? PRODUCTION_CHANCES[ptype] ?? 0.005) * seasonRepro * tempReproMult * terrainRepro;
     if (Math.random() > chance) continue;
 
     const neighbors = _countAdjacentPlants(world, idx, width, height);

@@ -102,6 +102,8 @@ self.onmessage = function (e) {
       world.clock.dayFraction = e.data.dayFraction;
       world.hungerMultiplier = e.data.hungerMultiplier;
       world.thirstMultiplier = e.data.thirstMultiplier;
+      if (e.data.temperature != null) world.temperature = e.data.temperature;
+      if (e.data.currentSeason != null) world.currentSeason = e.data.currentSeason;
       world.resetDeathsThisTick();
       world.plantChanges = [];
       world.plantConsumptionClaims = [];

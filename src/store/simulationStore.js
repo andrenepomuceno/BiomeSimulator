@@ -263,6 +263,10 @@ const useSimStore = create((set, get) => ({
   setSimState: (s) => set(s),
   setClock: (clock) => set({ clock }),
 
+  // Climate state (season + temperature) — updated every tick from worker
+  climate: { season: 0, seasonName: 'Spring', temperature: 15 },
+  setClimate: (c) => set({ climate: c }),
+
   // Animals (in current viewport)
   animals: [],
   _animalsById: new Map(),

@@ -47,6 +47,7 @@ function formatClockLabel(clock, ticksPerDay) {
 export function buildSimulationConfigSections(state = {}) {
   const mergedConfig = createSimulationConfig(state.gameConfig || {});
   const clock = state.clock || {};
+  const climate = state.climate || {};
   const ticksPerDay = resolveTicksPerDay(mergedConfig.ticks_per_day);
   const liveTps = resolveNumber(state.tps, mergedConfig.ticks_per_second ?? DEFAULT_CONFIG.ticks_per_second);
   const liveHunger = resolveNumber(state.hungerMultiplier, mergedConfig.hunger_multiplier ?? DEFAULT_CONFIG.hunger_multiplier);
@@ -95,6 +96,20 @@ export function buildSimulationConfigSections(state = {}) {
           value: formatPercent(resolveNumber(mergedConfig.day_fraction, DEFAULT_CONFIG.day_fraction)),
           source: 'world',
           hint: 'Fraction of each cycle spent in daylight.',
+        },
+        {
+          id: 'season',
+          label: 'Season',
+          value: climate.seasonName ?? 'Spring',
+          source: 'live',
+          hint: 'Current season — Spring, Summer, Autumn or Winter (30 days each).',
+        },
+        {
+          id: 'temperature',
+          label: 'Temperature',
+          value: climate.temperature != null ? `${climate.temperature.toFixed(1)} °C` : '— °C',
+          source: 'live',
+          hint: 'Ambient temperature derived from season and time of day. Affects plant growth, reproduction and mortality.',
         },
       ],
     },

@@ -28,6 +28,7 @@ import { createSimulationConfig, DEFAULT_CONFIG } from '../engine/config.js';
 import { TERRAIN_NAMES, World } from '../engine/world.js';
 import { Animal } from '../engine/entities.js';
 import { GroundItem } from '../engine/items.js';
+import { SEASON_NAMES } from '../constants/simulation.js';
 
 let engine = null;
 let running = false;
@@ -250,6 +251,8 @@ async function doParallelFauna(targetEngine = engine) {
         dayFraction: w.clock.dayFraction,
         hungerMultiplier: w.hungerMultiplier,
         thirstMultiplier: w.thirstMultiplier,
+        temperature: w.temperature ?? 15,
+        currentSeason: w.currentSeason ?? 0,
         activePlantIndices,
         allAnimals: allAnimalStates,
         chunkIds,
@@ -358,6 +361,11 @@ function postTickState(tickMs = 0, forceFullSync = false, batchedPlantChanges = 
   const msg = {
     type: 'tick',
     clock: w.clock.toDict(),
+    climate: {
+      season: w.currentSeason ?? 0,
+      seasonName: SEASON_NAMES[w.currentSeason ?? 0] ?? 'Spring',
+      temperature: +(w.temperature ?? 15).toFixed(2),
+    },
     animals,
     plantChanges: plantChangesOverflow ? [] : plantChanges,
     itemChanges: itemChangesOverflow ? [] : (itemChanges.length > 0 ? itemChanges : undefined),
@@ -490,6 +498,11 @@ self.onmessage = function (e) {
         plantStage: new Uint8Array(w.plantStage).buffer,
         animals: w.animals.filter(a => a.alive).map(a => a.toDict()),
         clock: w.clock.toDict(),
+        climate: {
+          season: w.currentSeason ?? 0,
+          seasonName: SEASON_NAMES[w.currentSeason ?? 0] ?? 'Spring',
+          temperature: +(w.temperature ?? 15).toFixed(2),
+        },
         hungerMultiplier: w.hungerMultiplier,
         thirstMultiplier: w.thirstMultiplier,
         max_animal_population: config.max_animal_population || 0,
@@ -526,6 +539,11 @@ self.onmessage = function (e) {
         plantStage: new Uint8Array(rw.plantStage).buffer,
         animals: rw.animals.filter(a => a.alive).map(a => a.toDict()),
         clock: rw.clock.toDict(),
+        climate: {
+          season: rw.currentSeason ?? 0,
+          seasonName: SEASON_NAMES[rw.currentSeason ?? 0] ?? 'Spring',
+          temperature: +(rw.temperature ?? 15).toFixed(2),
+        },
         hungerMultiplier: rw.hungerMultiplier,
         thirstMultiplier: rw.thirstMultiplier,
         max_animal_population: rw.config.max_animal_population || 0,
@@ -811,6 +829,11 @@ self.onmessage = function (e) {
         plantStage: new Uint8Array(lw.plantStage).buffer,
         animals: lw.animals.filter(a => a.alive).map(a => a.toDict()),
         clock: lw.clock.toDict(),
+        climate: {
+          season: lw.currentSeason ?? 0,
+          seasonName: SEASON_NAMES[lw.currentSeason ?? 0] ?? 'Spring',
+          temperature: +(lw.temperature ?? 15).toFixed(2),
+        },
         hungerMultiplier: lw.hungerMultiplier,
         thirstMultiplier: lw.thirstMultiplier,
       });

@@ -33,6 +33,7 @@ export function useSimulation() {
           store.setTerrain(terrain, msg.width, msg.height);
           store.setAnimals(msg.animals || []);
           store.setClock(msg.clock);
+          if (msg.climate) store.setClimate(msg.climate);
           if (msg.config?.ticks_per_second != null) {
             store.setSimState({ tps: msg.config.ticks_per_second });
           }
@@ -59,6 +60,7 @@ export function useSimulation() {
 
         case 'tick':
           if (msg.clock) store.setClock(msg.clock);
+          if (msg.climate) store.setClimate(msg.climate);
           if (msg.animals) {
             if (msg.incremental) {
               // Incremental update: merge deltas into existing animals map

@@ -99,7 +99,9 @@ export class World {
       config.day_fraction || DEFAULT_DAY_FRACTION,
     );
 
-    // Stats history
+    // Climate state — updated every tick by processPlants
+    this.currentSeason = 0;   // 0=Spring, 1=Summer, 2=Autumn, 3=Winter
+    this.temperature = 15;    // °C, ambient temperature at current tick
     this.statsHistory = [];
 
     // Plant changes per tick (delta for renderer)

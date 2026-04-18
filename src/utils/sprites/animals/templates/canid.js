@@ -100,11 +100,6 @@ export function drawCanid(ctx, params, dir, frame) {
     rect(ctx, f(headX + 5), headY - 3, 2, 5, body);
   }
 
-  // Belly highlight (side view)
-  if (params.bellyColor) {
-    rect(ctx, f(bx + 3), by + Math.floor(h * 0.55), Math.floor(w * 0.45), Math.floor(h * 0.32), params.bellyColor);
-  }
-
   // Tail plume
   if (params.tail) {
     const tx = bx - 4;

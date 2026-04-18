@@ -472,9 +472,9 @@ export default function App() {
     playUiClick();
     const current = useSimStore.getState().autoPauseOnModalOpen;
     useSimStore.getState().setAutoPauseOnModalOpen(!current);
-    if (current) {
-      autoPausedByModalRef.current = false;
-    }
+    // Do not clear autoPausedByModalRef here. When autoPauseOnModalOpen changes,
+    // the auto-pause useEffect re-runs: if the ref is still true and a modal is
+    // open but auto-pause is now disabled, the effect resumes the simulation.
   }
 
   function _handleUndo() {

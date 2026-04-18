@@ -42,8 +42,9 @@ const ITEM_DISPLAY = {
   3: { emoji: '🌰', color: 0xaa8833 }, // SEED
 };
 
-const ITEM_TILE_SIZE = 0.5; // approximately half a tile
-const SPRITE_SCALE = ITEM_TILE_SIZE / FRAME_SIZE;
+// Keep item size in line with fauna/flora atlas scaling and apply
+// a small boost so drops remain readable without dominating the scene.
+const SPRITE_SCALE = (1 / FRAME_SIZE) * 0.85;
 
 function getMeatTextureKey(sourceSpecies) {
   const massInfo = MASS_DROP_MAP[sourceSpecies];

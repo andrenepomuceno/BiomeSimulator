@@ -126,6 +126,7 @@ export function _tryEatMeatItem(animal, world, vision) {
   let bestDist = Infinity;
   for (const item of nearby) {
     if (item.consumed || item.type !== ITEM_TYPE.MEAT) continue;
+    if (item.source === animal.species) continue; // no indirect cannibalism
     const dist = Math.abs(item.x + 0.5 - animal.x) + Math.abs(item.y + 0.5 - animal.y);
     if (dist < bestDist) {
       bestDist = dist;

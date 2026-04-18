@@ -19,6 +19,7 @@ import {
   P_POTATO,
   P_CHILI_PEPPER,
   P_OLIVE_TREE,
+  P_EDELWEISS,
   S_ADULT,
 } from './flora.js';
 import { decideAndAct, giveBirth } from './behaviors.js';
@@ -663,6 +664,7 @@ export class SimulationEngine {
       GRASS_PLANT: P_GRASS, CARROT: P_CARROT,
       POTATO: P_POTATO, CHILI_PEPPER: P_CHILI_PEPPER,
       OLIVE_TREE: P_OLIVE_TREE,
+      EDELWEISS: P_EDELWEISS,
     };
     if (TYPE_MAP[entityType] !== undefined) {
       const idx = w.idx(x, y);

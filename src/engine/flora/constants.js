@@ -14,6 +14,7 @@ export const P_COCONUT_PALM = 12;
 export const P_POTATO = 13;
 export const P_CHILI_PEPPER = 14;
 export const P_OLIVE_TREE = 15;
+export const P_EDELWEISS = 16;
 
 export const ALL_PLANT_TYPES = [
   P_GRASS,
@@ -31,6 +32,7 @@ export const ALL_PLANT_TYPES = [
   P_POTATO,
   P_CHILI_PEPPER,
   P_OLIVE_TREE,
+  P_EDELWEISS,
 ];
 
 export const PLANT_SEX = {
@@ -49,6 +51,7 @@ export const PLANT_SEX = {
   [P_POTATO]: 'ASEXUAL',
   [P_CHILI_PEPPER]: 'HERMAPHRODITE',
   [P_OLIVE_TREE]: 'HERMAPHRODITE',
+  [P_EDELWEISS]: 'HERMAPHRODITE',
 };
 
 export const S_NONE = 0;

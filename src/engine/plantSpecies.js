@@ -393,6 +393,30 @@ const PLANT_SPECIES = {
     terrainGrowth: { SOIL: 1.1, DIRT: 0.6, SAND: 0.7, FERTILE_SOIL: 1.5, ROCK: 0.0, MOUNTAIN: 0.0, MUD: 0.2 },
     swayStages: [2, 3, 4],
   },
+  EDELWEISS: {
+    id: 'EDELWEISS',
+    typeId: 16,
+    name: 'Edelweiss',
+    emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '🌸', adult: '🌸', fruit: '🌸' },
+    fruitEmoji: '🌸',
+    sex: 'HERMAPHRODITE',
+    reproduction: 'SEED',
+    productionChance: 0.014,
+    stageAges: [55, 222, 498, 2215],
+    fruitSpoilAge: 443,
+    edibleStages: [1, 4],
+    colors: {
+      seed:        [200, 210, 200,  40],
+      youngSprout: [220, 225, 215, 100],
+      adultSprout: [235, 235, 230, 170],
+      adult:       [245, 245, 240, 210],
+      fruit:       [255, 250, 245, 230],
+    },
+    fruitColor: [255, 250, 245, 230],
+    waterAffinity: 'low',
+    terrainGrowth: { SOIL: 0.5, DIRT: 0.3, FERTILE_SOIL: 0.4, ROCK: 1.2, MOUNTAIN: 1.5, MUD: 0.0 },
+    swayStages: [2, 3, 4],
+  },
 };
 
 /** Ordered list of all plant species keys */
@@ -422,10 +446,11 @@ const PLANT_UI_DATA = {
   POTATO:       { chartColor: '#b08b57', chartEmoji: '🥔' },
   CHILI_PEPPER: { chartColor: '#dd4b39', chartEmoji: '🌶️' },
   OLIVE_TREE:   { chartColor: '#7da34e', chartEmoji: '🫒' },
+  EDELWEISS:    { chartColor: '#e8e8d8', chartEmoji: '🌸' },
 };
 
 const TREE_PLANTS = ['APPLE_TREE', 'MANGO_TREE', 'OAK_TREE', 'COCONUT_PALM', 'OLIVE_TREE'];
-const LOW_PLANTS = ['GRASS', 'MUSHROOM', 'CARROT', 'POTATO'];
+const LOW_PLANTS = ['GRASS', 'MUSHROOM', 'CARROT', 'POTATO', 'EDELWEISS'];
 const DESERT_PLANTS = ['CACTUS', 'COCONUT_PALM', 'CHILI_PEPPER'];
 
 const SPAWN_WEIGHTS = {
@@ -443,7 +468,8 @@ const SPAWN_WEIGHTS = {
   CHILI_PEPPER: { near: 5, mid: 5, far: 6 },
   CACTUS: { near: 5, mid: 4, far: 5 },
   COCONUT_PALM: { near: 8, mid: 3, far: 2 },
-  OLIVE_TREE: { near: 5, mid: 2, far: 1 },
+  OLIVE_TREE:   { near: 5, mid: 2, far: 1 },
+  EDELWEISS:    { near: 1, mid: 2, far: 6 },
 };
 
 const PLANT_POPULATION_MAX_FACTOR = 4;

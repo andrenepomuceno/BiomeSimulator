@@ -141,19 +141,19 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
             <>
               <section className="sim-config-hero">
                 <p className="sim-config-intro">
-                  Read-only view of the active world&apos;s baseline settings and the live runtime values that can drift while the simulation is running.
+                  Settings in use by the current world. Live values refresh each tick. To make changes, use the main menu or the Stats &rarr; Settings tab.
                 </p>
                 <div className="sim-config-chip-list">
-                  <span className="sim-config-chip live">Live values update continuously</span>
-                  <span className="sim-config-chip">World config includes merged defaults</span>
-                  <span className="sim-config-chip">This panel is read-only</span>
+                  <span className="sim-config-chip live">Live &mdash; refreshes each tick</span>
+                  <span className="sim-config-chip">World &mdash; fixed at world start</span>
+                  <span className="sim-config-chip">Read-only &mdash; open menu to edit</span>
                 </div>
               </section>
 
               <section className="sim-config-section sim-config-behavior-section">
                 <div className="sim-config-section-header">
                   <h6>Runtime behavior</h6>
-                  <p>Control how the simulation behaves when this browser tab is not visible.</p>
+                  <p>Choose what happens when this browser tab is hidden or in the background.</p>
                 </div>
                 <div className="sim-config-background-row">
                   <div className="sim-config-row-copy">
@@ -201,7 +201,7 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
               </div>
 
               <p className="sim-config-footer">
-                Live multiplier editing remains in the population panel. New world generation settings stay in the main menu.
+                Edit hunger and thirst multipliers in Stats &rarr; Settings. Map and population settings are in ☰ Menu &rarr; New Game.
               </p>
             </>
           ) : (

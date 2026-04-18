@@ -101,7 +101,7 @@ export function buildSimulationConfigSections(state = {}) {
     {
       id: 'need-rates',
       title: 'Need Rates',
-      description: 'Runtime multipliers applied to hunger and thirst gain.',
+      description: 'Hunger and thirst rate multipliers. Adjust them live in Stats \u2192 Settings.',
       rows: [
         {
           id: 'hunger-multiplier',
@@ -136,7 +136,7 @@ export function buildSimulationConfigSections(state = {}) {
           label: 'Global vision multiplier',
           value: formatMultiplier(resolveNumber(mergedConfig.animal_global_vision_multiplier, DEFAULT_CONFIG.animal_global_vision_multiplier)),
           source: 'world',
-          hint: 'Scales every species base vision before day/night modifiers.',
+          hint: 'Multiplies the base vision range for all species before day and night modifiers apply.',
         },
         {
           id: 'night-vision-reduction',
@@ -157,21 +157,21 @@ export function buildSimulationConfigSections(state = {}) {
     {
       id: 'supervisor',
       title: 'Supervisor',
-      description: 'Consistency-audit settings used by the simulation supervisor.',
+      description: 'Background checks that detect and report simulation anomalies in the worker.',
       rows: [
         {
           id: 'supervisor-enabled',
           label: 'Supervisor',
           value: resolveBoolean(mergedConfig.supervisor_enabled, DEFAULT_CONFIG.supervisor_enabled) ? 'Enabled' : 'Disabled',
           source: 'world',
-          hint: 'Controls whether sampled consistency audits run in the worker.',
+          hint: 'When enabled, the worker runs periodic checks and sends supervisor alerts on anomalies.',
         },
         {
           id: 'full-audit-interval',
           label: 'Full audit interval',
           value: formatTicks(resolveNumber(mergedConfig.supervisor_full_audit_interval_ticks, DEFAULT_CONFIG.supervisor_full_audit_interval_ticks)),
           source: 'world',
-          hint: 'Number of ticks between deeper audit passes.',
+          hint: 'How often the worker runs a full consistency scan across all entities.',
         },
         {
           id: 'sample-limit',
@@ -185,7 +185,7 @@ export function buildSimulationConfigSections(state = {}) {
           label: 'Log cooldown',
           value: formatTicks(resolveNumber(mergedConfig.supervisor_log_cooldown_ticks, DEFAULT_CONFIG.supervisor_log_cooldown_ticks)),
           source: 'world',
-          hint: 'Minimum spacing between repeated worker warnings.',
+          hint: 'Minimum ticks before the same audit warning can fire again.',
         },
       ],
     },

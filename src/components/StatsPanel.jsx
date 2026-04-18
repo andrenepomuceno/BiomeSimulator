@@ -472,7 +472,9 @@ export default function StatsPanel() {
       <ChartLegend datasets={performanceChartData.datasets} />
 
       <div className="stat-row">
-        <span className="stat-label">Engine Tick</span>
+        <span className="stat-label">
+          Engine Tick{profiling?.engine?.ticksInBatch > 1 ? ` ×${profiling.engine.ticksInBatch}` : ''}
+        </span>
         <span className="stat-value" style={{ color: '#7fc8ff' }}>
           {(profiling?.engine?.tickMs || stats.tickMs || 0).toFixed(2)}ms
         </span>

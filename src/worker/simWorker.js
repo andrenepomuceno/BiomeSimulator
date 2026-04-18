@@ -179,7 +179,7 @@ async function doTick() {
       Math.floor(tickAfter / FULL_SYNC_INTERVAL) > Math.floor(tickBefore / FULL_SYNC_INTERVAL);
 
     const tickMs = performance.now() - t0;
-    postTickState(tickMs, hadFullSync, batchedPlantChanges, batchedItemChanges);
+    postTickState(tickMs, hadFullSync, batchedPlantChanges, batchedItemChanges, ticksPerLoop);
   } finally {
     _ticking = false;
   }
@@ -324,7 +324,7 @@ function disposeFaunaWorkers() {
   faunaWorkersReady = false;
 }
 
-function postTickState(tickMs = 0, forceFullSync = false, batchedPlantChanges = null, batchedItemChanges = null) {
+function postTickState(tickMs = 0, forceFullSync = false, batchedPlantChanges = null, batchedItemChanges = null, ticksInBatch = 1) {
   const w = engine.world;
   const tick = w.clock.tick;
   const isFullSync = forceFullSync || tick % FULL_SYNC_INTERVAL === 0;
@@ -397,13 +397,18 @@ function postTickState(tickMs = 0, forceFullSync = false, batchedPlantChanges = 
     msg.phases = engine._latestPhases;
   }
 
+  // Per-tick average: when batching multiple sim ticks per UI frame, divide by count.
+  const perTickMs = tickMs / Math.max(1, ticksInBatch);
+
   if (profilingEnabled) {
     const profile = engine.getLatestProfile ? engine.getLatestProfile() : null;
     if (profile) {
       msg.profiling = {
         engine: {
           ...profile,
-          tickMs,
+          tickMs: perTickMs,
+          batchMs: tickMs,
+          ticksInBatch,
         },
       };
     }
@@ -413,7 +418,7 @@ function postTickState(tickMs = 0, forceFullSync = false, batchedPlantChanges = 
   if (tick % 10 === 0) {
     msg.stats = w.getStats();
     msg.stats.tick = tick;
-    msg.stats.tickMs = tickMs;
+    msg.stats.tickMs = perTickMs;
     msg.stats.animalCount = w.animals.length;
     msg.stats.activePlants = w.activePlantTiles.size;
     msg.statsHistory = w.statsHistory;

@@ -18,7 +18,7 @@ const ANIM_FLEE = 7;
 const ANIM_SLEEP = 8;
 
 // Pool limits
-const MAX_PARTICLES = 800;
+const MAX_PARTICLES = 1200;
 
 // Pre-built particle textures (created once lazily)
 let _particleTextures = null;
@@ -141,19 +141,19 @@ export class AnimationLayer {
   spawnAttack(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 10; i++) {
       const p = this._acquire('star');
       if (!p) break;
-      const angle = (Math.PI * 2 * i) / 7 + Math.random() * 0.3;
-      const speed = 0.015 + Math.random() * 0.025;
+      const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.25;
+      const speed = 0.011 + Math.random() * 0.02;
       p.vx = Math.cos(angle) * speed;
       p.vy = Math.sin(angle) * speed;
       p.life = 0;
-      p.maxLife = 24 + Math.random() * 12;
-      p.scaleStart = 0.015 + Math.random() * 0.008;
-      p.scaleEnd = 0.002;
+      p.maxLife = 44 + Math.random() * 20;
+      p.scaleStart = 0.02 + Math.random() * 0.012;
+      p.scaleEnd = 0.004;
       p.alphaStart = 1;
-      p.alphaEnd = 0;
+      p.alphaEnd = 0.05;
       p.sprite.x = cx;
       p.sprite.y = cy;
       p.sprite.tint = 0xff4444;
@@ -171,19 +171,19 @@ export class AnimationLayer {
     const cx = x;
     const cy = y;
     // Expanding ring of circles
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       const p = this._acquire('circle');
       if (!p) break;
-      const angle = (Math.PI * 2 * i) / 8;
-      const speed = 0.012 + Math.random() * 0.01;
+      const angle = (Math.PI * 2 * i) / 10;
+      const speed = 0.01 + Math.random() * 0.008;
       p.vx = Math.cos(angle) * speed;
       p.vy = Math.sin(angle) * speed;
       p.life = 0;
-      p.maxLife = 30 + Math.random() * 12;
-      p.scaleStart = 0.012;
-      p.scaleEnd = 0.003;
-      p.alphaStart = 0.9;
-      p.alphaEnd = 0;
+      p.maxLife = 48 + Math.random() * 18;
+      p.scaleStart = 0.016 + Math.random() * 0.006;
+      p.scaleEnd = 0.005;
+      p.alphaStart = 1;
+      p.alphaEnd = 0.05;
       p.sprite.x = cx;
       p.sprite.y = cy;
       p.sprite.tint = 0x88ff88;
@@ -199,20 +199,20 @@ export class AnimationLayer {
   spawnDeath(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       const p = this._acquire('circle');
       if (!p) break;
-      const angle = (Math.PI * 2 * i) / 8 + Math.random() * 0.2;
-      const speed = 0.01 + Math.random() * 0.025;
+      const angle = (Math.PI * 2 * i) / 12 + Math.random() * 0.25;
+      const speed = 0.008 + Math.random() * 0.02;
       p.vx = Math.cos(angle) * speed;
       p.vy = Math.sin(angle) * speed - 0.01;
       p.gravity = 0.0007;
       p.life = 0;
-      p.maxLife = 36 + Math.random() * 14;
-      p.scaleStart = 0.01 + Math.random() * 0.006;
-      p.scaleEnd = 0.001;
-      p.alphaStart = 0.85;
-      p.alphaEnd = 0;
+      p.maxLife = 54 + Math.random() * 22;
+      p.scaleStart = 0.014 + Math.random() * 0.01;
+      p.scaleEnd = 0.003;
+      p.alphaStart = 0.95;
+      p.alphaEnd = 0.04;
       p.sprite.x = cx;
       p.sprite.y = cy;
       p.sprite.tint = 0x888888;
@@ -228,20 +228,20 @@ export class AnimationLayer {
   spawnFruit(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const p = this._acquire('sparkle');
       if (!p) break;
-      p.vx = (Math.random() - 0.5) * 0.01;
-      p.vy = -0.01 - Math.random() * 0.015;
+      p.vx = (Math.random() - 0.5) * 0.008;
+      p.vy = -0.009 - Math.random() * 0.012;
       p.life = 0;
-      p.maxLife = 30 + Math.random() * 14;
-      p.scaleStart = 0.01 + Math.random() * 0.005;
-      p.scaleEnd = 0.002;
+      p.maxLife = 42 + Math.random() * 20;
+      p.scaleStart = 0.014 + Math.random() * 0.008;
+      p.scaleEnd = 0.004;
       p.alphaStart = 1;
-      p.alphaEnd = 0;
+      p.alphaEnd = 0.06;
       p.sprite.x = cx + (Math.random() - 0.5) * 0.4;
       p.sprite.y = cy + (Math.random() - 0.5) * 0.4;
-      p.sprite.tint = [0xffee44, 0xff6644, 0x44ddff][i % 3];
+      p.sprite.tint = [0xffee44, 0xff6644, 0x44ddff, 0xff99cc, 0xaaff66][i % 5];
       p.sprite.scale.set(p.scaleStart);
       p.sprite.alpha = 1;
       this._particles.push(p);
@@ -254,17 +254,17 @@ export class AnimationLayer {
   spawnMate(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 7; i++) {
       const p = this._acquire('heart');
       if (!p) break;
-      p.vx = (Math.random() - 0.5) * 0.008;
-      p.vy = -0.01 - Math.random() * 0.008;
+      p.vx = (Math.random() - 0.5) * 0.006;
+      p.vy = -0.009 - Math.random() * 0.007;
       p.life = 0;
-      p.maxLife = 36 + Math.random() * 14;
-      p.scaleStart = 0.012 + Math.random() * 0.005;
-      p.scaleEnd = 0.004;
+      p.maxLife = 52 + Math.random() * 24;
+      p.scaleStart = 0.018 + Math.random() * 0.008;
+      p.scaleEnd = 0.006;
       p.alphaStart = 1;
-      p.alphaEnd = 0;
+      p.alphaEnd = 0.07;
       p.sprite.x = cx + (Math.random() - 0.5) * 0.3;
       p.sprite.y = cy;
       p.sprite.tint = 0xff4488;
@@ -280,18 +280,18 @@ export class AnimationLayer {
   spawnEat(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const p = this._acquire('circle');
       if (!p) break;
       p.vx = (Math.random() - 0.5) * 0.02;
-      p.vy = -0.005 - Math.random() * 0.01;
+      p.vy = -0.004 - Math.random() * 0.008;
       p.gravity = 0.0012;
       p.life = 0;
-      p.maxLife = 22 + Math.random() * 8;
-      p.scaleStart = 0.006 + Math.random() * 0.004;
-      p.scaleEnd = 0.001;
-      p.alphaStart = 0.9;
-      p.alphaEnd = 0;
+      p.maxLife = 32 + Math.random() * 14;
+      p.scaleStart = 0.009 + Math.random() * 0.006;
+      p.scaleEnd = 0.003;
+      p.alphaStart = 0.95;
+      p.alphaEnd = 0.05;
       p.sprite.x = cx + (Math.random() - 0.5) * 0.3;
       p.sprite.y = cy;
       p.sprite.tint = 0x99cc55;
@@ -307,17 +307,17 @@ export class AnimationLayer {
   spawnDrink(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const p = this._acquire('circle');
       if (!p) break;
       p.vx = (Math.random() - 0.5) * 0.008;
-      p.vy = -0.012 - Math.random() * 0.008;
+      p.vy = -0.01 - Math.random() * 0.007;
       p.life = 0;
-      p.maxLife = 22 + Math.random() * 10;
-      p.scaleStart = 0.006 + Math.random() * 0.004;
-      p.scaleEnd = 0.002;
-      p.alphaStart = 0.9;
-      p.alphaEnd = 0;
+      p.maxLife = 32 + Math.random() * 16;
+      p.scaleStart = 0.009 + Math.random() * 0.006;
+      p.scaleEnd = 0.003;
+      p.alphaStart = 0.95;
+      p.alphaEnd = 0.05;
       p.sprite.x = cx + (Math.random() - 0.5) * 0.3;
       p.sprite.y = cy;
       p.sprite.tint = 0x44aaff;
@@ -333,18 +333,18 @@ export class AnimationLayer {
   spawnFlee(x, y) {
     const cx = x;
     const cy = y;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {
       const p = this._acquire('circle');
       if (!p) break;
       p.vx = (Math.random() - 0.5) * 0.03;
       p.vy = -0.005 - Math.random() * 0.008;
       p.gravity = 0.0008;
       p.life = 0;
-      p.maxLife = 16 + Math.random() * 8;
-      p.scaleStart = 0.008 + Math.random() * 0.005;
-      p.scaleEnd = 0.002;
-      p.alphaStart = 0.7;
-      p.alphaEnd = 0;
+      p.maxLife = 28 + Math.random() * 14;
+      p.scaleStart = 0.01 + Math.random() * 0.007;
+      p.scaleEnd = 0.003;
+      p.alphaStart = 0.82;
+      p.alphaEnd = 0.05;
       p.sprite.x = cx + (Math.random() - 0.5) * 0.3;
       p.sprite.y = cy;
       p.sprite.tint = 0xccbb99;
@@ -363,11 +363,11 @@ export class AnimationLayer {
     p.vx = (Math.random() - 0.5) * 0.004;
     p.vy = -0.006 - Math.random() * 0.004;
     p.life = 0;
-    p.maxLife = 35 + Math.random() * 15;
-    p.scaleStart = 0.008 + Math.random() * 0.004;
-    p.scaleEnd = 0.002;
-    p.alphaStart = 0.75;
-    p.alphaEnd = 0;
+    p.maxLife = 48 + Math.random() * 22;
+    p.scaleStart = 0.01 + Math.random() * 0.005;
+    p.scaleEnd = 0.003;
+    p.alphaStart = 0.85;
+    p.alphaEnd = 0.05;
     p.sprite.x = x + (Math.random() - 0.5) * 0.2;
     p.sprite.y = y - 0.3;
     p.sprite.tint = 0xaaaaff;

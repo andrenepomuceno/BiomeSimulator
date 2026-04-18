@@ -230,7 +230,7 @@ const MAJOR_PANEL_CARDS = [
   },
   {
     title: '📋 Entities',
-    body: 'Browse animals and plants in one place, then jump directly to the item you want to inspect.',
+    body: 'Browse animals, plants, and ground items in one place, then jump directly to the item you want to inspect.',
   },
 ];
 

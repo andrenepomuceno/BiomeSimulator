@@ -51,3 +51,35 @@ export function buildPlantEntry(typeId, stage, x, y) {
     raw: { type: typeId, stage },
   };
 }
+
+const ITEM_TYPE_NAMES = { 1: 'Meat', 2: 'Fruit', 3: 'Seed' };
+const ITEM_TYPE_EMOJIS = { 1: '🥩', 2: '🍑', 3: '🌰' };
+
+export function buildItemEntry(item) {
+  const typeName = ITEM_TYPE_NAMES[item.type] || 'Item';
+  const emoji = ITEM_TYPE_EMOJIS[item.type] || '📦';
+  let sourceLabel = '';
+  if (item.source != null) {
+    if (item.type === 1) {
+      const info = SPECIES_INFO[item.source];
+      sourceLabel = info ? info.name : String(item.source);
+    } else {
+      sourceLabel = '(plant)';
+    }
+  }
+  return {
+    key: `I-${item.id}`,
+    entityType: 'item',
+    groupKey: `item:${item.type}`,
+    groupLabel: typeName,
+    groupEmoji: emoji,
+    idLabel: `#${item.id}`,
+    speciesLabel: typeName,
+    emoji,
+    x: item.x,
+    y: item.y,
+    summary: `${sourceLabel ? `from ${sourceLabel} ` : ''}· Tile (${item.x}, ${item.y})`,
+    searchable: `${typeName} item ${item.id} ${item.x} ${item.y}`.toLowerCase(),
+    raw: item,
+  };
+}

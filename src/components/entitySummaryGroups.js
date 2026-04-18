@@ -1,17 +1,23 @@
-export function matchesActiveSelection(entry, selectedEntity, selectedTile) {
+export function matchesActiveSelection(entry, selectedEntity, selectedTile, selectedItem) {
   if (entry.entityType === 'animal') {
     return selectedEntity?.id === entry.raw.id;
   }
-  if (!selectedTile || !selectedTile.plant || selectedTile.plant.type === 0) return false;
-  return selectedTile.x === entry.x && selectedTile.y === entry.y;
+  if (entry.entityType === 'plant') {
+    if (!selectedTile || !selectedTile.plant || selectedTile.plant.type === 0) return false;
+    return selectedTile.x === entry.x && selectedTile.y === entry.y;
+  }
+  if (entry.entityType === 'item') {
+    return selectedItem?.id === entry.raw.id;
+  }
+  return false;
 }
 
-export function buildEntitySummaryGroups(entries, selectedEntity, selectedTile) {
+export function buildEntitySummaryGroups(entries, selectedEntity, selectedTile, selectedItem) {
   const groups = new Map();
 
   for (const entry of entries) {
     const key = entry.groupKey || `${entry.entityType}:${entry.speciesLabel}`;
-    const active = matchesActiveSelection(entry, selectedEntity, selectedTile);
+    const active = matchesActiveSelection(entry, selectedEntity, selectedTile, selectedItem);
     let group = groups.get(key);
 
     if (!group) {

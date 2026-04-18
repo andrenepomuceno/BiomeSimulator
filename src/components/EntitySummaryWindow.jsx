@@ -4,7 +4,7 @@ import {
   buildEntitySummaryGroups,
   matchesActiveSelection,
 } from './entitySummaryGroups';
-import { buildAnimalEntry, buildPlantEntry } from './entitySummaryEntries';
+import { buildAnimalEntry, buildPlantEntry, buildItemEntry } from './entitySummaryEntries';
 import { useModalA11y } from '../hooks/useModalA11y.js';
 
 // Items taller than this threshold get a virtual scroll body instead of full DOM render
@@ -18,11 +18,13 @@ const TYPE_FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'animal', label: 'Animals' },
   { id: 'plant', label: 'Plants' },
+  { id: 'item', label: 'Items' },
 ];
 
 const ENTITY_TYPE_LABELS = {
   animal: 'Animal',
   plant: 'Plant',
+  item: 'Item',
 };
 
 function handleActionKeyDown(event, action) {
@@ -51,7 +53,7 @@ function EntityItem({ entry, active, onInspect }) {
  * VirtualGroupBody renders only the visible slice of a large entry list.
  * It uses spacer divs (instead of giant paddings) to avoid flex layout overflow bugs.
  */
-function VirtualGroupBody({ entries, selectedEntity, selectedTile, onInspect }) {
+function VirtualGroupBody({ entries, selectedEntity, selectedTile, selectedItem, onInspect }) {
   const [scrollTop, setScrollTop] = useState(0);
   // Safe constant: max-height from CSS is min(42vh, 520px). 520px is the upper bound.
   const CONTAINER_H = 520;
@@ -74,7 +76,7 @@ function VirtualGroupBody({ entries, selectedEntity, selectedTile, onInspect }) 
         <EntityItem
           key={entry.key}
           entry={entry}
-          active={matchesActiveSelection(entry, selectedEntity, selectedTile)}
+          active={matchesActiveSelection(entry, selectedEntity, selectedTile, selectedItem)}
           onInspect={onInspect}
         />
       ))}
@@ -83,14 +85,14 @@ function VirtualGroupBody({ entries, selectedEntity, selectedTile, onInspect }) 
   );
 }
 
-function FlatGroupBody({ entries, selectedEntity, selectedTile, onInspect }) {
+function FlatGroupBody({ entries, selectedEntity, selectedTile, selectedItem, onInspect }) {
   return (
     <div className="entity-summary-group-body" role="list">
       {entries.map(entry => (
         <EntityItem
           key={entry.key}
           entry={entry}
-          active={matchesActiveSelection(entry, selectedEntity, selectedTile)}
+          active={matchesActiveSelection(entry, selectedEntity, selectedTile, selectedItem)}
           onInspect={onInspect}
         />
       ))}
@@ -108,7 +110,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
 
   useModalA11y({ open, onClose, containerRef: modalRef });
 
-  const { animals, worldReady, plantSnapshot, mapWidth, mapHeight, selectedEntity, selectedTile } = useSimStore();
+  const { animals, worldReady, plantSnapshot, mapWidth, mapHeight, selectedEntity, selectedTile, selectedItem, groundItems } = useSimStore();
 
   const animalEntries = useMemo(() => {
     if (!open || !Array.isArray(animals) || animals.length === 0) return [];
@@ -136,18 +138,24 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
     return entries;
   }, [open, worldReady, plantSnapshot, mapWidth, mapHeight]);
 
+  const itemEntries = useMemo(() => {
+    if (!open || !groundItems || groundItems.size === 0) return [];
+    return Array.from(groundItems.values()).map(buildItemEntry);
+  }, [open, groundItems]);
+
   const filteredEntries = useMemo(() => {
     const source = [];
     if (typeFilter === 'all' || typeFilter === 'animal') source.push(...animalEntries);
     if (typeFilter === 'all' || typeFilter === 'plant') source.push(...plantEntries);
+    if (typeFilter === 'all' || typeFilter === 'item') source.push(...itemEntries);
 
     if (!deferredSearch) return source;
     return source.filter(entry => entry.searchable.includes(deferredSearch));
-  }, [animalEntries, plantEntries, typeFilter, deferredSearch]);
+  }, [animalEntries, plantEntries, itemEntries, typeFilter, deferredSearch]);
 
   const groupedEntries = useMemo(
-    () => buildEntitySummaryGroups(filteredEntries, selectedEntity, selectedTile),
-    [filteredEntries, selectedEntity, selectedTile]
+    () => buildEntitySummaryGroups(filteredEntries, selectedEntity, selectedTile, selectedItem),
+    [filteredEntries, selectedEntity, selectedTile, selectedItem]
   );
 
   const activeGroupKeys = useMemo(() => {
@@ -183,7 +191,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
   }
 
   const hasSearch = deferredSearch.length > 0;
-  const totalEntries = animalEntries.length + plantEntries.length;
+  const totalEntries = animalEntries.length + plantEntries.length + itemEntries.length;
 
   if (!open) return null;
 
@@ -256,8 +264,8 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
 
                 {isOpen && (
                   group.entries.length > VIRTUAL_THRESHOLD
-                    ? <VirtualGroupBody entries={group.entries} selectedEntity={selectedEntity} selectedTile={selectedTile} onInspect={onInspect} />
-                    : <FlatGroupBody entries={group.entries} selectedEntity={selectedEntity} selectedTile={selectedTile} onInspect={onInspect} />
+                    ? <VirtualGroupBody entries={group.entries} selectedEntity={selectedEntity} selectedTile={selectedTile} selectedItem={selectedItem} onInspect={onInspect} />
+                    : <FlatGroupBody entries={group.entries} selectedEntity={selectedEntity} selectedTile={selectedTile} selectedItem={selectedItem} onInspect={onInspect} />
                 )}
               </div>
             );

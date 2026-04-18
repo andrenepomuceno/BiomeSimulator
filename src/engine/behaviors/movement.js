@@ -165,8 +165,14 @@ export function _followPath(animal, world) {
 }
 
 export function _walkPath(animal, world) {
+  const hpFrac = animal.hp / animal.maxHp;
+  const injuredThreshold = world.config.injured_speed_hp_threshold ?? 0.4;
+  const injuredFactor = world.config.injured_speed_factor ?? 0.7;
+  const baseSpeed = hpFrac < injuredThreshold
+    ? Math.max(1, animal.speed * injuredFactor)
+    : animal.speed;
   const jitter = (Math.random() * 3 | 0) - 1;
-  const terrainAdjusted = _terrainSteps(animal, world, Math.max(1, animal.speed + jitter));
+  const terrainAdjusted = _terrainSteps(animal, world, Math.max(1, baseSpeed + jitter));
   const steps = _effectiveSteps(terrainAdjusted, world);
   for (let s = 0; s < steps; s++) {
     if (!animal.path.length || animal.pathIndex >= animal.path.length) break;

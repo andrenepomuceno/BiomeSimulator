@@ -98,6 +98,13 @@ export class Animal {
     this._plantTargetY = null;       // locked plant destination tile Y
     this._plantLockUntilTick = 0;    // tick until plant destination is re-evaluated
 
+    // Long-term water memory — tile remembered from last successful drink
+    this._knownWaterX = null;
+    this._knownWaterY = null;
+
+    // Alert state — heightened vigilance for N ticks after a flee episode ends
+    this._alertUntilTick = 0;
+
     this.mateCooldown = 0;
     this.attackCooldown = 0;
     this._deathTick = null;

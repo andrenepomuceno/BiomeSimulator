@@ -94,7 +94,7 @@ export function _findNearestThreat(animal, world, spatialHash, vision) {
       return animal._cachedThreat;
     }
 
-    if (tick < animal._nextThreatCheckTick) {
+    if (tick < animal._nextThreatCheckTick && tick >= (animal._alertUntilTick ?? 0)) {
       benchmarkAdd(collector, 'threatCheckCooldownSkips', 1);
       benchmarkAddKeyed(collector, 'speciesThreatCooldownSkips', animal.species, 1);
       return null;

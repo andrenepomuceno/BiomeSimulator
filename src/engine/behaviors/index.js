@@ -191,7 +191,11 @@ export function decideAndAct(animal, world, spatialHash) {
         _fleeFrom(animal, threat, world);
         return;
       }
-      // No threat — clear flee episode
+      // No threat — clear flee episode and enter alert state
+      const alertTicks = world.config.alert_ticks_after_flee ?? 30;
+      if (animal._fleeTargetId != null && alertTicks > 0) {
+        animal._alertUntilTick = tick + alertTicks;
+      }
       animal._fleeTargetId = null;
       animal._fleeLockUntilTick = 0;
     }

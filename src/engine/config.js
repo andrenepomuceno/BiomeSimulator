@@ -72,6 +72,9 @@ const BASE_CONFIG = {
   carnivore_retreat_desperate_hunger: 45,          // hunger level that triggers desperate mode
   carnivore_retreat_desperate_thirst: 55,          // thirst level that triggers desperate mode
   sleep_block_hp_threshold: 0.85,                  // don't sleep voluntarily if hp < this fraction of maxHp
+  alert_ticks_after_flee: 30,                      // ticks of heightened threat vigilance after a flee episode ends
+  injured_speed_hp_threshold: 0.40,                // hp fraction below which movement speed is penalized
+  injured_speed_factor: 0.70,                      // speed multiplier when hp is below the injured threshold
   threat_cache_ttl: 10,                            // ticks to reuse a found threat before rescanning (was 4)
   threat_scan_cooldown_ticks: 8,                   // ticks to skip scan after "no threat found" (was 2)
   // water_lock_ticks / plant_lock_ticks: computed in createSimulationConfig from game-minute constants

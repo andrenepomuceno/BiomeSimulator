@@ -61,7 +61,9 @@ export function _seekWater(animal, world, vision) {
   try {
     benchmarkAddKeyed(collector, 'speciesSeekWater', animal.species, 1);
     if (world.isWaterAdjacent(animal.x, animal.y)) {
-      // Arrived — clear water lock
+      // Arrived — save as long-term water memory, clear short-term lock
+      animal._knownWaterX = animal.x | 0;
+      animal._knownWaterY = animal.y | 0;
       animal._waterLockUntilTick = 0;
       animal._waterTargetX = null;
       animal._waterTargetY = null;
@@ -88,6 +90,25 @@ export function _seekWater(animal, world, vision) {
       }
       // Path failed — clear lock and fall through to full scan
       animal._waterLockUntilTick = 0;
+    }
+
+    // Long-term water memory: try known water location before expensive grid scan
+    if (animal._knownWaterX != null
+        && world.isInBounds(animal._knownWaterX, animal._knownWaterY)
+        && world.isWaterAdjacent(animal._knownWaterX, animal._knownWaterY)) {
+      const pathLimit = desperate ? 80 : 50;
+      _computePath(animal, world, animal._knownWaterX, animal._knownWaterY, pathLimit, 'water_memory');
+      if (animal.path.length) {
+        // Lock onto remembered location
+        animal._waterTargetX = animal._knownWaterX;
+        animal._waterTargetY = animal._knownWaterY;
+        animal._waterLockUntilTick = tick + waterLockTicks;
+        _walkPath(animal, world);
+        return;
+      }
+      // Remembered location unreachable — forget it and fall through to full scan
+      animal._knownWaterX = null;
+      animal._knownWaterY = null;
     }
 
     // Full grid scan

@@ -42,12 +42,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build for GitHub Pages
+      - name: Build for GitHub Pages (with GA secret override)
+        if: ${{ secrets.GA_MEASUREMENT_ID != '' }}
         env:
           VITE_BASE_PATH: /BiomeSimulator/
-          # GA_MEASUREMENT_ID secret overrides the value in .env.production.
-          # If the secret is not set, Vite falls back to the committed .env.production value.
           VITE_GA_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+        run: npm run build
+
+      - name: Build for GitHub Pages (using .env.production)
+        if: ${{ secrets.GA_MEASUREMENT_ID == '' }}
+        env:
+          VITE_BASE_PATH: /BiomeSimulator/
         run: npm run build
 
       - name: Upload Pages artifact

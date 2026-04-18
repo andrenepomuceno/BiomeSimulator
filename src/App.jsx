@@ -46,7 +46,7 @@ function createDebounce(callback, delayMs) {
 }
 
 export default function App() {
-  const appVersion = packageJson?.version ?? 'dev';
+  const appVersion = import.meta.env.DEV ? 'dev' : (packageJson?.version ?? 'dev');
   const canvasContainerRef = useRef(null);
   const rendererRef = useRef(null);
   const { postCmd, requestTileInfo, requestAnimalDetail } = useSimulation();

@@ -6,9 +6,9 @@ import { DEFAULT_TICKS_PER_DAY } from '../constants/simulation.js';
 
 export const DEFAULT_AUDIO_SETTINGS = {
   muted: false,
-  masterVolume: 0.55,
-  sfxVolume: 0.72,
-  ambienceVolume: 0.32,
+  masterVolume: 0.72,
+  sfxVolume: 0.88,
+  ambienceVolume: 0.48,
   sfxEnabled: true,
   ambienceEnabled: true,
   unlocked: false,

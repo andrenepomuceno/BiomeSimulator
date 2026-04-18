@@ -18,10 +18,10 @@ const PITCH_JITTER = 0.05;
 const BUS_RAMP_SECONDS = 0.05;
 const AMBIENCE_FADE_SECONDS = 1.2;
 const PROCEDURAL_VARIANT_COUNT = 3;
-const SFX_BUS_BOOST = 1.9;
-const AMBIENCE_BUS_BOOST = 1.5;
-const MASTER_BUS_BOOST = 1.15;
-const OUTPUT_MAKEUP_GAIN = 1.22;
+const SFX_BUS_BOOST = 2.8;
+const AMBIENCE_BUS_BOOST = 1.8;
+const MASTER_BUS_BOOST = 1.4;
+const OUTPUT_MAKEUP_GAIN = 1.7;
 
 function hashString(value) {
   if (!value) return 0;
@@ -69,9 +69,9 @@ export class SoundManager {
     this.viewport = null;
     this.settings = {
       muted: false,
-      masterVolume: 0.55,
-      sfxVolume: 0.72,
-      ambienceVolume: 0.32,
+      masterVolume: 0.72,
+      sfxVolume: 0.88,
+      ambienceVolume: 0.48,
       sfxEnabled: true,
       ambienceEnabled: true,
       unlocked: false,

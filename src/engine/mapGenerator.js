@@ -87,6 +87,11 @@ export function generateTerrain(config) {
     }
   }
 
+  // River generation — runs before waterProximity BFS so riverbanks
+  // automatically receive MUD/FERTILE_SOIL in the detail2 pass below.
+  const riverCount = config.river_count ?? 0;
+  if (riverCount > 0) generateRivers(terrain, combined, w, h, riverCount, seed);
+
   // Secondary detail pass: fertile soil near water, mud at water edges
   const detail2 = fbmNoise(w, h, seed + 77777, 2, 0.02);
 
@@ -304,6 +309,115 @@ function generateEdgeFalloff(w, h, seed) {
   }
 
   return falloff;
+}
+
+// ---------------------------------------------------------------------------
+// River generation — greedy downhill descent with noise wiggle
+// ---------------------------------------------------------------------------
+
+/**
+ * Carve rivers into the terrain by following the heightmap downhill from
+ * high-elevation source tiles (MOUNTAIN, ROCK) to existing water bodies.
+ * River tiles are set to WATER so that:
+ *  - The waterProximity BFS run after this step naturally creates
+ *    MUD and FERTILE_SOIL riverbanks via the detail2 pass.
+ *  - The renderer treats them identically to coastal water (blue, animated).
+ *
+ * @param {Uint8Array}   terrain   - terrain grid (mutated in place)
+ * @param {Float64Array} heightmap - normalised [0..1] heightmap (same layout)
+ * @param {number}       w         - grid width
+ * @param {number}       h         - grid height
+ * @param {number}       riverCount - number of rivers to attempt
+ * @param {number}       seed
+ */
+function generateRivers(terrain, heightmap, w, h, riverCount, seed) {
+  if (riverCount <= 0) return;
+  const rng = mulberry32(seed + 33333);
+
+  // Collect elevated land tiles as candidate river sources.
+  const candidates = [];
+  for (let i = 0; i < terrain.length; i++) {
+    const t = terrain[i];
+    if (t === MOUNTAIN || t === ROCK) candidates.push(i);
+  }
+  if (candidates.length === 0) return;
+
+  // Partial Fisher-Yates — shuffle only the portion we need.
+  const tryCount = Math.min(riverCount * 8, candidates.length);
+  for (let i = 0; i < tryCount; i++) {
+    const j = i + Math.floor(rng() * (candidates.length - i));
+    const tmp = candidates[i]; candidates[i] = candidates[j]; candidates[j] = tmp;
+  }
+
+  // Minimum path length to qualify as a river (prevents tiny stubs).
+  const MIN_LENGTH = 15;
+  // Safety cap: 4× the longest map dimension.
+  const MAX_STEPS = Math.max(w, h) * 4;
+
+  let carved = 0;
+
+  for (let s = 0; s < tryCount && carved < riverCount; s++) {
+    const path = [];
+    const visited = new Set();
+    let ci = candidates[s];
+    let reachedWater = false;
+
+    for (let step = 0; step < MAX_STEPS; step++) {
+      if (visited.has(ci)) break;
+      visited.add(ci);
+
+      const t = terrain[ci];
+      if (t === WATER || t === DEEP_WATER) {
+        reachedWater = true;
+        break;
+      }
+
+      path.push(ci);
+      const cx = ci % w;
+      const cy = (ci / w) | 0;
+
+      // Pick the lowest unvisited 8-connected neighbour, with a small noise
+      // wiggle so rivers meander rather than cutting perfectly straight lines.
+      let bestIdx = -1;
+      let bestScore = Infinity;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if ((dx | dy) === 0) continue;
+          const nx = cx + dx, ny = cy + dy;
+          if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+          const ni = ny * w + nx;
+          if (visited.has(ni)) continue;
+          // Wiggle: ±0.06 random perturbation biased toward downhill.
+          const score = heightmap[ni] + rng() * 0.06;
+          if (score < bestScore) { bestScore = score; bestIdx = ni; }
+        }
+      }
+      if (bestIdx === -1) break; // hemmed in — abandon this source
+      ci = bestIdx;
+    }
+
+    if (!reachedWater || path.length < MIN_LENGTH) continue;
+
+    // Carve WATER along the path.  Widen the lower half slightly for realism.
+    for (let p = 0; p < path.length; p++) {
+      const idx = path[p];
+      terrain[idx] = WATER;
+
+      // Occasional widening in the lower course (downstream half).
+      if (p > path.length * 0.5 && rng() < 0.35) {
+        const px = idx % w;
+        const py = (idx / w) | 0;
+        const dirs4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        const [dx, dy] = dirs4[Math.floor(rng() * 4)];
+        const nx = px + dx, ny = py + dy;
+        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+          const ni = ny * w + nx;
+          if (terrain[ni] !== DEEP_WATER) terrain[ni] = WATER;
+        }
+      }
+    }
+    carved++;
+  }
 }
 
 // ---------------------------------------------------------------------------

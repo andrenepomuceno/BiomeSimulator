@@ -36,6 +36,7 @@ const BASE_CONFIG = {
   island_count: 8,
   island_size_factor: 0.24,
   min_land_ratio: 0.35, // adaptive sea_level clamp: guarantees at least this fraction of tiles are land
+  river_count: 4,      // number of rivers carved from highlands to water
   seed: null, // null = random
 
   // Simulation

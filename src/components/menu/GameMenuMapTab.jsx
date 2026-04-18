@@ -67,6 +67,19 @@ export default function GameMenuMapTab({ params, setParams, setParam }) {
             onChange={(event) => setParam('min_land_ratio', +event.target.value)}
           />
         </div>
+
+        <div className="gm-field">
+          <label>Rivers</label>
+          <div className="gm-field-value">{params.river_count ?? 0}</div>
+          <input
+            type="range"
+            min={0}
+            max={20}
+            step={1}
+            value={params.river_count ?? 0}
+            onChange={(event) => setParam('river_count', +event.target.value)}
+          />
+        </div>
       </div>
 
       <div className="gm-panel">

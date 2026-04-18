@@ -219,6 +219,27 @@ export function AnimalStatusBadge({ state, alive }) {
   );
 }
 
+function formatDirection(direction) {
+  if (Number.isInteger(direction) && DIRECTION_LABELS[direction]) {
+    return DIRECTION_LABELS[direction];
+  }
+
+  if (!Number.isFinite(direction)) return '?';
+
+  // Fallback for unexpected direction payloads: show angle instead of '?'.
+  // Values in [-2π, 2π] are treated as radians; others as degrees.
+  const angleDeg = Math.abs(direction) <= (Math.PI * 2 + 0.001)
+    ? (direction * 180) / Math.PI
+    : direction;
+  const normalized = ((angleDeg % 360) + 360) % 360;
+  return `↻ ${normalized.toFixed(1)}°`;
+}
+
+function formatCoord(value) {
+  if (!Number.isFinite(value)) return '?';
+  return Number.isInteger(value) ? `${value}` : value.toFixed(2);
+}
+
 function AnimalStatusChips({ entity, speciesConfig, clock }) {
   const speciesDetails = speciesConfig;
   if (!speciesDetails || !entity) return null;
@@ -413,12 +434,12 @@ export default function AnimalInspector({ entity, clearSelection, onFocusEntity,
           </CollapsibleSection>
 
           <CollapsibleSection title="Navigation" icon="🧭" defaultOpen={true}>
-            <div className="stat-row"><span className="stat-label">Direction</span><span className="stat-value">{DIRECTION_LABELS[entity.direction] || '?'}</span></div>
+            <div className="stat-row"><span className="stat-label">Direction</span><span className="stat-value">{formatDirection(entity.direction)}</span></div>
             {entity.targetX != null && entity.targetY != null && entity.state !== 0 && entity.state !== 5 && (
-              <div className="stat-row"><span className="stat-label">Target</span><span className="stat-value" style={{ color: '#888' }}>({entity.targetX}, {entity.targetY})</span></div>
+              <div className="stat-row"><span className="stat-label">Target</span><span className="stat-value" style={{ color: '#888' }}>({formatCoord(entity.targetX)}, {formatCoord(entity.targetY)})</span></div>
             )}
             {entity.pathLength > 0 && <div className="stat-row"><span className="stat-label">Path</span><span className="stat-value">{entity.pathIndex ?? 0}/{entity.pathLength} steps</span></div>}
-            {homeX != null && homeY != null && <div className="stat-row"><span className="stat-label">🏠 Home</span><span className="stat-value">({homeX}, {homeY}){homeDist != null ? ` — ${homeDist} tiles away` : ''}</span></div>}
+            {homeX != null && homeY != null && <div className="stat-row"><span className="stat-label">🏠 Home</span><span className="stat-value">({formatCoord(homeX)}, {formatCoord(homeY)}){homeDist != null ? ` — ${homeDist} tiles away` : ''}</span></div>}
             {entity._tileTerrain && <div className="stat-row"><span className="stat-label">🗺️ Terrain</span><span className="stat-value" style={{ textTransform: 'capitalize' }}>{entity._tileTerrain}</span></div>}
             {entity._tileWaterProximity != null && <div className="stat-row"><span className="stat-label">💧 Water Distance</span><span className="stat-value">{entity._tileWaterProximity} tiles</span></div>}
           </CollapsibleSection>

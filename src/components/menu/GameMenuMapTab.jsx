@@ -54,6 +54,19 @@ export default function GameMenuMapTab({ params, setParams, setParam }) {
           <div className="gm-field-value">{params.island_size_factor.toFixed(2)}</div>
           <input type="range" min={0.1} max={0.8} step={0.05} value={params.island_size_factor} onChange={(event) => setParam('island_size_factor', +event.target.value)} />
         </div>
+
+        <div className="gm-field">
+          <label>Min Land Ratio</label>
+          <div className="gm-field-value">{(params.min_land_ratio ?? 0).toFixed(2)}</div>
+          <input
+            type="range"
+            min={0}
+            max={0.9}
+            step={0.05}
+            value={params.min_land_ratio ?? 0}
+            onChange={(event) => setParam('min_land_ratio', +event.target.value)}
+          />
+        </div>
       </div>
 
       <div className="gm-panel">

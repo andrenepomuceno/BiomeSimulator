@@ -136,6 +136,7 @@ export default function App() {
 
     rendererRef.current.setTerrain(terrain, width, height, heightmap, waterProximity);
     rendererRef.current.plantLayer.setFromArrays(plantType, plantStage, width, height);
+    rendererRef.current.setItems([]);
   }, [worldReady]);
 
   // Update entities when animals change

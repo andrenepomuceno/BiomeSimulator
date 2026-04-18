@@ -17,9 +17,10 @@ worker.postMessage({
   config: {           // optional — all fields override DEFAULT_CONFIG
     map_width: 500,
     map_height: 500,
-    sea_level: 0.38,
-    island_count: 5,
-    island_size_factor: 0.3,
+    sea_level: 0.46,
+    island_count: 8,
+    island_size_factor: 0.24,
+    min_land_ratio: 0.35,
     seed: 42,
     initial_plant_density: 0.10,
     max_animal_population: 10000,
@@ -38,9 +39,10 @@ worker.postMessage({
 |---|---|---|---|
 | `config.map_width` | int | 500 | Grid width in tiles |
 | `config.map_height` | int | 500 | Grid height in tiles |
-| `config.sea_level` | float | 0.38 | Height threshold for water (0.0–1.0) |
-| `config.island_count` | int | 5 | Number of island blobs |
-| `config.island_size_factor` | float | 0.3 | Relative island radius (0.0–1.0) |
+| `config.sea_level` | float | 0.46 | Height threshold for water (0.0–1.0) |
+| `config.island_count` | int | 8 | Number of island blobs |
+| `config.island_size_factor` | float | 0.24 | Relative island radius (0.0–1.0) |
+| `config.min_land_ratio` | float | 0.35 | Minimum fraction of tiles that must remain land; sea level is clamped downward to satisfy this floor (0 disables clamping) |
 | `config.seed` | int\|null | null | Random seed (null = random) |
 | `config.initial_plant_density` | float | 0.10 | Fraction of eligible tiles seeded |
 | `config.max_animal_population` | int | 10000 | Global animal population budget (0 = use per-species defaults) |

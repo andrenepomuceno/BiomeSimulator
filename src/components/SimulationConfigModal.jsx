@@ -15,10 +15,6 @@ import { FF_AUDIO_LOG_UI } from '../config/featureFlags.js';
 const PANEL_TABS = {
   CONFIG: 'config',
   AUDIO: 'audio',
-};
-
-const AUDIO_TABS = {
-  SETTINGS: 'settings',
   LOG: 'log',
 };
 
@@ -47,30 +43,28 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
   } = useSimStore();
   const modalRef = useRef(null);
   const [activePanel, setActivePanel] = useState(PANEL_TABS.CONFIG);
-  const [activeAudioTab, setActiveAudioTab] = useState(AUDIO_TABS.SETTINGS);
 
   useModalA11y({ open, onClose, containerRef: modalRef });
 
   useEffect(() => {
     if (!open) return;
     setActivePanel(PANEL_TABS.CONFIG);
-    setActiveAudioTab(AUDIO_TABS.SETTINGS);
   }, [open]);
 
   useEffect(() => {
-    if (!FF_AUDIO_LOG_UI && activeAudioTab !== AUDIO_TABS.SETTINGS) {
-      setActiveAudioTab(AUDIO_TABS.SETTINGS);
+    if (!FF_AUDIO_LOG_UI && activePanel === PANEL_TABS.LOG) {
+      setActivePanel(PANEL_TABS.CONFIG);
     }
-  }, [activeAudioTab]);
+  }, [activePanel]);
 
   // Enable audio logging only while the log tab is visible to avoid
   // unnecessary Zustand updates and re-renders during normal gameplay.
   useEffect(() => {
     if (!onAudioLogging) return;
-    const logVisible = FF_AUDIO_LOG_UI && open && activeAudioTab === AUDIO_TABS.LOG;
+    const logVisible = FF_AUDIO_LOG_UI && open && activePanel === PANEL_TABS.LOG;
     onAudioLogging(logVisible);
     return () => onAudioLogging(false);
-  }, [open, activeAudioTab, onAudioLogging]);
+  }, [open, activePanel, onAudioLogging]);
 
   const sections = useMemo(() => buildSimulationConfigSections({
     gameConfig,
@@ -121,7 +115,12 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
           <button className="btn btn-sm btn-outline-secondary py-0 px-1" onClick={onClose} aria-label="Close simulation configuration">✕</button>
         </div>
 
-        <div className="sim-config-tabs" role="tablist" aria-label="Configuration sections">
+        <div
+          className="sim-config-tabs"
+          role="tablist"
+          aria-label="Configuration sections"
+          style={{ gridTemplateColumns: `repeat(${FF_AUDIO_LOG_UI ? 3 : 2}, minmax(0, 1fr))` }}
+        >
           <button
             className={`sim-config-tab ${activePanel === PANEL_TABS.CONFIG ? 'active' : ''}`}
             onClick={() => setActivePanel(PANEL_TABS.CONFIG)}
@@ -143,6 +142,16 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
           >
             Audio
           </button>
+          {FF_AUDIO_LOG_UI ? (
+            <button
+              className={`sim-config-tab ${activePanel === PANEL_TABS.LOG ? 'active' : ''}`}
+              onClick={() => setActivePanel(PANEL_TABS.LOG)}
+              role="tab"
+              aria-selected={activePanel === PANEL_TABS.LOG}
+            >
+              Sound Log
+            </button>
+          ) : null}
         </div>
 
         <div className="sim-config-body">
@@ -213,147 +222,126 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
                 Edit hunger and thirst multipliers in Stats &rarr; Settings. Map and population settings are in ☰ Menu &rarr; New Game.
               </p>
             </>
-          ) : (
+          ) : activePanel === PANEL_TABS.AUDIO ? (
             <div className="sim-config-audio-shell">
-              <div className="audio-tabs" role="tablist" aria-label="Audio sections">
-                <button
-                  className={`audio-tab ${activeAudioTab === AUDIO_TABS.SETTINGS ? 'active' : ''}`}
-                  onClick={() => setActiveAudioTab(AUDIO_TABS.SETTINGS)}
-                  role="tab"
-                  aria-selected={activeAudioTab === AUDIO_TABS.SETTINGS}
-                >
-                  Settings
-                </button>
-                {FF_AUDIO_LOG_UI ? (
-                  <button
-                    className={`audio-tab ${activeAudioTab === AUDIO_TABS.LOG ? 'active' : ''}`}
-                    onClick={() => setActiveAudioTab(AUDIO_TABS.LOG)}
-                    role="tab"
-                    aria-selected={activeAudioTab === AUDIO_TABS.LOG}
-                  >
-                    Log
-                  </button>
-                ) : null}
-              </div>
-
               <div className="audio-body">
-                {activeAudioTab === AUDIO_TABS.SETTINGS ? (
-                  <div className="audio-tab-panel">
-                    <div className={`audio-status ${audioSettings.unlocked ? 'ready' : 'locked'}`}>
-                      <strong>{audioSettings.unlocked ? 'Audio active' : 'Audio waiting for interaction'}</strong>
-                      <p>
-                        {audioSettings.unlocked
-                          ? 'Events closer to the camera sound louder, and left/right activity pans in stereo.'
-                          : 'Browsers require a click or key press before audio can start. Opening this panel already counts in most cases.'}
-                      </p>
-                      {worldSfxMutedByZoom ? (
-                        <p className="audio-warning">Camera very far away: positional world SFX are temporarily muted until you zoom back in.</p>
-                      ) : null}
-                      {!audioSettings.unlocked ? (
-                        <button className="btn btn-sim btn-sm" onClick={onUnlock}>Enable Audio</button>
-                      ) : null}
-                    </div>
-
-                    <div className="audio-toggle-row">
-                      <button className={`audio-pill ${audioSettings.muted ? 'active' : ''}`} onClick={toggle('muted')}>
-                        {audioSettings.muted ? 'Unmute' : 'Mute All'}
-                      </button>
-                      <button className={`audio-pill ${audioSettings.sfxEnabled ? 'active' : ''}`} onClick={toggle('sfxEnabled')}>
-                        SFX {audioSettings.sfxEnabled ? 'On' : 'Off'}
-                      </button>
-                      <button className={`audio-pill ${audioSettings.ambienceEnabled ? 'active' : ''}`} onClick={toggle('ambienceEnabled')}>
-                        Ambience {audioSettings.ambienceEnabled ? 'On' : 'Off'}
-                      </button>
-                    </div>
-
-                    <div className="audio-field">
-                      <label>
-                        <span>Master Volume</span>
-                        <span>{Math.round(audioSettings.masterVolume * 100)}%</span>
-                      </label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={Math.round(audioSettings.masterVolume * 100)}
-                        onChange={setSlider('masterVolume')}
-                      />
-                    </div>
-
-                    <div className="audio-field">
-                      <label>
-                        <span>SFX Volume</span>
-                        <span>{Math.round(audioSettings.sfxVolume * 100)}%</span>
-                      </label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={Math.round(audioSettings.sfxVolume * 100)}
-                        onChange={setSlider('sfxVolume')}
-                        disabled={!audioSettings.sfxEnabled}
-                      />
-                    </div>
-
-                    <div className="audio-field">
-                      <label>
-                        <span>Ambience Volume</span>
-                        <span>{Math.round(audioSettings.ambienceVolume * 100)}%</span>
-                      </label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={Math.round(audioSettings.ambienceVolume * 100)}
-                        onChange={setSlider('ambienceVolume')}
-                        disabled={!audioSettings.ambienceEnabled}
-                      />
-                    </div>
-
-                    <p className="audio-help">
-                      Camera-relative SFX are limited to a nearby horizon, so dense areas stay readable without turning every off-screen event into noise.
+                <div className="audio-tab-panel">
+                  <div className={`audio-status ${audioSettings.unlocked ? 'ready' : 'locked'}`}>
+                    <strong>{audioSettings.unlocked ? 'Audio active' : 'Audio waiting for interaction'}</strong>
+                    <p>
+                      {audioSettings.unlocked
+                        ? 'Events closer to the camera sound louder, and left/right activity pans in stereo.'
+                        : 'Browsers require a click or key press before audio can start. Opening this panel already counts in most cases.'}
                     </p>
+                    {worldSfxMutedByZoom ? (
+                      <p className="audio-warning">Camera very far away: positional world SFX are temporarily muted until you zoom back in.</p>
+                    ) : null}
+                    {!audioSettings.unlocked ? (
+                      <button className="btn btn-sim btn-sm" onClick={onUnlock}>Enable Audio</button>
+                    ) : null}
                   </div>
-                ) : (
-                  <div className="audio-tab-panel audio-tab-panel-log">
-                    <div className="audio-log-panel">
-                      <div className="audio-log-header">
-                        <div>
-                          <strong>Recent sound log</strong>
-                          <span>Simple timeline of emitted sounds.</span>
-                        </div>
-                        <div className="audio-log-actions">
-                          <button className="btn btn-sm btn-outline-secondary" onClick={handleExportLog} disabled={audioLog.length === 0}>
-                            Export
-                          </button>
-                          <button className="btn btn-sm btn-outline-secondary" onClick={clearAudioLog} disabled={audioLog.length === 0}>
-                            Clear
-                          </button>
-                        </div>
-                      </div>
 
-                      {audioLog.length === 0 ? (
-                        <div className="audio-log-empty">No sounds emitted yet.</div>
-                      ) : (
-                        <div className="audio-log-list">
-                          {audioLog.map((entry) => (
-                            <div key={`${entry.at}-${entry.type}-${entry.tick}`} className="audio-log-item">
-                              <div className="audio-log-top">
-                                <span className="audio-log-type">{formatAudioLogEntryLabel(entry)}</span>
-                                <span className="audio-log-time">{formatAudioLogEventTime(entry.at)}</span>
-                              </div>
-                              <div className="audio-log-meta">{formatAudioLogEntryMeta(entry, ' · ')}</div>
-                              <div className="audio-log-detail">{formatAudioLogEntryDetail(entry, ' · ')}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <div className="audio-toggle-row">
+                    <button className={`audio-pill ${audioSettings.muted ? 'active' : ''}`} onClick={toggle('muted')}>
+                      {audioSettings.muted ? 'Unmute' : 'Mute All'}
+                    </button>
+                    <button className={`audio-pill ${audioSettings.sfxEnabled ? 'active' : ''}`} onClick={toggle('sfxEnabled')}>
+                      SFX {audioSettings.sfxEnabled ? 'On' : 'Off'}
+                    </button>
+                    <button className={`audio-pill ${audioSettings.ambienceEnabled ? 'active' : ''}`} onClick={toggle('ambienceEnabled')}>
+                      Ambience {audioSettings.ambienceEnabled ? 'On' : 'Off'}
+                    </button>
+                  </div>
+
+                  <div className="audio-field">
+                    <label>
+                      <span>Master Volume</span>
+                      <span>{Math.round(audioSettings.masterVolume * 100)}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={Math.round(audioSettings.masterVolume * 100)}
+                      onChange={setSlider('masterVolume')}
+                    />
+                  </div>
+
+                  <div className="audio-field">
+                    <label>
+                      <span>SFX Volume</span>
+                      <span>{Math.round(audioSettings.sfxVolume * 100)}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={Math.round(audioSettings.sfxVolume * 100)}
+                      onChange={setSlider('sfxVolume')}
+                      disabled={!audioSettings.sfxEnabled}
+                    />
+                  </div>
+
+                  <div className="audio-field">
+                    <label>
+                      <span>Ambience Volume</span>
+                      <span>{Math.round(audioSettings.ambienceVolume * 100)}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={Math.round(audioSettings.ambienceVolume * 100)}
+                      onChange={setSlider('ambienceVolume')}
+                      disabled={!audioSettings.ambienceEnabled}
+                    />
+                  </div>
+
+                  <p className="audio-help">
+                    Camera-relative SFX are limited to a nearby horizon, so dense areas stay readable without turning every off-screen event into noise.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="audio-body">
+              <div className="audio-tab-panel audio-tab-panel-log">
+                <div className="audio-log-panel">
+                  <div className="audio-log-header">
+                    <div>
+                      <strong>Recent sound log</strong>
+                      <span>Simple timeline of emitted sounds.</span>
+                    </div>
+                    <div className="audio-log-actions">
+                      <button className="btn btn-sm btn-outline-secondary" onClick={handleExportLog} disabled={audioLog.length === 0}>
+                        Export
+                      </button>
+                      <button className="btn btn-sm btn-outline-secondary" onClick={clearAudioLog} disabled={audioLog.length === 0}>
+                        Clear
+                      </button>
                     </div>
                   </div>
-                )}
+
+                  {audioLog.length === 0 ? (
+                    <div className="audio-log-empty">No sounds emitted yet.</div>
+                  ) : (
+                    <div className="audio-log-list">
+                      {audioLog.map((entry) => (
+                        <div key={`${entry.at}-${entry.type}-${entry.tick}`} className="audio-log-item">
+                          <div className="audio-log-top">
+                            <span className="audio-log-type">{formatAudioLogEntryLabel(entry)}</span>
+                            <span className="audio-log-time">{formatAudioLogEventTime(entry.at)}</span>
+                          </div>
+                          <div className="audio-log-meta">{formatAudioLogEntryMeta(entry, ' · ')}</div>
+                          <div className="audio-log-detail">{formatAudioLogEntryDetail(entry, ' · ')}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

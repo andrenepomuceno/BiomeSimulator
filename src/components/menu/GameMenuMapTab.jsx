@@ -1,7 +1,18 @@
 import React from 'react';
 import { MAP_PRESETS } from './gameMenuConstants.js';
 
-export default function GameMenuMapTab({ params, setParams, setParam }) {
+const MAX_RANDOM_SEED = 2147483646;
+
+function buildRandomSeed() {
+  return 1 + Math.floor(Math.random() * MAX_RANDOM_SEED);
+}
+
+function isPresetActive(params, preset) {
+  const keys = Object.keys(preset.values || {});
+  return keys.every((key) => params[key] === preset.values[key]);
+}
+
+export default function GameMenuMapTab({ params, setParams, setParam, isMapSizeLinked, setIsMapSizeLinked }) {
   return (
     <div className="gm-stack">
       <div className="gm-panel">
@@ -11,10 +22,14 @@ export default function GameMenuMapTab({ params, setParams, setParam }) {
             <button
               key={preset.id}
               type="button"
-              className="gm-chip-button"
+              className={`gm-chip-button ${isPresetActive(params, preset) ? 'active' : ''}`}
               onClick={() => setParams((current) => ({ ...current, ...preset.values }))}
             >
-              {preset.label}
+              <span className="gm-chip-title">{preset.label}</span>
+              <span className="gm-chip-description">{preset.description}</span>
+              <span className="gm-chip-meta">
+                {preset.values.map_width} x {preset.values.map_height} · Sea {preset.values.sea_level.toFixed(2)} · Islands {preset.values.island_count} · Rivers {preset.values.river_count}
+              </span>
             </button>
           ))}
         </div>
@@ -22,8 +37,24 @@ export default function GameMenuMapTab({ params, setParams, setParam }) {
 
       <div className="gm-panel gm-field-grid">
         <div className="gm-field">
-          <label>Map Size</label>
-          <div className="gm-field-value">{params.map_width} x {params.map_height}</div>
+          <div className="gm-inline-toggle">
+            <label>Map Width</label>
+            <label className="gm-toggle-checkbox">
+              <input
+                type="checkbox"
+                checked={isMapSizeLinked}
+                onChange={(event) => {
+                  const next = event.target.checked;
+                  setIsMapSizeLinked(next);
+                  if (next && params.map_width !== params.map_height) {
+                    setParam('map_height', params.map_width);
+                  }
+                }}
+              />
+              Link Width/Height
+            </label>
+          </div>
+          <div className="gm-field-value">{params.map_width} tiles</div>
           <input
             type="range"
             min={100}
@@ -32,7 +63,31 @@ export default function GameMenuMapTab({ params, setParams, setParam }) {
             value={params.map_width}
             onChange={(event) => {
               const value = +event.target.value;
-              setParams((current) => ({ ...current, map_width: value, map_height: value }));
+              setParams((current) => ({
+                ...current,
+                map_width: value,
+                map_height: isMapSizeLinked ? value : current.map_height,
+              }));
+            }}
+          />
+        </div>
+
+        <div className="gm-field">
+          <label>Map Height</label>
+          <div className="gm-field-value">{params.map_height} tiles</div>
+          <input
+            type="range"
+            min={100}
+            max={2000}
+            step={100}
+            value={params.map_height}
+            onChange={(event) => {
+              const value = +event.target.value;
+              setParams((current) => ({
+                ...current,
+                map_height: value,
+                map_width: isMapSizeLinked ? value : current.map_width,
+              }));
             }}
           />
         </div>
@@ -92,6 +147,25 @@ export default function GameMenuMapTab({ params, setParams, setParam }) {
             value={params.seed}
             onChange={(event) => setParam('seed', event.target.value)}
           />
+          <div className="gm-seed-actions">
+            <button
+              type="button"
+              className="btn btn-outline-secondary py-0 px-2"
+              onClick={() => setParam('seed', buildRandomSeed())}
+            >
+              Randomize Fixed Seed
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary py-0 px-2"
+              onClick={() => setParam('seed', '')}
+            >
+              Random Every Run
+            </button>
+          </div>
+          <div className="gm-field-hint">
+            Empty seed generates a different world each run. A filled seed makes map generation reproducible.
+          </div>
         </div>
       </div>
     </div>

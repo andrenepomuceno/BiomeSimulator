@@ -41,6 +41,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const fileInputRef = useRef(null);
   const [tab, setTab] = useState('new');
   const [newTab, setNewTab] = useState('map');
+  const [isMapSizeLinked, setIsMapSizeLinked] = useState(true);
   const [params, setParams] = useState(() => buildDefaultParams());
   const [pendingNewGameParams, setPendingNewGameParams] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -135,6 +136,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const handleQuickStart = () => {
     const nextParams = buildDefaultParams();
     setParams(nextParams);
+    setIsMapSizeLinked(true);
     setFaunaProfileLabel('Balanced baseline');
     setFloraProfileLabel('Balanced growth');
     requestStartNewGame(nextParams);
@@ -221,7 +223,15 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                 ))}
               </div>
 
-              {newTab === 'map' && <GameMenuMapTab params={params} setParams={setParams} setParam={setParam} />}
+              {newTab === 'map' && (
+                <GameMenuMapTab
+                  params={params}
+                  setParams={setParams}
+                  setParam={setParam}
+                  isMapSizeLinked={isMapSizeLinked}
+                  setIsMapSizeLinked={setIsMapSizeLinked}
+                />
+              )}
               {newTab === 'fauna' && (
                 <GameMenuFaunaTab
                   params={params}
@@ -285,6 +295,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                 onClick={() => {
                   const nextParams = buildDefaultParams();
                   setParams(nextParams);
+                  setIsMapSizeLinked(true);
                   setFaunaProfileLabel('Balanced baseline');
                   setFloraProfileLabel('Balanced growth');
                   setNewTab('map');

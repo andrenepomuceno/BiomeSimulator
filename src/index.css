@@ -1017,8 +1017,10 @@ html, body, #root {
 
 .gm-chip-button {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex-direction: column;
+  gap: 4px;
   text-align: left;
   padding: 8px 10px;
   border: 1px solid rgba(83, 168, 182, 0.16);
@@ -1032,6 +1034,50 @@ html, body, #root {
   border-color: rgba(83, 168, 182, 0.5);
   background: rgba(13, 26, 48, 0.76);
   transform: translateY(-1px);
+}
+
+.gm-chip-button.active {
+  border-color: rgba(83, 168, 182, 0.65);
+  background: rgba(16, 35, 62, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(83, 168, 182, 0.2);
+}
+
+.gm-chip-title {
+  color: #eef8ff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.gm-chip-description {
+  color: #b9cfe2;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.gm-chip-meta {
+  color: #82cfd9;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.gm-inline-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-toggle-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #9db4ca;
+  font-size: 0.72rem;
+  margin: 0;
+}
+
+.gm-toggle-checkbox input {
+  accent-color: var(--sim-accent);
 }
 
 .gm-field-grid {
@@ -1067,6 +1113,20 @@ html, body, #root {
   background: var(--sim-bg-card);
   border: 1px solid var(--sim-border);
   color: #e0e0e0;
+}
+
+.gm-seed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.gm-field-hint {
+  margin-top: 6px;
+  color: #8fa9c0;
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .gm-budget-row {

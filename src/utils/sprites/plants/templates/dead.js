@@ -2,8 +2,8 @@
  * Dead template — universal stage 6 for all plant species.
  * 64×64 design grid.
  */
-import { px, rect, speckle, quadraticThick, thickLine, ao } from '../../helpers.js';
-import { drawGroundBase, drawGrassBlade } from '../bodyParts.js';
+import { px, rect, speckle, darken, lighten, quadraticThick, thickLine, ao } from '../../helpers.js';
+import { drawGroundBase, drawGrassBlade, drawCactusColumn, drawCactusSpines, drawCapTexture, drawPalmTrunk, drawPalmFrond } from '../bodyParts.js';
 
 export function drawDead(ctx, params, frame) {
   const cx   = 28;
@@ -25,6 +25,64 @@ export function drawDead(ctx, params, frame) {
     speckle(ctx, 12, baseY + 1, 30, 2, [dLeaf, dDark, '#c8b060'], 0.18);
     drawGroundBase(ctx, 12, baseY, 30, dDark, 2);
     ao(ctx, 12, baseY + 2, 30, 2, 0.08);
+    return;
+  }
+
+  // ── Cactus variant: shrunken desiccated column + fallen arm ─────────
+  if (params.template === 'cactus') {
+    const dBody  = darken(params.body, 0.15);
+    const dDark  = darken(params.bodyDark, 0.12);
+    const dHi    = lighten(dBody, 0.06);
+    const spine  = '#9a9a68';
+    const leanX  = frame === 1 ? 2 : frame === 2 ? -2 : 0;
+    // Shrunken column — shorter + narrower than any live stage
+    drawCactusColumn(ctx, cx + leanX, baseY, 6, 22, dBody, dHi, dDark, spine);
+    // Extra crack/wrinkle texture on top
+    speckle(ctx, cx + leanX, baseY - 22, 6, 22, [darken(dBody, 0.18), lighten(dBody, 0.06)], 0.28);
+    // Fallen arm segment on the ground
+    rect(ctx, cx - 9, baseY - 3, 10, 4, dBody);
+    speckle(ctx, cx - 9, baseY - 3, 10, 4, [dDark, darken(dBody, 0.10)], 0.22);
+    drawCactusSpines(ctx, cx - 9, baseY - 3, 10, 4, spine);
+    drawGroundBase(ctx, cx - 4, baseY, 16, dDark, 3);
+    ao(ctx, cx - 10, baseY + 2, 22, 3, 0.10);
+    return;
+  }
+
+  // ── Mushroom variant: broken stub + collapsed cap on ground ─────────
+  if (params.template === 'mushroom') {
+    const { stem, stemDark, cap, capDark } = params;
+    const dStem = darken(stemDark, 0.18);
+    const dCap  = darken(capDark, 0.14);
+    const leanX = frame === 1 ? 1 : frame === 2 ? -1 : 0;
+    // Broken stem stub
+    rect(ctx, cx + 2 + leanX, baseY - 10, 5, 10, stemDark);
+    rect(ctx, cx + 2 + leanX, baseY - 10, 2, 10, dStem);
+    px(ctx, cx + 3 + leanX, baseY - 10, dStem);
+    // Collapsed cap lying flat on the ground
+    rect(ctx, cx - 10, baseY - 6, 22, 8, dCap);
+    drawCapTexture(ctx, cx - 10, baseY - 6, 22, 8, cap, capDark);
+    speckle(ctx, cx - 10, baseY - 6, 22, 8, [darken(dCap, 0.14), darken(cap, 0.18)], 0.28);
+    // Underside of cap (dark fringe)
+    rect(ctx, cx - 10, baseY - 6, 22, 2, darken(dCap, 0.10));
+    drawGroundBase(ctx, cx - 8, baseY, 20, stemDark, 2);
+    ao(ctx, cx - 10, baseY + 2, 24, 3, 0.12);
+    return;
+  }
+
+  // ── Palm variant: bare trunk + dried drooping fronds ────────────────
+  if (params.template === 'palm') {
+    const { trunk, trunkDark } = params;
+    const dLeaf     = '#8a7a42';
+    const dLeafDark = '#6a5a2e';
+    const leanX = frame === 1 ? 1 : frame === 2 ? -1 : 0;
+    // Dead trunk — medium height, slightly darker
+    drawPalmTrunk(ctx, cx + leanX, baseY, 36, darken(trunk, 0.12), darken(trunkDark, 0.10), 22, [28, 20]);
+    // Dried drooping fronds hanging from crown
+    drawPalmFrond(ctx, cx + 4 + leanX, baseY - 40, 14, -1, 12, dLeaf, dLeafDark);
+    drawPalmFrond(ctx, cx + 4 + leanX, baseY - 40, 14,  1, 12, dLeaf, dLeafDark);
+    drawPalmFrond(ctx, cx + 4 + leanX, baseY - 40, 10,  0, 10, dLeaf, dLeafDark);
+    drawGroundBase(ctx, cx - 4 + leanX, baseY, 16, darken(trunkDark, 0.10), 3);
+    ao(ctx, cx - 6, baseY + 2, 18, 3, 0.10);
     return;
   }
 

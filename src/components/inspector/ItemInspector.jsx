@@ -54,7 +54,7 @@ export default function ItemInspector({ item, clearSelection, onFocusEntity, clo
     if (item.type === 1) {
       // Meat: source is a species name string
       const info = SPECIES_INFO[item.source];
-      sourceDisplay = info ? `${info.emoji} ${info.name}` : String(item.source);
+      sourceDisplay = info ? `${info.emoji} ${info.name}` : `Unknown species (${String(item.source)})`;
     } else {
       // Fruit / Seed: source is a plant typeId number
       const plantName = PLANT_TYPE_NAMES[item.source];

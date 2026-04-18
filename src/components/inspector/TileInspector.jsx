@@ -140,7 +140,8 @@ export default function TileInspector({ tile, clearSelection, onFocusEntity, req
       : tile.plant.stage === 5 ? plantSpecies.emoji.fruit
       : '🌿')
     : '🌿';
-  const maxPlantAge = hasPlant && plantSpecies ? (effectivePlantStageAges[tile.plant.type]?.[effectivePlantStageAges[tile.plant.type].length - 1] || 1) : 1;
+  const stageAges = hasPlant && plantSpecies ? effectivePlantStageAges[tile.plant.type] : null;
+  const maxPlantAge = stageAges?.length ? (stageAges[stageAges.length - 1] || 1) : 1;
 
   useEffect(() => {
     const hasCurrentPlant = tile.plant && tile.plant.type !== 0 && tile.plant.type !== 'none';

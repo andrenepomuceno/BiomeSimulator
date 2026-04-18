@@ -6,6 +6,7 @@ import {
 } from './entitySummaryGroups';
 import { buildAnimalEntry, buildPlantEntry, buildItemEntry } from './entitySummaryEntries';
 import { useModalA11y } from '../hooks/useModalA11y.js';
+import { ITEM_TYPE } from '../engine/items.js';
 
 // Items taller than this threshold get a virtual scroll body instead of full DOM render
 const VIRTUAL_THRESHOLD = 80;
@@ -26,8 +27,6 @@ const ENTITY_TYPE_LABELS = {
   plant: 'Plant',
   item: 'Item',
 };
-const FRUIT_ITEM_TYPE = 2;
-
 function handleActionKeyDown(event, action) {
   if (event.key !== 'Enter' && event.key !== ' ') return;
   event.preventDefault();
@@ -148,7 +147,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
     if (!groundItems || groundItems.size === 0) return 0;
     let count = 0;
     for (const item of groundItems.values()) {
-      if (item?.type === FRUIT_ITEM_TYPE && !item.consumed) count++;
+      if (item?.type === ITEM_TYPE.FRUIT && !item.consumed) count++;
     }
     return count;
   }, [groundItems]);

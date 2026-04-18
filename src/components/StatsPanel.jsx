@@ -11,10 +11,10 @@ import { Line } from 'react-chartjs-2';
 import { STATS_PANEL_HISTORY_LIMIT } from '../constants/simulation';
 import { getBadgeToneStyle, getPopulationStatusColor, getPopulationStatusTone, getPlantPresenceStatus } from '../constants/statusColors';
 import { buildPlantChartColors, buildPlantChartEmojis, getPlantByTypeId } from '../engine/plantSpecies.js';
+import { ITEM_TYPE } from '../engine/items.js';
 
 const PLANT_COLORS = buildPlantChartColors();  // typeId → hex color
 const PLANT_EMOJIS = buildPlantChartEmojis();  // typeId → emoji
-const FRUIT_ITEM_TYPE = 2;
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
@@ -242,7 +242,7 @@ export default function StatsPanel() {
     if (!groundItems || groundItems.size === 0) return 0;
     let count = 0;
     for (const item of groundItems.values()) {
-      if (item?.type === FRUIT_ITEM_TYPE && !item.consumed) count++;
+      if (item?.type === ITEM_TYPE.FRUIT && !item.consumed) count++;
     }
     return count;
   }, [groundItems]);

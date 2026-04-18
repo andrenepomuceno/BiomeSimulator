@@ -247,7 +247,7 @@ export class World {
     const count = min + Math.floor(Math.random() * (max - min + 1));
     const radius = (this.config.item_drop_radius_animal ?? 2);
     for (let i = 0; i < count; i++) {
-      this.spawnItem(entity.x | 0, entity.y | 0, ITEM_TYPE.MEAT, entity.species, radius);
+      this.spawnItem(entity.x | 0, entity.y | 0, ITEM_TYPE.MEAT, entity.species, radius, 0, true);
     }
   }
 
@@ -255,8 +255,8 @@ export class World {
    * Spawn a ground item near (cx, cy). Falls back gracefully if no clear tile found.
    * @param {number} germinationTicks - For SEED items: per-species lifetime (0 = global fallback).
    */
-  spawnItem(cx, cy, type, source, radius = 2, germinationTicks = 0) {
-    const tile = this._findItemTile(cx, cy, radius);
+  spawnItem(cx, cy, type, source, radius = 2, germinationTicks = 0, excludeCenter = false) {
+    const tile = this._findItemTile(cx, cy, radius, excludeCenter);
     if (!tile) return null;
     const item = new GroundItem(nextItemId(), tile.x, tile.y, type, source, this.clock.tick, germinationTicks);
     this.items.push(item);
@@ -271,10 +271,11 @@ export class World {
    * Find a random walkable tile within radius for item placement.
    * Returns {x, y} or null if none found.
    */
-  _findItemTile(cx, cy, radius) {
+  _findItemTile(cx, cy, radius, excludeCenter = false) {
     const candidates = [];
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
+        if (excludeCenter && dx === 0 && dy === 0) continue;
         const nx = cx + dx, ny = cy + dy;
         if (nx < 0 || ny < 0 || nx >= this.width || ny >= this.height) continue;
         const idx = ny * this.width + nx;

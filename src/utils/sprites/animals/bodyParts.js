@@ -12,6 +12,18 @@
 
 import { px, rect, darken, lighten, rimLight, ao, anisotropicSpeckle, ellipse, speckle, fillPolygon, blend, thickLine } from '../helpers.js';
 
+const _id = (x) => x;
+
+function _drawIrisPupilHighlight(ctx, f, x, y, w, h, irisColor, pupil, highlight) {
+  rect(ctx, f(x), y, w, h, irisColor);
+  if (pupil) {
+    px(ctx, f(x + pupil.dx), y + pupil.dy, pupil.color);
+  }
+  if (highlight) {
+    px(ctx, f(x + highlight.dx), y + highlight.dy, highlight.color);
+  }
+}
+
 /**
  * Draw a single eye with sclera, iris, pupil, and highlight.
  * @param {CanvasRenderingContext2D} ctx
@@ -28,12 +40,17 @@ export function drawEye(ctx, x, y, eyeWhite, eyeIris, size = 4) {
   const irisSize = Math.ceil(size / 2);
   const irisX = x + irisOff;
   const irisY = y + irisOff;
-  // Iris
-  rect(ctx, irisX, irisY, irisSize, irisSize, eyeIris);
-  // Pupil — centered toward bottom-right of iris for depth
-  px(ctx, irisX + irisSize - 1, irisY + irisSize - 1, darken(eyeIris, 0.40));
-  // Specular highlight — bright pixel at iris top-left
-  px(ctx, irisX, irisY, lighten(eyeWhite, 0.06));
+  _drawIrisPupilHighlight(
+    ctx,
+    _id,
+    irisX,
+    irisY,
+    irisSize,
+    irisSize,
+    eyeIris,
+    { dx: irisSize - 1, dy: irisSize - 1, color: darken(eyeIris, 0.40) },
+    { dx: 0, dy: 0, color: lighten(eyeWhite, 0.06) },
+  );
 }
 
 /**
@@ -65,14 +82,31 @@ export function drawEyeSide(ctx, f, x, y, eyeWhite, eyeIris, outlineColor = null
   if (outlineColor) {
     rect(ctx, f(x), y, 5, 5, outlineColor);
     rect(ctx, f(x + 1), y + 1, 4, 4, eyeWhite);
-    rect(ctx, f(x + 2), y + 2, 2, 2, eyeIris);
-    px(ctx, f(x + 2), y + 3, darken(eyeIris, 0.35));
+    _drawIrisPupilHighlight(
+      ctx,
+      f,
+      x + 2,
+      y + 2,
+      2,
+      2,
+      eyeIris,
+      { dx: 0, dy: 1, color: darken(eyeIris, 0.35) },
+      { dx: -1, dy: -1, color: '#ffffff' },
+    );
     px(ctx, f(x + 3), y + 2, darken(eyeIris, 0.3));
-    px(ctx, f(x + 1), y + 1, '#ffffff');
   } else {
     rect(ctx, f(x), y, 3, 3, eyeWhite);
-    px(ctx, f(x + 1), y + 1, eyeIris);
-    px(ctx, f(x), y, '#ffffff');
+    _drawIrisPupilHighlight(
+      ctx,
+      f,
+      x + 1,
+      y + 1,
+      1,
+      1,
+      eyeIris,
+      null,
+      { dx: -1, dy: -1, color: '#ffffff' },
+    );
   }
 }
 
@@ -635,9 +669,17 @@ export function drawBirdTailSide(ctx, f, bx, by, h, tailLen, tailColor, shadow) 
  * @param {string} irisColor
  */
 export function drawReptileEye(ctx, x, y, irisColor) {
-  rect(ctx, x, y, 3, 3, irisColor);            // iris square
-  px(ctx, x + 1, y + 1, '#000000');            // slit pupil
-  px(ctx, x, y, '#ffffff');                    // highlight
+  _drawIrisPupilHighlight(
+    ctx,
+    _id,
+    x,
+    y,
+    3,
+    3,
+    irisColor,
+    { dx: 1, dy: 1, color: '#000000' },
+    { dx: 0, dy: 0, color: '#ffffff' },
+  );
 }
 
 /**

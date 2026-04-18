@@ -70,4 +70,7 @@ Architecture, engine internals, worker message API, and species references are i
 
 ## License
 
-MIT. See the `LICENSE` file.
+This project is licensed under Apache License 2.0. See the `LICENSE` file.
+
+Copyright and authorship are preserved.
+Any redistribution or derivative work must keep the required attribution and license notices.

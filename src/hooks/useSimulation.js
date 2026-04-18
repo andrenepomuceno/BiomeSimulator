@@ -51,6 +51,7 @@ export function useSimulation() {
               width: msg.width, height: msg.height, seed: msg.seed,
             },
             groundItems: new Map(),
+            itemSnapshot: null,
             selectedItem: null,
           });
           break;
@@ -100,6 +101,12 @@ export function useSimulation() {
           if (msg.plantChanges) store.setPltChanges(msg.plantChanges);
           if (msg.fruitChanges) store.setFruitChanges(msg.fruitChanges);
           if (msg.itemChanges) store.setItemChanges(msg.itemChanges);
+          if (msg.itemsFullSync) {
+            store.setItemSnapshot({
+              items: msg.itemsFullSync,
+              version: msg.clock?.tick ?? Date.now(),
+            });
+          }
           if (msg.plantsFullSync) {
             store.setPlantSnapshot({
               width: msg.plantsFullSync.width,

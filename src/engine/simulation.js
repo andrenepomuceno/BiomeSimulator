@@ -361,11 +361,18 @@ export class SimulationEngine {
       const animal = animalsById.get(delta.id);
       if (!animal) continue;
 
+      const deltaIsEgg = isEggStageSnapshot(delta);
       const moved = delta.x !== animal.x || delta.y !== animal.y;
       let finalX = delta.x, finalY = delta.y;
 
+      // Eggs should remain fixed in place until hatching.
+      if (deltaIsEgg) {
+        finalX = animal.x;
+        finalY = animal.y;
+      }
+
       // Movement conflict: if new tile is occupied, keep old position
-      if (moved && delta.alive && w.isTileBlocked(finalX, finalY)) {
+      if (!deltaIsEgg && moved && delta.alive && w.isTileBlocked(finalX, finalY)) {
         finalX = animal.x;
         finalY = animal.y;
       }

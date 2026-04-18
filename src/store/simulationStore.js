@@ -271,6 +271,19 @@ const useSimStore = create((set, get) => ({
   setFruitChanges: (c) => set({ fruitChanges: c }),
   plantSnapshot: null,
   setPlantSnapshot: (snapshot) => set({ plantSnapshot: snapshot }),
+  itemSnapshot: null,
+  setItemSnapshot: (snapshot) => set((state) => {
+    if (!snapshot?.items) return { itemSnapshot: snapshot };
+    const groundItems = new Map();
+    for (const item of snapshot.items) {
+      groundItems.set(item.id, item);
+    }
+    let selectedItem = state.selectedItem;
+    if (selectedItem) {
+      selectedItem = groundItems.get(selectedItem.id) || null;
+    }
+    return { itemSnapshot: snapshot, groundItems, selectedItem };
+  }),
 
   // Ground item changes (add/remove/update deltas)
   itemChanges: [],

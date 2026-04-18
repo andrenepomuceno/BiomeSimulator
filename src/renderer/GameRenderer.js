@@ -214,6 +214,12 @@ export class GameRenderer {
     this.itemLayer.updateZoom(this.camera.zoom);
   }
 
+  /** Replace all rendered ground items from a full snapshot. */
+  setItems(items) {
+    this.itemLayer.setItems(items || []);
+    this.itemLayer.updateZoom(this.camera.zoom);
+  }
+
   updateEntities(animals, renderer, tick, zoom) {
     const store = useSimStore.getState();
     const profiling = store.profilingEnabled;

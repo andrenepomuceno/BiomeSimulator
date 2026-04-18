@@ -269,6 +269,8 @@ function postTickState(tickMs = 0, forceFullSync = false) {
   const tick = w.clock.tick;
   const isFullSync = forceFullSync || tick % FULL_SYNC_INTERVAL === 0;
   const plantChangesOverflow = w.plantChanges.length > MAX_PLANT_CHANGES_PER_TICK;
+  const itemMaxChanges = w.config.item_max_changes_per_tick ?? 2000;
+  const itemChangesOverflow = w.itemChanges.length > itemMaxChanges;
 
   let animals;
   let animalsDead;
@@ -302,7 +304,7 @@ function postTickState(tickMs = 0, forceFullSync = false) {
     clock: w.clock.toDict(),
     animals,
     plantChanges: plantChangesOverflow ? [] : w.plantChanges,
-    itemChanges: w.itemChanges.length > 0 ? w.itemChanges.slice(0, w.config.item_max_changes_per_tick ?? 2000) : undefined,
+    itemChanges: itemChangesOverflow ? [] : (w.itemChanges.length > 0 ? w.itemChanges : undefined),
     incremental: !isFullSync,
   };
 
@@ -313,6 +315,10 @@ function postTickState(tickMs = 0, forceFullSync = false) {
       plantType: new Uint8Array(w.plantType).buffer,
       plantStage: new Uint8Array(w.plantStage).buffer,
     };
+  }
+
+  if (itemChangesOverflow) {
+    msg.itemsFullSync = w.items.filter(item => !item.consumed).map(item => item.toDelta());
   }
 
   if (!isFullSync && animalsDead && animalsDead.length > 0) {

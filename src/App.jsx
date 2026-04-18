@@ -57,7 +57,7 @@ export default function App() {
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges, itemChanges,
-    clock, stats, worldReady, plantSnapshot, selectedEntity, selectedTile, selectedItem, isGeneratingWorld,
+    clock, stats, worldReady, plantSnapshot, itemSnapshot, selectedEntity, selectedTile, selectedItem, isGeneratingWorld,
   } = useSimStore();
 
   useEffect(() => {
@@ -159,6 +159,12 @@ export default function App() {
       rendererRef.current.updateItems(itemChanges);
     }
   }, [itemChanges]);
+
+  // Apply full item snapshot when worker reports overflow fallback sync
+  useEffect(() => {
+    if (!rendererRef.current || !itemSnapshot?.items) return;
+    rendererRef.current.setItems(itemSnapshot.items);
+  }, [itemSnapshot]);
 
   useEffect(() => {
     if (!rendererRef.current || !plantSnapshot) return;

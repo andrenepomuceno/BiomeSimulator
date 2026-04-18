@@ -226,6 +226,7 @@ export class SimulationEngine {
     // Process animals with valid cached paths
     for (const animal of w.animals) {
       if (!animal.alive) continue;
+      if (animal.lifeStage === LifeStage.EGG || animal.lifeStage === LifeStage.PUPA) continue;
 
       const hasValidPath = animal.path && animal.path.length > 0 && animal.pathIndex < animal.path.length;
       if (hasValidPath) {

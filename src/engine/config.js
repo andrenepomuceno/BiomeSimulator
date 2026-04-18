@@ -48,11 +48,12 @@ const BASE_CONFIG = {
   sleep_threshold_offset_wrong_period: 10,
   activity_energy_penalty_wrong_period: 1.3,
   movement_sub_ticks: 5,
-  scavenge_corpse_hunger_restore: 60,  // hunger reduced when eating a corpse
-  scavenge_corpse_energy_restore: 15,  // energy gained when eating a corpse
-  scavenge_corpse_hp_restore: 8,       // hp gained when eating a corpse
+  scavenge_corpse_hunger_restore: 35,  // hunger reduced when eating a corpse (less than item; stacks with drops)
+  scavenge_corpse_energy_restore: 8,   // energy gained when eating a corpse
+  scavenge_corpse_hp_restore: 4,       // hp gained when eating a corpse
   scavenge_egg_hunger_restore: 20,     // hunger reduced when eating an egg
   scavenge_egg_energy_restore: 10,     // energy gained when eating an egg
+  item_seed_germination_chance: 0.20,  // probability a SEED item spawns a plant when it expires
   flee_lock_ticks: 5,   // ticks to commit to fleeing the same threat before re-evaluating
   chase_lock_ticks: 5,  // ticks to commit to chasing the same prey before re-evaluating
   carnivore_retreat_hp_normal_threshold: 0.30,     // flee if hp < 30% (normal)
@@ -126,6 +127,7 @@ const BASE_CONFIG = {
   // Ground items
   item_meat_decay_ticks: 300,         // ticks until a meat item disappears
   item_fruit_to_seed_ticks: 200,      // ticks until a fruit item transforms into a seed
+  item_seed_germination_ticks: 400,   // fallback ticks until a seed item tries to germinate
   item_drop_radius_animal: 2,         // tile radius for radial meat scatter on death
   item_drop_radius_plant: 2,          // tile radius for radial fruit/seed scatter on reproduction
   item_max_changes_per_tick: 2000,    // cap for itemChanges delta array per tick

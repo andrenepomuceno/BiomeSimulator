@@ -33,9 +33,9 @@ export const ITEM_TYPE_NAMES = {
  * @returns {[number, number]} [minCount, maxCount]
  */
 export function meatDropRange(mass_kg) {
-  if (mass_kg >= 80) return [0, 3];
-  if (mass_kg >= 5)  return [0, 2];
-  return [0, 1]; // small
+  if (mass_kg >= 80) return [2, 3]; // large: always drops 2-3
+  if (mass_kg >= 5)  return [1, 2]; // medium: always drops 1-2
+  return [1, 1]; // small: always drops exactly 1
 }
 
 /** Partition constants for worker-safe unique IDs. */

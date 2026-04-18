@@ -20,6 +20,7 @@ import { World } from '../engine/world.js';
 import { Animal, LifeStage } from '../engine/entities.js';
 import { SpatialHash } from '../engine/spatialHash.js';
 import { decideAndAct } from '../engine/behaviors.js';
+import { GroundItem } from '../engine/items.js';
 
 let world = null;
 let spatialHash = new SpatialHash(16);
@@ -104,11 +105,28 @@ self.onmessage = function (e) {
       world.resetDeathsThisTick();
       world.plantChanges = [];
       world.plantConsumptionClaims = [];
+      world.itemConsumptionClaims = [];
+      world._itemClaimMode = true;
       world.resetPlantEvents();
       world.activePlantTiles = new Set(e.data.activePlantIndices);
 
       // Set up local ID counter (partition-safe range for births)
       world._nextId = e.data.nextIdBase || 900000;
+
+      // Reconstruct items snapshot for item-eating behavior
+      world.items = [];
+      world._itemById.clear();
+      world._itemSpatialHash.clear();
+      world._itemTiles.clear();
+      if (e.data.items) {
+        for (const d of e.data.items) {
+          const item = new GroundItem(d.id, d.x, d.y, d.type, d.source, d.createdTick, d.germinationTicks);
+          world.items.push(item);
+          world._itemById.set(item.id, item);
+          world._itemSpatialHash.insert(item);
+          world._itemTiles.add(item.y * world.width + item.x);
+        }
+      }
 
       // Reconstruct ALL animals (needed for spatial queries, threat/mate detection)
       const speciesConfigs = world.config.animal_species;
@@ -192,6 +210,7 @@ self.onmessage = function (e) {
         births,
         plantChanges: world.plantChanges,
         plantConsumptionClaims: world.plantConsumptionClaims,
+        itemConsumptionClaims: world.itemConsumptionClaims,
         deadIds,
       });
       break;

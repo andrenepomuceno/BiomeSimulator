@@ -95,13 +95,9 @@ async function doTick() {
       const w = engine.world;
       let aliveCount = 0;
       for (const a of w.animals) if (a.alive) aliveCount++;
-      // Fauna sub-workers currently do not mirror world.items/_itemSpatialHash,
-      // so force serial behavior when ground items exist to preserve eating logic.
-      const hasGroundItems = Array.isArray(w.items) && w.items.length > 0;
       const useParallel = faunaWorkersReady
         && faunaWorkers.length > 0
-        && aliveCount >= MIN_ANIMALS_FOR_PARALLEL
-        && !hasGroundItems;
+        && aliveCount >= MIN_ANIMALS_FOR_PARALLEL;
 
       if (useParallel) {
         engine.tickFlora();
@@ -157,6 +153,8 @@ async function doParallelFauna() {
 
   const allAnimalStates = alive.map(a => a.toWorkerState());
   const activePlantIndices = Array.from(w.activePlantTiles);
+  // Snapshot of non-consumed items for fauna workers to read (claim-mode, not mutated)
+  const itemsSnapshot = w.items.filter(i => !i.consumed).map(i => i.toDelta());
 
   const resultPromises = chunks.map((chunkIds, i) => {
     return new Promise(resolve => {
@@ -206,6 +204,7 @@ async function doParallelFauna() {
         allAnimals: allAnimalStates,
         chunkIds,
         nextIdBase: 900000 + i * 100000,
+        items: itemsSnapshot,
       }, [ptCopy.buffer, psCopy.buffer, paCopy.buffer, agCopy.buffer]);
     });
   });

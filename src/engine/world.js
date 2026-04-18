@@ -5,6 +5,7 @@ import { DEFAULT_DAY_FRACTION, DEFAULT_TICKS_PER_DAY } from '../constants/simula
 import { DIET } from './animalSpecies.js';
 import { SpatialHash } from './spatialHash.js';
 import { GroundItem, ITEM_TYPE, nextItemId } from './items.js';
+import { P_NONE, S_NONE, S_SEED } from './flora/constants.js';
 
 // Terrain types
 export const WATER = 0;
@@ -130,7 +131,11 @@ export class World {
     this.itemChanges = [];      // [{op:'add'|'remove', item: delta}] per tick
     this._itemById = new Map(); // id → GroundItem for fast lookup
     this._itemSpatialHash = new SpatialHash(16);
+    this._itemTiles = new Set(); // tileIndex of occupied item tiles (anti-stacking)
     this._massDropMap = null;   // lazy-loaded from config; set by simulation.js
+    // Parallel-mode item claim tracking (mirrors plantConsumptionClaims pattern)
+    this.itemConsumptionClaims = [];
+    this._itemClaimMode = false; // when true, removeItem records a claim instead of removing
   }
 
   nextId() {
@@ -257,6 +262,7 @@ export class World {
     this.items.push(item);
     this._itemById.set(item.id, item);
     this._itemSpatialHash.insert(item);
+    this._itemTiles.add(tile.y * this.width + tile.x);
     this.itemChanges.push({ op: 'add', item: item.toDelta() });
     return item;
   }
@@ -273,8 +279,8 @@ export class World {
         if (nx < 0 || ny < 0 || nx >= this.width || ny >= this.height) continue;
         const t = this.terrain[ny * this.width + nx];
         if (t === WATER || t === DEEP_WATER || t === MOUNTAIN) continue;
-        // Avoid stacking items on the same tile
-        if (this._itemSpatialHash.queryRadius(nx + 0.5, ny + 0.5, 0.6).length > 0) continue;
+        // O(1) anti-stacking check via tile index set
+        if (this._itemTiles.has(ny * this.width + nx)) continue;
         candidates.push({ x: nx, y: ny });
       }
     }
@@ -282,12 +288,21 @@ export class World {
     return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
-  /** Mark an item consumed and remove from all data structures. */
+  /** Mark an item consumed and remove from all data structures.
+   * In parallel (_itemClaimMode) mode, records a claim instead of removing.
+   */
   removeItem(item) {
     if (item.consumed) return;
+    if (this._itemClaimMode) {
+      // Parallel: record claim for merge resolution; don't modify shared snapshot
+      this.itemConsumptionClaims.push({ itemId: item.id });
+      item.consumed = true; // mark locally so same worker doesn't try twice
+      return;
+    }
     item.consumed = true;
     this._itemById.delete(item.id);
     this._itemSpatialHash.remove(item);
+    this._itemTiles.delete(item.y * this.width + item.x);
     const idx = this.items.indexOf(item);
     if (idx !== -1) this.items.splice(idx, 1);
     this.itemChanges.push({ op: 'remove', item: item.toDelta() });
@@ -302,6 +317,7 @@ export class World {
     const meatDecay = config.item_meat_decay_ticks ?? 300;
     const fruitToSeed = config.item_fruit_to_seed_ticks ?? 200;
     const seedGermFallback = config.item_seed_germination_ticks ?? 400;
+    const germChance = config.item_seed_germination_chance ?? 0.20;
 
     for (let i = this.items.length - 1; i >= 0; i--) {
       const item = this.items[i];
@@ -313,15 +329,35 @@ export class World {
         if (age >= fruitToSeed) {
           // Transform fruit -> seed; carry over per-species germinationTicks
           this._itemSpatialHash.remove(item);
+          this._itemTiles.delete(item.y * this.width + item.x);
           item.type = ITEM_TYPE.SEED;
           item.createdTick = tick;
           if (!item.germinationTicks) item.germinationTicks = seedGermFallback;
           this._itemSpatialHash.insert(item);
+          this._itemTiles.add(item.y * this.width + item.x);
           this.itemChanges.push({ op: 'update', item: item.toDelta() });
         }
       } else if (item.type === ITEM_TYPE.SEED) {
         const germ = item.germinationTicks > 0 ? item.germinationTicks : seedGermFallback;
-        if (age >= germ) this.removeItem(item);
+        if (age >= germ) {
+          // Attempt germination: roll chance, check tile is free
+          const tx = item.x | 0;
+          const ty = item.y | 0;
+          const tileIdx = ty * this.width + tx;
+          if (
+            Math.random() < germChance &&
+            typeof item.source === 'number' && item.source > 0 &&
+            this.plantType[tileIdx] === P_NONE
+          ) {
+            this.plantType[tileIdx] = item.source;
+            this.plantStage[tileIdx] = S_SEED;
+            this.plantAge[tileIdx] = 0;
+            this.activePlantTiles.add(tileIdx);
+            this.plantChanges.push([tx, ty, item.source, S_SEED]);
+            this.logPlantEvent(tileIdx, 'GERMINATED', { source: item.source, itemId: item.id });
+          }
+          this.removeItem(item);
+        }
       }
     }
   }

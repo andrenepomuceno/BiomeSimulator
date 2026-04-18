@@ -277,6 +277,22 @@ export class SimulationEngine {
       }
     }
 
+    // Resolve contested item consumption (first-claim-wins per itemId).
+    // Accepted claims: actually remove the item from the main world.
+    // Rejected claims: the item stays; animal keeps its updated state (it "thought" it ate).
+    // Note: item nutrition already applied in the worker — rejected animal just got a free meal
+    // this tick, which is acceptable (rare conflict, cheaper than full rollback).
+    const claimedItems = new Set();
+    for (const r of results) {
+      if (!r.itemConsumptionClaims) continue;
+      for (const claim of r.itemConsumptionClaims) {
+        if (!claim?.itemId || claimedItems.has(claim.itemId)) continue;
+        claimedItems.add(claim.itemId);
+        const item = w._itemById.get(claim.itemId);
+        if (item && !item.consumed) w.removeItem(item);
+      }
+    }
+
     // Any reported death wins globally, even if another chunk returned stale alive state.
     const mergedDeadIds = new Set();
     for (const r of results) {

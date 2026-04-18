@@ -108,12 +108,16 @@ export class SoundManager {
     this._sampleLoadState = new Map();
   }
 
-  setLogger(logger, { flush = false } = {}) {
+  setLogger(logger, { flush = false, onFlush = null } = {}) {
     this._logger = typeof logger === 'function' ? logger : null;
-    if (flush && this._logger && this._ringBuffer.length > 0) {
+    if (flush && this._ringBuffer.length > 0) {
       const pending = this._ringBuffer.slice();
       this._ringBuffer = [];
-      for (const entry of pending) this._logger(entry);
+      if (onFlush) {
+        onFlush(pending);
+      } else if (this._logger) {
+        for (const entry of pending) this._logger(entry);
+      }
     }
   }
 
@@ -637,6 +641,7 @@ export class SoundManager {
   }
 
   _emitLog(entry) {
+    if (!this._logger && this._ringBuffer.length >= this._ringBufferLimit) return;
     const formatted = {
       ...entry,
       at: Date.now(),
@@ -649,10 +654,12 @@ export class SoundManager {
       distanceGain: Number.isFinite(entry.distanceGain) ? Number(entry.distanceGain.toFixed(3)) : null,
       audibleRadius: Number.isFinite(entry.audibleRadius) ? Number(entry.audibleRadius.toFixed(2)) : null,
     };
-    // Always maintain a ring buffer so recent history is available on demand.
-    this._ringBuffer.push(formatted);
-    if (this._ringBuffer.length > this._ringBufferLimit) {
+    // Maintain a ring buffer so recent history is available on demand.
+    if (this._ringBuffer.length < this._ringBufferLimit) {
+      this._ringBuffer.push(formatted);
+    } else {
       this._ringBuffer.shift();
+      this._ringBuffer.push(formatted);
     }
     if (this._logger) this._logger(formatted);
   }

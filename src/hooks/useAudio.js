@@ -96,10 +96,21 @@ export function useAudio() {
   const setAudioLogging = useCallback((enabled) => {
     const manager = ensureManager();
     if (enabled) {
-      manager.setLogger((entry) => {
-        const store = useSimStore.getState();
-        store.pushAudioLog({ ...entry, tick: store.clock.tick });
-      }, { flush: true });
+      manager.setLogger(
+        (entry) => {
+          const store = useSimStore.getState();
+          store.pushAudioLog({ ...entry, tick: store.clock.tick });
+        },
+        {
+          flush: true,
+          onFlush: (entries) => {
+            if (!entries.length) return;
+            const store = useSimStore.getState();
+            const tick = store.clock.tick;
+            store.pushAudioLogBatch(entries.map((e) => ({ ...e, tick })));
+          },
+        },
+      );
     } else {
       manager.setLogger(null);
     }

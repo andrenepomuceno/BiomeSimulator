@@ -65,6 +65,14 @@ Rather than repeating every field in each species entry, the registry uses a mer
   visualScale: 0.7,       // sprite size relative to base (1.0)
   audioScale: 0.211,      // audio volume scale
   soundGroup: 'smallMammal', // synthesis profile for sound events
+  vocalization: {
+    enabled: true,          // species can emit attack/idle vocal events
+    attackChance: 0.5,      // chance on ATTACKING state transition
+    idleChance: 0.06,       // chance when idle vocal check window is hit
+    idleIntervalTicks: 160, // check cadence while IDLE/WALKING/FLYING
+    idleCooldownTicks: 260, // minimum spacing per entity between idle calls
+    gainMultiplier: 1.15,   // per-species loudness trim for vocal events
+  },
 
   // Behaviour flags
   diet: 'HERBIVORE',      // HERBIVORE | CARNIVORE | OMNIVORE
@@ -145,5 +153,8 @@ Fields `decision_thresholds`, `metabolic_multipliers`, `health_penalty`, `recove
 | `buildSpeciesInfo()` | Function | Returns `{RABBIT: {emoji, name, diet}, ...}` — lightweight display map for UI labels |
 | `buildAnimalColors()` | Function | Returns `{RABBIT: 0x66cc66, ...}` — Pixi hex colors per species |
 | `buildAnimalHexColors()` | Function | Returns `{RABBIT: '#66cc66', ...}` — CSS hex strings per species |
+| `buildSpeciesAudioScale()` | Function | Returns `{Rabbit: 0.211, ...}` — display-name keyed audio scale lookup |
+| `buildSpeciesSoundGroup()` | Function | Returns `{Rabbit: 'smallMammal', ...}` — display-name keyed synthesis group lookup |
+| `buildSpeciesVocalProfile()` | Function | Returns display-name keyed vocalization profiles used by renderer/audio emission logic |
 | `buildCanFlySet()` | Function | Returns a `Set` of species keys that have `can_fly: true` |
 | `getEffectiveAnimalPopulationCap(speciesId, globalBudget)` | Function | Returns the effective per-species cap given the global budget (scales base cap proportionally) |

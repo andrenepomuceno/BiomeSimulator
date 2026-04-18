@@ -7,7 +7,7 @@ import * as PIXI from 'pixi.js';
 import { generateEmojiTextures } from '../utils/emojiTextures.js';
 import { getSleepingTextureKeyForSpecies } from '../utils/spriteGenerator.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
-import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
+import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet, buildSpeciesVisualScale, buildSpeciesVocalProfile } from '../engine/animalSpecies.js';
 import { AnimalState, LifeStage } from '../engine/entities.js';
 import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 
@@ -39,6 +39,7 @@ const MAX_SCALE = 1.5 / FRAME_SIZE;
 
 // Per-species visual scale factor (relative to 1 tile) — derived from animalSpecies.js registry
 const SPECIES_VISUAL_SCALE = buildSpeciesVisualScale();
+const SPECIES_VOCAL_PROFILE = buildSpeciesVocalProfile();
 
 export class EntityLayer {
   constructor(animationLayer, onEffectEvent, depthContainer, shadowContainer, overlayContainer) {
@@ -59,6 +60,7 @@ export class EntityLayer {
     // Flee spatial deduplication: at most 1 flee per 8-tile bucket per tick
     this._fleeBucketTick = -1;
     this._fleeBuckets = new Set();
+    this._lastIdleVocalTickByEntity = new Map();
 
     // Sprite pool for recycling
     this._pool = [];
@@ -88,9 +90,39 @@ export class EntityLayer {
     this._flyingSet = null;
   }
 
-  _emitEffectEvent(type, x, y, species, tick) {
+  _emitEffectEvent(type, x, y, species, tick, gainMultiplier = null) {
     if (!this._onEffectEvent) return;
-    this._onEffectEvent({ type, x, y, species: species || null, tick: tick ?? null });
+    this._onEffectEvent({
+      type,
+      x,
+      y,
+      species: species || null,
+      tick: tick ?? null,
+      gainMultiplier: Number.isFinite(gainMultiplier) ? gainMultiplier : null,
+    });
+  }
+
+  _getVocalProfile(species) {
+    if (!species) return null;
+    return SPECIES_VOCAL_PROFILE[species] || null;
+  }
+
+  _tryEmitAttackVocal(animal, currentTick) {
+    const profile = this._getVocalProfile(animal.species);
+    if (!profile?.enabled) return;
+    if (Math.random() > profile.attackChance) return;
+    this._emitEffectEvent('attackVocal', animal.x, animal.y, animal.species, currentTick, profile.gainMultiplier);
+  }
+
+  _tryEmitIdleVocal(animal, currentTick) {
+    const profile = this._getVocalProfile(animal.species);
+    if (!profile?.enabled || !Number.isFinite(currentTick) || currentTick <= 0) return;
+    if (currentTick % profile.idleIntervalTicks !== 0) return;
+    const lastTick = this._lastIdleVocalTickByEntity.get(animal.id) ?? -Infinity;
+    if (currentTick - lastTick < profile.idleCooldownTicks) return;
+    if (Math.random() > profile.idleChance) return;
+    this._lastIdleVocalTickByEntity.set(animal.id, currentTick);
+    this._emitEffectEvent('idleVocal', animal.x, animal.y, animal.species, currentTick, profile.gainMultiplier);
   }
 
   _ensureTextures() {
@@ -256,6 +288,7 @@ export class EntityLayer {
           sprite._attackTick = currentTick;
           if (this._animationLayer) this._animationLayer.spawnAttack(a.x, a.y);
           this._emitEffectEvent('attack', a.x, a.y, a.species, currentTick);
+          this._tryEmitAttackVocal(a, currentTick);
         } else if (this._animationLayer && a.state === AnimalState.DEAD) {
           this._animationLayer.spawnDeath(a.x, a.y);
           this._emitEffectEvent('death', a.x, a.y, a.species, currentTick);
@@ -282,6 +315,10 @@ export class EntityLayer {
         }
       }
       this._prevStates.set(a.id, a.state);
+
+      if (a.state === AnimalState.IDLE || a.state === AnimalState.WALKING || a.state === AnimalState.FLYING) {
+        this._tryEmitIdleVocal(a, currentTick);
+      }
 
       // Sleeping Zzz particles — throttled to 1 per ~60 ticks per animal
       if (a.state === AnimalState.SLEEPING && this._animationLayer && currentTick > 0 && currentTick % 60 === 0) {
@@ -462,6 +499,7 @@ export class EntityLayer {
         this._releaseSprite(sprite);
         this._sprites.delete(id);
         this._prevStates.delete(id);
+        this._lastIdleVocalTickByEntity.delete(id);
         const shadow = this._shadows.get(id);
         if (shadow) {
           shadow.visible = false;

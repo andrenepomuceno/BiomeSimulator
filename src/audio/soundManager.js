@@ -11,6 +11,7 @@ import { clamp, computePositionalMix } from './soundMath.js';
 
 const MAX_ACTIVE_VOICES = 24;
 const MAX_SFX_PER_TICK = 4;
+const MAX_VOCAL_PER_TICK = 1;
 const ZERO_GAIN = 0.0001;
 const PLAYBACK_RATE_MIN = 0.9;
 const PLAYBACK_RATE_MAX = 1.1;
@@ -86,6 +87,7 @@ export class SoundManager {
     // Per-tick event budget tracking
     this._currentTick = -1;
     this._tickEventCount = 0;
+    this._tickVocalCount = 0;
     this._tickBestPriority = Infinity;
     this._dayLayer = null;
     this._nightLayer = null;
@@ -306,6 +308,18 @@ export class SoundManager {
         addOsc('sawtooth', 500, 210, 0.2, 0.09, 2);
         addOsc('triangle', 230, 108, 0.18, 0.11, 6);
         break;
+      case 'attackVocal':
+        duration = 0.2;
+        if (groupName === 'bird') {
+          addOsc('sine', 1650, 1180, 0.35, 0.08, 3);
+          addOsc('triangle', 2200, 1500, 0.22, 0.07, -2);
+          addNoise('bandpass', 3800, 2.2, 0.08, 0.05);
+        } else {
+          addNoise('bandpass', 820, 1.1, 0.18, 0.09);
+          addOsc(tt, 210, 120, 0.38, 0.14, -5);
+          addOsc('sawtooth', 320, 180, 0.16, 0.12, 4);
+        }
+        break;
       case 'death':
         duration = 0.38;
         addNoise(group ? (group.noiseBand || 'lowpass') : 'lowpass', group ? (group.noiseFreq || 540) : 540, 0.85, 0.24, 0.2);
@@ -329,6 +343,18 @@ export class SoundManager {
         addOsc('triangle', 130, 70, 0.2, 0.1, -5);
         addOsc('triangle', 280, 170, 0.14, 0.12, 2);
         addOsc('sine', 520, 280, 0.07, 0.09, 8);
+        break;
+      case 'idleVocal':
+        duration = 0.18;
+        if (groupName === 'bird') {
+          addOsc('sine', 1900, 2300, 0.24, 0.1, 5);
+          addOsc('triangle', 1400, 1800, 0.14, 0.12, -4);
+          addNoise('highpass', 5200, 1.4, 0.05, 0.04);
+        } else {
+          addNoise('lowpass', 540, 0.8, 0.08, 0.08);
+          addOsc(tt, 180, 140, 0.2, 0.14, -3);
+          addOsc('sine', 120, 92, 0.12, 0.16, 2);
+        }
         break;
       case 'mate':
         duration = 0.23;
@@ -427,6 +453,7 @@ export class SoundManager {
     }
 
     const priority = config.priority ?? 3;
+    const isVocal = event.type === 'attackVocal' || event.type === 'idleVocal';
 
     // Per-tick event budget: cap positional SFX per simulation tick
     const tick = Number.isFinite(event.tick) ? event.tick : -1;
@@ -434,7 +461,14 @@ export class SoundManager {
       if (tick !== this._currentTick) {
         this._currentTick = tick;
         this._tickEventCount = 0;
+        this._tickVocalCount = 0;
         this._tickBestPriority = Infinity;
+      }
+      if (isVocal && this._tickVocalCount >= MAX_VOCAL_PER_TICK) {
+        return false;
+      }
+      if (isVocal && this._tickEventCount >= MAX_SFX_PER_TICK - 1) {
+        return false;
       }
       if (this._tickEventCount >= MAX_SFX_PER_TICK && priority >= this._tickBestPriority) {
         return false;
@@ -480,6 +514,7 @@ export class SoundManager {
     // Update per-tick budget
     if (config.positional && tick >= 0) {
       this._tickEventCount += 1;
+      if (isVocal) this._tickVocalCount += 1;
       if (priority < this._tickBestPriority) {
         this._tickBestPriority = priority;
       }
@@ -1007,6 +1042,18 @@ export class SoundManager {
         addOscillator('sawtooth', pf(500), pf(210), 0.2, 0.09, variantDetune + 2);
         addOscillator('triangle', pf(230), pf(108), 0.18, 0.11, variantDetune + 6);
         break;
+      case 'attackVocal':
+        duration = 0.2;
+        if (groupName === 'bird') {
+          addOscillator('sine', pf(1650), pf(1180), 0.28, 0.08, variantDetune + 3);
+          addOscillator('triangle', pf(2200), pf(1500), 0.2, 0.07, variantDetune - 2);
+          collectBurst(this._addNoiseBurst(voiceGain, 'bandpass', 3800, 2.1, 0.12, 0.05, now));
+        } else {
+          collectBurst(this._addNoiseBurst(voiceGain, nb || 'bandpass', nf || 820, 1.1, 0.18, 0.09, now));
+          addOscillator(tt || 'sawtooth', pf(210), pf(120), 0.32, 0.14, variantDetune - 5);
+          addOscillator('sawtooth', pf(320), pf(180), 0.15, 0.12, variantDetune + 4);
+        }
+        break;
       case 'death':
         // Heavier collapse with sub drop, noisy debris, and dissonant overtone.
         duration = 0.38;
@@ -1049,6 +1096,18 @@ export class SoundManager {
         addOscillator(tt || 'sine', pf(130), pf(70), 0.2, 0.1, variantDetune - 5);
         addOscillator('triangle', pf(280), pf(170), 0.14, 0.12, variantDetune + 2);
         addOscillator('sine', pf(520), pf(280), 0.07, 0.09, variantDetune + 8);
+        break;
+      case 'idleVocal':
+        duration = 0.18;
+        if (groupName === 'bird') {
+          addOscillator('sine', pf(1900), pf(2300), 0.2, 0.1, variantDetune + 5);
+          addOscillator('triangle', pf(1400), pf(1800), 0.14, 0.12, variantDetune - 4);
+          collectBurst(this._addNoiseBurst(voiceGain, 'highpass', 5200, 1.4, 0.05, 0.04, now));
+        } else {
+          collectBurst(this._addNoiseBurst(voiceGain, nb || 'lowpass', nf || 540, 0.8, 0.08, 0.08, now));
+          addOscillator(tt || 'triangle', pf(180), pf(140), 0.2, 0.14, variantDetune - 3);
+          addOscillator('sine', pf(120), pf(92), 0.12, 0.16, variantDetune + 2);
+        }
         break;
       case 'flee':
         duration = 0.09;

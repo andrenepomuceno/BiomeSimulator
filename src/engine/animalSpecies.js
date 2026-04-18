@@ -432,6 +432,14 @@ const ANIMAL_SPECIES = {
     mass_kg: 85,
     audioScale: 0.579,
     soundGroup: SOUND_GROUP.LARGE_MAMMAL,
+    vocalization: {
+      enabled: true,
+      attackChance: 0.5,
+      idleChance: 0.06,
+      idleIntervalTicks: 160,
+      idleCooldownTicks: 260,
+      gainMultiplier: 1.15,
+    },
     speed: 8,
     vision_range: 20,
     max_energy: 160,
@@ -517,6 +525,14 @@ const ANIMAL_SPECIES = {
     mass_kg: 250,
     audioScale: 1.0,
     soundGroup: SOUND_GROUP.LARGE_MAMMAL,
+    vocalization: {
+      enabled: true,
+      attackChance: 0.4,
+      idleChance: 0.045,
+      idleIntervalTicks: 180,
+      idleCooldownTicks: 300,
+      gainMultiplier: 1.2,
+    },
     speed: 4,
     vision_range: 18,
     max_energy: 200,
@@ -604,6 +620,14 @@ const ANIMAL_SPECIES = {
     mass_kg: 0.5,
     audioScale: 0.105,
     soundGroup: SOUND_GROUP.BIRD,
+    vocalization: {
+      enabled: true,
+      attackChance: 0.45,
+      idleChance: 0.07,
+      idleIntervalTicks: 140,
+      idleCooldownTicks: 220,
+      gainMultiplier: 0.95,
+    },
     speed: 8,
     vision_range: 20,
     max_energy: 80,
@@ -865,6 +889,14 @@ const ANIMAL_SPECIES = {
     mass_kg: 5,
     audioScale: 0.184,
     soundGroup: SOUND_GROUP.BIRD,
+    vocalization: {
+      enabled: true,
+      attackChance: 0.55,
+      idleChance: 0.05,
+      idleIntervalTicks: 150,
+      idleCooldownTicks: 240,
+      gainMultiplier: 1.05,
+    },
     speed: 12,
     vision_range: 25,
     max_energy: 110,
@@ -908,6 +940,14 @@ const ANIMAL_SPECIES = {
     mass_kg: 400,
     audioScale: 0.895,
     soundGroup: SOUND_GROUP.REPTILE,
+    vocalization: {
+      enabled: true,
+      attackChance: 0.35,
+      idleChance: 0.03,
+      idleIntervalTicks: 190,
+      idleCooldownTicks: 340,
+      gainMultiplier: 1.1,
+    },
     speed: 4,
     vision_range: 15,
     max_energy: 180,
@@ -1194,6 +1234,24 @@ export function buildSpeciesSoundGroup() {
   const map = {};
   for (const [, sp] of Object.entries(ANIMAL_SPECIES)) {
     map[sp.name] = sp.soundGroup ?? SOUND_GROUP.SMALL_MAMMAL;
+  }
+  return map;
+}
+
+/** Build per-species vocalization profile map (display-name keys). */
+export function buildSpeciesVocalProfile() {
+  const map = {};
+  for (const [, sp] of Object.entries(ANIMAL_SPECIES)) {
+    const defaultEnabled = sp.soundGroup === SOUND_GROUP.BIRD || sp.id === 'WOLF' || sp.id === 'BEAR' || sp.id === 'CROCODILE';
+    const vocalization = sp.vocalization || {};
+    map[sp.name] = {
+      enabled: vocalization.enabled ?? defaultEnabled,
+      attackChance: vocalization.attackChance ?? (sp.soundGroup === SOUND_GROUP.BIRD ? 0.4 : 0.32),
+      idleChance: vocalization.idleChance ?? (sp.soundGroup === SOUND_GROUP.BIRD ? 0.06 : 0.04),
+      idleIntervalTicks: vocalization.idleIntervalTicks ?? 160,
+      idleCooldownTicks: vocalization.idleCooldownTicks ?? 260,
+      gainMultiplier: vocalization.gainMultiplier ?? 1,
+    };
   }
   return map;
 }

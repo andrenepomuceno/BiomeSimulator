@@ -3,7 +3,7 @@
  * Maps species display name → a 0–1 factor where 0 = tiny, 1 = massive.
  * Derived from the canonical ANIMAL_SPECIES registry.
  */
-import { buildSpeciesAudioScale, buildSpeciesSoundGroup } from '../engine/animalSpecies.js';
+import { buildSpeciesAudioScale, buildSpeciesSoundGroup, buildSpeciesVocalProfile } from '../engine/animalSpecies.js';
 export const SPECIES_AUDIO_SCALE = buildSpeciesAudioScale();
 
 /**
@@ -12,6 +12,7 @@ export const SPECIES_AUDIO_SCALE = buildSpeciesAudioScale();
  * Derived from the canonical ANIMAL_SPECIES registry.
  */
 export const SPECIES_SOUND_GROUP = buildSpeciesSoundGroup();
+export const SPECIES_VOCAL_PROFILE = buildSpeciesVocalProfile();
 
 /**
  * Per-group synthesis modifiers applied on top of the base preset.
@@ -113,6 +114,15 @@ export const SOUND_EVENTS = {
     priority: 2,
     samples: ['/audio/attack-1.wav', '/audio/attack-2.wav', '/audio/attack-3.wav'],
   },
+  attackVocal: {
+    category: 'vocal',
+    preset: 'attackVocal',
+    positional: true,
+    cooldownMs: 320,
+    baseGain: 0.2,
+    audibleRadiusTiles: 22,
+    priority: 3,
+  },
   death: {
     category: 'sfx',
     preset: 'death',
@@ -162,6 +172,15 @@ export const SOUND_EVENTS = {
     audibleRadiusTiles: 16,
     priority: 3,
     samples: ['/audio/drink-1.wav', '/audio/drink-2.wav'],
+  },
+  idleVocal: {
+    category: 'vocal',
+    preset: 'idleVocal',
+    positional: true,
+    cooldownMs: 1200,
+    baseGain: 0.12,
+    audibleRadiusTiles: 18,
+    priority: 4,
   },
   flee: {
     enabled: false,

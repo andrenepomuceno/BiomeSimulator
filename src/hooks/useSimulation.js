@@ -195,12 +195,17 @@ export function useSimulation() {
           const placed = msg.entity;
           const pending = store.shiftPendingEntityPlacement();
 
-          if (!placed || placed.id == null) {
+          if (!placed) {
             store.pushUiToast({
               variant: 'warning',
               title: 'Placement failed',
               message: msg.error || 'Cannot place entity on this tile.',
             });
+            break;
+          }
+
+          // Plant placements return { type, x, y } and do not participate in entity undo stacks.
+          if (placed.id == null) {
             break;
           }
 

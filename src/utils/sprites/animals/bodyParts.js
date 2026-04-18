@@ -519,98 +519,121 @@ export function drawEarSide(ctx, f, x, y, earH, earColor, innerColor = null, poi
 }
 
 /**
+ * Catalog of tail styles for quadruped variants.
+ * Each entry defines three orientation renderers: top, back, side.
+ * To add a new style, add one entry here — wrappers pick it up automatically.
+ *
+ * @type {Record<string, {
+ *   top: (ctx, cx, y, bodyColor, accent, shadow) => void,
+ *   back: (ctx, cx, y, bodyColor, accent, shadow) => void,
+ *   side: (ctx, f, x, y, bodyColor, accent, shadow, shadow2) => void
+ * }>}
+ */
+const _TAIL_STYLES = {
+  squirrel: {
+    top(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 4, y - 1, 9, 8, accent);
+      rect(ctx, cx - 3, y + 7, 7, 3, lighten(accent, 0.1));
+      px(ctx, cx - 1, y + 1, lighten(accent, 0.18));
+    },
+    back(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 4, y - 3, 9, 7, accent);
+      rect(ctx, cx - 3, y + 3, 7, 3, lighten(accent, 0.1));
+      px(ctx, cx - 1, y - 1, lighten(accent, 0.18));
+    },
+    side(ctx, f, x, y, bodyColor, accent, shadow, shadow2) {
+      rect(ctx, f(x - 1), y + 3, 6, 6, accent);
+      rect(ctx, f(x - 4), y - 1, 5, 6, accent);
+      rect(ctx, f(x - 3), y - 7, 8, 7, accent);
+      rect(ctx, f(x + 4), y - 9, 7, 5, lighten(accent, 0.08));
+      rect(ctx, f(x + 9), y - 6, 5, 4, lighten(accent, 0.14));
+      px(ctx, f(x - 1), y + 4, lighten(accent, 0.18));
+    },
+  },
+  cotton: {
+    top(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 2, y, 4, 4, '#fffff4');
+      px(ctx, cx, y + 1, '#ffffff');
+    },
+    back(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 2, y + 2, 5, 5, '#fffff4');
+      px(ctx, cx, y + 3, '#ffffff');
+      px(ctx, cx - 1, y + 4, '#ffffff');
+    },
+    side(ctx, f, x, y, bodyColor, accent, shadow, shadow2) {
+      rect(ctx, f(x - 1), y, 5, 5, '#fffff4');
+      px(ctx, f(x + 1), y + 1, '#ffffff');
+      px(ctx, f(x), y + 2, '#ffffff');
+    },
+  },
+  bushy: {
+    top(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 1, y - 3, 4, 4, accent);
+      rect(ctx, cx + 2, y - 1, 3, 3, accent);
+      rect(ctx, cx, y - 2, 3, 2, lighten(accent, 0.1));
+    },
+    back(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 1, y, 4, 4, accent);
+      rect(ctx, cx - 3, y + 1, 3, 3, lighten(accent, 0.08));
+    },
+    side(ctx, f, x, y, bodyColor, accent, shadow, shadow2) {
+      rect(ctx, f(x), y, 4, 4, accent);
+      rect(ctx, f(x - 3), y, 3, 3, accent);
+      rect(ctx, f(x - 3), y - 3, 3, 3, lighten(accent, 0.1));
+      px(ctx, f(x + 1), y + 1, lighten(accent, 0.12));
+    },
+  },
+  striped: {
+    top(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 1, y, 3, 3, bodyColor);
+      rect(ctx, cx - 1, y + 3, 3, 3, '#333333');
+      rect(ctx, cx - 1, y + 6, 3, 2, bodyColor);
+    },
+    back(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 1, y, 3, 3, bodyColor);
+      rect(ctx, cx - 1, y - 3, 3, 3, '#333333');
+    },
+    side(ctx, f, x, y, bodyColor, accent, shadow, shadow2) {
+      rect(ctx, f(x), y, 3, 3, bodyColor);
+      rect(ctx, f(x - 3), y, 3, 3, '#333333');
+      rect(ctx, f(x), y + 3, 3, 3, '#333333');
+    },
+  },
+  plain: {
+    top(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 1, y, 3, 4, shadow);
+    },
+    back(ctx, cx, y, bodyColor, accent, shadow) {
+      rect(ctx, cx - 1, y + 2, 3, 4, shadow);
+    },
+    side(ctx, f, x, y, bodyColor, accent, shadow, shadow2) {
+      rect(ctx, f(x), y, 3, 4, shadow);
+    },
+  },
+};
+
+/**
  * Draw quadruped tail variants for DOWN view.
+ * @param {string} style - 'squirrel'|'cotton'|'bushy'|'striped'|'plain'
  */
 export function drawQuadrupedTailTop(ctx, cx, y, style, bodyColor, accent, shadow) {
-  if (style === 'squirrel') {
-    rect(ctx, cx - 4, y - 1, 9, 8, accent);
-    rect(ctx, cx - 3, y + 7, 7, 3, lighten(accent, 0.1));
-    px(ctx, cx - 1, y + 1, lighten(accent, 0.18));
-    return;
-  }
-  if (style === 'cotton') {
-    rect(ctx, cx - 2, y, 4, 4, '#fffff4');
-    px(ctx, cx, y + 1, '#ffffff');
-    return;
-  }
-  if (style === 'bushy') {
-    rect(ctx, cx - 1, y - 3, 4, 4, accent);
-    rect(ctx, cx + 2, y - 1, 3, 3, accent);
-    rect(ctx, cx, y - 2, 3, 2, lighten(accent, 0.1));
-    return;
-  }
-  if (style === 'striped') {
-    rect(ctx, cx - 1, y, 3, 3, bodyColor);
-    rect(ctx, cx - 1, y + 3, 3, 3, '#333333');
-    rect(ctx, cx - 1, y + 6, 3, 2, bodyColor);
-    return;
-  }
-  rect(ctx, cx - 1, y, 3, 4, shadow);
+  (_TAIL_STYLES[style] ?? _TAIL_STYLES.plain).top(ctx, cx, y, bodyColor, accent, shadow);
 }
 
 /**
  * Draw quadruped tail variants for UP view.
+ * @param {string} style - 'squirrel'|'cotton'|'bushy'|'striped'|'plain'
  */
 export function drawQuadrupedTailBack(ctx, cx, y, style, bodyColor, accent, shadow) {
-  if (style === 'squirrel') {
-    rect(ctx, cx - 4, y - 3, 9, 7, accent);
-    rect(ctx, cx - 3, y + 3, 7, 3, lighten(accent, 0.1));
-    px(ctx, cx - 1, y - 1, lighten(accent, 0.18));
-    return;
-  }
-  if (style === 'cotton') {
-    rect(ctx, cx - 2, y + 2, 5, 5, '#fffff4');
-    px(ctx, cx, y + 3, '#ffffff');
-    px(ctx, cx - 1, y + 4, '#ffffff');
-    return;
-  }
-  if (style === 'bushy') {
-    rect(ctx, cx - 1, y, 4, 4, accent);
-    rect(ctx, cx - 3, y + 1, 3, 3, lighten(accent, 0.08));
-    return;
-  }
-  if (style === 'striped') {
-    rect(ctx, cx - 1, y, 3, 3, bodyColor);
-    rect(ctx, cx - 1, y - 3, 3, 3, '#333333');
-    return;
-  }
-  rect(ctx, cx - 1, y + 2, 3, 4, shadow);
+  (_TAIL_STYLES[style] ?? _TAIL_STYLES.plain).back(ctx, cx, y, bodyColor, accent, shadow);
 }
 
 /**
  * Draw quadruped side tail variants.
+ * @param {string} style - 'squirrel'|'cotton'|'bushy'|'striped'|'plain'
  */
 export function drawQuadrupedTailSide(ctx, f, x, y, style, bodyColor, accent, shadow, shadow2) {
-  if (style === 'squirrel') {
-    rect(ctx, f(x - 1), y + 3, 6, 6, accent);
-    rect(ctx, f(x - 4), y - 1, 5, 6, accent);
-    rect(ctx, f(x - 3), y - 7, 8, 7, accent);
-    rect(ctx, f(x + 4), y - 9, 7, 5, lighten(accent, 0.08));
-    rect(ctx, f(x + 9), y - 6, 5, 4, lighten(accent, 0.14));
-    px(ctx, f(x - 1), y + 4, lighten(accent, 0.18));
-    return;
-  }
-  if (style === 'cotton') {
-    rect(ctx, f(x - 1), y, 5, 5, '#fffff4');
-    px(ctx, f(x + 1), y + 1, '#ffffff');
-    px(ctx, f(x), y + 2, '#ffffff');
-    return;
-  }
-  if (style === 'bushy') {
-    rect(ctx, f(x), y, 4, 4, accent);
-    rect(ctx, f(x - 3), y, 3, 3, accent);
-    rect(ctx, f(x - 3), y - 3, 3, 3, lighten(accent, 0.1));
-    px(ctx, f(x + 1), y + 1, lighten(accent, 0.12));
-    return;
-  }
-  if (style === 'striped') {
-    rect(ctx, f(x), y, 3, 3, bodyColor);
-    rect(ctx, f(x - 3), y, 3, 3, '#333333');
-    rect(ctx, f(x), y + 3, 3, 3, '#333333');
-    return;
-  }
-  rect(ctx, f(x), y, 3, 4, shadow);
-  rect(ctx, f(x), y + 4, 3, 3, shadow2);
+  (_TAIL_STYLES[style] ?? _TAIL_STYLES.plain).side(ctx, f, x, y, bodyColor, accent, shadow, shadow2);
 }
 
 /**

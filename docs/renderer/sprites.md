@@ -108,6 +108,108 @@ Use cautiously for readability boosts; avoid over-darkening detailed sprites.
 
 ---
 
+## Body Part Catalog (bodyParts.js)
+
+`src/utils/sprites/animals/bodyParts.js` is the **single source of truth** for all reusable anatomy drawing. Templates import helpers from this file and should not duplicate geometry inline.
+
+> Rule: if the same shape appears in two or more templates, it belongs in `bodyParts.js`.
+
+### Eyes
+
+| Function | View | Notes |
+|---|---|---|
+| `drawEye` | top | sclera + iris + pupil + highlight |
+| `drawEyePair` | top | symmetric pair on a head |
+| `drawEyeSide` | side | with optional outline ring |
+| `drawReptileEye` | any | slit pupil, no sclera |
+| `drawCompoundEye` | top | elliptical insect compound eye |
+
+### Legs / Feet
+
+| Function | Animal | View |
+|---|---|---|
+| `drawQuadrupedLeg` | mammal | top |
+| `drawQuadrupedLegSide` | mammal | side |
+| `drawHoofLeg` | ungulate | top |
+| `drawInsectLeg` | insect | top |
+| `drawInsectLegSide` | insect | side |
+| `drawReptileLegTop` | reptile | top |
+| `drawReptileLegSide` | reptile | side |
+| `drawReptileStubLeg` | crocodile | any stub |
+| `drawLizardLegTop` | lizard | top |
+| `drawLizardLegSide` | lizard | side |
+| `drawBirdFoot` | bird | side |
+
+All jointed legs share the internal `_drawJointedLegCore` primitive (hip→knee→foot with optional claw and toes).
+
+### Head — Shape
+
+| Function | Animal | View |
+|---|---|---|
+| `drawHead` | mammal | top/down |
+| `drawBirdHeadTop` | bird | top/UP |
+| `drawReptileHeadTop` | reptile | top/down — with optional snout brows, scale texture, eyes, teeth |
+| `drawReptileHeadSide` | reptile | side — fill block + highlight + slit eye + optional teeth |
+
+### Head — Ears / Beak
+
+| Function | |
+|---|---|
+| `drawEar` | single ear, top |
+| `drawEarPair` | symmetric pair, top |
+| `drawEarSide` | side ear with optional inner color |
+| `drawBeakDown` | bird beak, top view |
+| `drawBeakSide` | bird beak, side |
+| `drawRaptorBeak` | hooked raptor beak, side |
+
+### Head — Facial Details
+
+| Function | |
+|---|---|
+| `drawNose` | mammal nose with optional highlight |
+| `drawMuzzle` | snout patch |
+| `drawCheek` / `drawCheekPair` | cheek color marks |
+| `drawMask` | raccoon-style facial mask |
+| `drawTusks` | elephant/boar tusks |
+| `drawHorns` | paired horns (cattle, rhino) |
+| `drawAntlers` | branching antlers |
+| `drawTongue` | forked snake tongue |
+
+### Tails
+
+| Function | Style param | Views |
+|---|---|---|
+| `drawQuadrupedTailTop` | `squirrel` `cotton` `bushy` `striped` `plain` | top |
+| `drawQuadrupedTailBack` | same styles | back (rear-facing) |
+| `drawQuadrupedTailSide` | same styles | side |
+| `drawBirdTailUp` | — | UP (fan spread) |
+| `drawBirdTailSide` | — | side (streak) |
+
+### Wings
+
+| Function | View | Notes |
+|---|---|---|
+| `drawBirdWingTop` | top | covert/secondary/primary zones via `_featherZoneColor` |
+| `drawBirdWingSide` | side | same zone logic, folded strip with speckle texture |
+
+Both functions share the internal `_featherZoneColor(t, accent)` core: t < 0.28 → covert (lighten), 0.28–0.65 → secondary (base), > 0.65 → primary (darken).
+
+### Body / Texture
+
+| Function | |
+|---|---|
+| `drawSimpleBody` | generic shaded rectangle body |
+| `drawFurTexture` | anisotropic fur speckle |
+| `drawArmoredBody` | beetle elytra with scute pattern |
+| `drawScuteRidge` | reptile dorsal scute row |
+| `drawBellyStripe` | belly color strip along segment chain |
+| `drawDorsalPattern` | diamond dorsal markings along segment chain |
+| `drawSegmentHighlights` | rim-light highlights along segment chain |
+| `drawCaterpillarSegment` | single elliptical larva segment |
+| `drawCaterpillarChainTop` | full caterpillar body chain (top) |
+
+---
+
 ## Recommended Build Pattern Per Sprite
 
 1. Block silhouette first (body, head, tail masses).

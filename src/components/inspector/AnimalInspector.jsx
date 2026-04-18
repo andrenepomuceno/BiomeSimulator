@@ -102,7 +102,7 @@ function SpeciesAttributes({ species, lifeStage, clock, gameConfig, speciesConfi
         {speciesDetails.can_fly && <div className="stat-row"><span className="stat-label">🕊️ Flight</span><span className="stat-value">Can fly</span></div>}
         <div className="stat-row"><span className="stat-label">🦴 Scavenging</span><span className="stat-value">{speciesDetails.can_scavenge ? 'Enabled' : 'Disabled'}</span></div>
       </div>
-      {speciesDetails.life_stage_ages && (
+      {speciesDetails.life_stage_ages && rawSpecies.life_stage_ages?.length >= 3 && (
         <>
           <h6 className="mt-2 mb-1 inspector-subtitle">🎂 Life Stage Ages</h6>
           <div className="inspector-detail-list">

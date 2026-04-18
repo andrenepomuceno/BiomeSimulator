@@ -329,6 +329,14 @@ const useSimStore = create((set, get) => ({
     for (const animal of a) map.set(animal.id, animal);
     set({ animals: a, _animalsById: map });
   },
+  removeAnimalById: (id) => set((state) => {
+    if (id == null || !state._animalsById.has(id)) return {};
+    const map = new Map(state._animalsById);
+    map.delete(id);
+    const animals = state.animals.filter((a) => a.id !== id);
+    const selectedEntity = state.selectedEntity?.id === id ? null : state.selectedEntity;
+    return { animals, _animalsById: map, selectedEntity };
+  }),
   mergeAnimalDeltas: (deltas, deadIds) => {
     const state = get();
     const map = new Map(state._animalsById);

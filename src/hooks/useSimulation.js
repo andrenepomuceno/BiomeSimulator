@@ -239,7 +239,9 @@ export function useSimulation() {
         }
 
         case 'entityRemoved':
-          // No-op; entity will disappear in next tick
+          if (msg.ok && msg.entityId != null) {
+            store.removeAnimalById(msg.entityId);
+          }
           break;
 
         case 'savedState': {

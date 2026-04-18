@@ -114,6 +114,21 @@ describe('simulationStore mergeAnimalDeltas', () => {
     expect(useSimStore.getState()._animalsById.has(7)).toBe(false);
   });
 
+  it('removeAnimalById removes animal immediately and clears selected entity if needed', () => {
+    useSimStore.getState().setAnimals([
+      { id: 10, species: 'RABBIT', x: 1, y: 1, alive: true },
+      { id: 11, species: 'FOX', x: 2, y: 2, alive: true },
+    ]);
+    useSimStore.setState({ selectedEntity: { id: 10, species: 'RABBIT' } });
+
+    useSimStore.getState().removeAnimalById(10);
+
+    const state = useSimStore.getState();
+    expect(state.animals.map((a) => a.id)).toEqual([11]);
+    expect(state._animalsById.has(10)).toBe(false);
+    expect(state.selectedEntity).toBeNull();
+  });
+
   it('keeps the newest audio log entries within the configured limit', () => {
     const store = useSimStore.getState();
 

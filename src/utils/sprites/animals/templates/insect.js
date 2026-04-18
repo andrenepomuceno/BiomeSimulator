@@ -5,7 +5,7 @@
  * Shell sheen, translucent wings, segmented antennae, caterpillar prolegs.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawInsectLeg, drawInsectLegSide, drawFurTexture, drawCaterpillarChainTop, drawCricketJumpLegTop, drawCricketJumpLegSide, drawCerciTop, drawCerciSide, drawCricketWingPads } from '../bodyParts.js';
+import { drawInsectLeg, drawInsectLegSide, drawFurTexture, drawCaterpillarChainTop, drawCricketJumpLegTop, drawCricketJumpLegSide, drawCerciTop, drawCerciSide, drawCricketWingPads, drawRoundedSideBody } from '../bodyParts.js';
 
 export function drawInsect(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -125,13 +125,13 @@ export function drawInsect(ctx, params, dir, frame) {
     const by = cy - Math.floor(h / 2);
 
     if (params.shell) {
-      // Shell body — dorsal gradient + keel line (body symmetric around cx=32)
-      gradientV(ctx, bx, by, w, h, lighten(accent, 0.14), darken(accent, 0.16));
-      for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by, lighten(accent, 0.18)); px(ctx, f(bx + i), by + 1, lighten(accent, 0.12)); }
+      // Shell body — rounded side silhouette
+      drawRoundedSideBody(ctx, f, bx, by, w, h, lighten(accent, 0.14), accent, darken(accent, 0.16), {
+        edgeRound: 2,
+      });
+      for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 1, lighten(accent, 0.12)); }
       // Dorsal keel
       for (let r = 2; r < h - 2; r++) px(ctx, cx, by + r, darken(accent, 0.10));
-      // Ventral shadow
-      for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + h - 2, darken(accent, 0.12)); px(ctx, f(bx + i), by + h - 1, darken(accent, 0.18)); }
       if (params.sheen) {
         rect(ctx, f(bx + 3), by + 3, 3, 3, params.sheen);
         px(ctx, f(bx + 4), by + 5, lighten(params.sheen, 0.1));
@@ -139,10 +139,11 @@ export function drawInsect(ctx, params, dir, frame) {
       // Shell micro-texture (body symmetric coords)
       anisotropicSpeckle(ctx, bx + 1, by + 2, w - 2, h - 4, [darken(accent, 0.08), darken(accent, 0.13), lighten(accent, 0.05)], 0.18, Math.PI / 4, 1.8);
     } else {
-      // Non-shell body — dorsal-to-ventral gradient
-      gradientV(ctx, bx, by, w, h, highlight, shadow);
-      for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by, highlight); px(ctx, f(bx + i), by + 1, lighten(body, 0.08)); }
-      for (let i = 2; i < w - 2; i++) px(ctx, f(bx + i), by + h - 1, shadow2);
+      // Non-shell body — rounded side silhouette
+      drawRoundedSideBody(ctx, f, bx, by, w, h, highlight, body, shadow2, {
+        edgeRound: 2,
+      });
+      for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 1, lighten(body, 0.08)); }
     }
 
     // Head (side)

@@ -577,6 +577,49 @@ export function drawSimpleBody(ctx, x, y, w, h, bodyColor, highlightColor, shado
 }
 
 /**
+ * Draw a rounded side-view torso silhouette with vertical shading.
+ * Keeps top/bottom rows tapered so side profiles feel less boxy.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Function} f - x-flip function
+ * @param {number} x - left x (unflipped)
+ * @param {number} y - top y
+ * @param {number} w - width
+ * @param {number} h - height
+ * @param {string} dorsalColor - top color
+ * @param {string} midColor - center color
+ * @param {string} ventralColor - bottom color
+ * @param {object} opts
+ * @param {number} [opts.edgeRound=3] - corner taper strength
+ * @param {string|null} [opts.bellyColor=null] - optional belly tint near ventral rows
+ * @param {number} [opts.bellyDepth=0] - number of bottom rows to tint with bellyColor
+ */
+export function drawRoundedSideBody(ctx, f, x, y, w, h, dorsalColor, midColor, ventralColor, opts = {}) {
+  const edgeRound = opts.edgeRound ?? 3;
+  const bellyColor = opts.bellyColor ?? null;
+  const bellyDepth = Math.max(0, opts.bellyDepth ?? 0);
+  const hh = Math.max(1, h - 1);
+
+  for (let row = 0; row < h; row++) {
+    const t = hh === 0 ? 0 : row / hh;
+    const ny = t * 2 - 1;
+    const curve = Math.max(0, 1 - ny * ny);
+    const inset = Math.round((1 - curve) * edgeRound);
+    const x0 = x + inset;
+    const x1 = x + w - 1 - inset;
+    if (x1 < x0) continue;
+
+    const grad = t < 0.5
+      ? blend(dorsalColor, midColor, t / 0.5)
+      : blend(midColor, ventralColor, (t - 0.5) / 0.5);
+    const rowColor = bellyColor && row >= h - bellyDepth
+      ? blend(grad, bellyColor, 0.72)
+      : grad;
+
+    for (let cx = x0; cx <= x1; cx++) px(ctx, f(cx), y + row, rowColor);
+  }
+}
+
+/**
  * Draw a side-view ear using a shared profile for mammals.
  * @param {CanvasRenderingContext2D} ctx
  * @param {Function} f - x-flip function

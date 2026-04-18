@@ -2,7 +2,7 @@
  * Ungulate drawing template — deer/goat focused silhouette.
  */
 import { px, rect, ellipse, darken, lighten, gradientV, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawNose, drawHorns, drawAntlers, drawHoofLeg, drawEyeSide } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawNose, drawHorns, drawAntlers, drawHoofLeg, drawEyeSide, drawRoundedSideBody } from '../bodyParts.js';
 
 export function drawUngulate(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -72,9 +72,12 @@ export function drawUngulate(ctx, params, dir, frame) {
   drawHoofLeg(ctx, f(bx + w - 7), by + h - legShift, 8, body, shadow, hoofCol);
   drawHoofLeg(ctx, f(bx + w - 3), by + h, 8, body, shadow, hoofCol);
 
-  // Torso
-  gradientV(ctx, bx + 1, by + 2, w - 2, h - 1, highlight, shadow2);
-  rect(ctx, f(bx + 4), by + 1, w - 8, 1, lighten(body, 0.14));
+  // Torso (rounded side silhouette)
+  drawRoundedSideBody(ctx, f, bx + 1, by + 1, w - 2, h - 1, highlight, body, shadow2, {
+    edgeRound: 3,
+    bellyDepth: 1,
+  });
+  rect(ctx, f(bx + 5), by + 2, w - 10, 1, lighten(body, 0.14));
 
   if (params.spots) {
     rect(ctx, f(bx + 7), by + 5, 2, 2, spotCol);

@@ -2,7 +2,7 @@
  * Ursid drawing template — bear focused silhouette.
  */
 import { px, rect, ellipse, darken, lighten, gradientV, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawNose, drawMuzzle, drawFurTexture, drawEyeSide } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawNose, drawMuzzle, drawFurTexture, drawEyeSide, drawRoundedSideBody } from '../bodyParts.js';
 
 export function drawUrsid(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -62,10 +62,13 @@ export function drawUrsid(ctx, params, dir, frame) {
   rect(ctx, f(bx + 1), by + h + 5, 3, 1, pawCol);
   rect(ctx, f(bx + w - 8), by + h + 5, 3, 1, pawCol);
 
-  gradientV(ctx, bx + 1, by + 2, w - 2, h - 1, highlight2, shadow2);
-  rect(ctx, f(bx + 7), by + 1, w - 12, 2, highlight2);
-  rect(ctx, f(bx + 8), by, w - 14, 1, lighten(body, 0.14));
-  drawFurTexture(ctx, bx + 3, by + 3, w - 6, h - 4, body, 0, 0.22);
+  drawRoundedSideBody(ctx, f, bx + 1, by + 1, w - 2, h - 1, highlight2, body, shadow2, {
+    edgeRound: 4,
+    bellyDepth: 2,
+  });
+  rect(ctx, f(bx + 7), by + 2, w - 12, 2, highlight2);
+  rect(ctx, f(bx + 8), by + 1, w - 14, 1, lighten(body, 0.14));
+  drawFurTexture(ctx, bx + 4, by + 3, w - 8, h - 5, body, 0, 0.22);
 
   const headX = bx + w - 1;
   const headY = by - 1;

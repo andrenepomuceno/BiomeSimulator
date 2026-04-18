@@ -5,7 +5,7 @@
  * Scale texture via noise, slit-pupil eyes, claw detail, belly plates.
  */
 import { px, rect, darken, lighten, noise, gradientV, rimLight, ao, speckle, thickLine, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawReptileEye, drawReptileHeadTop, drawReptileHeadSide, drawTongue, drawReptileLegTop, drawReptileLegSide } from '../bodyParts.js';
+import { drawReptileEye, drawReptileHeadTop, drawReptileHeadSide, drawTongue, drawReptileLegTop, drawReptileLegSide, drawRoundedSideBody } from '../bodyParts.js';
 
 export function drawReptile(ctx, params, dir, frame) {
   const { body, accent, eye, w, h, tailLen } = params;
@@ -77,17 +77,21 @@ export function drawReptile(ctx, params, dir, frame) {
     const by = cy - Math.floor(h / 2);
 
     // Body
-    for (let c = 3; c < w - 3; c++) { px(ctx, f(bx + c), by, body); px(ctx, f(bx + c), by + 1, body); }
-    for (let r = 2; r < h - 2; r++) for (let c = 0; c < w; c++) px(ctx, f(bx + c), by + r, body);
-    for (let c = 3; c < w - 3; c++) { px(ctx, f(bx + c), by + h - 2, shadow); px(ctx, f(bx + c), by + h - 1, shadow2); }
-    // Belly
-    for (let c = 2; c < w - 2; c++) { px(ctx, f(bx + c), by + h - 3, accent); px(ctx, f(bx + c), by + h - 4, accent); }
+    drawRoundedSideBody(ctx, f, bx, by, w, h, highlight, body, shadow2, {
+      edgeRound: 3,
+      bellyColor: accent,
+      bellyDepth: 2,
+    });
     // Spine on top
     if (params.spine) for (let c = 0; c < w; c += 5) rect(ctx, f(bx + c), by, 2, 2, params.spine);
     if (params.scutes) for (let c = 3; c < w; c += 5) rect(ctx, f(bx + c), by, 2, 2, params.scutes);
     // Scale texture (multi-tone)
     for (let r = 2; r < h - 2; r++) {
-      for (let c = 1; c < w - 1; c++) {
+      const t = r / Math.max(1, h - 1);
+      const ny = t * 2 - 1;
+      const curve = Math.max(0, 1 - ny * ny);
+      const inset = Math.round((1 - curve) * 3);
+      for (let c = 1 + inset; c < w - 1 - inset; c++) {
         const n = noise(bx + c, by + r);
         if (n > 0.74) px(ctx, f(bx + c), by + r, scaleTex);
         else if (n > 0.70) px(ctx, f(bx + c), by + r, darken(body, 0.12));

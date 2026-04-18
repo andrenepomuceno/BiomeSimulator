@@ -9,7 +9,7 @@
  *   - Inner-ear detail, paw pads, species-specific markings
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, softCircle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawEarSide, drawNose, drawCheekPair, drawHorns, drawAntlers, drawTusks, drawMask, drawMuzzle, drawFurTexture, drawHead, drawQuadrupedLeg, drawQuadrupedLegSide, drawEyeSide, drawQuadrupedTailTop, drawQuadrupedTailBack, drawQuadrupedTailSide } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawEarSide, drawNose, drawCheekPair, drawHorns, drawAntlers, drawTusks, drawMask, drawMuzzle, drawFurTexture, drawHead, drawQuadrupedLeg, drawQuadrupedLegSide, drawEyeSide, drawQuadrupedTailTop, drawQuadrupedTailBack, drawQuadrupedTailSide, drawRoundedSideBody } from '../bodyParts.js';
 
 export function drawQuadruped(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -249,20 +249,15 @@ export function drawQuadruped(ctx, params, dir, frame) {
     drawQuadrupedLegSide(ctx, f, bx + w - 6, by + h, body, outline, pawCol, legShift);
     rect(ctx, f(bx + w - 3), by + h, 3, 4, body);  // front stub
 
-    // -- Body -- dorsal-to-ventral gradient with directional fur streaks
-    // Body is symmetric around cx=32 so gradientV coords work for both flip directions
-    gradientV(ctx, bx, by, w, h, highlight2, shadow2);
+    // -- Body -- rounded silhouette to avoid boxy side profiles
+    drawRoundedSideBody(ctx, f, bx, by, w, h, highlight2, body, shadow2, {
+      edgeRound: 3,
+      bellyColor: bellyCol,
+      bellyDepth: 3,
+    });
     // Dorsal ridge (back) — bright highlight along spine
-    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by, highlight2); px(ctx, f(bx + i), by + 1, highlight2); }
-    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + 2, highlight); px(ctx, f(bx + i), by + 3, highlight); }
-    // Ventral shadow
-    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + h - 2, shadow); px(ctx, f(bx + i), by + h - 1, shadow2); }
-    // Belly accent
-    for (let i = 3; i < w - 3; i++) {
-      px(ctx, f(bx + i), by + h - 5, blend(bellyCol, body, 0.4));
-      px(ctx, f(bx + i), by + h - 4, bellyCol);
-      px(ctx, f(bx + i), by + h - 3, bellyCol);
-    }
+    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 1, highlight2); }
+    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 2, highlight); }
     // Horizontal fur streaks along movement axis (body is symmetric, no flip needed for texture)
     anisotropicSpeckle(ctx, bx + 2, by + 3, w - 4, h - 6, [furTex, darken(body, 0.10), lighten(body, 0.06)], 0.28, 0, 3.5);
     if (params.spots) {

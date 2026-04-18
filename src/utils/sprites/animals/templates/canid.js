@@ -2,7 +2,7 @@
  * Canid drawing template — fox/wolf focused silhouette.
  */
 import { px, rect, ellipse, darken, lighten, gradientV, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawFurTexture, drawEyeSide, drawCanidHeadTop, drawCanidHeadSide } from '../bodyParts.js';
+import { drawEyePair, drawEarPair, drawNose, drawCheekPair, drawFurTexture, drawEyeSide, drawCanidHeadTop, drawCanidHeadSide, drawRoundedSideBody } from '../bodyParts.js';
 
 export function drawCanid(ctx, params, dir, frame) {
   const { body, accent, eye, w, h } = params;
@@ -81,10 +81,14 @@ export function drawCanid(ctx, params, dir, frame) {
   rect(ctx, f(bx + 1), by + h + 5, 2, 1, pawCol);
   rect(ctx, f(bx + w - 7), by + h + 5, 2, 1, pawCol);
 
-  // Torso
-  gradientV(ctx, bx + 1, by + 2, w - 2, h - 2, highlight2, shadow2);
-  anisotropicSpeckle(ctx, bx + 2, by + 3, w - 4, h - 4, [darken(body, 0.10), body, lighten(body, 0.05)], 0.22, 0, 3.2);
-  rect(ctx, f(bx + 4), by + 1, w - 8, 1, highlight2);
+  // Torso (rounded side silhouette)
+  drawRoundedSideBody(ctx, f, bx + 1, by + 1, w - 2, h - 1, highlight2, body, shadow2, {
+    edgeRound: 3,
+    bellyColor: params.bellyColor || null,
+    bellyDepth: 2,
+  });
+  anisotropicSpeckle(ctx, bx + 3, by + 3, w - 6, h - 5, [darken(body, 0.10), body, lighten(body, 0.05)], 0.22, 0, 3.2);
+  rect(ctx, f(bx + 5), by + 2, w - 10, 1, highlight2);
 
   // Head (longer snout)
   const headX = bx + w - 1;

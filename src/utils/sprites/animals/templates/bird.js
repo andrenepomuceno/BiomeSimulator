@@ -5,7 +5,7 @@
  * Feather texture, wing layering, detailed beak and eye ring.
  */
 import { px, rect, dither, darken, lighten, blend, gradientV, rimLight, ao, speckle, anisotropicSpeckle, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawFurTexture, drawBirdFoot, drawRaptorBeak, drawBirdHeadTop, drawBirdWingTop, drawBirdTailUp, drawBirdWingSide, drawBirdTailSide } from '../bodyParts.js';
+import { drawFurTexture, drawBirdFoot, drawRaptorBeak, drawBirdHeadTop, drawBirdWingTop, drawBirdTailUp, drawBirdWingSide, drawBirdTailSide, drawRoundedSideBody } from '../bodyParts.js';
 
 export function drawBird(ctx, params, dir, frame) {
   const { body, accent, eye, beak, w, h, wingSpan } = params;
@@ -76,23 +76,15 @@ export function drawBird(ctx, params, dir, frame) {
     const bx = cx - Math.floor(w / 2);
     const by = cy - Math.floor(h / 2);
 
-    // Body — dorsal-to-ventral gradient with directional feather texture
-    // Body is symmetric around cx=32 so gradientV works without flipping
-    gradientV(ctx, bx, by, w, h, highlight2, shadow2);
+    // Body — rounded side silhouette
+    drawRoundedSideBody(ctx, f, bx, by, w, h, highlight2, body, shadow2, {
+      edgeRound: 3,
+      bellyColor: params.breast ? breastCol : null,
+      bellyDepth: params.breast ? 4 : 0,
+    });
     // Dorsal ridge
-    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by, highlight2); px(ctx, f(bx + i), by + 1, highlight2); }
-    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + 2, highlight); px(ctx, f(bx + i), by + 3, highlight); }
-    // Ventral shadow
-    for (let i = 2; i < w - 2; i++) { px(ctx, f(bx + i), by + h - 2, shadow); px(ctx, f(bx + i), by + h - 1, shadow2); }
-    // Breast
-    if (params.breast) {
-      for (let i = 3; i < w - 3; i++) {
-        px(ctx, f(bx + i), by + h - 6, blend(breastCol, body, 0.4));
-        px(ctx, f(bx + i), by + h - 5, breastCol);
-        px(ctx, f(bx + i), by + h - 4, breastCol);
-        px(ctx, f(bx + i), by + h - 3, breastCol);
-      }
-    }
+    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 1, highlight2); }
+    for (let i = 3; i < w - 3; i++) { px(ctx, f(bx + i), by + 2, highlight); }
     // Horizontal feather streaks (body symmetric, no flip needed for texture)
     anisotropicSpeckle(ctx, bx + 1, by + 3, w - 2, h - 5, [featherTex, darken(body, 0.10), lighten(body, 0.05)], 0.26, 0, 3.5);
 

@@ -16,7 +16,10 @@ export function useSimulation() {
       { type: 'module' }
     );
     workerRef.current = worker;
-    useSimStore.getState().setWorker(worker);
+    const initialStore = useSimStore.getState();
+    initialStore.setWorker(worker);
+    // Keep engine-side profiling aligned with persisted UI setting from the first tick.
+    worker.postMessage({ cmd: 'setProfiling', enabled: !!initialStore.profilingEnabled });
 
     worker.onmessage = (e) => {
       const msg = e.data;

@@ -111,8 +111,8 @@ export function _seekWater(animal, world, vision) {
       animal._knownWaterY = null;
     }
 
-    // Full grid scan
-    const searchR = desperate ? Math.min(vision * 3, 30) : vision * 2;
+    // Full grid scan (cap radius so large-vision species don't scan O(r²) areas)
+    const searchR = desperate ? Math.min(vision * 3, 30) : Math.min(vision * 2, 22);
     const candidates = [];
     let bestDist = Infinity;
 

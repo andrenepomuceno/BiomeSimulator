@@ -138,6 +138,7 @@ export default function TileInspector({ tile, clearSelection, onFocusEntity, req
       : tile.plant.stage === 3 ? plantSpecies.emoji.adultSprout
       : tile.plant.stage === 4 ? plantSpecies.emoji.adult
       : tile.plant.stage === 5 ? plantSpecies.emoji.fruit
+      : tile.plant.stage === 6 ? '💀'
       : '🌿')
     : '🌿';
   const stageAges = hasPlant && plantSpecies ? effectivePlantStageAges[tile.plant.type] : null;

@@ -15,6 +15,7 @@ export function formatPercent(value, digits = 0) {
 }
 
 export function formatTickDurationLabel(ticks, ticksPerDay) {
+  if (ticks == null || !Number.isFinite(ticks)) return '—';
   return `${ticks} ticks (${formatGameDuration(ticksToGameMinutes(ticks, ticksPerDay))})`;
 }
 

@@ -50,6 +50,8 @@ export function useSimulation() {
               terrain, plantType, plantStage, waterProximity, heightmap,
               width: msg.width, height: msg.height, seed: msg.seed,
             },
+            groundItems: new Map(),
+            selectedItem: null,
           });
           break;
         }
@@ -139,14 +141,19 @@ export function useSimulation() {
             } else {
               // Fresh click: auto-select lone animal (alive or corpse); otherwise show tile view
               const tileAnimals = filtered.animals || [];
-              const hasPlant = !!filtered.plant;
-              if (tileAnimals.length === 1) {
+              const tileItems = filtered.items || [];
+              const hasPlant = !!(filtered.plant?.type);
+              if (tileAnimals.length === 1 && tileItems.length === 0) {
                 store.setSelectedEntity(tileAnimals[0]);
                 // Also request detailed info (actionHistory, nav context)
                 if (workerRef.current) {
                   workerRef.current.postMessage({ cmd: 'getAnimalDetail', id: tileAnimals[0].id });
                 }
-              } else if (tileAnimals.length > 0 || hasPlant || targets.terrain) {
+              } else if (tileAnimals.length === 0 && !hasPlant && tileItems.length === 1) {
+                // Auto-select a lone item on an otherwise empty tile
+                const fromStore = useSimStore.getState().groundItems.get(tileItems[0].id);
+                store.setSelectedItem(fromStore || tileItems[0]);
+              } else if (tileAnimals.length > 0 || hasPlant || tileItems.length > 0 || targets.terrain) {
                 store.setSelectedTile({ x: msg.x, y: msg.y, ...filtered });
               }
               // If nothing matched filters, skip selection entirely

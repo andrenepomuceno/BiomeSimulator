@@ -4,6 +4,39 @@ import { AnimalStatusBadge } from './AnimalInspector.jsx';
 import { CollapsibleSection } from './InspectorShared.jsx';
 import { PlantAttributes, PlantConsumers, PlantLogEntry, PlantStageProgress } from './PlantInspectorPanels.jsx';
 
+const ITEM_TYPE_EMOJIS = { 1: '🥩', 2: '🍑', 3: '🌰' };
+const ITEM_TYPE_NAMES_MAP = { 1: 'Meat', 2: 'Fruit', 3: 'Seed' };
+
+function TileItems({ items, onSelectItem }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <CollapsibleSection title={`Ground Items (${items.length})`} icon="📦" defaultOpen={true}>
+      {items.map((item) => {
+        const emoji = ITEM_TYPE_EMOJIS[item.type] || '📦';
+        const name = ITEM_TYPE_NAMES_MAP[item.type] || 'Item';
+        const sourceInfo = item.type === 1
+          ? (SPECIES_INFO[item.source]?.emoji ? `${SPECIES_INFO[item.source].emoji} ${SPECIES_INFO[item.source].name}` : item.source)
+          : (PLANT_TYPE_NAMES[item.source] || null);
+        return (
+          <div
+            key={item.id}
+            className="d-flex align-items-center gap-1 mb-1"
+            style={{ cursor: 'pointer', padding: '2px 4px', borderRadius: 4, background: 'rgba(255,255,255,0.03)' }}
+            onClick={() => onSelectItem?.(item)}
+          >
+            <span style={{ fontSize: '0.85rem' }}>{emoji}</span>
+            <span style={{ flex: 1, fontSize: '0.68rem' }}>
+              {name}
+              {sourceInfo && <span style={{ color: '#666' }}> · {sourceInfo}</span>}
+            </span>
+            <span style={{ fontSize: '0.6rem', color: '#666' }}>#{item.id}</span>
+          </div>
+        );
+      })}
+    </CollapsibleSection>
+  );
+}
+
 function TileOccupants({ animals, onSelectAnimal }) {
   if (!animals || animals.length === 0) return null;
 
@@ -86,11 +119,12 @@ function TileNeighborhood({ neighbors, waterAdjacent, adjacentPlants }) {
   );
 }
 
-export default function TileInspector({ tile, clearSelection, requestAnimalDetail, setSelectedEntity, clock, gameConfig, effectivePlantStageAges, effectivePlantFruitSpoilAges, ticksPerDay, getPlantByTypeId }) {
+export default function TileInspector({ tile, clearSelection, requestAnimalDetail, setSelectedEntity, setSelectedItem, clock, gameConfig, effectivePlantStageAges, effectivePlantFruitSpoilAges, ticksPerDay, getPlantByTypeId }) {
   const [tileTab, setTileTab] = useState('terrain');
   const [plantTab, setPlantTab] = useState('info');
   const hasPlant = tile.plant && tile.plant.type !== 0 && tile.plant.type !== 'none';
   const hasAnimals = tile.animals && tile.animals.length > 0;
+  const hasItems = tile.items && tile.items.length > 0;
   const plantSpecies = hasPlant ? getPlantByTypeId(tile.plant.type) : null;
   const plantEmoji = hasPlant && plantSpecies && plantSpecies.emoji
     ? (tile.plant.stage === 1 ? plantSpecies.emoji.seed
@@ -111,13 +145,16 @@ export default function TileInspector({ tile, clearSelection, requestAnimalDetai
 
   useEffect(() => {
     if (tileTab === 'plant' && !hasPlant) {
-      setTileTab(hasAnimals ? 'animals' : 'terrain');
+      setTileTab(hasAnimals ? 'animals' : hasItems ? 'items' : 'terrain');
       return;
     }
     if (tileTab === 'animals' && !hasAnimals) {
-      setTileTab(hasPlant ? 'plant' : 'terrain');
+      setTileTab(hasPlant ? 'plant' : hasItems ? 'items' : 'terrain');
     }
-  }, [tileTab, hasPlant, hasAnimals]);
+    if (tileTab === 'items' && !hasItems) {
+      setTileTab(hasPlant ? 'plant' : hasAnimals ? 'animals' : 'terrain');
+    }
+  }, [tileTab, hasPlant, hasAnimals, hasItems]);
 
   const handleSelectAnimal = (animal) => {
     setSelectedEntity(animal);
@@ -128,6 +165,7 @@ export default function TileInspector({ tile, clearSelection, requestAnimalDetai
     { key: 'terrain', label: '🗺️ Terrain' },
     ...(hasPlant ? [{ key: 'plant', label: `${plantEmoji} Plant` }] : []),
     ...(hasAnimals ? [{ key: 'animals', label: `🐾 (${tile.animals.length})` }] : []),
+    ...(hasItems ? [{ key: 'items', label: `📦 (${tile.items.length})` }] : []),
   ];
   const plantSubTabs = [
     { key: 'info', label: 'Info' },
@@ -236,6 +274,12 @@ export default function TileInspector({ tile, clearSelection, requestAnimalDetai
       {tileTab === 'animals' && (
         <div className="inspector-tab-panel">
           <TileOccupants animals={tile.animals} onSelectAnimal={handleSelectAnimal} />
+        </div>
+      )}
+
+      {tileTab === 'items' && (
+        <div className="inspector-tab-panel">
+          <TileItems items={tile.items} onSelectItem={setSelectedItem} />
         </div>
       )}
     </div>

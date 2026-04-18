@@ -583,6 +583,13 @@ self.onmessage = function (e) {
           info.animals.push(a.toDict());
         }
       }
+      // Ground items on this tile
+      info.items = [];
+      for (const item of w.items) {
+        if (!item.consumed && (item.x | 0) === x && (item.y | 0) === y) {
+          info.items.push(item.toDelta());
+        }
+      }
       self.postMessage({ type: 'tileInfo', x, y, info, refreshOnly: !!e.data.refreshOnly });
       break;
     }

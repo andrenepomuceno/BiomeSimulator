@@ -274,7 +274,26 @@ const useSimStore = create((set, get) => ({
 
   // Ground item changes (add/remove/update deltas)
   itemChanges: [],
-  setItemChanges: (c) => set({ itemChanges: c }),
+  setItemChanges: (changes) => set((state) => {
+    if (!changes || changes.length === 0) return { itemChanges: changes };
+    const groundItems = new Map(state.groundItems);
+    let selectedItem = state.selectedItem;
+    for (const change of changes) {
+      if (change.op === 'add') {
+        groundItems.set(change.item.id, change.item);
+      } else if (change.op === 'remove') {
+        groundItems.delete(change.item.id);
+        if (selectedItem?.id === change.item.id) selectedItem = null;
+      } else if (change.op === 'update') {
+        const existing = groundItems.get(change.item.id);
+        const merged = existing ? { ...existing, ...change.item } : change.item;
+        groundItems.set(change.item.id, merged);
+        if (selectedItem?.id === change.item.id) selectedItem = merged;
+      }
+    }
+    return { itemChanges: changes, groundItems, selectedItem };
+  }),
+  groundItems: new Map(), // id → full item delta, kept in sync with itemChanges
 
   // Stats
   stats: { herbivores: 0, carnivores: 0, plants_total: 0, fruits: 0 },
@@ -334,12 +353,14 @@ const useSimStore = create((set, get) => ({
   })),
   clearAudioLog: () => set({ audioLog: [] }),
 
-  // Selected entity / tile
+  // Selected entity / tile / item
   selectedEntity: null,
   selectedTile: null,
-  setSelectedEntity: (e) => set({ selectedEntity: e, selectedTile: null }),
-  setSelectedTile: (t) => set({ selectedTile: t, selectedEntity: null }),
-  clearSelection: () => set({ selectedEntity: null, selectedTile: null }),
+  selectedItem: null,
+  setSelectedEntity: (e) => set({ selectedEntity: e, selectedTile: null, selectedItem: null }),
+  setSelectedTile: (t) => set({ selectedTile: t, selectedEntity: null, selectedItem: null }),
+  setSelectedItem: (item) => set({ selectedItem: item, selectedEntity: null, selectedTile: null }),
+  clearSelection: () => set({ selectedEntity: null, selectedTile: null, selectedItem: null }),
 
   // Editor
   tool: 'SELECT', // SELECT, PAINT_TERRAIN, PLACE_ENTITY, ERASE

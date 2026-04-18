@@ -9,13 +9,16 @@ import { resolveTicksPerDay } from '../utils/time';
 import { resolveTicksPerGameMinute } from '../utils/gameTime.js';
 import AnimalInspector from './inspector/AnimalInspector.jsx';
 import TileInspector from './inspector/TileInspector.jsx';
+import ItemInspector from './inspector/ItemInspector.jsx';
 
 export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) {
   const {
     selectedEntity,
     selectedTile,
+    selectedItem,
     clearSelection,
     setSelectedEntity,
+    setSelectedItem,
     clock,
     gameConfig,
   } = useSimStore();
@@ -51,6 +54,17 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
     );
   }
 
+  if (selectedItem) {
+    return (
+      <ItemInspector
+        item={selectedItem}
+        clearSelection={clearSelection}
+        clock={clock}
+        gameConfig={gameConfig}
+      />
+    );
+  }
+
   if (selectedTile) {
     return (
       <TileInspector
@@ -58,6 +72,7 @@ export default function EntityInspector({ onFocusEntity, requestAnimalDetail }) 
         clearSelection={clearSelection}
         requestAnimalDetail={requestAnimalDetail}
         setSelectedEntity={setSelectedEntity}
+        setSelectedItem={setSelectedItem}
         clock={clock}
         gameConfig={gameConfig}
         effectivePlantStageAges={effectivePlantStageAges}

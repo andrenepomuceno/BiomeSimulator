@@ -5,6 +5,17 @@
 import { px, rect, darken, lighten, gradientH, ao } from '../../helpers.js';
 import { drawBarkTexture, drawTrunk, drawCanopyBase, drawFoliageMound, drawLeafHighlight, drawGroundBase, drawFruit } from '../bodyParts.js';
 
+function drawLowLeafBranch(ctx, x, y, w, branchColor, leafColor, leafDark) {
+  const branchW = Math.max(4, w - 2);
+  rect(ctx, x + 1, y + 1, branchW, 1, darken(branchColor, 0.12));
+
+  // Leaf pads at branch ends keep the lower canopy organic instead of rectangular.
+  rect(ctx, x, y, 3, 2, leafDark);
+  rect(ctx, x + branchW - 1, y, 3, 2, leafDark);
+  px(ctx, x + 1, y - 1, leafColor);
+  px(ctx, x + branchW, y - 1, leafColor);
+}
+
 export function drawTree(ctx, params, stage, frame) {
   const { trunk, trunkDark, leaf, leafDark, fruit, fruitAccent } = params;
   const lh = params.leafHighlight || lighten(leaf, 0.25);
@@ -25,7 +36,7 @@ export function drawTree(ctx, params, stage, frame) {
     rect(ctx, cx, baseY - sh, 2, (sh * 0.4) | 0, trunkDark);
     drawBarkTexture(ctx, cx, baseY - sh, 6, sh, trunk, trunkDark);
     drawFoliageMound(ctx, cx + swayOff, baseY - sh - sch, (sw / 2) | 0, (sch / 2) | 0, leaf, leafDark);
-    rect(ctx, cx - (sw / 2 | 0) + 1 + swayOff, baseY - sh + 1, sw - 2, 3, leafDark);
+    drawLowLeafBranch(ctx, cx - ((sw / 2) | 0) + 2 + swayOff, baseY - sh + 1, sw - 4, trunkDark, leaf, leafDark);
     drawGroundBase(ctx, cx - 2, baseY, 12, trunk);
   } else if (stage === 3) {
     const sh = (th * 0.85) | 0;
@@ -36,7 +47,7 @@ export function drawTree(ctx, params, stage, frame) {
     rect(ctx, cx, baseY - ((sh * 0.7) | 0), 2, (sh * 0.55) | 0, trunkDark);
     drawBarkTexture(ctx, cx, baseY - sh, 8, sh, trunk, trunkDark);
     drawFoliageMound(ctx, cx + swayOff, baseY - sh - sch, shw, (sch / 2) | 0, leaf, leafDark);
-    rect(ctx, cx - shw + 2 + swayOff, baseY - sh + 3, sw - 4, 3, leafDark);
+    drawLowLeafBranch(ctx, cx - shw + 3 + swayOff, baseY - sh + 3, sw - 6, trunkDark, leaf, leafDark);
     drawLeafHighlight(ctx, cx - 2 + swayOff, baseY - sh - sch + 2, 8, 5, lh);
     drawGroundBase(ctx, cx - 4, baseY, 16, trunk);
   } else if (stage === 4) {

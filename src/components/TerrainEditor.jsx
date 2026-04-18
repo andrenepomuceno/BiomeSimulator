@@ -92,7 +92,7 @@ export default function TerrainEditor() {
   if (tool === 'ERASE') {
     return (
       <div className="sidebar-section">
-        <h6>Erase</h6>
+        <h6 className="inspector-subtitle">🗑️ Erase</h6>
         <div className="small text-muted">Click on an animal to remove it</div>
         <div className="small text-muted">Undo/redo entity edits with Ctrl/Cmd+Z and Ctrl/Cmd+Y. History: {entityUndoStack.length} undo, {entityRedoStack.length} redo.</div>
       </div>

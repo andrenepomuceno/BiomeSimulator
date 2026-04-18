@@ -8,7 +8,7 @@ export const DEFAULT_AUDIO_SETTINGS = {
   muted: false,
   masterVolume: 0.72,
   sfxVolume: 0.88,
-  ambienceVolume: 0.48,
+  ambienceVolume: 0,
   sfxEnabled: true,
   ambienceEnabled: true,
   unlocked: false,

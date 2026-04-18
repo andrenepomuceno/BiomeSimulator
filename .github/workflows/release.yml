@@ -65,11 +65,11 @@ jobs:
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
 
       - name: Skip release summary
-        if: steps.guard.outputs.should_release != 'true'
+        if: ${{ steps.guard.outputs.should_release != 'true' }}
         run: echo "Skipping draft release: ${{ steps.guard.outputs.reason }}"
 
       - name: Create and push tag
-        if: steps.guard.outputs.should_release == 'true'
+        if: ${{ steps.guard.outputs.should_release == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -79,7 +79,7 @@ jobs:
           git push origin "${{ steps.guard.outputs.tag }}"
 
       - name: Create draft GitHub release
-        if: steps.guard.outputs.should_release == 'true'
+        if: ${{ steps.guard.outputs.should_release == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.guard.outputs.tag }}

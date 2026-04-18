@@ -9,6 +9,7 @@ import {
   gradientH, gradientV,
   rimLight, ao,
   speckle, anisotropicSpeckle,
+  shadedEllipse,
 } from '../helpers.js';
 
 // ─── Texture helpers ────────────────────────────────────────────────────────
@@ -197,27 +198,39 @@ export function drawMushroomCap(ctx, cx, baseY, capColor, capDark, stemColor, st
   rect(ctx, cx + 2, baseY - 20, 6, 20, stemColor);
   rect(ctx, cx,     baseY - 12, 2, 12, stemDark);
 
-  // Cap gradient fill
-  gradientV(ctx, cx - 8 + wobble, baseY - 32, 24, 14, capColor, capDark);
-  rect(ctx, cx - 6 + wobble, baseY - 36, 20, 6, capColor);
-  rect(ctx, cx - 6 + wobble, baseY - 20, 20, 4, capDark);
+  // Rounded dome — properly elliptical mushroom cap
+  const capCX = cx + 5 + wobble;
+  const domeY = baseY - 30;
+  const rx = 13, ry = 10;
 
-  // Top highlight + rim
-  rect(ctx, cx - 4 + wobble, baseY - 36, 16, 4, lighten(capColor, 0.20));
-  rimLight(ctx, cx - 4 + wobble, baseY - 36, 16, 2, lighten(capColor, 0.15), 'top');
+  shadedEllipse(ctx, capCX, domeY, rx, ry, capColor, {
+    highlight: lighten(capColor, 0.22),
+    shadow:    capDark,
+  });
 
-  // Cap texture
-  drawCapTexture(ctx, cx - 8 + wobble, baseY - 36, 24, 20, capColor, capDark);
+  // Skirt flare — cap brim widens as it curves down to the gill edge
+  for (let i = 0; i < 4; i++) {
+    const fw = rx + 1 + i;
+    const fy = domeY + ry - 1 + i;
+    rect(ctx, capCX - fw, fy, fw * 2 + 1, 1, blend(capColor, capDark, (i + 2) / 6));
+  }
+
+  // Cap texture overlay
+  drawCapTexture(ctx, capCX - rx, domeY - ry, rx * 2 + 1, ry * 2, capColor, capDark);
+
+  // Gill underside — wide dark fringe below the brim
+  const gillY = domeY + ry + 3;
+  rect(ctx, capCX - rx - 3, gillY, (rx + 3) * 2 + 1, 3, darken(stemColor, 0.12));
 
   // Spots
   if (spots) {
-    rect(ctx, cx - 4 + wobble, baseY - 32, 4, 4, spots);
-    rect(ctx, cx + 4 + wobble, baseY - 28, 4, 4, spots);
-    if (extraSpot) rect(ctx, cx + 10 + wobble, baseY - 30, 4, 4, spots);
+    rect(ctx, capCX - 6, domeY - 7, 4, 4, spots);
+    rect(ctx, capCX + 3, domeY - 4, 4, 4, spots);
+    if (extraSpot) rect(ctx, capCX + 9, domeY, 4, 4, spots);
   }
 
-  // Gills (stage 4 only)
-  if (gills) rect(ctx, cx - 4 + wobble, baseY - 20, 16, 2, darken(stemColor, 0.15));
+  // Gill detail line (stage 4 only)
+  if (gills) rect(ctx, capCX - rx - 2, domeY + ry + 1, (rx + 2) * 2 + 1, 2, darken(stemColor, 0.18));
 }
 
 // ─── Fruit helpers ──────────────────────────────────────────────────────────

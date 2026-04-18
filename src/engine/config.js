@@ -132,7 +132,7 @@ const BASE_CONFIG = {
   },
 
   // Flora — seasons
-  season_length_days: 30,
+  season_length_days: 14,
   season_growth_multiplier: [1.2, 1.0, 0.8, 0.5],
   season_reproduction_multiplier: [1.5, 1.0, 0.7, 0.2],
   season_death_multiplier: [0.8, 1.0, 1.2, 2.0],

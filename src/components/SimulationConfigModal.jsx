@@ -26,7 +26,7 @@ function SourceBadge({ source }) {
   );
 }
 
-export default function SimulationConfigModal({ open, onClose, onUnlock, onToggleBackground, onAudioLogging }) {
+export default function SimulationConfigModal({ open, onClose, onUnlock, onToggleBackground, onToggleModalAutoPause, onAudioLogging }) {
   const {
     gameConfig,
     clock,
@@ -35,6 +35,7 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
     hungerMultiplier,
     thirstMultiplier,
     pauseOnBackground,
+    autoPauseOnModalOpen,
     audioSettings,
     setAudioSettings,
     audioLog,
@@ -171,7 +172,7 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
               <section className="sim-config-section sim-config-behavior-section">
                 <div className="sim-config-section-header">
                   <h6>Runtime behavior</h6>
-                  <p>Choose what happens when this browser tab is hidden or in the background.</p>
+                  <p>Choose how simulation time behaves when the tab is hidden or major panels are open.</p>
                 </div>
                 <div className="sim-config-background-row">
                   <div className="sim-config-row-copy">
@@ -188,6 +189,23 @@ export default function SimulationConfigModal({ open, onClose, onUnlock, onToggl
                     title={pauseOnBackground ? 'Enable background execution' : 'Pause on hidden tab'}
                   >
                     {!pauseOnBackground ? 'Running in background' : 'Pause on background'}
+                  </button>
+                </div>
+                <div className="sim-config-background-row">
+                  <div className="sim-config-row-copy">
+                    <div className="sim-config-row-label">Auto-pause on panels</div>
+                    <div className="sim-config-row-hint">
+                      {autoPauseOnModalOpen
+                        ? 'Pauses automatically when Guide, Config, Report, or Entities is open.'
+                        : 'Panels stay open without changing simulation playback.'}
+                    </div>
+                  </div>
+                  <button
+                    className={`audio-pill ${autoPauseOnModalOpen ? 'active' : ''}`}
+                    onClick={onToggleModalAutoPause}
+                    title={autoPauseOnModalOpen ? 'Disable panel auto-pause' : 'Enable panel auto-pause'}
+                  >
+                    {autoPauseOnModalOpen ? 'Auto-pause enabled' : 'Auto-pause disabled'}
                   </button>
                 </div>
               </section>

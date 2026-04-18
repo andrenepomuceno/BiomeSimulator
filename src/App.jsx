@@ -31,6 +31,13 @@ const MODALS = {
   ENTITIES: 'entities',
 };
 
+const AUTO_PAUSE_MODAL_IDS = new Set([
+  MODALS.GUIDE,
+  MODALS.CONFIG,
+  MODALS.REPORT,
+  MODALS.ENTITIES,
+]);
+
 const DRAWER_BREAKPOINT = 1024;
 
 // Simple debounce implementation for speed slider
@@ -64,13 +71,15 @@ export default function App() {
   const [activeDrawer, setActiveDrawer] = useState(null);
   const [isCompactLayout, setIsCompactLayout] = useState(() => window.innerWidth < DRAWER_BREAKPOINT);
   const debouncedSpeedChangeRef = useRef(null);
-  const autoPausedRef = useRef(false);
+  const autoPausedByBackgroundRef = useRef(false);
+  const autoPausedByModalRef = useRef(false);
   const lastPreparedWorldVersionRef = useRef(0);
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges, itemChanges,
     clock, stats, worldReady, worldReadyVersion, plantSnapshot, itemSnapshot, selectedEntity, selectedTile, selectedItem,
     isGeneratingWorld, isPreparingAssets, assetPreparationTitle, assetPreparationSubtitle,
+    pauseOnModalOpen,
   } = useSimStore();
 
   useEffect(() => {
@@ -278,7 +287,8 @@ export default function App() {
   function _handlePause() {
     playUiClick();
     playWorldEffect({ type: 'pause' });
-    autoPausedRef.current = false;
+    autoPausedByBackgroundRef.current = false;
+    autoPausedByModalRef.current = false;
     postCmd('pause');
     useSimStore.getState().setSimState({ paused: true });
   }
@@ -286,7 +296,8 @@ export default function App() {
   function _handleResume() {
     playUiClick();
     playWorldEffect({ type: 'resume' });
-    autoPausedRef.current = false;
+    autoPausedByBackgroundRef.current = false;
+    autoPausedByModalRef.current = false;
     postCmd('resume');
     useSimStore.getState().setSimState({ paused: false });
   }
@@ -298,11 +309,15 @@ export default function App() {
 
   function _handleReset() {
     playUiClick();
+    autoPausedByBackgroundRef.current = false;
+    autoPausedByModalRef.current = false;
     postCmd('reset');
     useSimStore.getState().setSimState({ running: false, paused: true });
   }
 
   function _handleNewGame(params = {}) {
+    autoPausedByBackgroundRef.current = false;
+    autoPausedByModalRef.current = false;
     useSimStore.getState().setGeneratingWorld(true);
     postCmd('generate', { config: params });
     useSimStore.getState().setGameConfig(params);
@@ -335,19 +350,46 @@ export default function App() {
         if (pauseOnBackground && running && !paused) {
           postCmd('pause');
           useSimStore.getState().setSimState({ paused: true });
-          autoPausedRef.current = true;
+          autoPausedByBackgroundRef.current = true;
         }
       } else {
-        if (autoPausedRef.current) {
-          postCmd('resume');
-          useSimStore.getState().setSimState({ paused: false });
-          autoPausedRef.current = false;
+        if (autoPausedByBackgroundRef.current) {
+          autoPausedByBackgroundRef.current = false;
+          const current = useSimStore.getState();
+          if (current.running && current.paused && !autoPausedByModalRef.current) {
+            postCmd('resume');
+            useSimStore.getState().setSimState({ paused: false });
+          }
         }
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, []);
+
+  // Auto-pause while major info/config modals are open.
+  useEffect(() => {
+    const modalShouldAutoPause = !!pauseOnModalOpen && AUTO_PAUSE_MODAL_IDS.has(activeModal);
+    const state = useSimStore.getState();
+
+    if (modalShouldAutoPause) {
+      if (state.running && !state.paused) {
+        postCmd('pause');
+        useSimStore.getState().setSimState({ paused: true });
+        autoPausedByModalRef.current = true;
+      }
+      return;
+    }
+
+    if (autoPausedByModalRef.current) {
+      autoPausedByModalRef.current = false;
+      const current = useSimStore.getState();
+      if (current.running && current.paused && !autoPausedByBackgroundRef.current) {
+        postCmd('resume');
+        useSimStore.getState().setSimState({ paused: false });
+      }
+    }
+  }, [activeModal, pauseOnModalOpen, postCmd]);
 
   function _handleMinimapNavigate(x, y) {
     if (isCompactLayout) {
@@ -402,6 +444,8 @@ export default function App() {
   }
 
   function _handleLoad(data) {
+    autoPausedByBackgroundRef.current = false;
+    autoPausedByModalRef.current = false;
     postCmd('loadState', { state: data });
     useSimStore.getState().setSimState({ running: false, paused: true });
   }
@@ -421,7 +465,16 @@ export default function App() {
     playUiClick();
     const current = useSimStore.getState().pauseOnBackground;
     useSimStore.getState().setPauseOnBackground(!current);
-    autoPausedRef.current = false;
+    autoPausedByBackgroundRef.current = false;
+  }
+
+  function _handleToggleModalAutoPause() {
+    playUiClick();
+    const current = useSimStore.getState().autoPauseOnModalOpen;
+    useSimStore.getState().setAutoPauseOnModalOpen(!current);
+    if (current) {
+      autoPausedByModalRef.current = false;
+    }
   }
 
   function _handleUndo() {
@@ -537,6 +590,7 @@ export default function App() {
         onClose={_closeModal}
         onUnlock={_handleUnlockAudio}
         onToggleBackground={_handleToggleBackground}
+        onToggleModalAutoPause={_handleToggleModalAutoPause}
         onAudioLogging={FF_AUDIO_LOG_UI ? setAudioLogging : undefined}
       />
       <SimulationReport open={activeModal === MODALS.REPORT} onClose={_closeModal} />

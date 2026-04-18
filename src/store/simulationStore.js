@@ -19,6 +19,7 @@ export const AUDIO_SETTINGS_STORAGE_KEY = 'biomeSimulator.audioSettings';
 const TERRAIN_HISTORY_LIMIT = 50;
 
 const PAUSE_ON_BG_STORAGE_KEY = 'biomeSimulator.pauseOnBackground';
+const AUTO_PAUSE_ON_MODAL_STORAGE_KEY = 'biomeSimulator.autoPauseOnModalOpen';
 
 function loadPauseOnBackground() {
   if (typeof window === 'undefined' || !window.localStorage) return true;
@@ -35,6 +36,24 @@ function persistPauseOnBackground(value) {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     window.localStorage.setItem(PAUSE_ON_BG_STORAGE_KEY, JSON.stringify(!!value));
+  } catch { /* ignore */ }
+}
+
+function loadAutoPauseOnModalOpen() {
+  if (typeof window === 'undefined' || !window.localStorage) return true;
+  try {
+    const raw = window.localStorage.getItem(AUTO_PAUSE_ON_MODAL_STORAGE_KEY);
+    if (raw === null) return true;
+    return JSON.parse(raw) !== false;
+  } catch {
+    return true;
+  }
+}
+
+function persistAutoPauseOnModalOpen(value) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(AUTO_PAUSE_ON_MODAL_STORAGE_KEY, JSON.stringify(!!value));
   } catch { /* ignore */ }
 }
 
@@ -466,6 +485,12 @@ const useSimStore = create((set, get) => ({
     const val = !!v;
     persistPauseOnBackground(val);
     set({ pauseOnBackground: val });
+  },
+  autoPauseOnModalOpen: loadAutoPauseOnModalOpen(),
+  setAutoPauseOnModalOpen: (v) => {
+    const val = !!v;
+    persistAutoPauseOnModalOpen(val);
+    set({ autoPauseOnModalOpen: val });
   },
 
   // Audio

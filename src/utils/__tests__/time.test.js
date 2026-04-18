@@ -68,8 +68,8 @@ describe('formatTickTimestamp', () => {
 });
 
 describe('formatTimeOfDay', () => {
-  it('returns 05:36 at the start of the day', () => {
-    expect(formatTimeOfDay(0, 260)).toBe('05:36');
+  it('returns 06:00 at the start of the day', () => {
+    expect(formatTimeOfDay(0, 260)).toBe('06:00');
   });
 
   it('returns 20:00 at the night boundary', () => {
@@ -85,6 +85,6 @@ describe('formatTimeOfDay', () => {
 
   it('uses default ticksPerDay when omitted', () => {
     const result = formatTimeOfDay(0);
-    expect(result).toBe('05:36');
+    expect(result).toBe('06:00');
   });
 });

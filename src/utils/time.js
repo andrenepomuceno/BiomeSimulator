@@ -28,8 +28,8 @@ export function formatTickTimestamp(tick, ticksPerDay = DEFAULT_TICKS_PER_DAY) {
 /**
  * Convert tick count within day to HH:MM format, synced with day/night cycle.
  * Maps game phases to realistic hours:
- * - Day phase (0.0–0.6): 05:36–20:00 (~14.4 hours)
- * - Night phase (0.6–1.0): 20:00–05:36 (~9.6 hours)
+ * - Day phase (0.0–0.6): 06:00–20:00 (~14 hours)
+ * - Night phase (0.6–1.0): 20:00–06:00 (~10 hours)
  * @param {number} tickInDay - Raw tick count within the day (0 to ticksPerDay-1)
  * @param {number} ticksPerDay - Total ticks per day (e.g., 260)
  * @returns {string} Time in HH:MM format (e.g., "14:30")

@@ -102,7 +102,7 @@ export function buildSimulationConfigSections(state = {}) {
           label: 'Season',
           value: climate.seasonName ?? 'Spring',
           source: 'live',
-          hint: 'Current season — Spring, Summer, Autumn or Winter (30 days each).',
+          hint: 'Current season — Spring, Summer, Autumn or Winter (14 days each by default).',
         },
         {
           id: 'temperature',

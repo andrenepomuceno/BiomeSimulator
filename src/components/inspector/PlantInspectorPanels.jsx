@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import ANIMAL_SPECIES from '../../engine/animalSpecies';
 import { getPlantByTypeId } from '../../engine/plantSpecies';
+import { DEFAULT_SEASON_LENGTH_DAYS } from '../../constants/simulation.js';
 import { PLANT_STAGE_NAMES, SPECIES_INFO } from '../../utils/terrainColors';
 import { formatGameDuration, formatTickTimestamp, resolveTicksPerDay } from '../../utils/time';
 import { CollapsibleSection, formatTickDurationLabel } from './InspectorShared.jsx';
@@ -41,7 +42,7 @@ function getPlantConsumers(plantTypeId, plantStage) {
 }
 
 function resolveSeasonIndex(clock, gameConfig) {
-  const seasonLengthDays = gameConfig?.season_length_days ?? 30;
+  const seasonLengthDays = gameConfig?.season_length_days ?? DEFAULT_SEASON_LENGTH_DAYS;
   const day = clock?.day ?? Math.floor((clock?.tick || 0) / resolveTicksPerDay(clock?.ticks_per_day));
   return Math.floor(day / seasonLengthDays) % 4;
 }

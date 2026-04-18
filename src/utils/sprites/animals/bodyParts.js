@@ -24,6 +24,17 @@ function _drawIrisPupilHighlight(ctx, f, x, y, w, h, irisColor, pupil, highlight
   }
 }
 
+/**
+ * Maps a normalized feather position t ∈ [0,1] to a feather zone color.
+ * t=0 is the innermost covert; t=1 is the outermost primary tip.
+ * Coverts: t < 0.28 → lighten; Secondary: 0.28–0.65 → accent; Primary: > 0.65 → darken.
+ */
+function _featherZoneColor(t, accent) {
+  if (t < 0.28) return lighten(accent, 0.10);
+  if (t < 0.65) return accent;
+  return darken(accent, 0.11);
+}
+
 function _drawJointedLegCore(ctx, f, hipX, hipY, kneeX, kneeY, footX, footY, upperColor, lowerColor, options = {}) {
   const {
     upperThickness = 1,
@@ -624,13 +635,11 @@ export function drawBirdHeadTop(ctx, cx, by, bodyColor, highlightColor, eyeRing,
 export function drawBirdWingTop(ctx, bx, by, w, wingSpan, wingY, accent, shadow2, highlight, highlight2) {
   for (let i = 1; i <= wingSpan; i++) {
     const t = (i - 1) / Math.max(1, wingSpan - 1);
-    const wc = t < 0.25 ? lighten(accent, 0.10)
-      : t < 0.65 ? accent
-        : darken(accent, 0.12);
+    const wc = _featherZoneColor(t, accent);
     const wh = Math.max(1, 5 - Math.round(i * 3 / wingSpan));
     rect(ctx, bx - i * 3, wingY, 3, wh, wc);
     rect(ctx, bx + w - 3 + i * 3, wingY, 3, wh, wc);
-    if (t < 0.3) {
+    if (t < 0.28) {
       px(ctx, bx - i * 3, wingY, lighten(wc, 0.10));
       px(ctx, bx + w - 3 + i * 3 + 2, wingY, lighten(wc, 0.10));
     }
@@ -661,17 +670,15 @@ export function drawBirdTailUp(ctx, cx, by, h, tailLen, tailColor) {
  * Draw folded side wing strip for birds.
  */
 export function drawBirdWingSide(ctx, f, bx, wingY, wingW, accent, featherTex, shadow2) {
-  const covW = Math.floor(wingW * 0.3);
-  const priW = Math.floor(wingW * 0.35);
+  const priStart = Math.floor(wingW * 0.65);
   for (let i = 0; i < wingW; i++) {
-    const wc = i < covW
-      ? lighten(accent, 0.10)
-      : (i >= wingW - priW ? darken(accent, 0.10) : accent);
+    const t = wingW > 1 ? i / (wingW - 1) : 0;
+    const wc = _featherZoneColor(t, accent);
     px(ctx, f(bx + 2 + i), wingY, lighten(wc, 0.06));
     px(ctx, f(bx + 2 + i), wingY + 1, wc);
     px(ctx, f(bx + 2 + i), wingY + 2, darken(wc, 0.08));
   }
-  for (let i = wingW - priW; i < wingW - 1; i += 2) {
+  for (let i = priStart; i < wingW - 1; i += 2) {
     px(ctx, f(bx + 2 + i), wingY + 2, shadow2);
   }
   anisotropicSpeckle(ctx, bx + 2, wingY, wingW, 3, [featherTex, darken(accent, 0.06)], 0.16, Math.PI / 2, 2.0);

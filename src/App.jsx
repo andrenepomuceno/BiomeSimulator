@@ -79,7 +79,7 @@ export default function App() {
     terrainData, mapWidth, mapHeight, animals, plantChanges, itemChanges,
     clock, stats, worldReady, worldReadyVersion, plantSnapshot, itemSnapshot, selectedEntity, selectedTile, selectedItem,
     isGeneratingWorld, isPreparingAssets, assetPreparationTitle, assetPreparationSubtitle,
-    pauseOnModalOpen,
+    autoPauseOnModalOpen,
   } = useSimStore();
 
   useEffect(() => {
@@ -369,7 +369,7 @@ export default function App() {
 
   // Auto-pause while major info/config modals are open.
   useEffect(() => {
-    const modalShouldAutoPause = !!pauseOnModalOpen && AUTO_PAUSE_MODAL_IDS.has(activeModal);
+    const modalShouldAutoPause = !!autoPauseOnModalOpen && AUTO_PAUSE_MODAL_IDS.has(activeModal);
     const state = useSimStore.getState();
 
     if (modalShouldAutoPause) {
@@ -389,7 +389,7 @@ export default function App() {
         useSimStore.getState().setSimState({ paused: false });
       }
     }
-  }, [activeModal, pauseOnModalOpen, postCmd]);
+  }, [activeModal, autoPauseOnModalOpen, postCmd]);
 
   function _handleMinimapNavigate(x, y) {
     if (isCompactLayout) {

@@ -429,20 +429,41 @@ export function drawFlowerStem(ctx, cx, baseY, h, stemColor, swayOff) {
  * @param {number} r1         - circle radius at petal tip (default 0.5)
  */
 export function drawPetalRing(ctx, centerX, centerY, petalColor, petalDark, count, startR, petalLen, r0 = 2.5, r1 = 0.5) {
-  const tipColor = petalDark || darken(petalColor, 0.15);
-  const numCircles = Math.max(3, Math.round(petalLen / 2));
+  const tipColor  = petalDark || darken(petalColor, 0.15);
+  const edgeColor = darken(petalColor, 0.08);
+  const veinColor = lighten(petalColor, 0.14);
+  const reach     = Math.ceil(startR + petalLen + r0);
+
   for (let i = 0; i < count; i++) {
     const angle = (i * Math.PI * 2) / count;
-    const cosA = Math.cos(angle);
-    const sinA = Math.sin(angle);
-    for (let j = 0; j < numCircles; j++) {
-      const t = j / (numCircles - 1);
-      const dist = startR + t * petalLen;
-      const cr = Math.max(1, Math.round(r0 + (r1 - r0) * t));
-      const ex = centerX + Math.round(cosA * dist);
-      const ey = centerY + Math.round(sinA * dist);
-      const color = j >= numCircles - 2 ? tipColor : (j >= numCircles - 3 ? darken(petalColor, 0.08) : petalColor);
-      ellipse(ctx, ex, ey, cr, cr, color);
+    const cosA  = Math.cos(angle);
+    const sinA  = Math.sin(angle);
+
+    // Per-pixel scan in rotated petal space — produces a true oval silhouette.
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        const axial = dx * cosA + dy * sinA;   // distance along petal axis
+        const perp  = -dx * sinA + dy * cosA;  // distance from petal axis
+
+        if (axial < startR || axial > startR + petalLen) continue;
+
+        const t     = (axial - startR) / petalLen;   // 0 = base, 1 = tip
+        const halfW = r0 * Math.sin(t * Math.PI);    // sin profile → oval shape
+
+        if (halfW < 0.5 || Math.abs(perp) > halfW) continue;
+
+        let col;
+        if (t > 0.82) {
+          col = tipColor;
+        } else if (Math.abs(perp) > halfW * 0.60) {
+          col = edgeColor;
+        } else if (t > 0.12 && t < 0.78 && Math.abs(perp) < 0.55) {
+          col = veinColor;
+        } else {
+          col = petalColor;
+        }
+        px(ctx, centerX + dx, centerY + dy, col);
+      }
     }
   }
 }

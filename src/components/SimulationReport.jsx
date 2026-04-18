@@ -83,7 +83,7 @@ export default function SimulationReport({ open, onClose }) {
           label: 'Total Animals',
           data: data.totalAnimals,
           borderColor: '#eee',
-          backgroundColor: '#eee22',
+          backgroundColor: '#eeeeee22',
           borderWidth: 2,
           pointRadius: 0,
           tension: 0.3,

@@ -388,11 +388,9 @@ export class PlantLayer {
     prev.x1 = x1;
     prev.y1 = y1;
 
-    // Expire old growth pulses
-    if (this._growthPulses.size > 500) {
-      for (const [idx, start] of this._growthPulses) {
-        if (t - start > 10) this._growthPulses.delete(idx);
-      }
+    // Expire old growth pulses (unconditional — out-of-viewport cells never hit the inline delete)
+    for (const [idx, start] of this._growthPulses) {
+      if (t - start > 10) this._growthPulses.delete(idx);
     }
   }
 

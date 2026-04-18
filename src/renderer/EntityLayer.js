@@ -8,6 +8,7 @@ import { generateEmojiTextures } from '../utils/emojiTextures.js';
 import { getSleepingTextureKeyForSpecies } from '../utils/spriteGenerator.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
 import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
+import { AnimalState, LifeStage } from '../engine/entities.js';
 import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 
 const ATTACK_JUMP_DURATION = 18;
@@ -157,10 +158,10 @@ export class EntityLayer {
    * For normal animals, returns e.g. 'RABBIT_DOWN_1'.
    */
   _getTexKey(a, direction, animFrame) {
-    if (a.lifeStage === -1) return 'EGG'; // LifeStage.EGG = -1
-    if (a.state === 9) return 'DEAD';
-    if (a.state === 5) return getSleepingTextureKeyForSpecies(a.species);
-    if (a.lifeStage === 4) return 'PUPA';
+    if (a.lifeStage === LifeStage.EGG) return 'EGG';
+    if (a.state === AnimalState.DEAD) return 'DEAD';
+    if (a.state === AnimalState.SLEEPING) return getSleepingTextureKeyForSpecies(a.species);
+    if (a.lifeStage === LifeStage.PUPA) return 'PUPA';
     return `${a.species}_${DIR_NAMES[direction] || 'DOWN'}_${animFrame}`;
   }
 
@@ -197,7 +198,7 @@ export class EntityLayer {
     for (const a of animals) {
       seen.add(a.id);
       let sprite = this._sprites.get(a.id);
-      const isEgg = a.lifeStage === -1; // LifeStage.EGG
+      const isEgg = a.lifeStage === LifeStage.EGG;
 
       // Update direction from engine data
       const dir = a.direction ?? 0;
@@ -241,7 +242,7 @@ export class EntityLayer {
         sprite._lastHp = Number.isFinite(a.hp) ? a.hp : null;
         this._sprites.set(a.id, sprite);
         // New animal appeared — birth animation (skip for dead)
-        if (a.state !== 9 && this._animationLayer) {
+        if (a.state !== AnimalState.DEAD && this._animationLayer) {
           this._animationLayer.spawnBirth(a.x, a.y);
         }
         // Pop-in: start small, tracked via _spawnTick
@@ -251,23 +252,23 @@ export class EntityLayer {
       // Detect state transitions for animations
       const prevState = this._prevStates.get(a.id);
       if (prevState !== undefined && prevState !== a.state) {
-        if (a.state === 6) {
+        if (a.state === AnimalState.ATTACKING) {
           sprite._attackTick = currentTick;
           if (this._animationLayer) this._animationLayer.spawnAttack(a.x, a.y);
           this._emitEffectEvent('attack', a.x, a.y, a.species, currentTick);
-        } else if (this._animationLayer && a.state === 9) {
+        } else if (this._animationLayer && a.state === AnimalState.DEAD) {
           this._animationLayer.spawnDeath(a.x, a.y);
           this._emitEffectEvent('death', a.x, a.y, a.species, currentTick);
-        } else if (a.state === 8) {
+        } else if (a.state === AnimalState.MATING) {
           if (this._animationLayer) this._animationLayer.spawnMate(a.x, a.y);
           this._emitEffectEvent('mate', a.x, a.y, a.species, currentTick);
-        } else if (a.state === 3) {
+        } else if (a.state === AnimalState.EATING) {
           if (this._animationLayer) this._animationLayer.spawnEat(a.x, a.y);
           this._emitEffectEvent('eat', a.x, a.y, a.species, currentTick);
-        } else if (a.state === 4) {
+        } else if (a.state === AnimalState.DRINKING) {
           if (this._animationLayer) this._animationLayer.spawnDrink(a.x, a.y);
           this._emitEffectEvent('drink', a.x, a.y, a.species, currentTick);
-        } else if (a.state === 7 && prevState !== 7) {
+        } else if (a.state === AnimalState.FLEEING && prevState !== AnimalState.FLEEING) {
           // Flee spatial dedup: at most 1 per 8-tile bucket per tick
           if (currentTick !== this._fleeBucketTick) {
             this._fleeBucketTick = currentTick;
@@ -283,7 +284,7 @@ export class EntityLayer {
       this._prevStates.set(a.id, a.state);
 
       // Sleeping Zzz particles — throttled to 1 per ~60 ticks per animal
-      if (a.state === 5 && this._animationLayer && currentTick > 0 && currentTick % 60 === 0) {
+      if (a.state === AnimalState.SLEEPING && this._animationLayer && currentTick > 0 && currentTick % 60 === 0) {
         this._animationLayer.spawnSleep(a.x, a.y);
       }
 
@@ -293,7 +294,7 @@ export class EntityLayer {
         && currentHp != null
         && sprite._lastHp != null
         && currentHp < sprite._lastHp
-        && a.state !== 9
+        && a.state !== AnimalState.DEAD
         && a.alive !== false
       ) {
         sprite._hitTick = currentTick;
@@ -324,11 +325,11 @@ export class EntityLayer {
       } else {
         const energy = Number.isFinite(a.energy) ? a.energy : 0;
         const energyFactor = 0.8 + (energy / MAX_ANIMAL_ENERGY) * 0.4;
-        const stageFactor = a.state === 9 ? 1.0
-          : a.lifeStage === 4 ? 0.6   // PUPA
-          : a.lifeStage === 0 ? 0.5
-          : a.lifeStage === 1 ? 0.7
-          : a.lifeStage === 2 ? 0.85
+        const stageFactor = a.state === AnimalState.DEAD ? 1.0
+          : a.lifeStage === LifeStage.PUPA ? 0.6
+          : a.lifeStage === LifeStage.BABY ? 0.5
+          : a.lifeStage === LifeStage.YOUNG ? 0.7
+          : a.lifeStage === LifeStage.YOUNG_ADULT ? 0.85
           : 1.0;
         const pregnantFactor = a.pregnant ? 1.1 : 1.0;
         finalScale = BASE_SCALE * speciesScale * energyFactor * stageFactor * pregnantFactor;
@@ -420,7 +421,7 @@ export class EntityLayer {
       }
 
       // Alpha based on state
-      if (a.state === 9) {
+      if (a.state === AnimalState.DEAD) {
         // Fade skull over its 300-tick lifespan
         if (a._deathTick != null && currentTick > 0) {
           const elapsed = currentTick - a._deathTick;
@@ -428,14 +429,14 @@ export class EntityLayer {
         } else {
           sprite.alpha = 0.75;
         }
-      } else if (a.state === 5) {
+      } else if (a.state === AnimalState.SLEEPING) {
         sprite.alpha = 0.65;
       } else {
         sprite.alpha = 1;
       }
 
       // HP bar (zoom >= threshold, not dead)
-      if (showBars && showSprites && a.state !== 9 && a.alive !== false) {
+      if (showBars && showSprites && a.state !== AnimalState.DEAD && a.alive !== false) {
         const barW = 0.6;
         const barH = 0.06;
         const barX = a.x - barW / 2;
@@ -448,7 +449,7 @@ export class EntityLayer {
         barGfx.beginFill(0x222222, 0.6);
         barGfx.drawRect(barX, barY, barW, barH);
         barGfx.endFill();
-        const hpColor = hpRatio < 0.25 ? 0xdd4444 : hpRatio < 0.6 ? 0xddaa33 : 0xcc3333;
+        const hpColor = hpRatio < 0.25 ? 0xdd4444 : hpRatio < 0.6 ? 0xddaa33 : 0x44cc55;
         barGfx.beginFill(hpColor, 0.85);
         barGfx.drawRect(barX, barY, barW * hpRatio, barH);
         barGfx.endFill();

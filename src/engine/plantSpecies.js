@@ -35,6 +35,7 @@ const PLANT_SPECIES = {
 
   STRAWBERRY: {
     id: 'STRAWBERRY',
+    itemKey: 'STRAWBERRY',
     typeId: 2,
     name: 'Strawberry',
     emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '☘️', adult: '☘️', fruit: '🍓' },
@@ -60,6 +61,7 @@ const PLANT_SPECIES = {
 
   BLUEBERRY: {
     id: 'BLUEBERRY',
+    itemKey: 'BLUEBERRY',
     typeId: 3,
     name: 'Blueberry',
     emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '☘️', adult: '☘️', fruit: '🫐' },
@@ -85,6 +87,7 @@ const PLANT_SPECIES = {
 
   APPLE_TREE: {
     id: 'APPLE_TREE',
+    itemKey: 'APPLE',
     typeId: 4,
     name: 'Apple Tree',
     emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '🌳', adult: '🌳', fruit: '🍎' },
@@ -111,6 +114,7 @@ const PLANT_SPECIES = {
 
   MANGO_TREE: {
     id: 'MANGO_TREE',
+    itemKey: 'MANGO',
     typeId: 5,
     name: 'Mango Tree',
     emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '🌳', adult: '🌳', fruit: '🥭' },
@@ -288,6 +292,7 @@ const PLANT_SPECIES = {
 
   COCONUT_PALM: {
     id: 'COCONUT_PALM',
+    itemKey: 'COCONUT',
     typeId: 12,
     name: 'Coconut Palm',
     emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '🌴', adult: '🌴', fruit: '🥥' },
@@ -364,6 +369,7 @@ const PLANT_SPECIES = {
 
   OLIVE_TREE: {
     id: 'OLIVE_TREE',
+    itemKey: 'OLIVE',
     typeId: 15,
     name: 'Olive Tree',
     emoji: { seed: '🌱', youngSprout: '🌿', adultSprout: '🌳', adult: '🌳', fruit: '🫒' },
@@ -724,10 +730,6 @@ export function buildPlantPlaceTypes() {
   });
 }
 
-/**
- * Build { [typeId]: { itemType: 'FRUIT'|'SEED', countRange: [min, max] } }
- * for the 5 tree species. Non-tree entries are omitted.
- */
 export function buildTreeDropProfiles() {
   const map = {};
   for (const sp of Object.values(PLANT_SPECIES)) {
@@ -738,6 +740,30 @@ export function buildTreeDropProfiles() {
         seedGerminationTicks: sp.dropProfile.seedGerminationTicks ?? 400,
       };
     }
+  }
+  return map;
+}
+
+/**
+ * Build { [typeId]: 'FRUIT_${itemKey}_0' } for all plant species that produce
+ * droppable fruit items. Used by ItemLayer to map item.source → texture key.
+ */
+export function buildFruitKeysBySource() {
+  const map = {};
+  for (const sp of Object.values(PLANT_SPECIES)) {
+    if (sp.itemKey) map[sp.typeId] = `FRUIT_${sp.itemKey}_0`;
+  }
+  return map;
+}
+
+/**
+ * Build { [typeId]: 'SEED_${itemKey}_0' } for all plant species that produce
+ * droppable seed items. Used by ItemLayer to map item.source → texture key.
+ */
+export function buildSeedKeysBySource() {
+  const map = {};
+  for (const sp of Object.values(PLANT_SPECIES)) {
+    if (sp.itemKey) map[sp.typeId] = `SEED_${sp.itemKey}_0`;
   }
   return map;
 }

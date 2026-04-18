@@ -11,27 +11,13 @@ import * as PIXI from 'pixi.js';
 import { generateItemEmojiTextures } from '../utils/emojiTextures.js';
 import { FRAME_SIZE } from '../utils/spriteAtlas.js';
 import { buildMassDropMap } from '../engine/animalSpecies.js';
+import { buildFruitKeysBySource, buildSeedKeysBySource } from '../engine/plantSpecies.js';
 
 /** Minimum zoom to show item sprites instead of pixel dots. */
 const ITEM_SPRITE_ZOOM = 6;
 
-const FRUIT_KEYS_BY_SOURCE = {
-  2: 'FRUIT_STRAWBERRY_0',
-  3: 'FRUIT_BLUEBERRY_0',
-  4: 'FRUIT_APPLE_0',
-  5: 'FRUIT_MANGO_0',
-  12: 'FRUIT_COCONUT_0',
-  15: 'FRUIT_OLIVE_0',
-};
-
-const SEED_KEYS_BY_SOURCE = {
-  2: 'SEED_STRAWBERRY_0',
-  3: 'SEED_BLUEBERRY_0',
-  4: 'SEED_APPLE_0',
-  5: 'SEED_MANGO_0',
-  12: 'SEED_COCONUT_0',
-  15: 'SEED_OLIVE_0',
-};
+const FRUIT_KEYS_BY_SOURCE = buildFruitKeysBySource();
+const SEED_KEYS_BY_SOURCE = buildSeedKeysBySource();
 
 const MASS_DROP_MAP = buildMassDropMap();
 

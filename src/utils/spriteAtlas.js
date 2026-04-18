@@ -19,6 +19,7 @@ import { drawSpeciesFrame, DIR_NAMES } from './spriteGenerator.js';
 import { drawPlantFrame } from './plantSpriteGenerator.js';
 import { drawItemFrame } from './itemSpriteGenerator.js';
 import { ITEM_ORDER } from './sprites/items/catalog.js';
+import { toAssetUrl } from './assetUrl.js';
 
 // ── Atlas geometry ──────────────────────────────────────────────────
 export const FRAME_SIZE = 256;           // px per frame in the atlas
@@ -242,7 +243,7 @@ export async function loadFaunaAtlas() {
   let baseTexture;
   try {
     // Try loading a pre-built pixel-art atlas from the public folder
-    baseTexture = await PIXI.BaseTexture.from('/sprites/fauna.png', {
+    baseTexture = await PIXI.BaseTexture.from(toAssetUrl('sprites/fauna.png'), {
       scaleMode: PIXI.SCALE_MODES.NEAREST,
     });
     // Wait for the resource to actually load
@@ -276,7 +277,7 @@ export async function loadFloraAtlas() {
 
   let baseTexture;
   try {
-    baseTexture = await PIXI.BaseTexture.from('/sprites/flora.png', {
+    baseTexture = await PIXI.BaseTexture.from(toAssetUrl('sprites/flora.png'), {
       scaleMode: PIXI.SCALE_MODES.NEAREST,
     });
     if (!baseTexture.valid) {
@@ -303,7 +304,7 @@ export async function loadItemAtlas() {
 
   let baseTexture;
   try {
-    baseTexture = await PIXI.BaseTexture.from('/sprites/items.png', {
+    baseTexture = await PIXI.BaseTexture.from(toAssetUrl('sprites/items.png'), {
       scaleMode: PIXI.SCALE_MODES.NEAREST,
     });
     if (!baseTexture.valid) {

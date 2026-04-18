@@ -5,8 +5,8 @@
  * Smooth sinusoidal body using segmentChain (overlapping circle stamps).
  * Avoids blocky "square" segment look while preserving direction animations.
  */
-import { px, rect, ellipse, darken, lighten, speckle, segmentChain, shadedEllipse, DOWN, UP, LEFT } from '../../helpers.js';
-import { drawReptileEye, drawTongue, drawBellyStripe, drawDorsalPattern, drawSegmentHighlights } from '../bodyParts.js';
+import { px, rect, darken, lighten, segmentChain, shadedEllipse, DOWN, UP, LEFT } from '../../helpers.js';
+import { drawReptileEye, drawReptileHeadSide, drawTongue, drawBellyStripe, drawDorsalPattern, drawSegmentHighlights } from '../bodyParts.js';
 
 export function drawSnake(ctx, params, dir, frame) {
   const { body, accent, pattern, belly, eye, headW, headH, segments, segW } = params;
@@ -46,27 +46,30 @@ export function drawSnake(ctx, params, dir, frame) {
     drawSegmentHighlights(ctx, pts, radii, highlight, false);
     if (pattern) drawDorsalPattern(ctx, pts, pattern, false);
 
-    // Head — shadedEllipse
+    // Head — connect to nearest body segment
     const hw = headW || 10;
     const hh = headH || 7;
-    const headY = dir === DOWN ? startY - hh - 2 : startY + segCount * spacing;
+    const headAnchorY = dir === DOWN ? pts[0][1] : pts[segCount - 1][1];
+    const headY = headAnchorY - hh + 1;
     const hCx = cx, hCy = headY + Math.floor(hh / 2);
-    shadedEllipse(ctx, hCx, hCy, Math.floor(hw / 2), Math.floor(hh / 2), body, {
+    shadedEllipse(ctx, hCx, hCy, Math.floor(hw / 2) + 1, Math.floor(hh / 2), body, {
       highlight, shadow,
       texture: true, texColors: [shadow, darken(body, 0.10)], texDensity: 0.15,
     });
 
-    // Eyes (slit pupil)
-    if (dir === DOWN) {
-      const hx = hCx - Math.floor(hw / 2);
-      drawReptileEye(ctx, hx + 1, headY + 2, eye);
-      drawReptileEye(ctx, hx + hw - 4, headY + 2, eye);
+    // Snout nib — tapers upward from head top
+    for (let i = 0; i < 3; i++) {
+      const w = i === 0 ? 3 : i === 1 ? 2 : 1;
+      rect(ctx, hCx - Math.floor(w / 2), headY - 1 - i, w, 1, darken(body, 0.06 + i * 0.05));
     }
 
-    // Forked tongue
-    const tongueY   = dir === DOWN ? headY + hh : headY - 3;
-    const tongueDir = dir === DOWN ? 1 : -1;
-    drawTongue(ctx, cx, tongueY, 2, tongueDir);
+    // Eyes — near snout on each side
+    const eyeY = headY + 1;
+    drawReptileEye(ctx, hCx - Math.floor(hw / 2) + 0, eyeY, eye);
+    drawReptileEye(ctx, hCx + Math.floor(hw / 2) - 2, eyeY, eye);
+
+    // Forked tongue — exits snout upward
+    drawTongue(ctx, hCx, headY - 4, 2, -1);
 
   } else {
     // LEFT / RIGHT
@@ -96,21 +99,19 @@ export function drawSnake(ctx, params, dir, frame) {
     drawSegmentHighlights(ctx, pts, radii, highlight, true);
     if (pattern) drawDorsalPattern(ctx, pts, pattern, true);
 
-    // Head — shadedEllipse
+    // Head — connect to last body segment
     const hw = headW || 10;
     const hh = headH || 7;
-    const headX = startX + segCount * spacing + 1;
-    const hCx = f(headX + Math.floor(hw / 2));
-    const hCy = sideY;
-    shadedEllipse(ctx, hCx, hCy, Math.floor(hw / 2), Math.floor(hh / 2), body, {
-      highlight, shadow,
-      texture: true, texColors: [shadow, darken(body, 0.10)], texDensity: 0.15,
-    });
+    const headX   = startX + (segCount - 1) * spacing + 1;
+    const lastSegY = pts[segCount - 1][1];
+    const by       = lastSegY - Math.floor(hh / 2);
+    drawReptileHeadSide(ctx, f, headX, by, hw, hh, body, highlight, eye);
 
-    // Eye
-    drawReptileEye(ctx, f(headX + hw - 3), hCy - 1, eye);
-
-    // Forked tongue
-    drawTongue(ctx, f(headX + hw), sideY, 2, flip ? -1 : 1);
+    // Forked tongue — horizontal, exits snout
+    const td       = flip ? -1 : 1;
+    const snoutTip = f(headX + hw - 1);
+    px(ctx, snoutTip,          lastSegY,     '#cc2222');
+    px(ctx, snoutTip + td,     lastSegY - 1, '#cc2222');
+    px(ctx, snoutTip + td,     lastSegY + 1, '#cc2222');
   }
 }

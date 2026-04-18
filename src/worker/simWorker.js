@@ -552,8 +552,13 @@ self.onmessage = function (e) {
             if (dx === 0 && dy === 0) continue;
             const nx = x + dx;
             const ny = y + dy;
-            if (nx >= 0 && ny >= 0 && nx < width && ny < height && w.plantType[ny * width + nx] !== 0) {
-              adjPlants++;
+            if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+              const nIdx = ny * width + nx;
+              const nType = w.plantType[nIdx];
+              const nStage = w.plantStage[nIdx];
+              if (nType !== 0 && nStage > 0 && nStage < 6) {
+                adjPlants++;
+              }
             }
           }
         }
@@ -564,6 +569,7 @@ self.onmessage = function (e) {
         const width = w.width;
         const height = w.height;
         const neighbors = [];
+        const neighborPlants = [];
         let waterAdjacent = false;
         for (let dy = -1; dy <= 1; dy++) {
           for (let dx = -1; dx <= 1; dx++) {
@@ -573,13 +579,22 @@ self.onmessage = function (e) {
               const nIdx = ny * width + nx;
               const tid = w.terrain[nIdx];
               neighbors.push(tid);
+              const pType = w.plantType[nIdx];
+              const pStage = w.plantStage[nIdx];
+              if (pType !== 0 && pStage > 0 && pStage < 6) {
+                neighborPlants.push({ type: pType, stage: pStage });
+              } else {
+                neighborPlants.push(null);
+              }
               if ((dx !== 0 || dy !== 0) && (tid === 0 || tid === 6)) waterAdjacent = true; // WATER or DEEP_WATER
             } else {
               neighbors.push(-1); // out-of-bounds
+              neighborPlants.push(null);
             }
           }
         }
         info.neighbors = neighbors; // 9 elements, row-major from (-1,-1)
+        info.neighborPlants = neighborPlants; // 9 elements aligned with neighbors
         info.waterAdjacent = waterAdjacent;
       }
       // Find animals on this tile (include fresh corpses so skulls are inspectable)

@@ -89,7 +89,7 @@ function TileOccupants({ animals, onSelectAnimal }) {
   );
 }
 
-function TileNeighborhood({ neighbors, waterAdjacent, adjacentPlants }) {
+function TileNeighborhood({ neighbors, neighborPlants, waterAdjacent, adjacentPlants }) {
   if (!neighbors || neighbors.length < 9) return null;
 
   return (
@@ -98,6 +98,8 @@ function TileNeighborhood({ neighbors, waterAdjacent, adjacentPlants }) {
         {neighbors.map((terrainId, index) => {
           const name = terrainId >= 0 ? (TERRAIN_DISPLAY_NAMES[terrainId] || '?') : '—';
           const isCenter = index === 4;
+          const plant = neighborPlants?.[index];
+          const hasPlant = !!(plant && plant.type);
           return (
             <div
               key={index}
@@ -106,9 +108,13 @@ function TileNeighborhood({ neighbors, waterAdjacent, adjacentPlants }) {
                 border: isCenter ? '1px solid rgba(136,204,68,0.3)' : '1px solid rgba(255,255,255,0.06)',
                 borderRadius: 3,
                 padding: '2px 1px',
+                lineHeight: 1.05,
               }}
             >
-              {name}
+              <div>{name}</div>
+              <div style={{ fontSize: '0.58rem', color: hasPlant ? '#88cc44' : '#666' }}>
+                {hasPlant ? '🌿 Plant' : '·'}
+              </div>
             </div>
           );
         })}
@@ -204,7 +210,12 @@ export default function TileInspector({ tile, clearSelection, requestAnimalDetai
           {tile.waterAdjacent != null && (
             <div className="stat-row"><span className="stat-label">Water Adjacent</span><span className="stat-value" style={{ color: tile.waterAdjacent ? '#4d96ff' : '#666' }}>{tile.waterAdjacent ? 'Yes' : 'No'}</span></div>
           )}
-          <TileNeighborhood neighbors={tile.neighbors} waterAdjacent={tile.waterAdjacent} adjacentPlants={tile.adjacentPlants} />
+          <TileNeighborhood
+            neighbors={tile.neighbors}
+            neighborPlants={tile.neighborPlants}
+            waterAdjacent={tile.waterAdjacent}
+            adjacentPlants={tile.adjacentPlants}
+          />
           {!hasPlant && !hasAnimals && <div className="mt-2 small text-muted" style={{ fontStyle: 'italic' }}>No plants or animals on this tile.</div>}
         </div>
       )}

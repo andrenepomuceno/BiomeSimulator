@@ -26,6 +26,7 @@ const ENTITY_TYPE_LABELS = {
   plant: 'Plant',
   item: 'Item',
 };
+const FRUIT_ITEM_TYPE = 2;
 
 function handleActionKeyDown(event, action) {
   if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -110,7 +111,7 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
 
   useModalA11y({ open, onClose, containerRef: modalRef });
 
-  const { animals, worldReady, plantSnapshot, mapWidth, mapHeight, selectedEntity, selectedTile, selectedItem, groundItems } = useSimStore();
+  const { animals, worldReady, plantSnapshot, mapWidth, mapHeight, selectedEntity, selectedTile, selectedItem, groundItems, stats } = useSimStore();
 
   const animalEntries = useMemo(() => {
     if (!open || !Array.isArray(animals) || animals.length === 0) return [];
@@ -142,6 +143,17 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
     if (!open || !groundItems || groundItems.size === 0) return [];
     return Array.from(groundItems.values()).map(buildItemEntry);
   }, [open, groundItems]);
+
+  const groundFruitItems = useMemo(() => {
+    if (!groundItems || groundItems.size === 0) return 0;
+    let count = 0;
+    for (const item of groundItems.values()) {
+      if (item?.type === FRUIT_ITEM_TYPE && !item.consumed) count++;
+    }
+    return count;
+  }, [groundItems]);
+
+  const fruitingPlants = stats?.fruits || 0;
 
   const filteredEntries = useMemo(() => {
     const source = [];
@@ -231,6 +243,16 @@ export default function EntitySummaryWindow({ open, onClose, onInspect }) {
             ))}
             <span className="entity-summary-counter">
               {filteredEntries.length} / {totalEntries} entities - {groupedEntries.length} groups
+            </span>
+          </div>
+          <div className="entity-summary-metrics" role="status" aria-live="polite">
+            <span className="entity-summary-metric">
+              <span className="entity-summary-metric-label">🍎 Fruiting plants</span>
+              <span className="entity-summary-metric-value">{fruitingPlants.toLocaleString()}</span>
+            </span>
+            <span className="entity-summary-metric">
+              <span className="entity-summary-metric-label">🍑 Ground fruit items</span>
+              <span className="entity-summary-metric-value">{groundFruitItems.toLocaleString()}</span>
             </span>
           </div>
         </div>

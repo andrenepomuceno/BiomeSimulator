@@ -2419,6 +2419,34 @@ html, body, #root {
   font-size: 0.75rem;
 }
 
+.entity-summary-metrics {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.entity-summary-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(127, 200, 255, 0.22);
+  background: rgba(36, 58, 88, 0.5);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.entity-summary-metric-label {
+  color: #b8d3dd;
+  font-size: 0.72rem;
+}
+
+.entity-summary-metric-value {
+  color: #f0fafc;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .entity-summary-list {
   flex: 1;
   min-height: 0;
@@ -2652,6 +2680,11 @@ html, body, #root {
   .entity-summary-counter {
     width: 100%;
     margin-left: 0;
+  }
+
+  .entity-summary-metric {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .entity-summary-group-label {

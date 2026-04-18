@@ -14,6 +14,7 @@ import { buildPlantChartColors, buildPlantChartEmojis, getPlantByTypeId } from '
 
 const PLANT_COLORS = buildPlantChartColors();  // typeId → hex color
 const PLANT_EMOJIS = buildPlantChartEmojis();  // typeId → emoji
+const FRUIT_ITEM_TYPE = 2;
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
@@ -44,6 +45,7 @@ export default function StatsPanel() {
     profilingEnabled,
     showAnimalHpBars,
     profiling,
+    groundItems,
   } = useSimStore();
   const speciesKeys = useMemo(() => Object.keys(SPECIES_INFO), []);
   const plantTypeKeys = useMemo(() => Object.keys(PLANT_COLORS).map(Number).sort((a, b) => a - b), []);
@@ -236,6 +238,15 @@ export default function StatsPanel() {
     return caps;
   }, [gameConfig?.max_animal_population]);
 
+  const groundFruitItems = useMemo(() => {
+    if (!groundItems || groundItems.size === 0) return 0;
+    let count = 0;
+    for (const item of groundItems.values()) {
+      if (item?.type === FRUIT_ITEM_TYPE && !item.consumed) count++;
+    }
+    return count;
+  }, [groundItems]);
+
   return (
     <div className="sidebar-section">
       {/* Tab bar */}
@@ -314,8 +325,12 @@ export default function StatsPanel() {
             <span className="stat-value" style={{ color: '#88cc44' }}>{stats.plants_total || 0}</span>
           </div>
           <div className="stat-row" style={{ marginBottom: 10 }}>
-            <span className="stat-label">🍎 Fruits</span>
+            <span className="stat-label">🍎 Fruiting plants</span>
             <span className="stat-value" style={{ color: '#ff8844' }}>{stats.fruits || 0}</span>
+          </div>
+          <div className="stat-row" style={{ marginBottom: 10 }}>
+            <span className="stat-label">🍑 Ground fruit items</span>
+            <span className="stat-value" style={{ color: '#ffbf66' }}>{groundFruitItems}</span>
           </div>
           {plantTypeKeys
             .map(typeId => {

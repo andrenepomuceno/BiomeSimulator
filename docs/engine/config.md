@@ -22,7 +22,7 @@ Return to [Documentation Home](../README.md).
 
 ## `DEFAULT_CONFIG`
 
-Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are computed from game-minute constants by `createSimulationConfig()` and will vary if `ticks_per_day` is changed. The tick values shown assume the default `ticks_per_day = 260`.
+Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are computed from game-minute constants by `createSimulationConfig()` and will vary if `ticks_per_day` is changed. The tick values shown assume the default `ticks_per_day = 500`.
 
 | Category | Parameter | Default | Description |
 |----------|-----------|---------|-------------|
@@ -35,7 +35,7 @@ Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are c
 | Map | `river_count` | 4 | Number of rivers carved from mountain/rock sources toward existing water (0 disables river carving) |
 | Map | `seed` | null | Random seed (null = random) |
 | Clock | `ticks_per_second` | 10 | Target simulation speed (ticks advanced per real second) |
-| Clock | `ticks_per_day` | 260 | Ticks in one full day/night cycle |
+| Clock | `ticks_per_day` | 500 | Ticks in one full day/night cycle |
 | Clock | `ticks_per_game_minute` | `ticks_per_day / 1440` | **(derived)** Conversion factor between game minutes and engine ticks |
 | Clock | `day_fraction` | 0.6 | Fraction of each day that is daylight (0.6 = 60% day, 40% night) |
 | Fauna — Population | `max_animal_population` | 10000 | Global animal population budget; per-species caps are scaled proportionally (`0` = use raw per-species base caps) |
@@ -58,6 +58,9 @@ Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are c
 | Fauna — Retreat | `carnivore_retreat_power_margin` | 3 | Retreat only if `threat.attack_power > animal.attack_power + margin` |
 | Fauna — Retreat | `carnivore_retreat_desperate_hunger` | 45 | Hunger value that activates desperate mode |
 | Fauna — Retreat | `carnivore_retreat_desperate_thirst` | 55 | Thirst value that activates desperate mode |
+| Fauna — Alertness | `alert_ticks_after_flee` | 30 | Ticks of heightened threat vigilance (halved scan cooldown) after a flee episode ends |
+| Fauna — Alertness | `injured_speed_hp_threshold` | 0.40 | HP fraction below which movement speed is penalized |
+| Fauna — Alertness | `injured_speed_factor` | 0.70 | Speed multiplier applied when HP is below `injured_speed_hp_threshold` |
 | Fauna — Caching | `pathfinding_cache_ttl` | ~15 | **(derived)** Path reuse TTL in ticks (from 83 game minutes) |
 | Fauna — Caching | `threat_cache_ttl` | 10 | Ticks to reuse a found threat result before rescanning |
 | Fauna — Caching | `threat_scan_cooldown_ticks` | 8 | Ticks to skip a scan after returning "no threat found" |
@@ -77,10 +80,18 @@ Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are c
 | Flora | `water_proximity_threshold` | 10 | Tile distance from water that grants a growth bonus |
 | Flora | `plant_spawn_water_thresholds` | `{near: 5, mid: 15}` | Distance bands for weighted plant spawn distribution |
 | Flora | `plant_tick_phases` | 4 | Number of processing phases that stagger plant updates across ticks |
-| Flora — Seasons | `season_length_days` | 30 | Game days per season (4 seasons per year) |
+| Flora — Seasons | `season_length_days` | 14 | Game days per season (4 seasons per year) |
 | Flora — Seasons | `season_growth_multiplier` | `[1.2, 1.0, 0.8, 0.5]` | Per-season growth rate multipliers (Spring, Summer, Autumn, Winter) |
 | Flora — Seasons | `season_reproduction_multiplier` | `[1.5, 1.0, 0.7, 0.2]` | Per-season plant reproduction rate multipliers |
 | Flora — Seasons | `season_death_multiplier` | `[0.8, 1.0, 1.2, 2.0]` | Per-season plant death rate multipliers |
+| Flora — Temperature | `temperature_base` | `[15, 25, 12, 0]` | Base temperature (°C) per season: Spring, Summer, Autumn, Winter |
+| Flora — Temperature | `temperature_amplitude` | `[8, 10, 7, 5]` | Sinusoidal daily amplitude (°C) per season — peak at solar noon, trough around dawn |
+| Flora — Temperature | `temperature_optimal_min` | 10 | Lower bound of the optimal temperature range (°C); plants grow at full efficiency above this |
+| Flora — Temperature | `temperature_optimal_max` | 30 | Upper bound of the optimal temperature range (°C); plants grow at full efficiency below this |
+| Flora — Temperature | `temperature_growth_min` | 2 | Cold floor (°C) — growth efficiency ramps toward a minimum of 0.1 below this |
+| Flora — Temperature | `temperature_growth_max` | 40 | Heat ceiling (°C) — growth efficiency ramps toward 0.6 above optimal max and holds at 0.6 beyond this |
+| Flora — Temperature | `temperature_death_cold_threshold` | 4 | Frost mortality starts when temperature drops below this (°C); death rate multiplier rises up to 1.8× |
+| Flora — Temperature | `temperature_death_heat_threshold` | 35 | Heat mortality starts when temperature exceeds this (°C); death rate multiplier rises up to 1.5× |
 | Flora — Crowding | `plant_crowding_growth_penalty` | 0.7 | Growth multiplier applied when neighbor count exceeds the crowding threshold |
 | Flora — Crowding | `plant_crowding_neighbor_threshold` | 5 | Number of neighboring plants that triggers crowding growth penalty |
 | Flora — Water Stress | `water_stress_threshold` | 20 | Water proximity below this triggers stress for high-affinity plants |

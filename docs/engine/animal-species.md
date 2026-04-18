@@ -11,7 +11,7 @@ Return to [Documentation Home](../README.md).
 
 Speed values are **sub-cell steps per tick**. With `SUB_CELL_DIVISOR = 4`, a speed of 4 means 1 tile/tick, speed 8 = 2 tiles/tick, etc.
 
-The table below shows the **effective default tick values** produced when `ticks_per_day = 260`. The source registry itself stores those timing fields in game-time units (game minutes), and `buildAnimalSpeciesConfig()` converts them to ticks at build time.
+The table below shows the **effective default tick values** produced when `ticks_per_day = 500`. The source registry itself stores those timing fields in game-time units (game minutes), and `buildAnimalSpeciesConfig()` converts them to ticks at build time.
 
 Population caps reflect the trophic structure of the ecosystem — insects are the most numerous, apex predators the fewest. When a global `max_animal_population` budget is active, each species' effective cap is scaled proportionally from its base cap.
 
@@ -44,7 +44,7 @@ Population caps reflect the trophic structure of the ecosystem — insects are t
 
 Rather than repeating every field in each species entry, the registry uses a merge-at-build-time approach. `buildAnimalSpeciesConfig()` calls `_mergeAnimalDefaults()` on each raw entry before converting game-time fields to ticks. This means a species definition only needs to specify values that differ from the defaults — thresholds, multipliers, and sub-blocks all fall back to shared constants if omitted:
 
-- `DEFAULT_DECISION_THRESHOLDS` — AI threshold values (e.g. `critical_hunger`, `mate_energy_min`)
+- `DEFAULT_DECISION_THRESHOLDS` — AI threshold values (e.g. `critical_hunger`, `mate_energy_min`, `fight_back_hp_threshold`)
 - `DEFAULT_METABOLIC_MULTIPLIERS` — life-stage hunger/thirst rate scaling
 - `DEFAULT_HEALTH_PENALTY` — HP drain threshold and severity
 - `DEFAULT_RECOVERY` — idle/sleep energy and HP regeneration rates, eat/drink restoration amounts

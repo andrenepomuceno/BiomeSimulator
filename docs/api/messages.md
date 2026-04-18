@@ -32,7 +32,7 @@ Sent after a `generate` or `loadState` command completes.
     day: 0,
     tick_in_day: 0,
     is_night: false,
-    ticks_per_day: 260,
+    ticks_per_day: 500,
   }
 }
 ```
@@ -53,7 +53,7 @@ Sent after each worker loop iteration. At high TPS, one message may represent mu
     day: 0,
     tick_in_day: 143,
     is_night: false,
-    ticks_per_day: 260,
+    ticks_per_day: 500,
   },
   animals: [
     {

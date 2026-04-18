@@ -125,6 +125,21 @@ Carnivores and omnivores can also flee — not from prey, but from a **stronger 
 
 Retreat also respects the flee lock-in window (`flee_lock_ticks`), so the animal commits to fleeing the same threat for several ticks before reconsidering.
 
+### Post-Flee Alert State
+
+After a flee episode ends, the animal enters a **heightened vigilance state** for `alert_ticks_after_flee` ticks (default 30). During this window the threat scan cooldown is effectively halved, so the animal rescans more frequently to detect returning predators.
+
+The alert state is stored as `_alertUntilTick` on the animal entity and is reset whenever a new flee episode begins.
+
+### Herbivore Defensive Fight-Back
+
+Herbivores (and some omnivores) normally only flee from predators. However, when a predator closes to melee range while the animal still has high HP, the animal will fight back rather than taking free damage. Fight-back triggers when:
+
+- A predator is adjacent (melee range)
+- The animal's current HP fraction ≥ `fight_back_hp_threshold` (default 0.40)
+
+`fight_back_hp_threshold` is a `DEFAULT_DECISION_THRESHOLDS` value and can be overridden per species. Setting it to `0` disables fight-back entirely for that species.
+
 ---
 
 ## Threat Detection Cache
@@ -136,6 +151,18 @@ Scanning for threats is expensive (spatial hash query + diet validation per neig
 - Cache stores: threat entity ref, distance, direction vector
 - Cache is invalidated early if the animal crosses a tile boundary
 - Each species has a staggered decision interval (e.g., insects decide every 2 ticks, large predators every tick)
+
+---
+
+## Water Memory
+
+Animals remember the tile of their last successful drink as `_knownWaterX` / `_knownWaterY`. When thirsty and no water is currently visible, the animal navigates to the remembered tile before running a full A\* water scan. This reduces pathfinding overhead in stable environments where water sources are predictable.
+
+---
+
+## Injury Speed Penalty
+
+When an animal's HP drops below `injured_speed_hp_threshold` (default 40% of `maxHp`), its effective movement speed is multiplied by `injured_speed_factor` (default 0.70). This slows badly wounded animals, making escape harder and allowing predators to close the gap.
 
 ---
 

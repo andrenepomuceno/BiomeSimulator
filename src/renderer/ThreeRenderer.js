@@ -4,6 +4,7 @@ import { PLANT_COLORS } from '../utils/terrainColors.js';
 import { SPECIES_INFO } from '../utils/terrainColors.js';
 import { AnimalState, LifeStage } from '../engine/entities.js';
 import { buildAnimalColorMap, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
+import { buildPlantEmojiMap } from '../engine/plantSpecies.js';
 import useSimStore from '../store/simulationStore.js';
 
 const MIN_ZOOM = 1;
@@ -12,6 +13,14 @@ const MAX_VISIBLE_PLANT_POINTS = 18000;
 const MAX_VISIBLE_ENTITY_POINTS = 5000;
 const MAX_VISIBLE_ITEM_POINTS = 5000;
 const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
+const PLANT_SPRITE_ZOOM_THRESHOLD = 6;
+const ITEM_SPRITE_ZOOM_THRESHOLD = 6;
+
+const ITEM_EMOJIS = {
+  1: '🥩',
+  2: '🍎',
+  3: '🌱',
+};
 
 const ITEM_COLORS = {
   1: 0xcc4444,
@@ -166,10 +175,35 @@ export class ThreeRenderer {
     this._plantPoints = null;
     this._itemPoints = null;
     this._entityPoints = null;
+
+    // Plant sprites (zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
+    this._plantEmojiMap = buildPlantEmojiMap();
+    this._plantSprites = new Map(); // cellIdx → THREE.Sprite
+    this._plantSpritePool = [];
+    this._plantTextureCache = new Map();
+
+    // Item sprites (zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
+    this._itemSprites = new Map(); // item.id → THREE.Sprite
+    this._itemSpritePool = [];
+    this._itemTextureCache = new Map();
+
+    // Entity sprites
     this._entitySprites = new Map();
     this._entitySpritePool = [];
     this._entityTextureCache = new Map();
     this._selectionLine = null;
+
+    // Night overlay — screen-space quad rendered in a separate scene
+    this._overlayScene = new THREE.Scene();
+    this._overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this._nightMaterial = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this._overlayScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this._nightMaterial));
 
     this._selectedTile = null;
     this._selectedEntityId = null;
@@ -190,6 +224,11 @@ export class ThreeRenderer {
     this._animate = () => {
       if (!this._running) return;
       this.renderer.render(this.scene, this.camera3D);
+      if (this._nightMaterial.opacity > 0.002) {
+        this.renderer.autoClear = false;
+        this.renderer.render(this._overlayScene, this._overlayCamera);
+        this.renderer.autoClear = true;
+      }
       this._rafId = requestAnimationFrame(this._animate);
     };
     this._animate();
@@ -372,7 +411,9 @@ export class ThreeRenderer {
     requestAnimationFrame(() => {
       this._refreshQueued = false;
       this._rebuildPlantPoints();
+      this._rebuildPlantSprites();
       this._rebuildItemPoints();
+      this._rebuildItemSprites();
       this._rebuildEntityPoints();
       this._rebuildEntitySprites();
       this._refreshSelectionMarker();
@@ -417,6 +458,7 @@ export class ThreeRenderer {
 
     const pointSize = this.camera.zoom >= 6 ? 3.5 : 2.5;
     this._replacePoints('_plantPoints', positions, colors, pointSize, 1, 0.95);
+    this._rebuildPlantSprites();
   }
 
   _rebuildItemPoints() {
@@ -442,6 +484,7 @@ export class ThreeRenderer {
 
     const pointSize = this.camera.zoom >= 6 ? 4 : 3;
     this._replacePoints('_itemPoints', positions, colors, pointSize, 2, 1);
+    this._rebuildItemSprites();
   }
 
   _rebuildEntityPoints() {
@@ -468,6 +511,194 @@ export class ThreeRenderer {
     const pointSize = this.camera.zoom >= 6 ? 5 : 3.5;
     this._replacePoints('_entityPoints', positions, colors, pointSize, 3, 1);
   }
+
+  // --- Plant sprites ---
+
+  _getPlantEmoji(typeId, stage) {
+    return this._plantEmojiMap[`${typeId}_${stage}`] || '🌿';
+  }
+
+  _getPlantTexture(emoji) {
+    const existing = this._plantTextureCache.get(emoji);
+    if (existing) return existing;
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 64, 64);
+    ctx.font = '52px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, 32, 34);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    this._plantTextureCache.set(emoji, texture);
+    return texture;
+  }
+
+  _acquirePlantSprite(emoji) {
+    let sprite;
+    if (this._plantSpritePool.length > 0) {
+      sprite = this._plantSpritePool.pop();
+      sprite.visible = true;
+    } else {
+      const material = new THREE.SpriteMaterial({
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+      });
+      sprite = new THREE.Sprite(material);
+      this.worldGroup.add(sprite);
+    }
+    sprite.material.map = this._getPlantTexture(emoji);
+    sprite.material.needsUpdate = true;
+    return sprite;
+  }
+
+  _releasePlantSprite(sprite) {
+    sprite.visible = false;
+    this._plantSpritePool.push(sprite);
+  }
+
+  _rebuildPlantSprites() {
+    const show = this.camera.zoom >= PLANT_SPRITE_ZOOM_THRESHOLD
+      && this._plantType
+      && this._plantStage
+      && this.mapWidth > 0;
+    if (!show) {
+      for (const sprite of this._plantSprites.values()) this._releasePlantSprite(sprite);
+      this._plantSprites.clear();
+      return;
+    }
+    const { x0, y0, x1, y1 } = this._getViewportBounds(1);
+    const seen = new Set();
+    const scale = 0.82;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const idx = y * this.mapWidth + x;
+        const t = this._plantType[idx];
+        const s = this._plantStage[idx];
+        if (t === 0 || s === 0) continue;
+        const emoji = this._getPlantEmoji(t, s);
+        let sprite = this._plantSprites.get(idx);
+        if (!sprite) {
+          sprite = this._acquirePlantSprite(emoji);
+          this._plantSprites.set(idx, sprite);
+        }
+        const nextTex = this._getPlantTexture(emoji);
+        if (sprite.material.map !== nextTex) {
+          sprite.material.map = nextTex;
+          sprite.material.needsUpdate = true;
+        }
+        sprite.position.set(x + 0.5, y + 0.5, 0.5);
+        sprite.scale.set(scale, scale, 1);
+        sprite.material.opacity = s === 1 ? 0.75 : s === 2 ? 0.85 : s === 3 ? 0.92 : s === 5 ? 0.96 : 1.0;
+        sprite.renderOrder = 20;
+        sprite.visible = true;
+        seen.add(idx);
+      }
+    }
+    for (const [idx, sprite] of this._plantSprites) {
+      if (!seen.has(idx)) {
+        this._releasePlantSprite(sprite);
+        this._plantSprites.delete(idx);
+      }
+    }
+  }
+
+  // --- Item sprites ---
+
+  _getItemEmoji(type) {
+    return ITEM_EMOJIS[type] || '📦';
+  }
+
+  _getItemTexture(emoji) {
+    const existing = this._itemTextureCache.get(emoji);
+    if (existing) return existing;
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 64, 64);
+    ctx.font = '52px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, 32, 34);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    this._itemTextureCache.set(emoji, texture);
+    return texture;
+  }
+
+  _acquireItemSprite(emoji) {
+    let sprite;
+    if (this._itemSpritePool.length > 0) {
+      sprite = this._itemSpritePool.pop();
+      sprite.visible = true;
+    } else {
+      const material = new THREE.SpriteMaterial({
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+      });
+      sprite = new THREE.Sprite(material);
+      this.worldGroup.add(sprite);
+    }
+    sprite.material.map = this._getItemTexture(emoji);
+    sprite.material.needsUpdate = true;
+    return sprite;
+  }
+
+  _releaseItemSprite(sprite) {
+    sprite.visible = false;
+    this._itemSpritePool.push(sprite);
+  }
+
+  _rebuildItemSprites() {
+    const show = this.camera.zoom >= ITEM_SPRITE_ZOOM_THRESHOLD
+      && this._itemsById.size > 0;
+    if (!show) {
+      for (const sprite of this._itemSprites.values()) this._releaseItemSprite(sprite);
+      this._itemSprites.clear();
+      return;
+    }
+    const { x0, y0, x1, y1 } = this._getViewportBounds(1);
+    const seen = new Set();
+    const scale = 0.55;
+    for (const item of this._itemsById.values()) {
+      if (!item || item.consumed) continue;
+      if (item.x < x0 || item.x >= x1 || item.y < y0 || item.y >= y1) continue;
+      const emoji = this._getItemEmoji(item.type);
+      let sprite = this._itemSprites.get(item.id);
+      if (!sprite) {
+        sprite = this._acquireItemSprite(emoji);
+        this._itemSprites.set(item.id, sprite);
+      }
+      const nextTex = this._getItemTexture(emoji);
+      if (sprite.material.map !== nextTex) {
+        sprite.material.map = nextTex;
+        sprite.material.needsUpdate = true;
+      }
+      sprite.position.set(item.x + 0.5, item.y + 0.5, 2.5);
+      sprite.scale.set(scale, scale, 1);
+      sprite.material.opacity = 0.92;
+      sprite.renderOrder = 50;
+      sprite.visible = true;
+      seen.add(item.id);
+    }
+    for (const [id, sprite] of this._itemSprites) {
+      if (!seen.has(id)) {
+        this._releaseItemSprite(sprite);
+        this._itemSprites.delete(id);
+      }
+    }
+  }
+
+  // --- Entity sprites ---
 
   _getEntityEmoji(a) {
     if (a.lifeStage === LifeStage.EGG) return '🥚';
@@ -710,13 +941,36 @@ export class ThreeRenderer {
   }
 
   updateDayNight(clock) {
-    const alpha = clock?.is_night ? 0.15 : 0;
-    const base = 0x0a0a1a;
-    const tint = 0x0a0a3e;
-    const color = alpha > 0
-      ? ((base & 0xfefefe) >> 1) + ((tint & 0xfefefe) >> 1)
-      : base;
-    this.renderer.setClearColor(color, 1);
+    if (!clock || !clock.ticks_per_day) return;
+    const tpd = clock.ticks_per_day;
+    const tid = clock.tick_in_day;
+
+    // Phase boundaries matching GameRenderer
+    const dawnEnd  = tpd * 0.08;
+    const dayEnd   = tpd * 0.52;
+    const duskEnd  = tpd * 0.60;
+
+    let targetColor, targetAlpha;
+    if (tid < dawnEnd) {
+      const t = tid / dawnEnd;
+      targetColor = 0x443355;
+      targetAlpha = 0.20 * (1 - t);
+    } else if (tid < dayEnd) {
+      targetColor = 0x000000;
+      targetAlpha = 0;
+    } else if (tid < duskEnd) {
+      const t = (tid - dayEnd) / (duskEnd - dayEnd);
+      targetColor = 0x553322;
+      targetAlpha = 0.22 * t;
+    } else {
+      const t = Math.min(1, (tid - duskEnd) / (tpd * 0.1));
+      targetColor = 0x0a0a3e;
+      targetAlpha = 0.22 + 0.16 * t;
+    }
+
+    this._nightMaterial.opacity += (targetAlpha - this._nightMaterial.opacity) * 0.12;
+    this._nightMaterial.color.setHex(targetColor);
+    this._nightMaterial.needsUpdate = true;
   }
 
   setSelectedEntity(id) {
@@ -844,6 +1098,34 @@ export class ThreeRenderer {
     }
     this._entitySprites.clear();
     this._entitySpritePool.length = 0;
+
+    for (const sprite of this._plantSprites.values()) {
+      this.worldGroup.remove(sprite);
+      sprite.material.dispose();
+    }
+    for (const sprite of this._plantSpritePool) {
+      this.worldGroup.remove(sprite);
+      sprite.material.dispose();
+    }
+    this._plantSprites.clear();
+    this._plantSpritePool.length = 0;
+    for (const texture of this._plantTextureCache.values()) texture.dispose();
+    this._plantTextureCache.clear();
+
+    for (const sprite of this._itemSprites.values()) {
+      this.worldGroup.remove(sprite);
+      sprite.material.dispose();
+    }
+    for (const sprite of this._itemSpritePool) {
+      this.worldGroup.remove(sprite);
+      sprite.material.dispose();
+    }
+    this._itemSprites.clear();
+    this._itemSpritePool.length = 0;
+    for (const texture of this._itemTextureCache.values()) texture.dispose();
+    this._itemTextureCache.clear();
+
+    this._nightMaterial.dispose();
 
     for (const texture of this._entityTextureCache.values()) {
       texture.dispose();

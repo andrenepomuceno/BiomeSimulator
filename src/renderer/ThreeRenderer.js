@@ -7,235 +7,32 @@ import { AnimalState, LifeStage } from '../engine/entities.js';
 import { buildAnimalColorMap, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
 import { buildPlantEmojiMap, buildTreeTypes } from '../engine/plantSpecies.js';
 import { createModelAssetLoader } from './modelAssetLoader.js';
+import { ViewCamera } from './ViewCamera.js';
+import {
+  ANIMAL_SPRITE_SCALE_BOOST,
+  ANIMAL_MODEL_SCALE_BOOST,
+  ORBIT_TREE_SCALE_BOOST,
+  ORBIT_ENTITY_SPRITE_BOOST,
+  ORBIT_ENTITY_MODEL_BOOST,
+  MAX_VISIBLE_PLANT_POINTS,
+  MAX_VISIBLE_ENTITY_POINTS,
+  MAX_VISIBLE_ITEM_POINTS,
+  MAX_VISIBLE_PLANT_SPRITES,
+  MAX_VISIBLE_ITEM_SPRITES,
+  ENTITY_SPRITE_ZOOM_THRESHOLD,
+  MAX_PARTICLES,
+  PARTICLE_DEFS,
+  PLANT_SPRITE_ZOOM_THRESHOLD,
+  ITEM_SPRITE_ZOOM_THRESHOLD,
+  ITEM_EMOJIS,
+  ITEM_COLORS,
+  TREE_MODEL_URLS,
+  DEAD_TREE_MODEL_URL,
+  ENTITY_MODEL_URLS,
+  ENTITY_MODEL_SCALE_MULTIPLIERS,
+  clamp,
+} from './threeRendererConfig.js';
 import useSimStore from '../store/simulationStore.js';
-
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 120;
-const ANIMAL_SPRITE_SCALE_BOOST = 1.22;
-const ANIMAL_MODEL_SCALE_BOOST = 1.28;
-const ORBIT_TREE_SCALE_BOOST = 1.65;
-const ORBIT_ENTITY_SPRITE_BOOST = 1.55;
-const ORBIT_ENTITY_MODEL_BOOST = 1.8;
-const MAX_VISIBLE_PLANT_POINTS = 18000;
-const MAX_VISIBLE_ENTITY_POINTS = 5000;
-const MAX_VISIBLE_ITEM_POINTS = 5000;
-const MAX_VISIBLE_PLANT_SPRITES = 8000;
-const MAX_VISIBLE_ITEM_SPRITES = 5000;
-const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
-const MAX_PARTICLES = 1200;
-
-// Particle spawn configs by type
-const PARTICLE_DEFS = {
-  attack: { count: 10, color: 0xff4444, speed: 0.016, maxLife: 48, size: 3.5, gravity: 0 },
-  birth:  { count: 10, color: 0x88ff88, speed: 0.012, maxLife: 56, size: 3,   gravity: 0 },
-  death:  { count: 12, color: 0x888888, speed: 0.014, maxLife: 62, size: 3,   gravity: 0.0007 },
-  fruit:  { count:  5, color: 0xffee44, speed: 0.008, maxLife: 50, size: 2.5, gravity: -0.003 },
-  mate:   { count:  7, color: 0xff4488, speed: 0.007, maxLife: 60, size: 3.5, gravity: -0.001 },
-  eat:    { count:  5, color: 0x99cc55, speed: 0.014, maxLife: 38, size: 2.5, gravity: 0.0008 },
-  drink:  { count:  5, color: 0x44aaff, speed: 0.009, maxLife: 38, size: 2.5, gravity: 0.0005 },
-  flee:   { count:  6, color: 0xffaa22, speed: 0.018, maxLife: 34, size: 2.5, gravity: 0 },
-  sleep:  { count:  3, color: 0xbbaaff, speed: 0.004, maxLife: 60, size: 3,   gravity: -0.002 },
-};
-const PLANT_SPRITE_ZOOM_THRESHOLD = 6;
-const ITEM_SPRITE_ZOOM_THRESHOLD = 6;
-
-const ITEM_EMOJIS = {
-  1: '🥩',
-  2: '🍎',
-  3: '🌱',
-};
-
-const ITEM_COLORS = {
-  1: 0xcc4444,
-  2: 0xffaa33,
-  3: 0xaa8833,
-};
-
-const TREE_MODEL_URLS = {
-  4: '/model-assets/nature/tree_oak.glb',
-  5: '/model-assets/nature/tree_detailed.glb',
-  10: '/model-assets/nature/tree_oak_dark.glb',
-  12: '/model-assets/nature/tree_palm.glb',
-  15: '/model-assets/nature/tree_default.glb',
-};
-
-const DEAD_TREE_MODEL_URL = '/model-assets/nature/stump_round.glb';
-
-const ENTITY_MODEL_URLS = {
-  RABBIT: '/model-assets/animals/animal-bunny.glb',
-  SQUIRREL: '/model-assets/animals/animal-beaver.glb',
-  BEETLE: '/model-assets/animals/animal-bee.glb',
-  GOAT: '/model-assets/animals/animal-cow.glb',
-  DEER: '/model-assets/animals/animal-deer.glb',
-  FOX: '/model-assets/animals/animal-fox.glb',
-  WOLF: '/model-assets/animals/animal-dog.glb',
-  BOAR: '/model-assets/animals/animal-hog.glb',
-  BEAR: '/model-assets/animals/animal-polar.glb',
-  RACCOON: '/model-assets/animals/animal-cat.glb',
-  CROW: '/model-assets/animals/animal-parrot.glb',
-  MOSQUITO: '/model-assets/animals/animal-bee.glb',
-  CATERPILLAR: '/model-assets/animals/animal-caterpillar.glb',
-  CRICKET: '/model-assets/animals/animal-bee.glb',
-  LIZARD: '/model-assets/animals/animal-caterpillar.glb',
-  SNAKE: '/model-assets/animals/animal-caterpillar.glb',
-  HAWK: '/model-assets/animals/animal-parrot.glb',
-  CROCODILE: '/model-assets/animals/animal-hog.glb',
-};
-
-const ENTITY_MODEL_SCALE_MULTIPLIERS = {
-  MOSQUITO: 1.85,
-  CRICKET: 1.55,
-  BEETLE: 1.35,
-  CATERPILLAR: 1.45,
-  LIZARD: 1.3,
-  SNAKE: 1.5,
-  HAWK: 1.25,
-  CROW: 1.2,
-  CROCODILE: 1.25,
-};
-
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
-}
-
-class ViewCamera {
-  constructor(screen, onChanged) {
-    this.screen = screen;
-    this.onChanged = onChanged;
-    this.zoom = 4;
-    this.worldW = 1000;
-    this.worldH = 1000;
-    this.centerX = this.worldW / 2;
-    this.centerY = this.worldH / 2;
-    this.rotation = 0;
-  }
-
-  setScreenSize(width, height) {
-    this.screen.width = width;
-    this.screen.height = height;
-    this._clampCenter();
-    this.onChanged?.();
-  }
-
-  setWorldBounds(w, h) {
-    this.worldW = Math.max(1, w | 0);
-    this.worldH = Math.max(1, h | 0);
-    this.centerOn(this.worldW / 2, this.worldH / 2);
-  }
-
-  pan(dx, dy) {
-    this.centerX -= dx / this.zoom;
-    this.centerY -= dy / this.zoom;
-    this._clampCenter();
-    this.onChanged?.();
-  }
-
-  setZoom(z) {
-    this.zoom = clamp(z, MIN_ZOOM, MAX_ZOOM);
-    this._clampCenter();
-    this.onChanged?.();
-  }
-
-  setRotation(angle) {
-    this.rotation = angle;
-    this._clampCenter();
-    this.onChanged?.();
-  }
-
-  rotateBy(delta) {
-    this.setRotation(this.rotation + delta);
-  }
-
-  resetRotation() {
-    this.setRotation(0);
-  }
-
-  onWheel(event) {
-    event.preventDefault();
-    const oldZoom = this.zoom;
-    const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
-    this.zoom = clamp(this.zoom * factor, MIN_ZOOM, MAX_ZOOM);
-
-    const rect = event.target.getBoundingClientRect();
-    const mx = event.clientX - rect.left;
-    const my = event.clientY - rect.top;
-
-    const before = this.screenToWorld(mx, my, oldZoom, this.rotation);
-    const after = this.screenToWorld(mx, my, this.zoom, this.rotation);
-    this.centerX += before.x - after.x;
-    this.centerY += before.y - after.y;
-
-    this._clampCenter();
-    this.onChanged?.();
-  }
-
-  centerOn(tileX, tileY) {
-    this.centerX = tileX;
-    this.centerY = tileY;
-    this._clampCenter();
-    this.onChanged?.();
-  }
-
-  screenToWorld(screenX, screenY, zoomOverride = null, rotationOverride = null) {
-    const zoom = zoomOverride ?? this.zoom;
-    const rotation = rotationOverride ?? this.rotation;
-    const viewportW = this.screen.width / zoom;
-    const viewportH = this.screen.height / zoom;
-    const localX = screenX / zoom - viewportW / 2;
-    const localY = screenY / zoom - viewportH / 2;
-    const cos = Math.cos(rotation);
-    const sin = Math.sin(rotation);
-    return {
-      x: this.centerX + (cos * localX + sin * localY),
-      y: this.centerY + (-sin * localX + cos * localY),
-    };
-  }
-
-  screenToTile(screenX, screenY, zoomOverride = null) {
-    const world = this.screenToWorld(screenX, screenY, zoomOverride, null);
-    return {
-      x: Math.floor(world.x),
-      y: Math.floor(world.y),
-    };
-  }
-
-  getViewportWorldBounds(extra = 0) {
-    const c0 = this.screenToWorld(0, 0);
-    const c1 = this.screenToWorld(this.screen.width, 0);
-    const c2 = this.screenToWorld(this.screen.width, this.screen.height);
-    const c3 = this.screenToWorld(0, this.screen.height);
-    const minX = Math.min(c0.x, c1.x, c2.x, c3.x) - extra;
-    const maxX = Math.max(c0.x, c1.x, c2.x, c3.x) + extra;
-    const minY = Math.min(c0.y, c1.y, c2.y, c3.y) - extra;
-    const maxY = Math.max(c0.y, c1.y, c2.y, c3.y) + extra;
-    return { minX, maxX, minY, maxY };
-  }
-
-  getViewportTiles() {
-    const bounds = this.getViewportWorldBounds(0);
-    const x = Math.floor(bounds.minX);
-    const y = Math.floor(bounds.minY);
-    const w = Math.max(1, Math.ceil(bounds.maxX - bounds.minX));
-    const h = Math.max(1, Math.ceil(bounds.maxY - bounds.minY));
-    return {
-      x,
-      y,
-      w,
-      h,
-    };
-  }
-
-  _clampCenter() {
-    const viewportW = this.screen.width / this.zoom;
-    const viewportH = this.screen.height / this.zoom;
-    const cos = Math.abs(Math.cos(this.rotation));
-    const sin = Math.abs(Math.sin(this.rotation));
-    const halfW = (cos * viewportW + sin * viewportH) / 2;
-    const halfH = (sin * viewportW + cos * viewportH) / 2;
-    this.centerX = clamp(this.centerX, halfW, Math.max(halfW, this.worldW - halfW));
-    this.centerY = clamp(this.centerY, halfH, Math.max(halfH, this.worldH - halfH));
-  }
-}
 
 export class ThreeRenderer {
   constructor(container, onViewportChange, onTileClick, onEffectEvent) {

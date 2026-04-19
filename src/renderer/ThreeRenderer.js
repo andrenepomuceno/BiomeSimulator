@@ -9,6 +9,11 @@ import { buildPlantEmojiMap, buildTreeTypes } from '../engine/plantSpecies.js';
 import { createModelAssetLoader } from './modelAssetLoader.js';
 import { ViewCamera } from './ViewCamera.js';
 import {
+  configureOrbitControls,
+  buildOrbitViewportBounds,
+  buildOrbitCameraPreset,
+} from './threeRendererOrbit.js';
+import {
   ANIMAL_SPRITE_SCALE_BOOST,
   ANIMAL_MODEL_SCALE_BOOST,
   ORBIT_TREE_SCALE_BOOST,
@@ -73,24 +78,7 @@ export class ThreeRenderer {
     this.scene.add(this.cameraGroup);
 
     this._orbitControls = new OrbitControls(this._orbitCamera3D, this.renderer.domElement);
-    this._orbitControls.enabled = false;
-    this._orbitControls.enableDamping = true;
-    this._orbitControls.dampingFactor = 0.08;
-    this._orbitControls.enablePan = true;
-    this._orbitControls.enableRotate = true;
-    this._orbitControls.enableZoom = true;
-    this._orbitControls.minPolarAngle = 0;
-    this._orbitControls.maxPolarAngle = Math.PI;
-    this._orbitControls.screenSpacePanning = false;
-    this._orbitControls.mouseButtons = {
-      LEFT: THREE.MOUSE.ROTATE,
-      MIDDLE: THREE.MOUSE.DOLLY,
-      RIGHT: THREE.MOUSE.PAN,
-    };
-    this._orbitControls.touches = {
-      ONE: THREE.TOUCH.ROTATE,
-      TWO: THREE.TOUCH.DOLLY_PAN,
-    };
+    configureOrbitControls(this._orbitControls);
 
     this._raycaster = new THREE.Raycaster();
     this._pickPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
@@ -426,31 +414,7 @@ export class ThreeRenderer {
       this._orbitScreenToWorld(0, this.screen.height),
       this._orbitScreenToWorld(this.screen.width * 0.5, this.screen.height * 0.5),
     ].filter(Boolean);
-
-    if (samples.length === 0) {
-      return { x0: 0, y0: 0, x1: this.mapWidth, y1: this.mapHeight };
-    }
-
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    for (const p of samples) {
-      if (p.x < minX) minX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y > maxY) maxY = p.y;
-    }
-
-    const x0 = Math.max(0, Math.floor(minX - extra));
-    const y0 = Math.max(0, Math.floor(minY - extra));
-    const x1 = Math.min(this.mapWidth, Math.ceil(maxX + extra));
-    const y1 = Math.min(this.mapHeight, Math.ceil(maxY + extra));
-
-    if (x1 <= x0 || y1 <= y0) {
-      return { x0: 0, y0: 0, x1: this.mapWidth, y1: this.mapHeight };
-    }
-    return { x0, y0, x1, y1 };
+    return buildOrbitViewportBounds(samples, this.mapWidth, this.mapHeight, extra);
   }
 
   _buildTerrainTexture(terrainData, width, height) {
@@ -1565,11 +1529,10 @@ export class ThreeRenderer {
     this._orbitControls.target.copy(this._orbitTargetTmp);
 
     const vp = this.camera.getViewportTiles();
-    const diag = Math.hypot(vp.w, vp.h);
-    const dist = clamp(diag * 0.9, 60, 420);
-    this._orbitControls.minDistance = Math.max(18, dist * 0.25);
-    this._orbitControls.maxDistance = Math.max(260, dist * 6);
-    this._orbitCamera3D.position.set(this._orbitTargetTmp.x, this._orbitTargetTmp.y - dist * 0.8, dist * 0.9);
+    const preset = buildOrbitCameraPreset(vp, clamp);
+    this._orbitControls.minDistance = preset.minDistance;
+    this._orbitControls.maxDistance = preset.maxDistance;
+    this._orbitCamera3D.position.set(this._orbitTargetTmp.x, this._orbitTargetTmp.y - preset.offsetY, preset.offsetZ);
     this._orbitCamera3D.up.set(0, 0, 1);
     this._orbitCamera3D.lookAt(this._orbitTargetTmp);
     this._orbitCamera3D.updateProjectionMatrix();

@@ -21,6 +21,60 @@ import {
 } from './menu/gameMenuConstants.js';
 
 const MAX_RANDOM_SEED = 2147483646;
+const COMPRESSED_SAVE_FORMAT = 'biome-simulator-save+gzip';
+const COMPRESSED_SAVE_VERSION = 1;
+
+function encodeBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function decodeBase64(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function gzipText(text) {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  const buffer = await new Response(stream).arrayBuffer();
+  return new Uint8Array(buffer);
+}
+
+async function gunzipToText(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const buffer = await new Response(stream).arrayBuffer();
+  return new TextDecoder().decode(buffer);
+}
+
+async function serializeCompressedSave(data) {
+  const json = JSON.stringify(data);
+  const compressedBytes = await gzipText(json);
+  return JSON.stringify({
+    format: COMPRESSED_SAVE_FORMAT,
+    version: COMPRESSED_SAVE_VERSION,
+    encoding: 'base64',
+    payload: encodeBase64(compressedBytes),
+  });
+}
+
+async function parseSaveFileContent(fileContent) {
+  const parsed = JSON.parse(fileContent);
+  if (parsed?.format === COMPRESSED_SAVE_FORMAT && parsed?.encoding === 'base64') {
+    const compressedBytes = decodeBase64(parsed.payload || '');
+    const json = await gunzipToText(compressedBytes);
+    return JSON.parse(json);
+  }
+  return parsed;
+}
 
 function buildRandomSeed() {
   return 1 + Math.floor(Math.random() * MAX_RANDOM_SEED);
@@ -146,16 +200,21 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
   const handleSave = () => {
     if (!hasWorld) return;
     setSaving(true);
-    onSave((data) => {
-      const json = JSON.stringify(data);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `biome-simulator-save-${new Date().toISOString().slice(0, 10)}.json`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-      setSaving(false);
+    onSave(async (data) => {
+      try {
+        const serialized = await serializeCompressedSave(data);
+        const blob = new Blob([serialized], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `biome-simulator-save-${new Date().toISOString().slice(0, 10)}.bmsave`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        setLoadError('Failed to create compressed save file in this browser.');
+      } finally {
+        setSaving(false);
+      }
     });
   };
 
@@ -166,9 +225,9 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (loadEvent) => {
+    reader.onload = async (loadEvent) => {
       try {
-        const data = JSON.parse(loadEvent.target.result);
+        const data = await parseSaveFileContent(loadEvent.target.result);
         if (!data.terrain || !data.animals || !data.width) {
           setLoadError('Invalid save file. Expected world terrain, width, and animals.');
           return;
@@ -176,7 +235,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
         onLoad(data);
         onClose();
       } catch {
-        setLoadError('Failed to parse save file. Choose a valid BiomeSimulator JSON export.');
+        setLoadError('Failed to parse save file. Choose a valid BiomeSimulator .bmsave or legacy .json export.');
       }
     };
     reader.readAsText(file);
@@ -263,7 +322,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
             <div className="gm-stack">
               <div className="gm-panel">
                 <h6>Save File</h6>
-                {hasWorld && <div className="gm-footer-note">Save the current simulation to JSON.</div>}
+                {hasWorld && <div className="gm-footer-note">Save the current simulation as a compressed .bmsave file.</div>}
                 {!hasWorld && <div className="gm-inline-note gm-inline-note-warning">There is no generated world to save yet.</div>}
               </div>
             </div>
@@ -277,7 +336,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".json"
+                  accept=".bmsave,.json,application/json"
                   style={{ display: 'none' }}
                   onChange={handleFileSelect}
                 />
@@ -322,7 +381,7 @@ export default function GameMenu({ open, onClose, onNewGame, onSave, onLoad }) {
 
           {tab === 'load' && (
             <>
-              <div className="gm-footer-note">Load a JSON save.</div>
+              <div className="gm-footer-note">Load a compressed .bmsave or legacy .json save.</div>
               <button type="button" className="btn btn-sim" onClick={() => fileInputRef.current?.click()}>
                 Choose Save File
               </button>

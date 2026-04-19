@@ -6,6 +6,7 @@ const ZOOM_FACTOR = 1.15;
 const MIN_TPS = 1;
 const MAX_TPS = 60;
 const TPS_STEP = 5;
+const DEBUG_CAMERA_ROTATE_STEP = Math.PI / 24;
 
 const PAN_KEYS = new Set([
   'KeyW',
@@ -43,6 +44,12 @@ function isTypingTarget(target) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function supportsDebugCamera(renderer) {
+  return renderer
+    && typeof renderer.toggleDebugCamera === 'function'
+    && typeof renderer.rotateDebugCameraBy === 'function';
 }
 
 export function useKeyboardShortcuts({
@@ -205,6 +212,34 @@ export function useKeyboardShortcuts({
       }
 
       if (configRef.current.activeModal) {
+        return;
+      }
+
+      if (event.code === 'KeyV') {
+        const renderer = configRef.current.rendererRef.current;
+        if (supportsDebugCamera(renderer)) {
+          event.preventDefault();
+          renderer.toggleDebugCamera();
+        }
+        return;
+      }
+
+      if (event.code === 'KeyQ' || event.code === 'KeyF') {
+        const renderer = configRef.current.rendererRef.current;
+        if (supportsDebugCamera(renderer) && renderer.isDebugCameraEnabled?.()) {
+          event.preventDefault();
+          const direction = event.code === 'KeyQ' ? -1 : 1;
+          renderer.rotateDebugCameraBy(direction * DEBUG_CAMERA_ROTATE_STEP);
+        }
+        return;
+      }
+
+      if (event.code === 'KeyX') {
+        const renderer = configRef.current.rendererRef.current;
+        if (supportsDebugCamera(renderer) && renderer.isDebugCameraEnabled?.()) {
+          event.preventDefault();
+          renderer.resetDebugCameraRotation?.();
+        }
         return;
       }
 

@@ -10,6 +10,7 @@ import useSimStore from '../store/simulationStore.js';
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 120;
+const DEBUG_CAMERA_ROTATE_STEP = Math.PI / 24;
 const MAX_VISIBLE_PLANT_POINTS = 18000;
 const MAX_VISIBLE_ENTITY_POINTS = 5000;
 const MAX_VISIBLE_ITEM_POINTS = 5000;
@@ -88,6 +89,7 @@ class ViewCamera {
     this.worldH = 1000;
     this.centerX = this.worldW / 2;
     this.centerY = this.worldH / 2;
+    this.rotation = 0;
   }
 
   setScreenSize(width, height) {
@@ -116,6 +118,20 @@ class ViewCamera {
     this.onChanged?.();
   }
 
+  setRotation(angle) {
+    this.rotation = angle;
+    this._clampCenter();
+    this.onChanged?.();
+  }
+
+  rotateBy(delta) {
+    this.setRotation(this.rotation + delta);
+  }
+
+  resetRotation() {
+    this.setRotation(0);
+  }
+
   onWheel(event) {
     event.preventDefault();
     const oldZoom = this.zoom;
@@ -126,8 +142,8 @@ class ViewCamera {
     const mx = event.clientX - rect.left;
     const my = event.clientY - rect.top;
 
-    const before = this.screenToTile(mx, my, oldZoom);
-    const after = this.screenToTile(mx, my, this.zoom);
+    const before = this.screenToWorld(mx, my, oldZoom, this.rotation);
+    const after = this.screenToWorld(mx, my, this.zoom, this.rotation);
     this.centerX += before.x - after.x;
     this.centerY += before.y - after.y;
 
@@ -142,32 +158,62 @@ class ViewCamera {
     this.onChanged?.();
   }
 
-  screenToTile(screenX, screenY, zoomOverride = null) {
+  screenToWorld(screenX, screenY, zoomOverride = null, rotationOverride = null) {
     const zoom = zoomOverride ?? this.zoom;
+    const rotation = rotationOverride ?? this.rotation;
     const viewportW = this.screen.width / zoom;
     const viewportH = this.screen.height / zoom;
-    const startX = this.centerX - viewportW / 2;
-    const startY = this.centerY - viewportH / 2;
+    const localX = screenX / zoom - viewportW / 2;
+    const localY = screenY / zoom - viewportH / 2;
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
     return {
-      x: Math.floor(startX + screenX / zoom),
-      y: Math.floor(startY + screenY / zoom),
+      x: this.centerX + (cos * localX + sin * localY),
+      y: this.centerY + (-sin * localX + cos * localY),
     };
   }
 
-  getViewportTiles() {
-    const w = Math.ceil(this.screen.width / this.zoom);
-    const h = Math.ceil(this.screen.height / this.zoom);
+  screenToTile(screenX, screenY, zoomOverride = null) {
+    const world = this.screenToWorld(screenX, screenY, zoomOverride, null);
     return {
-      x: Math.floor(this.centerX - w / 2),
-      y: Math.floor(this.centerY - h / 2),
+      x: Math.floor(world.x),
+      y: Math.floor(world.y),
+    };
+  }
+
+  getViewportWorldBounds(extra = 0) {
+    const c0 = this.screenToWorld(0, 0);
+    const c1 = this.screenToWorld(this.screen.width, 0);
+    const c2 = this.screenToWorld(this.screen.width, this.screen.height);
+    const c3 = this.screenToWorld(0, this.screen.height);
+    const minX = Math.min(c0.x, c1.x, c2.x, c3.x) - extra;
+    const maxX = Math.max(c0.x, c1.x, c2.x, c3.x) + extra;
+    const minY = Math.min(c0.y, c1.y, c2.y, c3.y) - extra;
+    const maxY = Math.max(c0.y, c1.y, c2.y, c3.y) + extra;
+    return { minX, maxX, minY, maxY };
+  }
+
+  getViewportTiles() {
+    const bounds = this.getViewportWorldBounds(0);
+    const x = Math.floor(bounds.minX);
+    const y = Math.floor(bounds.minY);
+    const w = Math.max(1, Math.ceil(bounds.maxX - bounds.minX));
+    const h = Math.max(1, Math.ceil(bounds.maxY - bounds.minY));
+    return {
+      x,
+      y,
       w,
       h,
     };
   }
 
   _clampCenter() {
-    const halfW = (this.screen.width / this.zoom) / 2;
-    const halfH = (this.screen.height / this.zoom) / 2;
+    const viewportW = this.screen.width / this.zoom;
+    const viewportH = this.screen.height / this.zoom;
+    const cos = Math.abs(Math.cos(this.rotation));
+    const sin = Math.abs(Math.sin(this.rotation));
+    const halfW = (cos * viewportW + sin * viewportH) / 2;
+    const halfH = (sin * viewportW + cos * viewportH) / 2;
     this.centerX = clamp(this.centerX, halfW, Math.max(halfW, this.worldW - halfW));
     this.centerY = clamp(this.centerY, halfH, Math.max(halfH, this.worldH - halfH));
   }
@@ -194,6 +240,7 @@ export class ThreeRenderer {
     this.scene = new THREE.Scene();
     this.camera3D = new THREE.OrthographicCamera(0, this.screen.width, this.screen.height, 0, -1000, 1000);
     this.camera3D.position.z = 10;
+    this._debugCameraEnabled = false;
 
     // GLTF assets use lit materials; keep a lightweight neutral rig so trees/fauna
     // don't appear as dark silhouettes in the top-down orthographic view.
@@ -203,8 +250,10 @@ export class ThreeRenderer {
     this.scene.add(this._ambientLight);
     this.scene.add(this._directionalLight);
 
+    this.cameraGroup = new THREE.Group();
     this.worldGroup = new THREE.Group();
-    this.scene.add(this.worldGroup);
+    this.cameraGroup.add(this.worldGroup);
+    this.scene.add(this.cameraGroup);
 
     this.terrainLayer = {
       updateTiles: (changes) => this.updateTerrainTiles(changes),
@@ -336,7 +385,15 @@ export class ThreeRenderer {
     let downX = 0;
     let downY = 0;
 
-    this._wheelHandler = (e) => this.camera.onWheel(e);
+    this._wheelHandler = (e) => {
+      if (this._debugCameraEnabled && e.altKey) {
+        e.preventDefault();
+        const direction = e.deltaY > 0 ? 1 : -1;
+        this.rotateDebugCameraBy(direction * DEBUG_CAMERA_ROTATE_STEP);
+        return;
+      }
+      this.camera.onWheel(e);
+    };
     this.renderer.domElement.addEventListener('wheel', this._wheelHandler, { passive: false });
 
     this._pointerDownHandler = (e) => {
@@ -439,9 +496,10 @@ export class ThreeRenderer {
   }
 
   _syncWorldTransform() {
-    const vp = this.camera.getViewportTiles();
-    this.worldGroup.position.set(-vp.x * this.camera.zoom, this.screen.height + vp.y * this.camera.zoom, 0);
-    this.worldGroup.scale.set(this.camera.zoom, -this.camera.zoom, 1);
+    this.cameraGroup.position.set(this.screen.width / 2, this.screen.height / 2, 0);
+    this.cameraGroup.rotation.z = this.camera.rotation;
+    this.cameraGroup.scale.set(this.camera.zoom, -this.camera.zoom, 1);
+    this.worldGroup.position.set(-this.camera.centerX, -this.camera.centerY, 0);
   }
 
   _buildTerrainTexture(terrainData, width, height) {
@@ -637,11 +695,11 @@ export class ThreeRenderer {
   }
 
   _getViewportBounds(extra = 1) {
-    const vp = this.camera.getViewportTiles();
-    const x0 = Math.max(0, vp.x - extra);
-    const y0 = Math.max(0, vp.y - extra);
-    const x1 = Math.min(this.mapWidth, vp.x + vp.w + extra);
-    const y1 = Math.min(this.mapHeight, vp.y + vp.h + extra);
+    const bounds = this.camera.getViewportWorldBounds(extra);
+    const x0 = Math.max(0, Math.floor(bounds.minX));
+    const y0 = Math.max(0, Math.floor(bounds.minY));
+    const x1 = Math.min(this.mapWidth, Math.ceil(bounds.maxX));
+    const y1 = Math.min(this.mapHeight, Math.ceil(bounds.maxY));
     return { x0, y0, x1, y1 };
   }
 
@@ -1535,6 +1593,33 @@ export class ThreeRenderer {
 
   setZoom(z) {
     this.camera.setZoom(z);
+  }
+
+  isDebugCameraEnabled() {
+    return this._debugCameraEnabled;
+  }
+
+  setDebugCameraEnabled(enabled) {
+    const nextEnabled = Boolean(enabled);
+    if (nextEnabled === this._debugCameraEnabled) return;
+    this._debugCameraEnabled = nextEnabled;
+    if (!nextEnabled) {
+      this.camera.resetRotation();
+    }
+  }
+
+  toggleDebugCamera() {
+    this.setDebugCameraEnabled(!this._debugCameraEnabled);
+    return this._debugCameraEnabled;
+  }
+
+  rotateDebugCameraBy(delta) {
+    if (!this._debugCameraEnabled) return;
+    this.camera.rotateBy(delta);
+  }
+
+  resetDebugCameraRotation() {
+    this.camera.resetRotation();
   }
 
   captureViewport() {

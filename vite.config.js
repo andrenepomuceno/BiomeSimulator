@@ -41,7 +41,7 @@ export default defineConfig(({ command, mode }) => {
     },
     test: {
       environment: 'node',
-      include: ['src/**/*.test.js'],
+      include: ['src/**/*.test.{js,jsx}'],
     },
   };
 });

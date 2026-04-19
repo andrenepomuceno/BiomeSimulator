@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { TERRAIN_COLORS } from '../utils/terrainColors.js';
 import { PLANT_COLORS } from '../utils/terrainColors.js';
-import { buildAnimalColorMap } from '../engine/animalSpecies.js';
+import { SPECIES_INFO } from '../utils/terrainColors.js';
+import { AnimalState, LifeStage } from '../engine/entities.js';
+import { buildAnimalColorMap, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
 import useSimStore from '../store/simulationStore.js';
 
 const MIN_ZOOM = 1;
@@ -9,6 +11,7 @@ const MAX_ZOOM = 120;
 const MAX_VISIBLE_PLANT_POINTS = 18000;
 const MAX_VISIBLE_ENTITY_POINTS = 5000;
 const MAX_VISIBLE_ITEM_POINTS = 5000;
+const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
 
 const ITEM_COLORS = {
   1: 0xcc4444,
@@ -157,11 +160,15 @@ export class ThreeRenderer {
     this._plantStage = null;
     this._animals = [];
     this._animalColorMap = buildAnimalColorMap();
+    this._entityVisualScale = buildSpeciesVisualScale();
     this._itemsById = new Map();
 
     this._plantPoints = null;
     this._itemPoints = null;
     this._entityPoints = null;
+    this._entitySprites = new Map();
+    this._entitySpritePool = [];
+    this._entityTextureCache = new Map();
     this._selectionLine = null;
 
     this._selectedTile = null;
@@ -367,6 +374,7 @@ export class ThreeRenderer {
       this._rebuildPlantPoints();
       this._rebuildItemPoints();
       this._rebuildEntityPoints();
+      this._rebuildEntitySprites();
       this._refreshSelectionMarker();
     });
   }
@@ -448,7 +456,7 @@ export class ThreeRenderer {
     let count = 0;
 
     for (const a of this._animals) {
-      if (!a || a.alive === false) continue;
+      if (!a || a.alive === false || a.state === AnimalState.DEAD) continue;
       if (a.x < x0 || a.x >= x1 || a.y < y0 || a.y >= y1) continue;
       const [r, g, b] = this._toRgbFloats(this._animalColorMap[a.species] || 0xcccccc, 1);
       positions.push(a.x, a.y, 0);
@@ -459,6 +467,117 @@ export class ThreeRenderer {
 
     const pointSize = this.camera.zoom >= 6 ? 5 : 3.5;
     this._replacePoints('_entityPoints', positions, colors, pointSize, 3, 1);
+  }
+
+  _getEntityEmoji(a) {
+    if (a.lifeStage === LifeStage.EGG) return '🥚';
+    if (a.state === AnimalState.DEAD) return '💀';
+    if (a.lifeStage === LifeStage.PUPA) return '🪲';
+    return SPECIES_INFO[a.species]?.emoji || '🐾';
+  }
+
+  _getEntityTexture(a) {
+    const key = this._getEntityEmoji(a);
+    const existing = this._entityTextureCache.get(key);
+    if (existing) return existing;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 64, 64);
+    ctx.font = '52px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(key, 32, 34);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    this._entityTextureCache.set(key, texture);
+    return texture;
+  }
+
+  _acquireEntitySprite(a) {
+    let sprite;
+    if (this._entitySpritePool.length > 0) {
+      sprite = this._entitySpritePool.pop();
+      sprite.visible = true;
+    } else {
+      const material = new THREE.SpriteMaterial({
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+      });
+      sprite = new THREE.Sprite(material);
+      this.worldGroup.add(sprite);
+    }
+    sprite.material.map = this._getEntityTexture(a);
+    sprite.material.needsUpdate = true;
+    return sprite;
+  }
+
+  _releaseEntitySprite(sprite) {
+    sprite.visible = false;
+    this._entitySpritePool.push(sprite);
+  }
+
+  _rebuildEntitySprites() {
+    const showSprites = this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
+    if (!showSprites) {
+      for (const sprite of this._entitySprites.values()) {
+        this._releaseEntitySprite(sprite);
+      }
+      this._entitySprites.clear();
+      return;
+    }
+
+    const { x0, y0, x1, y1 } = this._getViewportBounds(1);
+    const seen = new Set();
+
+    for (const a of this._animals) {
+      if (!a) continue;
+      if (a.x < x0 || a.x >= x1 || a.y < y0 || a.y >= y1) continue;
+
+      let sprite = this._entitySprites.get(a.id);
+      if (!sprite) {
+        sprite = this._acquireEntitySprite(a);
+        this._entitySprites.set(a.id, sprite);
+      }
+
+      const nextMap = this._getEntityTexture(a);
+      if (sprite.material.map !== nextMap) {
+        sprite.material.map = nextMap;
+        sprite.material.needsUpdate = true;
+      }
+
+      const speciesScale = this._entityVisualScale[a.species] || 0.85;
+      const stageFactor = a.lifeStage === LifeStage.EGG ? 0.4
+        : a.lifeStage === LifeStage.PUPA ? 0.6
+        : a.lifeStage === LifeStage.BABY ? 0.5
+        : a.lifeStage === LifeStage.YOUNG ? 0.7
+        : a.lifeStage === LifeStage.YOUNG_ADULT ? 0.85
+        : 1.0;
+      const finalScale = Math.max(0.35, Math.min(1.5, speciesScale * stageFactor));
+
+      sprite.position.set(a.x, a.y, 0);
+      sprite.scale.set(finalScale, finalScale, 1);
+      sprite.material.opacity = a.state === AnimalState.DEAD ? 0.75
+        : a.state === AnimalState.SLEEPING ? 0.68
+        : 1;
+      sprite.material.color.setHex(this._animalColorMap[a.species] || 0xffffff);
+      sprite.renderOrder = 100 + Math.round(a.y * 1000);
+      sprite.visible = true;
+      seen.add(a.id);
+    }
+
+    for (const [id, sprite] of this._entitySprites) {
+      if (!seen.has(id)) {
+        this._releaseEntitySprite(sprite);
+        this._entitySprites.delete(id);
+      }
+    }
   }
 
   _refreshSelectionMarker() {
@@ -577,7 +696,16 @@ export class ThreeRenderer {
     void nativeRenderer;
     void tick;
     void zoom;
-    this._rebuildEntityPoints();
+    if (this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD) {
+      this._replacePoints('_entityPoints', [], [], 4.5, 3, 1);
+      this._rebuildEntitySprites();
+    } else {
+      for (const sprite of this._entitySprites.values()) {
+        this._releaseEntitySprite(sprite);
+      }
+      this._entitySprites.clear();
+      this._rebuildEntityPoints();
+    }
     this._refreshSelectionMarker();
   }
 
@@ -705,6 +833,22 @@ export class ThreeRenderer {
     this._plantPoints = null;
     this._itemPoints = null;
     this._entityPoints = null;
+
+    for (const sprite of this._entitySprites.values()) {
+      this.worldGroup.remove(sprite);
+      sprite.material.dispose();
+    }
+    for (const sprite of this._entitySpritePool) {
+      this.worldGroup.remove(sprite);
+      sprite.material.dispose();
+    }
+    this._entitySprites.clear();
+    this._entitySpritePool.length = 0;
+
+    for (const texture of this._entityTextureCache.values()) {
+      texture.dispose();
+    }
+    this._entityTextureCache.clear();
 
     if (this._selectionLine) {
       this.worldGroup.remove(this._selectionLine);

@@ -12,6 +12,8 @@ const MAX_ZOOM = 120;
 const MAX_VISIBLE_PLANT_POINTS = 18000;
 const MAX_VISIBLE_ENTITY_POINTS = 5000;
 const MAX_VISIBLE_ITEM_POINTS = 5000;
+const MAX_VISIBLE_PLANT_SPRITES = 8000;
+const MAX_VISIBLE_ITEM_SPRITES = 5000;
 const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
 const MAX_PARTICLES = 1200;
 
@@ -416,6 +418,28 @@ export class ThreeRenderer {
     return [r * alpha, g * alpha, b * alpha];
   }
 
+  _getEmojiTexture(cache, emoji) {
+    const existing = cache.get(emoji);
+    if (existing) return existing;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 64, 64);
+    ctx.font = '52px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, 32, 34);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    cache.set(emoji, texture);
+    return texture;
+  }
+
   _disposePoints(points) {
     if (!points) return;
     points.geometry.dispose();
@@ -550,9 +574,7 @@ export class ThreeRenderer {
     requestAnimationFrame(() => {
       this._refreshQueued = false;
       this._rebuildPlantPoints();
-      this._rebuildPlantSprites();
       this._rebuildItemPoints();
-      this._rebuildItemSprites();
       this._rebuildEntityPoints();
       this._rebuildEntitySprites();
       this._refreshSelectionMarker();
@@ -658,23 +680,7 @@ export class ThreeRenderer {
   }
 
   _getPlantTexture(emoji) {
-    const existing = this._plantTextureCache.get(emoji);
-    if (existing) return existing;
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 64, 64);
-    ctx.font = '52px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, 32, 34);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearFilter;
-    texture.needsUpdate = true;
-    this._plantTextureCache.set(emoji, texture);
-    return texture;
+    return this._getEmojiTexture(this._plantTextureCache, emoji);
   }
 
   _acquirePlantSprite(emoji) {
@@ -714,6 +720,7 @@ export class ThreeRenderer {
     const { x0, y0, x1, y1 } = this._getViewportBounds(1);
     const seen = new Set();
     const scale = 0.82;
+    let count = 0;
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) {
         const idx = y * this.mapWidth + x;
@@ -737,7 +744,10 @@ export class ThreeRenderer {
         sprite.renderOrder = 20;
         sprite.visible = true;
         seen.add(idx);
+        count++;
+        if (count >= MAX_VISIBLE_PLANT_SPRITES) break;
       }
+      if (count >= MAX_VISIBLE_PLANT_SPRITES) break;
     }
     for (const [idx, sprite] of this._plantSprites) {
       if (!seen.has(idx)) {
@@ -754,23 +764,7 @@ export class ThreeRenderer {
   }
 
   _getItemTexture(emoji) {
-    const existing = this._itemTextureCache.get(emoji);
-    if (existing) return existing;
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 64, 64);
-    ctx.font = '52px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, 32, 34);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearFilter;
-    texture.needsUpdate = true;
-    this._itemTextureCache.set(emoji, texture);
-    return texture;
+    return this._getEmojiTexture(this._itemTextureCache, emoji);
   }
 
   _acquireItemSprite(emoji) {
@@ -808,6 +802,7 @@ export class ThreeRenderer {
     const { x0, y0, x1, y1 } = this._getViewportBounds(1);
     const seen = new Set();
     const scale = 0.55;
+    let count = 0;
     for (const item of this._itemsById.values()) {
       if (!item || item.consumed) continue;
       if (item.x < x0 || item.x >= x1 || item.y < y0 || item.y >= y1) continue;
@@ -828,6 +823,8 @@ export class ThreeRenderer {
       sprite.renderOrder = 50;
       sprite.visible = true;
       seen.add(item.id);
+      count++;
+      if (count >= MAX_VISIBLE_ITEM_SPRITES) break;
     }
     for (const [id, sprite] of this._itemSprites) {
       if (!seen.has(id)) {
@@ -848,25 +845,7 @@ export class ThreeRenderer {
 
   _getEntityTexture(a) {
     const key = this._getEntityEmoji(a);
-    const existing = this._entityTextureCache.get(key);
-    if (existing) return existing;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 64, 64);
-    ctx.font = '52px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(key, 32, 34);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearFilter;
-    texture.needsUpdate = true;
-    this._entityTextureCache.set(key, texture);
-    return texture;
+    return this._getEmojiTexture(this._entityTextureCache, key);
   }
 
   _acquireEntitySprite(a) {

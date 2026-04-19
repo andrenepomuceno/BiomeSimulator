@@ -24,6 +24,13 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
 
   return (
     <div className="toolbar">
+      <div className="toolbar-logo">
+        <img src="/logo.svg" alt="BiomeSimulator" className="toolbar-logo-image" />
+        <span className="toolbar-logo-text">BiomeSimulator</span>
+      </div>
+
+      <div className="toolbar-divider" aria-hidden="true" />
+
       <div className="toolbar-group toolbar-group-primary">
         <button className="btn btn-sim btn-sm" onClick={onMenuToggle} title="Menu (Esc)">
           <i className="bi bi-list toolbar-icon" aria-hidden="true" />

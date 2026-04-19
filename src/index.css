@@ -249,6 +249,29 @@ html, body, #root {
   flex: 0 0 auto;
 }
 
+.toolbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding-right: 12px;
+}
+
+.toolbar-logo-image {
+  width: 28px;
+  height: 28px;
+  color: var(--sim-accent);
+  flex-shrink: 0;
+}
+
+.toolbar-logo-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sim-accent);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
 .toolbar-divider-spacer {
   margin-left: auto;
 }

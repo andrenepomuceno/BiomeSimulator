@@ -401,7 +401,9 @@ export class ThreeRenderer {
     const texture = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat);
     texture.magFilter = THREE.NearestFilter;
     texture.minFilter = THREE.NearestFilter;
-    texture.flipY = true;
+    // Keep texture row order aligned with the world grid (y=0 at top) so
+    // Three rendering matches Pixi orientation.
+    texture.flipY = false;
     texture.needsUpdate = true;
     this._terrainPixels = pixels;
     return texture;

@@ -13,6 +13,20 @@ const MAX_VISIBLE_PLANT_POINTS = 18000;
 const MAX_VISIBLE_ENTITY_POINTS = 5000;
 const MAX_VISIBLE_ITEM_POINTS = 5000;
 const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
+const MAX_PARTICLES = 1200;
+
+// Particle spawn configs by type
+const PARTICLE_DEFS = {
+  attack: { count: 10, color: 0xff4444, speed: 0.016, maxLife: 48, size: 3.5, gravity: 0 },
+  birth:  { count: 10, color: 0x88ff88, speed: 0.012, maxLife: 56, size: 3,   gravity: 0 },
+  death:  { count: 12, color: 0x888888, speed: 0.014, maxLife: 62, size: 3,   gravity: 0.0007 },
+  fruit:  { count:  5, color: 0xffee44, speed: 0.008, maxLife: 50, size: 2.5, gravity: -0.003 },
+  mate:   { count:  7, color: 0xff4488, speed: 0.007, maxLife: 60, size: 3.5, gravity: -0.001 },
+  eat:    { count:  5, color: 0x99cc55, speed: 0.014, maxLife: 38, size: 2.5, gravity: 0.0008 },
+  drink:  { count:  5, color: 0x44aaff, speed: 0.009, maxLife: 38, size: 2.5, gravity: 0.0005 },
+  flee:   { count:  6, color: 0xffaa22, speed: 0.018, maxLife: 34, size: 2.5, gravity: 0 },
+  sleep:  { count:  3, color: 0xbbaaff, speed: 0.004, maxLife: 60, size: 3,   gravity: -0.002 },
+};
 const PLANT_SPRITE_ZOOM_THRESHOLD = 6;
 const ITEM_SPRITE_ZOOM_THRESHOLD = 6;
 
@@ -171,6 +185,9 @@ export class ThreeRenderer {
     this._animalColorMap = buildAnimalColorMap();
     this._entityVisualScale = buildSpeciesVisualScale();
     this._itemsById = new Map();
+    this._prevAnimalStates = new Map();
+    this._fleeBuckets = new Set();
+    this._fleeBucketTick = -1;
 
     this._plantPoints = null;
     this._itemPoints = null;
@@ -192,6 +209,33 @@ export class ThreeRenderer {
     this._entitySpritePool = [];
     this._entityTextureCache = new Map();
     this._selectionLine = null;
+
+    // Particle system
+    this._particleList = [];
+    const maxP = MAX_PARTICLES;
+    this._particlePositions = new Float32Array(maxP * 3);
+    this._particleColors    = new Float32Array(maxP * 3);
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(this._particlePositions, 3));
+    pGeo.setAttribute('color',    new THREE.BufferAttribute(this._particleColors,    3));
+    pGeo.setDrawRange(0, 0);
+    this._particleGeometry = pGeo;
+    this._particleMaterial = new THREE.PointsMaterial({
+      size: 5,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.92,
+      depthTest: false,
+      depthWrite: false,
+      sizeAttenuation: false,
+    });
+    this._particlePoints = new THREE.Points(pGeo, this._particleMaterial);
+    this._particlePoints.renderOrder = 200;
+    this.worldGroup.add(this._particlePoints);
+
+    // FPS tracking
+    this._frameLastAt = performance.now();
+    this._frameWindow = { frames: 0, startedAt: this._frameLastAt };
 
     // Night overlay — screen-space quad rendered in a separate scene
     this._overlayScene = new THREE.Scene();
@@ -223,6 +267,8 @@ export class ThreeRenderer {
     this._running = true;
     this._animate = () => {
       if (!this._running) return;
+      this._tickParticles();
+      this._tickFps();
       this.renderer.render(this.scene, this.camera3D);
       if (this._nightMaterial.opacity > 0.002) {
         this.renderer.autoClear = false;
@@ -403,6 +449,92 @@ export class ThreeRenderer {
     points.renderOrder = 10 + z;
     this.worldGroup.add(points);
     this[layerKey] = points;
+  }
+
+  // ---- FPS profiling ----
+
+  _tickFps() {
+    const now = performance.now();
+    this._frameWindow.frames++;
+    if (now - this._frameWindow.startedAt >= 1000) {
+      const elapsed = now - this._frameWindow.startedAt;
+      const fps = elapsed > 0 ? (this._frameWindow.frames * 1000) / elapsed : 0;
+      const store = useSimStore.getState();
+      if (store.profilingEnabled) {
+        store.setRendererProfile({
+          ...store.profiling.renderer,
+          fps,
+          frameMs: now - this._frameLastAt,
+          lastTickAt: Date.now(),
+        });
+      }
+      this._frameWindow = { frames: 0, startedAt: now };
+    }
+    this._frameLastAt = now;
+  }
+
+  // ---- Particle system ----
+
+  _spawnParticles(type, wx, wy) {
+    const def = PARTICLE_DEFS[type];
+    if (!def) return;
+    const remaining = MAX_PARTICLES - this._particleList.length;
+    const count = Math.min(def.count, remaining);
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+      const speed = def.speed * (0.7 + Math.random() * 0.6);
+      this._particleList.push({
+        x:  wx + (Math.random() - 0.5) * 0.3,
+        y:  wy + (Math.random() - 0.5) * 0.3,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        gravity: def.gravity,
+        life:    0,
+        maxLife: def.maxLife * (0.8 + Math.random() * 0.4),
+        r: ((def.color >> 16) & 0xff) / 255,
+        g: ((def.color >>  8) & 0xff) / 255,
+        b: ( def.color        & 0xff) / 255,
+      });
+    }
+  }
+
+  _tickParticles() {
+    const list = this._particleList;
+    if (list.length === 0) {
+      if (this._particleGeometry.drawRange.count !== 0) {
+        this._particleGeometry.setDrawRange(0, 0);
+      }
+      return;
+    }
+    let writeIdx = 0;
+    let i = 0;
+    while (i < list.length) {
+      const p = list[i];
+      p.life++;
+      p.vx *= 0.93;
+      p.vy = p.vy * 0.93 + p.gravity;
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.life >= p.maxLife) {
+        list[i] = list[list.length - 1];
+        list.pop();
+        continue;
+      }
+      const t = p.life / p.maxLife;
+      const alpha = 1 - t;
+      const pi = writeIdx * 3;
+      this._particlePositions[pi    ] = p.x;
+      this._particlePositions[pi + 1] = p.y;
+      this._particlePositions[pi + 2] = 4;
+      this._particleColors[pi    ] = p.r * alpha;
+      this._particleColors[pi + 1] = p.g * alpha;
+      this._particleColors[pi + 2] = p.b * alpha;
+      writeIdx++;
+      i++;
+    }
+    this._particleGeometry.attributes.position.needsUpdate = true;
+    this._particleGeometry.attributes.color.needsUpdate = true;
+    this._particleGeometry.setDrawRange(0, writeIdx);
   }
 
   _scheduleVisibilityRefresh() {
@@ -891,6 +1023,10 @@ export class ThreeRenderer {
       const [x, y, ptype, stage] = change;
       if (x < 0 || y < 0 || x >= this.mapWidth || y >= this.mapHeight) continue;
       const idx = y * this.mapWidth + x;
+      const prevStage = this._plantStage[idx];
+      if (stage === 5 && prevStage !== 5) {
+        this._spawnParticles('fruit', x + 0.5, y + 0.5);
+      }
       this._plantType[idx] = ptype;
       this._plantStage[idx] = stage;
     }
@@ -923,10 +1059,66 @@ export class ThreeRenderer {
   }
 
   updateEntities(animals, nativeRenderer, tick, zoom) {
+    const store = useSimStore.getState();
+    const profiling = store.profilingEnabled;
+    const t0 = profiling ? performance.now() : 0;
+
     this._animals = Array.isArray(animals) ? animals : [];
     void nativeRenderer;
-    void tick;
     void zoom;
+
+    // Detect state transitions for particle effects
+    const currentTick = tick || 0;
+    for (const a of this._animals) {
+      if (!a) continue;
+      const prevState = this._prevAnimalStates.get(a.id);
+      if (prevState === undefined) {
+        // New animal – birth pop
+        this._spawnParticles('birth', a.x, a.y);
+      } else if (prevState !== a.state) {
+        switch (a.state) {
+          case AnimalState.ATTACKING: this._spawnParticles('attack', a.x, a.y); break;
+          case AnimalState.DEAD:      this._spawnParticles('death',  a.x, a.y); break;
+          case AnimalState.MATING:    this._spawnParticles('mate',   a.x, a.y); break;
+          case AnimalState.EATING:    this._spawnParticles('eat',    a.x, a.y); break;
+          case AnimalState.DRINKING:  this._spawnParticles('drink',  a.x, a.y); break;
+          case AnimalState.FLEEING: {
+            if (currentTick !== this._fleeBucketTick) {
+              this._fleeBucketTick = currentTick;
+              this._fleeBuckets.clear();
+            }
+            const bk = (Math.floor(a.x / 8) << 16) | (Math.floor(a.y / 8) & 0xffff);
+            if (!this._fleeBuckets.has(bk)) {
+              this._fleeBuckets.add(bk);
+              this._spawnParticles('flee', a.x, a.y);
+            }
+            break;
+          }
+          default: break;
+        }
+      }
+      // Periodic sleep Zzz
+      if (a.state === AnimalState.SLEEPING && currentTick > 0 && currentTick % 60 === 0) {
+        this._spawnParticles('sleep', a.x, a.y);
+      }
+      this._prevAnimalStates.set(a.id, a.state);
+    }
+    // Prune stale entries
+    if (this._prevAnimalStates.size > this._animals.length * 2 + 100) {
+      const alive = new Set(this._animals.map(a => a?.id));
+      for (const id of this._prevAnimalStates.keys()) {
+        if (!alive.has(id)) this._prevAnimalStates.delete(id);
+      }
+    }
+
+    if (profiling) {
+      store.setRendererProfile({
+        ...store.profiling.renderer,
+        entityUpdateMs: performance.now() - t0,
+        lastTickAt: Date.now(),
+      });
+    }
+
     if (this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD) {
       this._replacePoints('_entityPoints', [], [], 4.5, 3, 1);
       this._rebuildEntitySprites();
@@ -1126,6 +1318,8 @@ export class ThreeRenderer {
     this._itemTextureCache.clear();
 
     this._nightMaterial.dispose();
+    this._particleMaterial.dispose();
+    this._particleGeometry.dispose();
 
     for (const texture of this._entityTextureCache.values()) {
       texture.dispose();

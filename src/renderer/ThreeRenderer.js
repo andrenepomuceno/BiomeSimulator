@@ -56,6 +56,7 @@ const TREE_MODEL_URLS = {
   5: '/model-assets/nature/tree_detailed.glb',
   10: '/model-assets/nature/tree_oak_dark.glb',
   12: '/model-assets/nature/tree_palm.glb',
+  15: '/model-assets/nature/tree_default.glb',
 };
 
 const DEAD_TREE_MODEL_URL = '/model-assets/nature/stump_round.glb';
@@ -74,11 +75,23 @@ const ENTITY_MODEL_URLS = {
   CROW: '/model-assets/animals/animal-parrot.glb',
   MOSQUITO: '/model-assets/animals/animal-bee.glb',
   CATERPILLAR: '/model-assets/animals/animal-caterpillar.glb',
-  CRICKET: '/model-assets/animals/animal-crab.glb',
-  LIZARD: '/model-assets/animals/animal-crab.glb',
-  SNAKE: null,
+  CRICKET: '/model-assets/animals/animal-bee.glb',
+  LIZARD: '/model-assets/animals/animal-caterpillar.glb',
+  SNAKE: '/model-assets/animals/animal-caterpillar.glb',
   HAWK: '/model-assets/animals/animal-parrot.glb',
-  CROCODILE: null,
+  CROCODILE: '/model-assets/animals/animal-hog.glb',
+};
+
+const ENTITY_MODEL_SCALE_MULTIPLIERS = {
+  MOSQUITO: 1.85,
+  CRICKET: 1.55,
+  BEETLE: 1.35,
+  CATERPILLAR: 1.45,
+  LIZARD: 1.3,
+  SNAKE: 1.5,
+  HAWK: 1.25,
+  CROW: 1.2,
+  CROCODILE: 1.25,
 };
 
 function clamp(v, min, max) {
@@ -1298,7 +1311,8 @@ export class ThreeRenderer {
       : 1.0;
     const fallbackFromSprite = Number.isFinite(spriteScale) ? spriteScale * 0.28 : 1;
     const orbitBoost = this._orbitControlsEnabled ? ORBIT_ENTITY_MODEL_BOOST : 1;
-    return Math.max(0.14, Math.min(1.25, base * speciesFactor * stageFactor * fallbackFromSprite * ANIMAL_MODEL_SCALE_BOOST * orbitBoost));
+    const speciesModelBoost = ENTITY_MODEL_SCALE_MULTIPLIERS[a.species] || 1;
+    return Math.max(0.14, Math.min(1.55, base * speciesFactor * stageFactor * fallbackFromSprite * ANIMAL_MODEL_SCALE_BOOST * orbitBoost * speciesModelBoost));
   }
 
   _ensureEntityModelLoaded(species) {

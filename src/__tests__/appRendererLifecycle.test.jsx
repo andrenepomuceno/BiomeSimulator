@@ -216,4 +216,56 @@ describe('App renderer lifecycle regressions', () => {
     expect(createRendererMock).toHaveBeenCalledTimes(2);
     expect(createdRenderers[0].destroy).toHaveBeenCalledTimes(1);
   });
+
+  it('falls back to pixi and shows a toast when three renderer init fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      root.render(<App />);
+    });
+    await flushEffects();
+
+    const worldReady = {
+      terrain: new Uint8Array([3, 3, 3, 3]),
+      plantType: new Uint8Array([0, 0, 0, 0]),
+      plantStage: new Uint8Array([0, 0, 0, 0]),
+      waterProximity: new Uint8Array([0, 0, 0, 0]),
+      heightmap: new Float32Array([0, 0, 0, 0]),
+      width: 2,
+      height: 2,
+      seed: 1,
+    };
+
+    act(() => {
+      useSimStore.setState((state) => ({
+        worldReady,
+        worldReadyVersion: (state.worldReadyVersion || 0) + 1,
+      }));
+    });
+    await flushEffects();
+
+    let firstThreeFailure = true;
+    createRendererMock.mockImplementation((mode) => {
+      if (mode === 'three' && firstThreeFailure) {
+        firstThreeFailure = false;
+        throw new Error('Three init failed');
+      }
+      const renderer = makeRendererStub();
+      createdRenderers.push(renderer);
+      return renderer;
+    });
+
+    act(() => {
+      useSimStore.getState().setRendererMode('three');
+    });
+    await flushEffects();
+
+    const state = useSimStore.getState();
+    expect(state.rendererMode).toBe('pixi');
+    expect(state.uiToasts.some(t => String(t.title).includes('Renderer fallback'))).toBe(true);
+    expect(createRendererMock.mock.calls.some(([mode]) => mode === 'three')).toBe(true);
+    expect(createRendererMock.mock.calls.some(([mode]) => mode === 'pixi')).toBe(true);
+
+    errorSpy.mockRestore();
+  });
 });

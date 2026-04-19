@@ -3,7 +3,12 @@
 Navigation: [Documentation Home](../README.md) > [Renderer](README.md) > [Current Document](README.md)
 Return to [Documentation Home](../README.md).
 
-The renderer layer (`src/renderer/`) handles all visual output using Pixi.js 7. It is strictly presentation — no game logic.
+The renderer layer (`src/renderer/`) handles all visual output and supports two runtime backends:
+
+- `pixi` via `GameRenderer` (Pixi.js 7)
+- `three` via `ThreeRenderer` (Three.js)
+
+Both implementations are presentation-only — no game logic.
 
 ## Contents
 
@@ -22,7 +27,9 @@ See [Architecture](../architecture.md) for how the renderer fits into the broade
 
 | File | Purpose |
 |------|---------|
+| `rendererFactory.js` | Runtime backend factory (`pixi` ↔ `three`) |
 | `GameRenderer.js` | Top-level renderer: initializes Pixi app, layers, camera, input |
+| `ThreeRenderer.js` | Three.js renderer with terrain texture, zoom-based sprites, particles, and day/night overlay |
 | `Camera.js` | Viewport pan/zoom, coordinate conversion |
 | `TerrainLayer.js` | Renders terrain as a single pixel texture |
 | `PlantLayer.js` | Renders plants as pixel overlay + emoji sprites |
@@ -45,4 +52,11 @@ See [Architecture](../architecture.md) for how the renderer fits into the broade
 8. Night Overlay   — semi-transparent dark rectangle (0–35% alpha)
 ```
 
-All layers live inside a single `PIXI.Container` (`worldContainer`) that is transformed by the camera.
+The Pixi backend uses a single `PIXI.Container` (`worldContainer`) transformed by camera state.
+The Three backend uses `worldGroup` plus a screen-space overlay scene for day/night tint.
+
+## Runtime Switch And Fallback
+
+- Renderer mode is stored in Zustand (`rendererMode`) and can be toggled in the toolbar.
+- On mode switch, the inactive renderer is destroyed and the active renderer is rehydrated from store snapshots.
+- If Three initialization fails at runtime, `App` falls back automatically to Pixi and pushes a warning UI toast.

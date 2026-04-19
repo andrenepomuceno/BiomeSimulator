@@ -108,13 +108,28 @@ export default function App() {
       handleTileClick(x, y);
     };
 
-    const renderer = createRenderer(
-      rendererMode,
-      canvasContainerRef.current,
-      onViewportChange,
-      onTileClick,
-      playWorldEffect,
-    );
+    let renderer;
+    try {
+      renderer = createRenderer(
+        rendererMode,
+        canvasContainerRef.current,
+        onViewportChange,
+        onTileClick,
+        playWorldEffect,
+      );
+    } catch (error) {
+      console.error('[Renderer] Failed to initialize renderer mode:', rendererMode, error);
+      const store = useSimStore.getState();
+      store.pushUiToast({
+        variant: 'warning',
+        title: 'Renderer fallback',
+        message: 'Three renderer failed to initialize. Falling back to Pixi.',
+      });
+      if (rendererMode !== 'pixi') {
+        store.setRendererMode('pixi');
+      }
+      return;
+    }
     rendererRef.current = renderer;
 
     // Dev-only automation bridge for capture scripts

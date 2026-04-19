@@ -20,7 +20,7 @@ block-beta
   end
   block:mid:3
     columns 3
-    Store["Zustand Store"] Hooks["Hooks\nuseSimulation\nuseEditor"] Renderer["Pixi.js Renderer\nTerrain · Plant · Entity\nAnimation · Camera"]
+    Store["Zustand Store"] Hooks["Hooks\nuseSimulation\nuseEditor"] Renderer["Renderer Backends\nPixi + Three\nRuntime Switch"]
   end
   block:worker["Main Web Worker (simWorker.js)"]:3
     columns 3
@@ -44,7 +44,7 @@ block-beta
 | **Worker** (`src/worker/`) | Hosts the engine. Communicates via `postMessage` only. |
 | **Store** (`src/store/`) | Single Zustand store. Immutable updates via `set()`. No side effects. |
 | **Hooks** (`src/hooks/`) | Bridge worker messages to store. Own the worker lifecycle. |
-| **Renderer** (`src/renderer/`) | Pixi.js only. No game logic. Reads data, draws frames. |
+| **Renderer** (`src/renderer/`) | Dual backend (`GameRenderer`/Pixi and `ThreeRenderer`/Three). No game logic. Reads data, draws frames. |
 | **Components** (`src/components/`) | React + Bootstrap UI. Read store, dispatch commands via hooks. App owns transient modal state for major overlays such as GameMenu, HelpModal, SimulationConfigModal, SimulationReport, and EntitySummaryWindow. |
 
 ### Audio Runtime Boundary
@@ -79,9 +79,11 @@ flowchart TB
       UseEditor["hooks/useEditor.js<br/>tile tools + selection commands"]
     end
 
-    subgraph Render["Pixi Renderer"]
+    subgraph Render["Renderer Backends"]
       direction TB
+      Factory["renderer/rendererFactory.js<br/>backend selection"]
       GameRenderer["renderer/GameRenderer.js<br/>Pixi app + orchestration"]
+      ThreeRenderer["renderer/ThreeRenderer.js<br/>Three scene + camera + overlays"]
       Camera["renderer/Camera.js<br/>pan, zoom, tile coordinates"]
       TerrainLayer["renderer/TerrainLayer.js"]
       PlantLayer["renderer/PlantLayer.js"]
@@ -114,7 +116,11 @@ flowchart TB
   Store -->|terrain, animals, plants,<br/>clock, selection, viewport| App
   App -->|uses| UseSim
   App -->|uses| UseEditor
-  App -->|creates and updates| GameRenderer
+  App -->|creates via mode| Factory
+  Factory --> GameRenderer
+  Factory --> ThreeRenderer
+  App -->|updates active renderer| GameRenderer
+  App -->|updates active renderer| ThreeRenderer
   GameRenderer -->|tile click callback| UseEditor
   GameRenderer -->|viewport callback| Store
   UseEditor -->|reads tool, worker, selection| Store
@@ -158,6 +164,8 @@ flowchart TB
 Current implementation notes:
 
 - `useEditor` sends canvas commands directly through the worker reference stored in Zustand, while `useSimulation` owns worker creation and inbound message hydration.
+- `rendererMode` is persisted in local storage and can be switched at runtime without restarting the worker.
+- If Three renderer creation throws, `App` auto-falls back to Pixi and emits a warning toast.
 - Worker sync is driven by incremental or full-state serialization in `simWorker.js`; the viewport currently stays on the main thread for renderer and minimap feedback.
 - `behaviors/` and the renderer layers are grouped so the graph stays readable while still pointing at the files contributors usually touch first.
 

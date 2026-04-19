@@ -498,6 +498,11 @@ export class ThreeRenderer {
     }
   }
 
+  _emitEffectEvent(event) {
+    if (!this.onEffectEvent || !event) return;
+    this.onEffectEvent(event);
+  }
+
   _tickParticles() {
     const list = this._particleList;
     if (list.length === 0) {
@@ -1018,7 +1023,13 @@ export class ThreeRenderer {
   }
 
   updatePlants(plantChanges) {
+    const store = useSimStore.getState();
+    const profiling = store.profilingEnabled;
+    const t0 = profiling ? performance.now() : 0;
+
     if (!Array.isArray(plantChanges) || plantChanges.length === 0 || !this._plantType || !this._plantStage) return;
+
+    const { x0, y0, x1, y1 } = this._getViewportBounds(2);
     for (const change of plantChanges) {
       const [x, y, ptype, stage] = change;
       if (x < 0 || y < 0 || x >= this.mapWidth || y >= this.mapHeight) continue;
@@ -1026,11 +1037,22 @@ export class ThreeRenderer {
       const prevStage = this._plantStage[idx];
       if (stage === 5 && prevStage !== 5) {
         this._spawnParticles('fruit', x + 0.5, y + 0.5);
+        if (x >= x0 && x < x1 && y >= y0 && y < y1) {
+          this._emitEffectEvent({ type: 'fruit', x: x + 0.5, y: y + 0.5 });
+        }
       }
       this._plantType[idx] = ptype;
       this._plantStage[idx] = stage;
     }
     this._rebuildPlantPoints();
+
+    if (profiling) {
+      store.setRendererProfile({
+        ...store.profiling.renderer,
+        plantUpdateMs: performance.now() - t0,
+        lastTickAt: Date.now(),
+      });
+    }
   }
 
   updateItems(itemChanges) {
@@ -1069,19 +1091,40 @@ export class ThreeRenderer {
 
     // Detect state transitions for particle effects
     const currentTick = tick || 0;
+    const { x0, y0, x1, y1 } = this._getViewportBounds(2);
     for (const a of this._animals) {
       if (!a) continue;
+      const inViewport = a.x >= x0 && a.x < x1 && a.y >= y0 && a.y < y1;
       const prevState = this._prevAnimalStates.get(a.id);
       if (prevState === undefined) {
         // New animal – birth pop
-        this._spawnParticles('birth', a.x, a.y);
+        if (inViewport) this._spawnParticles('birth', a.x, a.y);
       } else if (prevState !== a.state) {
+        if (!inViewport) {
+          this._prevAnimalStates.set(a.id, a.state);
+          continue;
+        }
         switch (a.state) {
-          case AnimalState.ATTACKING: this._spawnParticles('attack', a.x, a.y); break;
-          case AnimalState.DEAD:      this._spawnParticles('death',  a.x, a.y); break;
-          case AnimalState.MATING:    this._spawnParticles('mate',   a.x, a.y); break;
-          case AnimalState.EATING:    this._spawnParticles('eat',    a.x, a.y); break;
-          case AnimalState.DRINKING:  this._spawnParticles('drink',  a.x, a.y); break;
+          case AnimalState.ATTACKING:
+            this._spawnParticles('attack', a.x, a.y);
+            this._emitEffectEvent({ type: 'attack', x: a.x, y: a.y, species: a.species, tick: currentTick });
+            break;
+          case AnimalState.DEAD:
+            this._spawnParticles('death',  a.x, a.y);
+            this._emitEffectEvent({ type: 'death', x: a.x, y: a.y, species: a.species, tick: currentTick });
+            break;
+          case AnimalState.MATING:
+            this._spawnParticles('mate',   a.x, a.y);
+            this._emitEffectEvent({ type: 'mate', x: a.x, y: a.y, species: a.species, tick: currentTick });
+            break;
+          case AnimalState.EATING:
+            this._spawnParticles('eat',    a.x, a.y);
+            this._emitEffectEvent({ type: 'eat', x: a.x, y: a.y, species: a.species, tick: currentTick });
+            break;
+          case AnimalState.DRINKING:
+            this._spawnParticles('drink',  a.x, a.y);
+            this._emitEffectEvent({ type: 'drink', x: a.x, y: a.y, species: a.species, tick: currentTick });
+            break;
           case AnimalState.FLEEING: {
             if (currentTick !== this._fleeBucketTick) {
               this._fleeBucketTick = currentTick;
@@ -1098,7 +1141,7 @@ export class ThreeRenderer {
         }
       }
       // Periodic sleep Zzz
-      if (a.state === AnimalState.SLEEPING && currentTick > 0 && currentTick % 60 === 0) {
+      if (inViewport && a.state === AnimalState.SLEEPING && currentTick > 0 && currentTick % 60 === 0) {
         this._spawnParticles('sleep', a.x, a.y);
       }
       this._prevAnimalStates.set(a.id, a.state);

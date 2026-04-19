@@ -4,6 +4,7 @@
 import React from 'react';
 import useSimStore from '../store/simulationStore';
 import { formatTimeOfDay } from '../utils/time';
+import logoUrl from '../assets/logo.svg';
 
 const TOOLS = [
   { id: 'SELECT', label: 'Select', icon: 'bi-cursor-fill', shortcut: '1' },
@@ -25,7 +26,7 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
   return (
     <div className="toolbar">
       <div className="toolbar-logo">
-        <img src="/logo.svg" alt="BiomeSimulator" className="toolbar-logo-image" />
+        <img src={logoUrl} alt="BiomeSimulator" className="toolbar-logo-image" />
         <span className="toolbar-logo-text">BiomeSimulator</span>
       </div>
 

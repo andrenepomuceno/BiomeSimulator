@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TERRAIN_COLORS } from '../utils/terrainColors.js';
 import { PLANT_COLORS } from '../utils/terrainColors.js';
 import { SPECIES_INFO } from '../utils/terrainColors.js';
 import { AnimalState, LifeStage } from '../engine/entities.js';
 import { buildAnimalColorMap, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
 import { buildPlantEmojiMap, buildTreeTypes } from '../engine/plantSpecies.js';
+import { createModelAssetLoader } from './modelAssetLoader.js';
 import useSimStore from '../store/simulationStore.js';
 
 const MIN_ZOOM = 1;
@@ -50,6 +50,27 @@ const TREE_MODEL_URLS = {
   5: new URL('../../3dmodels/kenney_nature-kit/Models/GLTF format/tree_default.glb', import.meta.url).href,
   10: new URL('../../3dmodels/kenney_nature-kit/Models/GLTF format/tree_oak_dark.glb', import.meta.url).href,
   12: new URL('../../3dmodels/kenney_nature-kit/Models/GLTF format/tree_palm.glb', import.meta.url).href,
+};
+
+const ENTITY_MODEL_URLS = {
+  RABBIT: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-bunny.glb', import.meta.url).href,
+  SQUIRREL: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-beaver.glb', import.meta.url).href,
+  BEETLE: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-bee.glb', import.meta.url).href,
+  GOAT: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-cow.glb', import.meta.url).href,
+  DEER: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-deer.glb', import.meta.url).href,
+  FOX: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-fox.glb', import.meta.url).href,
+  WOLF: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-dog.glb', import.meta.url).href,
+  BOAR: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-hog.glb', import.meta.url).href,
+  BEAR: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-polar.glb', import.meta.url).href,
+  RACCOON: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-cat.glb', import.meta.url).href,
+  CROW: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-parrot.glb', import.meta.url).href,
+  MOSQUITO: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-bee.glb', import.meta.url).href,
+  CATERPILLAR: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-caterpillar.glb', import.meta.url).href,
+  CRICKET: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-crab.glb', import.meta.url).href,
+  LIZARD: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-crab.glb', import.meta.url).href,
+  SNAKE: null,
+  HAWK: new URL('../../3dmodels/kenney_cube-pets_1.0/Models/GLB format/animal-parrot.glb', import.meta.url).href,
+  CROCODILE: null,
 };
 
 function clamp(v, min, max) {
@@ -209,9 +230,7 @@ export class ThreeRenderer {
     this._plantSprites = new Map(); // cellIdx → THREE.Sprite
     this._plantSpritePool = [];
     this._plantTextureCache = new Map();
-    this._treeModelLoader = new GLTFLoader();
-    this._treeModelCache = new Map(); // typeId -> template scene
-    this._treeModelPending = new Set(); // typeId
+    this._treeAssetLoader = createModelAssetLoader();
     this._treeModelInstances = new Map(); // cellIdx -> THREE.Object3D
     this._treeModelPool = new Map(); // typeId -> Array<THREE.Object3D>
 
@@ -224,6 +243,9 @@ export class ThreeRenderer {
     this._entitySprites = new Map();
     this._entitySpritePool = [];
     this._entityTextureCache = new Map();
+    this._entityAssetLoader = createModelAssetLoader();
+    this._entityModelInstances = new Map(); // entityId -> THREE.Object3D
+    this._entityModelPool = new Map(); // species -> Array<THREE.Object3D>
     this._selectionLine = null;
 
     // Particle system
@@ -722,36 +744,10 @@ export class ThreeRenderer {
   }
 
   _ensureTreeModelLoaded(typeId) {
-    if (this._treeModelCache.has(typeId) || this._treeModelPending.has(typeId)) return;
     const url = this._getTreeModelUrl(typeId);
-    if (!url) {
-      this._treeModelCache.set(typeId, null);
-      return;
-    }
-
-    this._treeModelPending.add(typeId);
-    this._treeModelLoader.load(
-      url,
-      (gltf) => {
-        const template = gltf?.scene || gltf?.scenes?.[0] || null;
-        if (template) {
-          template.traverse((node) => {
-            if (node.isMesh) {
-              node.castShadow = false;
-              node.receiveShadow = false;
-            }
-          });
-        }
-        this._treeModelCache.set(typeId, template);
-        this._treeModelPending.delete(typeId);
-        this._scheduleVisibilityRefresh();
-      },
-      undefined,
-      () => {
-        this._treeModelCache.set(typeId, null);
-        this._treeModelPending.delete(typeId);
-      }
-    );
+    this._treeAssetLoader.ensureLoaded(typeId, url, () => {
+      this._scheduleVisibilityRefresh();
+    });
   }
 
   _acquireTreeModel(typeId) {
@@ -766,7 +762,7 @@ export class ThreeRenderer {
       this.worldGroup.add(reused);
       return reused;
     }
-    const template = this._treeModelCache.get(typeId);
+    const template = this._treeAssetLoader.getTemplate(typeId);
     if (!template) return null;
     const model = template.clone(true);
     this.worldGroup.add(model);
@@ -847,7 +843,7 @@ export class ThreeRenderer {
           this._ensureTreeModelLoaded(t);
 
           let model = this._treeModelInstances.get(idx);
-          if (!model && this._treeModelCache.get(t)) {
+          if (!model && this._treeAssetLoader.getTemplate(t)) {
             model = this._acquireTreeModel(t);
             if (model) {
               model.userData = { treeTypeId: t };
@@ -1028,6 +1024,66 @@ export class ThreeRenderer {
     this._entitySpritePool.push(sprite);
   }
 
+  _canUseEntityModel(a) {
+    if (!a || !a.species) return false;
+    if (a.state === AnimalState.DEAD) return false;
+    if (a.lifeStage === LifeStage.EGG || a.lifeStage === LifeStage.PUPA) return false;
+    return Boolean(this._getEntityModelUrl(a.species));
+  }
+
+  _getEntityModelUrl(species) {
+    return ENTITY_MODEL_URLS[species] || null;
+  }
+
+  _getEntityModelScale(a, spriteScale) {
+    const speciesFactor = (this._entityVisualScale[a.species] || 0.85) / 0.85;
+    const base = 0.26;
+    const stageFactor = a.lifeStage === LifeStage.BABY ? 0.6
+      : a.lifeStage === LifeStage.YOUNG ? 0.78
+      : a.lifeStage === LifeStage.YOUNG_ADULT ? 0.9
+      : 1.0;
+    const fallbackFromSprite = Number.isFinite(spriteScale) ? spriteScale * 0.28 : 1;
+    return Math.max(0.12, Math.min(0.7, base * speciesFactor * stageFactor * fallbackFromSprite));
+  }
+
+  _ensureEntityModelLoaded(species) {
+    const url = this._getEntityModelUrl(species);
+    this._entityAssetLoader.ensureLoaded(species, url, () => {
+      this._scheduleVisibilityRefresh();
+    });
+  }
+
+  _acquireEntityModel(species) {
+    let pool = this._entityModelPool.get(species);
+    if (!pool) {
+      pool = [];
+      this._entityModelPool.set(species, pool);
+    }
+    if (pool.length > 0) {
+      const reused = pool.pop();
+      reused.visible = true;
+      this.worldGroup.add(reused);
+      return reused;
+    }
+
+    const template = this._entityAssetLoader.getTemplate(species);
+    if (!template) return null;
+    const model = template.clone(true);
+    this.worldGroup.add(model);
+    return model;
+  }
+
+  _releaseEntityModel(species, model) {
+    model.visible = false;
+    this.worldGroup.remove(model);
+    let pool = this._entityModelPool.get(species);
+    if (!pool) {
+      pool = [];
+      this._entityModelPool.set(species, pool);
+    }
+    pool.push(model);
+  }
+
   _rebuildEntitySprites() {
     const showSprites = this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
     if (!showSprites) {
@@ -1035,11 +1091,18 @@ export class ThreeRenderer {
         this._releaseEntitySprite(sprite);
       }
       this._entitySprites.clear();
+      for (const [entityId, model] of this._entityModelInstances) {
+        const species = model.userData?.species;
+        if (species) this._releaseEntityModel(species, model);
+        else this.worldGroup.remove(model);
+        this._entityModelInstances.delete(entityId);
+      }
       return;
     }
 
     const { x0, y0, x1, y1 } = this._getViewportBounds(1);
-    const seen = new Set();
+    const seenSprites = new Set();
+    const seenModels = new Set();
 
     for (const a of this._animals) {
       if (!a) continue;
@@ -1066,6 +1129,31 @@ export class ThreeRenderer {
         : 1.0;
       const finalScale = Math.max(0.35, Math.min(1.5, speciesScale * stageFactor));
 
+      if (this._canUseEntityModel(a)) {
+        this._ensureEntityModelLoaded(a.species);
+        let model = this._entityModelInstances.get(a.id);
+        if (!model && this._entityAssetLoader.getTemplate(a.species)) {
+          model = this._acquireEntityModel(a.species);
+          if (model) {
+            model.userData = { species: a.species };
+            this._entityModelInstances.set(a.id, model);
+          }
+        }
+        if (model) {
+          const existingSprite = this._entitySprites.get(a.id);
+          if (existingSprite) {
+            this._releaseEntitySprite(existingSprite);
+            this._entitySprites.delete(a.id);
+          }
+          const modelScale = this._getEntityModelScale(a, finalScale);
+          model.position.set(a.x, a.y, 0.4);
+          model.scale.set(modelScale, modelScale, modelScale);
+          model.visible = true;
+          seenModels.add(a.id);
+          continue;
+        }
+      }
+
       sprite.position.set(a.x, a.y, 0);
       sprite.scale.set(finalScale, finalScale, 1);
       sprite.material.opacity = a.state === AnimalState.DEAD ? 0.75
@@ -1074,14 +1162,21 @@ export class ThreeRenderer {
       sprite.material.color.setHex(this._animalColorMap[a.species] || 0xffffff);
       sprite.renderOrder = 100 + Math.round(a.y * 1000);
       sprite.visible = true;
-      seen.add(a.id);
+      seenSprites.add(a.id);
     }
 
     for (const [id, sprite] of this._entitySprites) {
-      if (!seen.has(id)) {
+      if (!seenSprites.has(id)) {
         this._releaseEntitySprite(sprite);
         this._entitySprites.delete(id);
       }
+    }
+    for (const [entityId, model] of this._entityModelInstances) {
+      if (seenModels.has(entityId)) continue;
+      const species = model.userData?.species;
+      if (species) this._releaseEntityModel(species, model);
+      else this.worldGroup.remove(model);
+      this._entityModelInstances.delete(entityId);
     }
   }
 
@@ -1470,6 +1565,20 @@ export class ThreeRenderer {
     }
     this._entitySprites.clear();
     this._entitySpritePool.length = 0;
+    for (const [entityId, model] of this._entityModelInstances) {
+      const species = model.userData?.species;
+      if (species) this._releaseEntityModel(species, model);
+      else this.worldGroup.remove(model);
+      this._entityModelInstances.delete(entityId);
+    }
+    for (const pool of this._entityModelPool.values()) {
+      for (const model of pool) {
+        this.worldGroup.remove(model);
+      }
+    }
+    this._entityModelPool.clear();
+    this._entityModelInstances.clear();
+    this._entityAssetLoader.clear();
 
     for (const sprite of this._plantSprites.values()) {
       this.worldGroup.remove(sprite);
@@ -1492,8 +1601,7 @@ export class ThreeRenderer {
     }
     this._treeModelPool.clear();
     this._treeModelInstances.clear();
-    this._treeModelCache.clear();
-    this._treeModelPending.clear();
+    this._treeAssetLoader.clear();
 
     for (const sprite of this._itemSprites.values()) {
       this.worldGroup.remove(sprite);

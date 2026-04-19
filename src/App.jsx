@@ -171,6 +171,13 @@ export default function App() {
       if (FF_CAPTURE_BRIDGE) delete window.__ecoCapture;
       renderer.destroy();
       rendererRef.current = null;
+      // If the world hasn't loaded yet (e.g. React StrictMode double-invoke),
+      // reset the flag so the next mount re-issues the generate command.
+      // When switching renderer modes worldReady already exists, so we preserve it.
+      if (!useSimStore.getState().worldReady) {
+        hasGeneratedInitialWorldRef.current = false;
+        useSimStore.getState().setGeneratingWorld(false);
+      }
     };
   }, [rendererMode]);
 

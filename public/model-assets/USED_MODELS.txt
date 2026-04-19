@@ -1,0 +1,26 @@
+# Models used by ThreeRenderer
+
+# Trees
+/model-assets/nature/tree_oak.glb
+/model-assets/nature/tree_default.glb
+/model-assets/nature/tree_oak_dark.glb
+/model-assets/nature/tree_palm.glb
+
+# Animals
+/model-assets/animals/animal-bunny.glb
+/model-assets/animals/animal-beaver.glb
+/model-assets/animals/animal-bee.glb
+/model-assets/animals/animal-cow.glb
+/model-assets/animals/animal-deer.glb
+/model-assets/animals/animal-fox.glb
+/model-assets/animals/animal-dog.glb
+/model-assets/animals/animal-hog.glb
+/model-assets/animals/animal-polar.glb
+/model-assets/animals/animal-cat.glb
+/model-assets/animals/animal-parrot.glb
+/model-assets/animals/animal-caterpillar.glb
+/model-assets/animals/animal-crab.glb
+
+# Licenses copied
+/model-assets/nature/LICENSE_kenney_nature-kit.txt
+/model-assets/animals/LICENSE_kenney_cube-pets.txt

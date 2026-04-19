@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TERRAIN_COLORS } from '../utils/terrainColors.js';
 import { PLANT_COLORS } from '../utils/terrainColors.js';
 import { SPECIES_INFO } from '../utils/terrainColors.js';
@@ -10,9 +11,11 @@ import useSimStore from '../store/simulationStore.js';
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 120;
-const ORBIT_POINTER_ROTATE_SPEED = 0.008;
 const ANIMAL_SPRITE_SCALE_BOOST = 1.22;
 const ANIMAL_MODEL_SCALE_BOOST = 1.28;
+const ORBIT_TREE_SCALE_BOOST = 1.65;
+const ORBIT_ENTITY_SPRITE_BOOST = 1.55;
+const ORBIT_ENTITY_MODEL_BOOST = 1.8;
 const MAX_VISIBLE_PLANT_POINTS = 18000;
 const MAX_VISIBLE_ENTITY_POINTS = 5000;
 const MAX_VISIBLE_ITEM_POINTS = 5000;
@@ -242,6 +245,8 @@ export class ThreeRenderer {
     this.scene = new THREE.Scene();
     this.camera3D = new THREE.OrthographicCamera(0, this.screen.width, this.screen.height, 0, -1000, 1000);
     this.camera3D.position.z = 10;
+    this._orbitCamera3D = new THREE.PerspectiveCamera(55, this.screen.width / this.screen.height, 0.1, 10000);
+    this._activeCamera3D = this.camera3D;
     this._orbitControlsEnabled = false;
 
     // GLTF assets use lit materials; keep a lightweight neutral rig so trees/fauna
@@ -256,6 +261,33 @@ export class ThreeRenderer {
     this.worldGroup = new THREE.Group();
     this.cameraGroup.add(this.worldGroup);
     this.scene.add(this.cameraGroup);
+
+    this._orbitControls = new OrbitControls(this._orbitCamera3D, this.renderer.domElement);
+    this._orbitControls.enabled = false;
+    this._orbitControls.enableDamping = true;
+    this._orbitControls.dampingFactor = 0.08;
+    this._orbitControls.enablePan = true;
+    this._orbitControls.enableRotate = true;
+    this._orbitControls.enableZoom = true;
+    this._orbitControls.minPolarAngle = 0;
+    this._orbitControls.maxPolarAngle = Math.PI;
+    this._orbitControls.screenSpacePanning = false;
+    this._orbitControls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.PAN,
+    };
+    this._orbitControls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN,
+    };
+
+    this._raycaster = new THREE.Raycaster();
+    this._pickPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    this._pointerNdc = new THREE.Vector2();
+    this._rayHitPoint = new THREE.Vector3();
+    this._localHitPoint = new THREE.Vector3();
+    this._orbitTargetTmp = new THREE.Vector3();
 
     this.terrainLayer = {
       updateTiles: (changes) => this.updateTerrainTiles(changes),
@@ -366,9 +398,10 @@ export class ThreeRenderer {
     this._running = true;
     this._animate = () => {
       if (!this._running) return;
+      if (this._orbitControlsEnabled) this._orbitControls.update();
       this._tickParticles();
       this._tickFps();
-      this.renderer.render(this.scene, this.camera3D);
+      this.renderer.render(this.scene, this._activeCamera3D);
       if (this._nightMaterial.opacity > 0.002) {
         this.renderer.autoClear = false;
         this.renderer.render(this._overlayScene, this._overlayCamera);
@@ -382,13 +415,15 @@ export class ThreeRenderer {
   _setupInput() {
     let dragging = false;
     let clickDown = false; // tracks button-0 press independently from pan-drag
-    let orbitDragMode = null;
     let lastX = 0;
     let lastY = 0;
     let downX = 0;
     let downY = 0;
 
-    this._wheelHandler = (e) => this.camera.onWheel(e);
+    this._wheelHandler = (e) => {
+      if (this._orbitControlsEnabled) return;
+      this.camera.onWheel(e);
+    };
     this.renderer.domElement.addEventListener('wheel', this._wheelHandler, { passive: false });
 
     this._contextMenuHandler = (e) => {
@@ -398,17 +433,12 @@ export class ThreeRenderer {
 
     this._pointerDownHandler = (e) => {
       if (this._orbitControlsEnabled) {
-        if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
-        dragging = true;
-        orbitDragMode = e.button === 0 ? 'rotate' : 'pan';
-        this._lastEntityBrushTile = null;
         if (e.button === 0) {
           clickDown = true;
           downX = e.clientX;
           downY = e.clientY;
         }
-        lastX = e.clientX;
-        lastY = e.clientY;
+        this._lastEntityBrushTile = null;
         return;
       }
 
@@ -444,22 +474,9 @@ export class ThreeRenderer {
       const rect = this.renderer.domElement.getBoundingClientRect();
       const screenX = e.clientX - rect.left;
       const screenY = e.clientY - rect.top;
-      this._lastHoverTile = this.camera.screenToTile(screenX, screenY);
+      this._lastHoverTile = this._screenToTile(screenX, screenY);
 
       if (!dragging) return;
-
-      if (this._orbitControlsEnabled && orbitDragMode) {
-        const dx = e.clientX - lastX;
-        const dy = e.clientY - lastY;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        if (orbitDragMode === 'rotate') {
-          this.camera.rotateBy(dx * ORBIT_POINTER_ROTATE_SPEED);
-        } else {
-          this.camera.pan(dx, dy);
-        }
-        return;
-      }
 
       if (this._isEntityBrushing) {
         const tile = this._lastHoverTile;
@@ -487,17 +504,31 @@ export class ThreeRenderer {
       const wasClickDown = clickDown;
       clickDown = false;
       const dist = Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY);
+      const inOrbit = this._orbitControlsEnabled;
+
+      if (inOrbit) {
+        if (wasClickDown && dist < 5 && this.onTileClick) {
+          const rect = this.renderer.domElement.getBoundingClientRect();
+          const tile = this._screenToTile(e.clientX - rect.left, e.clientY - rect.top);
+          if (tile && tile.x >= 0 && tile.y >= 0 && tile.x < this.mapWidth && tile.y < this.mapHeight) {
+            this.onTileClick(tile.x, tile.y);
+          }
+        }
+        this._isEntityBrushing = false;
+        this._lastEntityBrushTile = null;
+        return;
+      }
+
       // Compute tile from the actual release coordinates, not stale hover state
       if (wasClickDown && dist < 5 && this.onTileClick && !this._lastEntityBrushTile) {
         const rect = this.renderer.domElement.getBoundingClientRect();
-        const tile = this.camera.screenToTile(e.clientX - rect.left, e.clientY - rect.top);
+        const tile = this._screenToTile(e.clientX - rect.left, e.clientY - rect.top);
         if (tile.x >= 0 && tile.y >= 0 && tile.x < this.mapWidth && tile.y < this.mapHeight) {
           this.onTileClick(tile.x, tile.y);
         }
       }
       this._isEntityBrushing = false;
       this._lastEntityBrushTile = null;
-      orbitDragMode = null;
     };
     window.addEventListener('pointerup', this._pointerUpHandler);
   }
@@ -512,6 +543,8 @@ export class ThreeRenderer {
       this.camera3D.top = height;
       this.camera3D.bottom = 0;
       this.camera3D.updateProjectionMatrix();
+      this._orbitCamera3D.aspect = width / height;
+      this._orbitCamera3D.updateProjectionMatrix();
       this.camera.setScreenSize(width, height);
       this._syncWorldTransform();
     });
@@ -526,10 +559,39 @@ export class ThreeRenderer {
   }
 
   _syncWorldTransform() {
+    if (this._orbitControlsEnabled) {
+      this.cameraGroup.position.set(0, 0, 0);
+      this.cameraGroup.rotation.z = 0;
+      this.cameraGroup.scale.set(1, 1, 1);
+      this.worldGroup.position.set(0, 0, 0);
+      return;
+    }
+
     this.cameraGroup.position.set(this.screen.width / 2, this.screen.height / 2, 0);
     this.cameraGroup.rotation.z = this.camera.rotation;
     this.cameraGroup.scale.set(this.camera.zoom, -this.camera.zoom, 1);
     this.worldGroup.position.set(-this.camera.centerX, -this.camera.centerY, 0);
+  }
+
+  _screenToTile(screenX, screenY) {
+    if (!this._orbitControlsEnabled) {
+      return this.camera.screenToTile(screenX, screenY);
+    }
+
+    this._pointerNdc.set(
+      (screenX / this.screen.width) * 2 - 1,
+      -((screenY / this.screen.height) * 2 - 1),
+    );
+    this._raycaster.setFromCamera(this._pointerNdc, this._activeCamera3D);
+    const hit = this._raycaster.ray.intersectPlane(this._pickPlane, this._rayHitPoint);
+    if (!hit) return null;
+
+    this._localHitPoint.copy(this._rayHitPoint);
+    this.worldGroup.worldToLocal(this._localHitPoint);
+    return {
+      x: Math.floor(this._localHitPoint.x),
+      y: Math.floor(this._localHitPoint.y),
+    };
   }
 
   _buildTerrainTexture(terrainData, width, height) {
@@ -725,6 +787,9 @@ export class ThreeRenderer {
   }
 
   _getViewportBounds(extra = 1) {
+    if (this._orbitControlsEnabled) {
+      return { x0: 0, y0: 0, x1: this.mapWidth, y1: this.mapHeight };
+    }
     const bounds = this.camera.getViewportWorldBounds(extra);
     const x0 = Math.max(0, Math.floor(bounds.minX));
     const y0 = Math.max(0, Math.floor(bounds.minY));
@@ -844,11 +909,12 @@ export class ThreeRenderer {
   _getTreeScale(typeId, stage) {
     if (stage > 5) return 0.62;
     const stageScale = stage === 3 ? 0.75 : stage === 4 ? 1.05 : 1.2;
-    if (typeId === 4) return stageScale * 1.05;   // Apple
-    if (typeId === 5) return stageScale * 1.1;    // Mango
-    if (typeId === 10) return stageScale * 1.2;   // Oak
-    if (typeId === 12) return stageScale * 1.35;  // Coconut palm
-    return stageScale;
+    const orbitBoost = this._orbitControlsEnabled ? ORBIT_TREE_SCALE_BOOST : 1;
+    if (typeId === 4) return stageScale * 1.05 * orbitBoost;   // Apple
+    if (typeId === 5) return stageScale * 1.1 * orbitBoost;    // Mango
+    if (typeId === 10) return stageScale * 1.2 * orbitBoost;   // Oak
+    if (typeId === 12) return stageScale * 1.35 * orbitBoost;  // Coconut palm
+    return stageScale * orbitBoost;
   }
 
   _normalizeTreeMesh(mesh) {
@@ -955,7 +1021,7 @@ export class ThreeRenderer {
   }
 
   _rebuildPlantSprites() {
-    const show = this.camera.zoom >= PLANT_SPRITE_ZOOM_THRESHOLD
+    const show = (this._orbitControlsEnabled || this.camera.zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
       && this._plantType
       && this._plantStage
       && this.mapWidth > 0;
@@ -1083,7 +1149,7 @@ export class ThreeRenderer {
   }
 
   _rebuildItemSprites() {
-    const show = this.camera.zoom >= ITEM_SPRITE_ZOOM_THRESHOLD
+    const show = (this._orbitControlsEnabled || this.camera.zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
       && this._itemsById.size > 0;
     if (!show) {
       for (const sprite of this._itemSprites.values()) this._releaseItemSprite(sprite);
@@ -1182,7 +1248,8 @@ export class ThreeRenderer {
       : a.lifeStage === LifeStage.YOUNG_ADULT ? 0.9
       : 1.0;
     const fallbackFromSprite = Number.isFinite(spriteScale) ? spriteScale * 0.28 : 1;
-    return Math.max(0.14, Math.min(0.9, base * speciesFactor * stageFactor * fallbackFromSprite * ANIMAL_MODEL_SCALE_BOOST));
+    const orbitBoost = this._orbitControlsEnabled ? ORBIT_ENTITY_MODEL_BOOST : 1;
+    return Math.max(0.14, Math.min(1.25, base * speciesFactor * stageFactor * fallbackFromSprite * ANIMAL_MODEL_SCALE_BOOST * orbitBoost));
   }
 
   _ensureEntityModelLoaded(species) {
@@ -1224,7 +1291,7 @@ export class ThreeRenderer {
   }
 
   _rebuildEntitySprites() {
-    const showSprites = this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
+    const showSprites = this._orbitControlsEnabled || this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
     if (!showSprites) {
       for (const sprite of this._entitySprites.values()) {
         this._releaseEntitySprite(sprite);
@@ -1266,7 +1333,8 @@ export class ThreeRenderer {
         : a.lifeStage === LifeStage.YOUNG ? 0.7
         : a.lifeStage === LifeStage.YOUNG_ADULT ? 0.85
         : 1.0;
-      const finalScale = Math.max(0.42, Math.min(1.8, speciesScale * stageFactor * ANIMAL_SPRITE_SCALE_BOOST));
+      const orbitBoost = this._orbitControlsEnabled ? ORBIT_ENTITY_SPRITE_BOOST : 1;
+      const finalScale = Math.max(0.42, Math.min(2.4, speciesScale * stageFactor * ANIMAL_SPRITE_SCALE_BOOST * orbitBoost));
 
       if (this._canUseEntityModel(a)) {
         this._ensureEntityModelLoaded(a.species);
@@ -1614,6 +1682,9 @@ export class ThreeRenderer {
   }
 
   getViewportTiles() {
+    if (this._orbitControlsEnabled) {
+      return { x: 0, y: 0, w: this.mapWidth, h: this.mapHeight, zoom: this.camera.zoom };
+    }
     return { ...this.camera.getViewportTiles(), zoom: this.camera.zoom };
   }
 
@@ -1629,13 +1700,37 @@ export class ThreeRenderer {
     return this._orbitControlsEnabled;
   }
 
+  _syncOrbitCameraFromView() {
+    this._orbitTargetTmp.set(this.camera.centerX, this.camera.centerY, 0);
+    this._orbitControls.target.copy(this._orbitTargetTmp);
+
+    const vp = this.camera.getViewportTiles();
+    const diag = Math.hypot(vp.w, vp.h);
+    const dist = clamp(diag * 0.9, 60, 420);
+    this._orbitControls.minDistance = Math.max(18, dist * 0.25);
+    this._orbitControls.maxDistance = Math.max(260, dist * 6);
+    this._orbitCamera3D.position.set(this._orbitTargetTmp.x, this._orbitTargetTmp.y - dist * 0.8, dist * 0.9);
+    this._orbitCamera3D.up.set(0, 0, 1);
+    this._orbitCamera3D.lookAt(this._orbitTargetTmp);
+    this._orbitCamera3D.updateProjectionMatrix();
+    this._orbitControls.update();
+  }
+
   setOrbitControlsEnabled(enabled) {
     const nextEnabled = Boolean(enabled);
     if (nextEnabled === this._orbitControlsEnabled) return;
     this._orbitControlsEnabled = nextEnabled;
-    if (!nextEnabled) {
-      this.camera.resetRotation();
+    if (nextEnabled) {
+      this._syncWorldTransform();
+      this._syncOrbitCameraFromView();
+      this._activeCamera3D = this._orbitCamera3D;
+      this._orbitControls.enabled = true;
+    } else {
+      this._orbitControls.enabled = false;
+      this._activeCamera3D = this.camera3D;
+      this._syncWorldTransform();
     }
+    this._emitViewportChanged();
   }
 
   toggleOrbitControls() {
@@ -1762,6 +1857,10 @@ export class ThreeRenderer {
     this._treeModelPool.clear();
     this._treeModelInstances.clear();
     this._treeAssetLoader.clear();
+
+    if (this._orbitControls) {
+      this._orbitControls.dispose();
+    }
 
     for (const sprite of this._itemSprites.values()) {
       this.worldGroup.remove(sprite);

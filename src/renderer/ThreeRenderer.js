@@ -39,11 +39,13 @@ import {
 } from './threeRendererConfig.js';
 import useSimStore from '../store/simulationStore.js';
 
+// Map engine direction (0=DOWN, 1=LEFT, 2=RIGHT, 3=UP) to model rotation around Z-axis
+// Models face +Y by default (forward), so we rotate to align with movement direction
 const ENTITY_DIRECTION_YAW = {
-  [Direction.UP]: 0,
-  [Direction.RIGHT]: -Math.PI / 2,
-  [Direction.LEFT]: Math.PI / 2,
-  [Direction.DOWN]: Math.PI,
+  [Direction.UP]: 0,                 // +Y is default, no rotation
+  [Direction.RIGHT]: -Math.PI / 2,   // Rotate -90° to face +X (right)
+  [Direction.LEFT]: Math.PI / 2,     // Rotate +90° to face -X (left)
+  [Direction.DOWN]: Math.PI,         // Rotate 180° to face -Y (down)
 };
 
 export class ThreeRenderer {
@@ -83,6 +85,12 @@ export class ThreeRenderer {
     this.worldGroup = new THREE.Group();
     this.cameraGroup.add(this.worldGroup);
     this.scene.add(this.cameraGroup);
+
+    // Add 3D axis helper to visualize world orientation
+    // Red (X-axis), Green (Y-axis), Blue (Z-axis)
+    const axesHelper = new THREE.AxesHelper(50);
+    axesHelper.position.set(0, 0, 0);
+    this.worldGroup.add(axesHelper);
 
     this._orbitControls = new OrbitControls(this._orbitCamera3D, this.renderer.domElement);
     configureOrbitControls(this._orbitControls);
@@ -1089,6 +1097,14 @@ export class ThreeRenderer {
     return ENTITY_DIRECTION_YAW[dir] ?? fallbackYaw;
   }
 
+  _setEntityModelOrientation(model, a) {
+    // Reset rotation to 0 first to avoid Euler angle gimbal issues
+    model.rotation.order = 'ZYX';
+    model.rotation.x = 0;
+    model.rotation.y = 0;
+    model.rotation.z = this._getEntityModelYaw(a, 0);
+  }
+
   _ensureEntityModelLoaded(species) {
     const url = this._getEntityModelUrl(species);
     this._entityAssetLoader.ensureLoaded(species, url, () => {
@@ -1192,7 +1208,7 @@ export class ThreeRenderer {
           const modelScale = this._getEntityModelScale(a, finalScale);
           model.position.set(a.x, a.y, 0.4);
           model.scale.set(modelScale, modelScale, modelScale);
-          model.rotation.z = this._getEntityModelYaw(a, model.rotation.z);
+          this._setEntityModelOrientation(model, a);
           model.visible = true;
           seenModels.add(a.id);
           continue;

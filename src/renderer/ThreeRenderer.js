@@ -594,6 +594,55 @@ export class ThreeRenderer {
     };
   }
 
+  _orbitScreenToWorld(screenX, screenY) {
+    if (!this._orbitControlsEnabled) return null;
+    this._pointerNdc.set(
+      (screenX / this.screen.width) * 2 - 1,
+      -((screenY / this.screen.height) * 2 - 1),
+    );
+    this._raycaster.setFromCamera(this._pointerNdc, this._activeCamera3D);
+    const hit = this._raycaster.ray.intersectPlane(this._pickPlane, this._rayHitPoint);
+    if (!hit) return null;
+    this._localHitPoint.copy(this._rayHitPoint);
+    this.worldGroup.worldToLocal(this._localHitPoint);
+    return { x: this._localHitPoint.x, y: this._localHitPoint.y };
+  }
+
+  _getOrbitViewportBounds(extra = 0) {
+    const samples = [
+      this._orbitScreenToWorld(0, 0),
+      this._orbitScreenToWorld(this.screen.width, 0),
+      this._orbitScreenToWorld(this.screen.width, this.screen.height),
+      this._orbitScreenToWorld(0, this.screen.height),
+      this._orbitScreenToWorld(this.screen.width * 0.5, this.screen.height * 0.5),
+    ].filter(Boolean);
+
+    if (samples.length === 0) {
+      return { x0: 0, y0: 0, x1: this.mapWidth, y1: this.mapHeight };
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    for (const p of samples) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+
+    const x0 = Math.max(0, Math.floor(minX - extra));
+    const y0 = Math.max(0, Math.floor(minY - extra));
+    const x1 = Math.min(this.mapWidth, Math.ceil(maxX + extra));
+    const y1 = Math.min(this.mapHeight, Math.ceil(maxY + extra));
+
+    if (x1 <= x0 || y1 <= y0) {
+      return { x0: 0, y0: 0, x1: this.mapWidth, y1: this.mapHeight };
+    }
+    return { x0, y0, x1, y1 };
+  }
+
   _buildTerrainTexture(terrainData, width, height) {
     const pixels = new Uint8Array(width * height * 4);
     for (let i = 0; i < terrainData.length; i++) {
@@ -788,7 +837,7 @@ export class ThreeRenderer {
 
   _getViewportBounds(extra = 1) {
     if (this._orbitControlsEnabled) {
-      return { x0: 0, y0: 0, x1: this.mapWidth, y1: this.mapHeight };
+      return this._getOrbitViewportBounds(extra);
     }
     const bounds = this.camera.getViewportWorldBounds(extra);
     const x0 = Math.max(0, Math.floor(bounds.minX));

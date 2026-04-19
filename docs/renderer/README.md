@@ -29,7 +29,7 @@ See [Architecture](../architecture.md) for how the renderer fits into the broade
 |------|---------|
 | `rendererFactory.js` | Runtime backend factory (`pixi` ↔ `three`) |
 | `GameRenderer.js` | Top-level renderer: initializes Pixi app, layers, camera, input |
-| `ThreeRenderer.js` | Three.js renderer with terrain texture, zoom-based sprites, particles, and day/night overlay |
+| `ThreeRenderer.js` | Three.js renderer with terrain texture, zoom-based sprites, GLB tree models (with sprite fallback), particles, and day/night overlay |
 | `Camera.js` | Viewport pan/zoom, coordinate conversion |
 | `TerrainLayer.js` | Renders terrain as a single pixel texture |
 | `PlantLayer.js` | Renders plants as pixel overlay + emoji sprites |

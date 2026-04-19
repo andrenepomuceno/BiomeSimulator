@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TERRAIN_COLORS } from '../utils/terrainColors.js';
 import { PLANT_COLORS } from '../utils/terrainColors.js';
 import { SPECIES_INFO } from '../utils/terrainColors.js';
 import { AnimalState, LifeStage } from '../engine/entities.js';
 import { buildAnimalColorMap, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
-import { buildPlantEmojiMap } from '../engine/plantSpecies.js';
+import { buildPlantEmojiMap, buildTreeTypes } from '../engine/plantSpecies.js';
 import useSimStore from '../store/simulationStore.js';
 
 const MIN_ZOOM = 1;
@@ -42,6 +43,13 @@ const ITEM_COLORS = {
   1: 0xcc4444,
   2: 0xffaa33,
   3: 0xaa8833,
+};
+
+const TREE_MODEL_URLS = {
+  4: new URL('../../3dmodels/kenney_nature-kit/Models/GLTF format/tree_oak.glb', import.meta.url).href,
+  5: new URL('../../3dmodels/kenney_nature-kit/Models/GLTF format/tree_default.glb', import.meta.url).href,
+  10: new URL('../../3dmodels/kenney_nature-kit/Models/GLTF format/tree_oak_dark.glb', import.meta.url).href,
+  12: new URL('../../3dmodels/kenney_nature-kit/Models/GLTF format/tree_palm.glb', import.meta.url).href,
 };
 
 function clamp(v, min, max) {
@@ -197,9 +205,15 @@ export class ThreeRenderer {
 
     // Plant sprites (zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
     this._plantEmojiMap = buildPlantEmojiMap();
+    this._treeTypeIds = buildTreeTypes();
     this._plantSprites = new Map(); // cellIdx → THREE.Sprite
     this._plantSpritePool = [];
     this._plantTextureCache = new Map();
+    this._treeModelLoader = new GLTFLoader();
+    this._treeModelCache = new Map(); // typeId -> template scene
+    this._treeModelPending = new Set(); // typeId
+    this._treeModelInstances = new Map(); // cellIdx -> THREE.Object3D
+    this._treeModelPool = new Map(); // typeId -> Array<THREE.Object3D>
 
     // Item sprites (zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
     this._itemSprites = new Map(); // item.id → THREE.Sprite
@@ -692,6 +706,96 @@ export class ThreeRenderer {
     return this._getEmojiTexture(this._plantTextureCache, emoji);
   }
 
+  _isTreeRenderable(typeId, stage) {
+    return this._treeTypeIds.has(typeId) && stage >= 3;
+  }
+
+  _getTreeModelUrl(typeId) {
+    return TREE_MODEL_URLS[typeId] || null;
+  }
+
+  _getTreeScale(typeId, stage) {
+    const stageScale = stage === 3 ? 0.16 : stage === 4 ? 0.22 : 0.24;
+    if (typeId === 12) return stageScale * 1.2;
+    if (typeId === 10) return stageScale * 1.05;
+    return stageScale;
+  }
+
+  _ensureTreeModelLoaded(typeId) {
+    if (this._treeModelCache.has(typeId) || this._treeModelPending.has(typeId)) return;
+    const url = this._getTreeModelUrl(typeId);
+    if (!url) {
+      this._treeModelCache.set(typeId, null);
+      return;
+    }
+
+    this._treeModelPending.add(typeId);
+    this._treeModelLoader.load(
+      url,
+      (gltf) => {
+        const template = gltf?.scene || gltf?.scenes?.[0] || null;
+        if (template) {
+          template.traverse((node) => {
+            if (node.isMesh) {
+              node.castShadow = false;
+              node.receiveShadow = false;
+            }
+          });
+        }
+        this._treeModelCache.set(typeId, template);
+        this._treeModelPending.delete(typeId);
+        this._scheduleVisibilityRefresh();
+      },
+      undefined,
+      () => {
+        this._treeModelCache.set(typeId, null);
+        this._treeModelPending.delete(typeId);
+      }
+    );
+  }
+
+  _acquireTreeModel(typeId) {
+    let pool = this._treeModelPool.get(typeId);
+    if (!pool) {
+      pool = [];
+      this._treeModelPool.set(typeId, pool);
+    }
+    if (pool.length > 0) {
+      const reused = pool.pop();
+      reused.visible = true;
+      this.worldGroup.add(reused);
+      return reused;
+    }
+    const template = this._treeModelCache.get(typeId);
+    if (!template) return null;
+    const model = template.clone(true);
+    this.worldGroup.add(model);
+    return model;
+  }
+
+  _releaseTreeModel(typeId, model) {
+    model.visible = false;
+    this.worldGroup.remove(model);
+    let pool = this._treeModelPool.get(typeId);
+    if (!pool) {
+      pool = [];
+      this._treeModelPool.set(typeId, pool);
+    }
+    pool.push(model);
+  }
+
+  _releaseAllTreeModels() {
+    for (const [idx, model] of this._treeModelInstances) {
+      const typeId = model.userData?.treeTypeId;
+      if (Number.isFinite(typeId)) {
+        this._releaseTreeModel(typeId, model);
+      } else {
+        this.worldGroup.remove(model);
+      }
+      this._treeModelInstances.delete(idx);
+    }
+  }
+
   _acquirePlantSprite(emoji) {
     let sprite;
     if (this._plantSpritePool.length > 0) {
@@ -724,10 +828,12 @@ export class ThreeRenderer {
     if (!show) {
       for (const sprite of this._plantSprites.values()) this._releasePlantSprite(sprite);
       this._plantSprites.clear();
+      this._releaseAllTreeModels();
       return;
     }
     const { x0, y0, x1, y1 } = this._getViewportBounds(1);
-    const seen = new Set();
+    const seenSprites = new Set();
+    const seenTrees = new Set();
     const scale = 0.82;
     let count = 0;
     for (let y = y0; y < y1; y++) {
@@ -736,6 +842,37 @@ export class ThreeRenderer {
         const t = this._plantType[idx];
         const s = this._plantStage[idx];
         if (t === 0 || s === 0) continue;
+
+        if (this._isTreeRenderable(t, s)) {
+          this._ensureTreeModelLoaded(t);
+
+          let model = this._treeModelInstances.get(idx);
+          if (!model && this._treeModelCache.get(t)) {
+            model = this._acquireTreeModel(t);
+            if (model) {
+              model.userData = { treeTypeId: t };
+              this._treeModelInstances.set(idx, model);
+            }
+          }
+
+          if (model) {
+            const existingSprite = this._plantSprites.get(idx);
+            if (existingSprite) {
+              this._releasePlantSprite(existingSprite);
+              this._plantSprites.delete(idx);
+            }
+
+            const modelScale = this._getTreeScale(t, s);
+            model.position.set(x + 0.5, y + 0.5, 0.6);
+            model.scale.set(modelScale, modelScale, modelScale);
+            model.visible = true;
+            seenTrees.add(idx);
+            count++;
+            if (count >= MAX_VISIBLE_PLANT_SPRITES) break;
+            continue;
+          }
+        }
+
         const emoji = this._getPlantEmoji(t, s);
         let sprite = this._plantSprites.get(idx);
         if (!sprite) {
@@ -752,17 +889,27 @@ export class ThreeRenderer {
         sprite.material.opacity = s === 1 ? 0.75 : s === 2 ? 0.85 : s === 3 ? 0.92 : s === 5 ? 0.96 : 1.0;
         sprite.renderOrder = 20;
         sprite.visible = true;
-        seen.add(idx);
+        seenSprites.add(idx);
         count++;
         if (count >= MAX_VISIBLE_PLANT_SPRITES) break;
       }
       if (count >= MAX_VISIBLE_PLANT_SPRITES) break;
     }
     for (const [idx, sprite] of this._plantSprites) {
-      if (!seen.has(idx)) {
+      if (!seenSprites.has(idx)) {
         this._releasePlantSprite(sprite);
         this._plantSprites.delete(idx);
       }
+    }
+    for (const [idx, model] of this._treeModelInstances) {
+      if (seenTrees.has(idx)) continue;
+      const typeId = model.userData?.treeTypeId;
+      if (Number.isFinite(typeId)) {
+        this._releaseTreeModel(typeId, model);
+      } else {
+        this.worldGroup.remove(model);
+      }
+      this._treeModelInstances.delete(idx);
     }
   }
 
@@ -1336,6 +1483,17 @@ export class ThreeRenderer {
     this._plantSpritePool.length = 0;
     for (const texture of this._plantTextureCache.values()) texture.dispose();
     this._plantTextureCache.clear();
+
+    this._releaseAllTreeModels();
+    for (const pool of this._treeModelPool.values()) {
+      for (const model of pool) {
+        this.worldGroup.remove(model);
+      }
+    }
+    this._treeModelPool.clear();
+    this._treeModelInstances.clear();
+    this._treeModelCache.clear();
+    this._treeModelPending.clear();
 
     for (const sprite of this._itemSprites.values()) {
       this.worldGroup.remove(sprite);

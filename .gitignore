@@ -26,3 +26,5 @@ dist/
 *.local
 perf-reports/
 captures/
+
+3dmodels/

@@ -20,7 +20,7 @@ const SELECT_FILTERS = [
   { key: 'items', label: 'Items', icon: 'bi-box-seam-fill' },
 ];
 
-export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onLeftSidebarToggle, onRightSidebarToggle }) {
+export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, rendererMode, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onRendererModeChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onLeftSidebarToggle, onRightSidebarToggle }) {
   const { paused, running, tps, clock, climate, tool, setTool, selectionTargets, setSelectionTarget } = useSimStore();
 
   return (
@@ -114,6 +114,21 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
           onChange={(e) => onSpeedChange(Number(e.target.value))}
         />
         <span>{tps} tps</span>
+      </div>
+
+      <div className="toolbar-divider" aria-hidden="true" />
+
+      <div className="toolbar-group" title="Renderer backend">
+        <span>Renderer:</span>
+        <select
+          className="form-select form-select-sm"
+          value={rendererMode || 'pixi'}
+          onChange={(e) => onRendererModeChange?.(e.target.value)}
+          aria-label="Renderer backend"
+        >
+          <option value="pixi">Pixi</option>
+          <option value="three">Three</option>
+        </select>
       </div>
 
       {isCompactLayout && (

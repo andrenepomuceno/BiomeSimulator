@@ -198,6 +198,10 @@ export class GameRenderer {
     this._onViewportChanged();
   }
 
+  setPlantSnapshot(plantType, plantStage, width, height) {
+    this.plantLayer.setFromArrays(plantType, plantStage, width, height);
+  }
+
   updatePlants(plantChanges) {
     const store = useSimStore.getState();
     const profiling = store.profilingEnabled;
@@ -588,6 +592,14 @@ export class GameRenderer {
         viewport,
       },
     };
+  }
+
+  getNativeRenderer() {
+    return this.app.renderer;
+  }
+
+  updateTerrainTiles(changes) {
+    this.terrainLayer.updateTiles(changes);
   }
 
   destroy() {

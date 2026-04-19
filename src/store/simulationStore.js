@@ -138,6 +138,7 @@ const _persistedRateMultipliers = loadPersistedRateMultipliers();
 const PROFILING_STORAGE_KEY = 'biomeSimulator.profilingEnabled';
 
 const SHOW_ANIMAL_HP_BARS_STORAGE_KEY = 'biomeSimulator.showAnimalHpBars';
+const RENDERER_MODE_STORAGE_KEY = 'biomeSimulator.rendererMode';
 
 function loadPersistedProfiling() {
   if (typeof window === 'undefined' || !window.localStorage) return false;
@@ -171,6 +172,24 @@ function persistShowAnimalHpBars(enabled) {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     window.localStorage.setItem(SHOW_ANIMAL_HP_BARS_STORAGE_KEY, String(!!enabled));
+  } catch { /* ignore */ }
+}
+
+function loadRendererMode() {
+  if (typeof window === 'undefined' || !window.localStorage) return 'pixi';
+  try {
+    const raw = window.localStorage.getItem(RENDERER_MODE_STORAGE_KEY);
+    return raw === 'three' ? 'three' : 'pixi';
+  } catch {
+    return 'pixi';
+  }
+}
+
+function persistRendererMode(mode) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    const value = mode === 'three' ? 'three' : 'pixi';
+    window.localStorage.setItem(RENDERER_MODE_STORAGE_KEY, value);
   } catch { /* ignore */ }
 }
 
@@ -521,6 +540,14 @@ const useSimStore = create((set, get) => ({
   // Editor
   tool: 'SELECT', // SELECT, PAINT_TERRAIN, PLACE_ENTITY, ERASE
   setTool: (t) => set({ tool: t }),
+
+  // Renderer mode
+  rendererMode: loadRendererMode(), // 'pixi' | 'three'
+  setRendererMode: (mode) => set(() => {
+    const rendererMode = mode === 'three' ? 'three' : 'pixi';
+    persistRendererMode(rendererMode);
+    return { rendererMode };
+  }),
 
   paintTerrain: 3, // SOIL by default
   setPaintTerrain: (t) => set({ paintTerrain: t }),

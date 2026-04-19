@@ -284,6 +284,7 @@ export class ThreeRenderer {
 
   _setupInput() {
     let dragging = false;
+    let clickDown = false; // tracks button-0 press independently from pan-drag
     let lastX = 0;
     let lastY = 0;
     let downX = 0;
@@ -296,23 +297,27 @@ export class ThreeRenderer {
       if (e.button === 0 || e.button === 1) {
         const tool = useSimStore.getState().tool;
         this._lastEntityBrushTile = null;
+        // Always record click-down position and flag for all button-0 presses
+        // so pointerup can detect short clicks regardless of tool
+        if (e.button === 0) {
+          clickDown = true;
+          downX = e.clientX;
+          downY = e.clientY;
+        }
         if (e.button === 0 && tool === 'PLACE_ENTITY') {
           dragging = true;
           this._isEntityBrushing = true;
           lastX = e.clientX;
           lastY = e.clientY;
-          downX = e.clientX;
-          downY = e.clientY;
           return;
         }
+        // Paint/Erase: fire tile click on pointerup, but do not pan camera
         if (e.button === 0 && tool !== 'SELECT') {
           return;
         }
         dragging = true;
         lastX = e.clientX;
         lastY = e.clientY;
-        downX = e.clientX;
-        downY = e.clientY;
       }
     };
     this.renderer.domElement.addEventListener('pointerdown', this._pointerDownHandler);
@@ -345,13 +350,17 @@ export class ThreeRenderer {
     window.addEventListener('pointermove', this._pointerMoveHandler);
 
     this._pointerUpHandler = (e) => {
-      if (!dragging) return;
-      dragging = false;
+      if (!dragging && !clickDown) return;
+      if (dragging) dragging = false;
+      const wasClickDown = clickDown;
+      clickDown = false;
       const dist = Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY);
-      if (dist < 5 && this.onTileClick && this._lastHoverTile && !this._lastEntityBrushTile) {
-        const { x, y } = this._lastHoverTile;
-        if (x >= 0 && y >= 0 && x < this.mapWidth && y < this.mapHeight) {
-          this.onTileClick(x, y);
+      // Compute tile from the actual release coordinates, not stale hover state
+      if (wasClickDown && dist < 5 && this.onTileClick && !this._lastEntityBrushTile) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        const tile = this.camera.screenToTile(e.clientX - rect.left, e.clientY - rect.top);
+        if (tile.x >= 0 && tile.y >= 0 && tile.x < this.mapWidth && tile.y < this.mapHeight) {
+          this.onTileClick(tile.x, tile.y);
         }
       }
       this._isEntityBrushing = false;

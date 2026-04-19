@@ -22,6 +22,10 @@ export function createModelAssetLoader() {
             if (node.isMesh) {
               node.castShadow = false;
               node.receiveShadow = false;
+              if (node.material) {
+                node.material.side = 2; // THREE.DoubleSide
+                node.material.needsUpdate = true;
+              }
             }
           });
         }

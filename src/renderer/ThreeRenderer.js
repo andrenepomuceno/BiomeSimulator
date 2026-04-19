@@ -47,10 +47,12 @@ const ITEM_COLORS = {
 
 const TREE_MODEL_URLS = {
   4: '/model-assets/nature/tree_oak.glb',
-  5: '/model-assets/nature/tree_default.glb',
+  5: '/model-assets/nature/tree_detailed.glb',
   10: '/model-assets/nature/tree_oak_dark.glb',
   12: '/model-assets/nature/tree_palm.glb',
 };
+
+const DEAD_TREE_MODEL_URL = '/model-assets/nature/stump_round.glb';
 
 const ENTITY_MODEL_URLS = {
   RABBIT: '/model-assets/animals/animal-bunny.glb',
@@ -192,6 +194,14 @@ export class ThreeRenderer {
     this.scene = new THREE.Scene();
     this.camera3D = new THREE.OrthographicCamera(0, this.screen.width, this.screen.height, 0, -1000, 1000);
     this.camera3D.position.z = 10;
+
+    // GLTF assets use lit materials; keep a lightweight neutral rig so trees/fauna
+    // don't appear as dark silhouettes in the top-down orthographic view.
+    this._ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    this._directionalLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    this._directionalLight.position.set(0.5, -1, 2);
+    this.scene.add(this._ambientLight);
+    this.scene.add(this._directionalLight);
 
     this.worldGroup = new THREE.Group();
     this.scene.add(this.worldGroup);
@@ -472,7 +482,7 @@ export class ThreeRenderer {
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, 64, 64);
-    ctx.font = '52px serif';
+    ctx.font = '52px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(emoji, 32, 34);
@@ -652,6 +662,7 @@ export class ThreeRenderer {
         const t = this._plantType[idx];
         const s = this._plantStage[idx];
         if (t === 0 || s === 0) continue;
+        if (this._isTreeRenderable(t, s)) continue;
         const rgba = PLANT_COLORS[`${t}_${s}`] || [100, 200, 100, 180];
         const alpha = Math.max(0.35, Math.min(1, (rgba[3] || 180) / 255));
         positions.push(x + 0.5, y + 0.5, 0);
@@ -721,6 +732,7 @@ export class ThreeRenderer {
   // --- Plant sprites ---
 
   _getPlantEmoji(typeId, stage) {
+    if (stage > 5) return '🪵';
     return this._plantEmojiMap[`${typeId}_${stage}`] || '🌿';
   }
 
@@ -732,29 +744,62 @@ export class ThreeRenderer {
     return this._treeTypeIds.has(typeId) && stage >= 3;
   }
 
-  _getTreeModelUrl(typeId) {
+  _getTreeModelKey(typeId, stage) {
+    return stage > 5 ? 'DEAD_STUMP' : typeId;
+  }
+
+  _getTreeModelUrl(typeId, stage) {
+    if (stage > 5) return DEAD_TREE_MODEL_URL;
     return TREE_MODEL_URLS[typeId] || null;
   }
 
   _getTreeScale(typeId, stage) {
-    const stageScale = stage === 3 ? 0.16 : stage === 4 ? 0.22 : 0.24;
-    if (typeId === 12) return stageScale * 1.2;
-    if (typeId === 10) return stageScale * 1.05;
+    if (stage > 5) return 0.62;
+    const stageScale = stage === 3 ? 0.75 : stage === 4 ? 1.05 : 1.2;
+    if (typeId === 4) return stageScale * 1.05;   // Apple
+    if (typeId === 5) return stageScale * 1.1;    // Mango
+    if (typeId === 10) return stageScale * 1.2;   // Oak
+    if (typeId === 12) return stageScale * 1.35;  // Coconut palm
     return stageScale;
   }
 
-  _ensureTreeModelLoaded(typeId) {
-    const url = this._getTreeModelUrl(typeId);
-    this._treeAssetLoader.ensureLoaded(typeId, url, () => {
+  _normalizeTreeMesh(mesh) {
+    // Some assets are authored Y-up, others are effectively Z-up after export.
+    // Detect dominant height axis and only rotate when needed.
+    mesh.updateMatrixWorld(true);
+    let box = new THREE.Box3().setFromObject(mesh);
+    if (box.isEmpty()) return;
+
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    if (size.y > size.z * 1.15) {
+      mesh.rotation.x = Math.PI / 2;
+      mesh.updateMatrixWorld(true);
+      box = new THREE.Box3().setFromObject(mesh);
+    }
+
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    mesh.position.x -= center.x;
+    mesh.position.y -= center.y;
+    mesh.position.z -= box.min.z;
+    mesh.updateMatrixWorld(true);
+  }
+
+  _ensureTreeModelLoaded(typeId, stage) {
+    const modelKey = this._getTreeModelKey(typeId, stage);
+    const url = this._getTreeModelUrl(typeId, stage);
+    this._treeAssetLoader.ensureLoaded(modelKey, url, () => {
       this._scheduleVisibilityRefresh();
     });
   }
 
-  _acquireTreeModel(typeId) {
-    let pool = this._treeModelPool.get(typeId);
+  _acquireTreeModel(typeId, stage) {
+    const modelKey = this._getTreeModelKey(typeId, stage);
+    let pool = this._treeModelPool.get(modelKey);
     if (!pool) {
       pool = [];
-      this._treeModelPool.set(typeId, pool);
+      this._treeModelPool.set(modelKey, pool);
     }
     if (pool.length > 0) {
       const reused = pool.pop();
@@ -762,29 +807,34 @@ export class ThreeRenderer {
       this.worldGroup.add(reused);
       return reused;
     }
-    const template = this._treeAssetLoader.getTemplate(typeId);
+    const template = this._treeAssetLoader.getTemplate(modelKey);
     if (!template) return null;
-    const model = template.clone(true);
-    this.worldGroup.add(model);
-    return model;
+
+    const mesh = template.clone(true);
+    this._normalizeTreeMesh(mesh);
+
+    const root = new THREE.Group();
+    root.add(mesh);
+    this.worldGroup.add(root);
+    return root;
   }
 
-  _releaseTreeModel(typeId, model) {
+  _releaseTreeModel(modelKey, model) {
     model.visible = false;
     this.worldGroup.remove(model);
-    let pool = this._treeModelPool.get(typeId);
+    let pool = this._treeModelPool.get(modelKey);
     if (!pool) {
       pool = [];
-      this._treeModelPool.set(typeId, pool);
+      this._treeModelPool.set(modelKey, pool);
     }
     pool.push(model);
   }
 
   _releaseAllTreeModels() {
     for (const [idx, model] of this._treeModelInstances) {
-      const typeId = model.userData?.treeTypeId;
-      if (Number.isFinite(typeId)) {
-        this._releaseTreeModel(typeId, model);
+      const modelKey = model.userData?.treeModelKey ?? model.userData?.treeTypeId;
+      if (modelKey != null) {
+        this._releaseTreeModel(modelKey, model);
       } else {
         this.worldGroup.remove(model);
       }
@@ -840,13 +890,14 @@ export class ThreeRenderer {
         if (t === 0 || s === 0) continue;
 
         if (this._isTreeRenderable(t, s)) {
-          this._ensureTreeModelLoaded(t);
+          this._ensureTreeModelLoaded(t, s);
 
           let model = this._treeModelInstances.get(idx);
-          if (!model && this._treeAssetLoader.getTemplate(t)) {
-            model = this._acquireTreeModel(t);
+          const modelKey = this._getTreeModelKey(t, s);
+          if (!model && this._treeAssetLoader.getTemplate(modelKey)) {
+            model = this._acquireTreeModel(t, s);
             if (model) {
-              model.userData = { treeTypeId: t };
+              model.userData = { treeTypeId: t, treeModelKey: modelKey };
               this._treeModelInstances.set(idx, model);
             }
           }
@@ -859,7 +910,7 @@ export class ThreeRenderer {
             }
 
             const modelScale = this._getTreeScale(t, s);
-            model.position.set(x + 0.5, y + 0.5, 0.6);
+            model.position.set(x + 0.5, y + 0.5, 0.02);
             model.scale.set(modelScale, modelScale, modelScale);
             model.visible = true;
             seenTrees.add(idx);
@@ -899,9 +950,9 @@ export class ThreeRenderer {
     }
     for (const [idx, model] of this._treeModelInstances) {
       if (seenTrees.has(idx)) continue;
-      const typeId = model.userData?.treeTypeId;
-      if (Number.isFinite(typeId)) {
-        this._releaseTreeModel(typeId, model);
+      const modelKey = model.userData?.treeModelKey ?? model.userData?.treeTypeId;
+      if (modelKey != null) {
+        this._releaseTreeModel(modelKey, model);
       } else {
         this.worldGroup.remove(model);
       }

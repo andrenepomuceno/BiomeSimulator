@@ -3,8 +3,10 @@
 # Trees
 /model-assets/nature/tree_oak.glb
 /model-assets/nature/tree_default.glb
+/model-assets/nature/tree_detailed.glb
 /model-assets/nature/tree_oak_dark.glb
 /model-assets/nature/tree_palm.glb
+/model-assets/nature/stump_round.glb
 
 # Animals
 /model-assets/animals/animal-bunny.glb
@@ -20,6 +22,7 @@
 /model-assets/animals/animal-parrot.glb
 /model-assets/animals/animal-caterpillar.glb
 /model-assets/animals/animal-crab.glb
+/model-assets/animals/Textures/colormap.png
 
 # Licenses copied
 /model-assets/nature/LICENSE_kenney_nature-kit.txt

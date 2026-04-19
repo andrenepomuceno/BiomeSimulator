@@ -33,7 +33,7 @@ Parameters marked **(derived)** are not in `BASE_CONFIG` directly — they are c
 | Map | `island_size_factor` | 0.24 | Relative island radius |
 | Map | `min_land_ratio` | 0.35 | Minimum fraction of tiles that must be land; the effective sea level is clamped downward until this ratio is met (0 = disabled) |
 | Map | `river_count` | 4 | Number of rivers carved from mountain/rock sources toward existing water (0 disables river carving) |
-| Map | `river_width` | 2 | Global river thickness (1 = thin channels, 5 = thick channels) |
+| Map | `river_width` | 2 | Maximum river thickness (1 = thin channels, 5 = thick channels); actual width varies along each river course via downstream widening and sinusoidal oscillation |
 | Map | `seed` | null | Random seed (null = random) |
 | Clock | `ticks_per_second` | 10 | Target simulation speed (ticks advanced per real second) |
 | Clock | `ticks_per_day` | 500 | Ticks in one full day/night cycle |

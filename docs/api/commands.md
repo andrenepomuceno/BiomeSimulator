@@ -46,7 +46,7 @@ worker.postMessage({
 | `config.island_size_factor` | float | 0.24 | Relative island radius (0.0–1.0) |
 | `config.min_land_ratio` | float | 0.35 | Minimum fraction of tiles that must remain land; sea level is clamped downward to satisfy this floor (0 disables clamping) |
 | `config.river_count` | int | 4 | Number of rivers carved from highland sources toward existing water (0 disables river carving) |
-| `config.river_width` | int | 2 | Global river thickness (1 = thin channels, 5 = thick channels) |
+| `config.river_width` | int | 2 | Maximum river thickness (1 = thin, 5 = thick); width varies along each river course (narrow headwaters, wider mouth, with oscillating patches and occasional mud bridges) |
 | `config.seed` | int\|null | null | Random seed (null = random) |
 | `config.initial_plant_density` | float | 0.10 | Fraction of eligible tiles seeded |
 | `config.max_animal_population` | int | 10000 | Global animal population budget (0 = use per-species defaults) |

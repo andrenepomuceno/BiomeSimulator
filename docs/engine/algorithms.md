@@ -71,7 +71,10 @@ Rivers are carved after primary terrain classification and before water-proximit
 1. Candidate sources are sampled from `MOUNTAIN`/`ROCK` tiles
 2. Each source greedily descends to the lowest unvisited neighbor (8-way) with small random wiggle (`+ rng()*0.06`) to avoid perfectly straight channels
 3. A river is accepted only if it reaches existing water and path length ≥ 15 tiles
-4. Accepted paths are carved to `WATER` with a fixed circular brush derived from `river_width` (`1..5`), producing globally thinner or thicker channels
+4. Accepted paths are carved with a variable circular brush: the radius starts at 0 (thin headwater), grows downstream, and oscillates with a per-river sine wave, producing natural widening and narrowing patches
+5. In the middle/lower course, narrow sections occasionally receive lateral **MUD** tiles perpendicular to the flow instead of WATER, creating crossable mud bridges (bancos de lama) across the channel
+
+`river_width` (1–5) controls the **maximum** possible radius, while the actual width at each tile varies continuously.
 
 Because rivers are carved before water-proximity BFS, nearby banks naturally participate in later `MUD` and `FERTILE_SOIL` placement.
 

@@ -329,15 +329,23 @@ function generateEdgeFalloff(w, h, seed) {
  * @param {number}       w         - grid width
  * @param {number}       h         - grid height
  * @param {number}       riverCount - number of rivers to attempt
- * @param {number}       riverWidth - global river thickness (1..5)
+ * @param {number}       riverWidth - maximum river thickness (1..5); actual width varies along the course
  * @param {number}       seed
  */
 function generateRivers(terrain, heightmap, w, h, riverCount, riverWidth, seed) {
   if (riverCount <= 0) return;
   const rng = mulberry32(seed + 33333);
   const clampedWidth = Math.max(1, Math.min(5, Math.round(riverWidth || 1)));
-  const brushRadius = Math.floor(clampedWidth / 2);
-  const brushOffsets = buildRiverBrushOffsets(brushRadius);
+  const maxRadius = Math.floor(clampedWidth / 2);
+
+  // Pre-build brush offset tables for each radius level (0 = single tile).
+  const brushByRadius = [];
+  for (let r = 0; r <= maxRadius; r++) {
+    brushByRadius.push(buildRiverBrushOffsets(r));
+  }
+
+  // Four cardinal directions used when painting mud-bridge lateral tiles.
+  const LATERAL_DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
   // Collect elevated land tiles as candidate river sources.
   const candidates = [];
@@ -403,10 +411,58 @@ function generateRivers(terrain, heightmap, w, h, riverCount, riverWidth, seed) 
 
     if (!reachedWater || path.length < MIN_LENGTH) continue;
 
-    // Carve WATER along the accepted path with a fixed brush radius.
-    for (let p = 0; p < path.length; p++) {
+    const pathLen = path.length;
+    const invLen = 1 / (pathLen - 1 || 1);
+
+    // Per-river oscillation parameters (seed-derived, unique per river).
+    const waveFreq  = 0.04 + rng() * 0.12; // cycles per tile — controls meander frequency
+    const wavePhase = rng() * Math.PI * 2;
+    const mudBridgeChance = 0.04 + rng() * 0.05; // 4–9 % per eligible step
+
+    // Radius starts at 0 (thin headwater) and drifts toward a target that
+    // combines downstream widening with a sinusoidal oscillation.
+    let currentRadius = 0;
+
+    for (let p = 0; p < pathLen; p++) {
       const idx = path[p];
-      carveRiverBrush(terrain, w, h, idx, brushOffsets);
+      const progress = p * invLen; // 0 = headwater, 1 = mouth
+
+      // Target radius: grows downstream + oscillates with sine wave.
+      const sineVal = Math.sin(p * waveFreq + wavePhase); // −1..1
+      const targetRadius = Math.round(
+        maxRadius * progress          * 0.55 + // downstream widening (0 → 55 % of max)
+        maxRadius * ((sineVal + 1) / 2) * 0.35 + // oscillation         (0 → 35 % of max)
+        maxRadius                       * 0.10,   // constant floor       (10 % of max)
+      );
+      const clampedTarget = Math.max(0, Math.min(maxRadius, targetRadius));
+
+      // Radius drifts ±1 per step for smooth transitions.
+      if (currentRadius < clampedTarget) currentRadius++;
+      else if (currentRadius > clampedTarget) currentRadius--;
+
+      // Mud-bridge opportunity: only in the middle/lower course where the
+      // river is wide enough to have lateral tiles worth bridging.
+      const eligibleForBridge = currentRadius >= 1 && progress >= 0.3;
+      if (eligibleForBridge && rng() < mudBridgeChance) {
+        // Keep the centreline as WATER; paint lateral fringe tiles as MUD,
+        // creating a narrow muddy crossing across the channel.
+        if (terrain[idx] !== DEEP_WATER) terrain[idx] = WATER;
+        const bx = idx % w;
+        const by = (idx / w) | 0;
+        for (let d = 0; d < LATERAL_DIRS.length; d++) {
+          const [lx, ly] = LATERAL_DIRS[d];
+          for (let dist = 1; dist <= currentRadius; dist++) {
+            const nx = bx + lx * dist;
+            const ny = by + ly * dist;
+            if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+            const ni = ny * w + nx;
+            if (terrain[ni] !== DEEP_WATER && terrain[ni] !== WATER) terrain[ni] = MUD;
+          }
+        }
+      } else {
+        // Normal carve: circular brush of current radius.
+        carveRiverBrush(terrain, w, h, idx, brushByRadius[currentRadius]);
+      }
     }
     carved++;
   }

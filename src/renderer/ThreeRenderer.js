@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TERRAIN_COLORS } from '../utils/terrainColors.js';
 import { PLANT_COLORS } from '../utils/terrainColors.js';
 import { SPECIES_INFO } from '../utils/terrainColors.js';
-import { AnimalState, LifeStage } from '../engine/entities.js';
+import { AnimalState, Direction, LifeStage } from '../engine/entities.js';
 import { buildAnimalColorMap, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
 import { buildPlantEmojiMap, buildTreeTypes } from '../engine/plantSpecies.js';
 import { createModelAssetLoader } from './modelAssetLoader.js';
@@ -38,6 +38,13 @@ import {
   clamp,
 } from './threeRendererConfig.js';
 import useSimStore from '../store/simulationStore.js';
+
+const ENTITY_DIRECTION_YAW = {
+  [Direction.UP]: 0,
+  [Direction.RIGHT]: -Math.PI / 2,
+  [Direction.LEFT]: Math.PI / 2,
+  [Direction.DOWN]: Math.PI,
+};
 
 export class ThreeRenderer {
   constructor(container, onViewportChange, onTileClick, onEffectEvent) {
@@ -1076,6 +1083,12 @@ export class ThreeRenderer {
     return Math.max(0.14, Math.min(1.55, base * speciesFactor * stageFactor * fallbackFromSprite * ANIMAL_MODEL_SCALE_BOOST * orbitBoost * speciesModelBoost));
   }
 
+  _getEntityModelYaw(a, fallbackYaw = 0) {
+    const dir = Number.isFinite(a?.direction) ? a.direction : null;
+    if (dir == null) return fallbackYaw;
+    return ENTITY_DIRECTION_YAW[dir] ?? fallbackYaw;
+  }
+
   _ensureEntityModelLoaded(species) {
     const url = this._getEntityModelUrl(species);
     this._entityAssetLoader.ensureLoaded(species, url, () => {
@@ -1179,6 +1192,7 @@ export class ThreeRenderer {
           const modelScale = this._getEntityModelScale(a, finalScale);
           model.position.set(a.x, a.y, 0.4);
           model.scale.set(modelScale, modelScale, modelScale);
+          model.rotation.z = this._getEntityModelYaw(a, model.rotation.z);
           model.visible = true;
           seenModels.add(a.id);
           continue;

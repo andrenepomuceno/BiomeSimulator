@@ -105,6 +105,15 @@ describe('World.spawnItem', () => {
     expect(item).toBeNull();
   });
 
+  it('allows meat to spawn on water tiles', () => {
+    const w = makeWorld();
+    // Default terrain is water, which is now allowed only for meat.
+    const item = w.spawnItem(2, 2, ITEM_TYPE.MEAT, 'WOLF');
+    expect(item).not.toBeNull();
+    expect(item.type).toBe(ITEM_TYPE.MEAT);
+    expect(w.terrain[w.idx(item.x, item.y)]).toBe(0);
+  });
+
   it('anti-stacking: second spawn on same tile returns null if no free adjacent tile', () => {
     const w = makeWorld({ map_width: 1, map_height: 1 });
     w.terrain.fill(1);

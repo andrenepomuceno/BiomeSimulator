@@ -258,7 +258,7 @@ export class World {
    * @param {number} germinationTicks - For SEED items: per-species lifetime (0 = global fallback).
    */
   spawnItem(cx, cy, type, source, radius = 2, germinationTicks = 0, excludeCenter = false) {
-    const tile = this._findItemTile(cx, cy, radius, excludeCenter);
+    const tile = this._findItemTile(cx, cy, type, radius, excludeCenter);
     if (!tile) return null;
     const item = new GroundItem(nextItemId(), tile.x, tile.y, type, source, this.clock.tick, germinationTicks);
     this.items.push(item);
@@ -273,7 +273,7 @@ export class World {
    * Find a random walkable tile within radius for item placement.
    * Returns {x, y} or null if none found.
    */
-  _findItemTile(cx, cy, radius, excludeCenter = false) {
+  _findItemTile(cx, cy, type, radius, excludeCenter = false) {
     const candidates = [];
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
@@ -282,7 +282,8 @@ export class World {
         if (nx < 0 || ny < 0 || nx >= this.width || ny >= this.height) continue;
         const idx = ny * this.width + nx;
         const t = this.terrain[ny * this.width + nx];
-        if (t === WATER || t === DEEP_WATER || t === MOUNTAIN) continue;
+        if (t === MOUNTAIN) continue;
+        if (type !== ITEM_TYPE.MEAT && (t === WATER || t === DEEP_WATER)) continue;
         // Keep item tiles visually distinct from existing plants.
         if (this.plantType[idx] !== P_NONE) continue;
         // Avoid overlap with incubating eggs.

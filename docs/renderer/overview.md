@@ -32,15 +32,15 @@ const renderer = new GameRenderer(container, onViewportChange, onTileClick);
 | Click + drag | Pan the viewport (default behavior) |
 | Left-click + drag in PLACE_ENTITY tool | Paint entities tile-by-tile via repeated `onTileClick(x, y)` on tile changes |
 | Click (no drag) | Converts screen→tile coordinates, fires `onTileClick(x, y)` |
-| `V` (Three backend) | Toggle debug camera rotation mode |
-| `Q` / `F` (Three backend, debug mode on) | Rotate camera yaw left/right |
-| `Alt + Mouse wheel` (Three backend, debug mode on) | Rotate camera yaw |
-| `X` (Three backend, debug mode on) | Reset yaw to 0° |
+| `V` (Three backend) | Toggle Orbit mode |
+| Left drag (Three Orbit mode) | Orbit yaw around map |
+| Middle or right drag (Three Orbit mode) | Pan X/Y |
+| Mouse wheel (Three Orbit mode) | Zoom in/out |
 
 Entity brush notes:
 
 
-When Three debug camera rotation is enabled, screen-to-tile conversion uses the inverse camera rotation so tile painting and selection remain accurate while the map is rotated.
+When Three Orbit mode is enabled, screen-to-tile conversion uses the inverse camera rotation so tile painting and selection remain accurate while the map is rotated.
 
 ---
 

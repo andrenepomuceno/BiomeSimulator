@@ -10,7 +10,9 @@ import useSimStore from '../store/simulationStore.js';
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 120;
-const DEBUG_CAMERA_ROTATE_STEP = Math.PI / 24;
+const ORBIT_POINTER_ROTATE_SPEED = 0.008;
+const ANIMAL_SPRITE_SCALE_BOOST = 1.22;
+const ANIMAL_MODEL_SCALE_BOOST = 1.28;
 const MAX_VISIBLE_PLANT_POINTS = 18000;
 const MAX_VISIBLE_ENTITY_POINTS = 5000;
 const MAX_VISIBLE_ITEM_POINTS = 5000;
@@ -240,7 +242,7 @@ export class ThreeRenderer {
     this.scene = new THREE.Scene();
     this.camera3D = new THREE.OrthographicCamera(0, this.screen.width, this.screen.height, 0, -1000, 1000);
     this.camera3D.position.z = 10;
-    this._debugCameraEnabled = false;
+    this._orbitControlsEnabled = false;
 
     // GLTF assets use lit materials; keep a lightweight neutral rig so trees/fauna
     // don't appear as dark silhouettes in the top-down orthographic view.
@@ -380,23 +382,36 @@ export class ThreeRenderer {
   _setupInput() {
     let dragging = false;
     let clickDown = false; // tracks button-0 press independently from pan-drag
+    let orbitDragMode = null;
     let lastX = 0;
     let lastY = 0;
     let downX = 0;
     let downY = 0;
 
-    this._wheelHandler = (e) => {
-      if (this._debugCameraEnabled && e.altKey) {
-        e.preventDefault();
-        const direction = e.deltaY > 0 ? 1 : -1;
-        this.rotateDebugCameraBy(direction * DEBUG_CAMERA_ROTATE_STEP);
-        return;
-      }
-      this.camera.onWheel(e);
-    };
+    this._wheelHandler = (e) => this.camera.onWheel(e);
     this.renderer.domElement.addEventListener('wheel', this._wheelHandler, { passive: false });
 
+    this._contextMenuHandler = (e) => {
+      if (this._orbitControlsEnabled) e.preventDefault();
+    };
+    this.renderer.domElement.addEventListener('contextmenu', this._contextMenuHandler);
+
     this._pointerDownHandler = (e) => {
+      if (this._orbitControlsEnabled) {
+        if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
+        dragging = true;
+        orbitDragMode = e.button === 0 ? 'rotate' : 'pan';
+        this._lastEntityBrushTile = null;
+        if (e.button === 0) {
+          clickDown = true;
+          downX = e.clientX;
+          downY = e.clientY;
+        }
+        lastX = e.clientX;
+        lastY = e.clientY;
+        return;
+      }
+
       if (e.button === 0 || e.button === 1) {
         const tool = useSimStore.getState().tool;
         this._lastEntityBrushTile = null;
@@ -432,6 +447,20 @@ export class ThreeRenderer {
       this._lastHoverTile = this.camera.screenToTile(screenX, screenY);
 
       if (!dragging) return;
+
+      if (this._orbitControlsEnabled && orbitDragMode) {
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        if (orbitDragMode === 'rotate') {
+          this.camera.rotateBy(dx * ORBIT_POINTER_ROTATE_SPEED);
+        } else {
+          this.camera.pan(dx, dy);
+        }
+        return;
+      }
+
       if (this._isEntityBrushing) {
         const tile = this._lastHoverTile;
         if (!tile) return;
@@ -468,6 +497,7 @@ export class ThreeRenderer {
       }
       this._isEntityBrushing = false;
       this._lastEntityBrushTile = null;
+      orbitDragMode = null;
     };
     window.addEventListener('pointerup', this._pointerUpHandler);
   }
@@ -1152,7 +1182,7 @@ export class ThreeRenderer {
       : a.lifeStage === LifeStage.YOUNG_ADULT ? 0.9
       : 1.0;
     const fallbackFromSprite = Number.isFinite(spriteScale) ? spriteScale * 0.28 : 1;
-    return Math.max(0.12, Math.min(0.7, base * speciesFactor * stageFactor * fallbackFromSprite));
+    return Math.max(0.14, Math.min(0.9, base * speciesFactor * stageFactor * fallbackFromSprite * ANIMAL_MODEL_SCALE_BOOST));
   }
 
   _ensureEntityModelLoaded(species) {
@@ -1236,7 +1266,7 @@ export class ThreeRenderer {
         : a.lifeStage === LifeStage.YOUNG ? 0.7
         : a.lifeStage === LifeStage.YOUNG_ADULT ? 0.85
         : 1.0;
-      const finalScale = Math.max(0.35, Math.min(1.5, speciesScale * stageFactor));
+      const finalScale = Math.max(0.42, Math.min(1.8, speciesScale * stageFactor * ANIMAL_SPRITE_SCALE_BOOST));
 
       if (this._canUseEntityModel(a)) {
         this._ensureEntityModelLoaded(a.species);
@@ -1595,31 +1625,22 @@ export class ThreeRenderer {
     this.camera.setZoom(z);
   }
 
-  isDebugCameraEnabled() {
-    return this._debugCameraEnabled;
+  isOrbitControlsEnabled() {
+    return this._orbitControlsEnabled;
   }
 
-  setDebugCameraEnabled(enabled) {
+  setOrbitControlsEnabled(enabled) {
     const nextEnabled = Boolean(enabled);
-    if (nextEnabled === this._debugCameraEnabled) return;
-    this._debugCameraEnabled = nextEnabled;
+    if (nextEnabled === this._orbitControlsEnabled) return;
+    this._orbitControlsEnabled = nextEnabled;
     if (!nextEnabled) {
       this.camera.resetRotation();
     }
   }
 
-  toggleDebugCamera() {
-    this.setDebugCameraEnabled(!this._debugCameraEnabled);
-    return this._debugCameraEnabled;
-  }
-
-  rotateDebugCameraBy(delta) {
-    if (!this._debugCameraEnabled) return;
-    this.camera.rotateBy(delta);
-  }
-
-  resetDebugCameraRotation() {
-    this.camera.resetRotation();
+  toggleOrbitControls() {
+    this.setOrbitControlsEnabled(!this._orbitControlsEnabled);
+    return this._orbitControlsEnabled;
   }
 
   captureViewport() {
@@ -1666,6 +1687,9 @@ export class ThreeRenderer {
     if (this._resizeObserver) this._resizeObserver.disconnect();
     if (this._wheelHandler) {
       this.renderer.domElement.removeEventListener('wheel', this._wheelHandler);
+    }
+    if (this._contextMenuHandler) {
+      this.renderer.domElement.removeEventListener('contextmenu', this._contextMenuHandler);
     }
     if (this._pointerDownHandler) {
       this.renderer.domElement.removeEventListener('pointerdown', this._pointerDownHandler);

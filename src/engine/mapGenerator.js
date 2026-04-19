@@ -90,7 +90,8 @@ export function generateTerrain(config) {
   // River generation — runs before waterProximity BFS so riverbanks
   // automatically receive MUD/FERTILE_SOIL in the detail2 pass below.
   const riverCount = config.river_count ?? 0;
-  if (riverCount > 0) generateRivers(terrain, combined, w, h, riverCount, seed);
+  const riverWidth = Math.max(1, Math.min(5, Math.round(config.river_width ?? 2)));
+  if (riverCount > 0) generateRivers(terrain, combined, w, h, riverCount, riverWidth, seed);
 
   // Secondary detail pass: fertile soil near water, mud at water edges
   const detail2 = fbmNoise(w, h, seed + 77777, 2, 0.02);
@@ -328,11 +329,15 @@ function generateEdgeFalloff(w, h, seed) {
  * @param {number}       w         - grid width
  * @param {number}       h         - grid height
  * @param {number}       riverCount - number of rivers to attempt
+ * @param {number}       riverWidth - global river thickness (1..5)
  * @param {number}       seed
  */
-function generateRivers(terrain, heightmap, w, h, riverCount, seed) {
+function generateRivers(terrain, heightmap, w, h, riverCount, riverWidth, seed) {
   if (riverCount <= 0) return;
   const rng = mulberry32(seed + 33333);
+  const clampedWidth = Math.max(1, Math.min(5, Math.round(riverWidth || 1)));
+  const brushRadius = Math.floor(clampedWidth / 2);
+  const brushOffsets = buildRiverBrushOffsets(brushRadius);
 
   // Collect elevated land tiles as candidate river sources.
   const candidates = [];
@@ -398,25 +403,39 @@ function generateRivers(terrain, heightmap, w, h, riverCount, seed) {
 
     if (!reachedWater || path.length < MIN_LENGTH) continue;
 
-    // Carve WATER along the path.  Widen the lower half slightly for realism.
+    // Carve WATER along the accepted path with a fixed brush radius.
     for (let p = 0; p < path.length; p++) {
       const idx = path[p];
-      terrain[idx] = WATER;
-
-      // Occasional widening in the lower course (downstream half).
-      if (p > path.length * 0.5 && rng() < 0.35) {
-        const px = idx % w;
-        const py = (idx / w) | 0;
-        const dirs4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-        const [dx, dy] = dirs4[Math.floor(rng() * 4)];
-        const nx = px + dx, ny = py + dy;
-        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-          const ni = ny * w + nx;
-          if (terrain[ni] !== DEEP_WATER) terrain[ni] = WATER;
-        }
-      }
+      carveRiverBrush(terrain, w, h, idx, brushOffsets);
     }
     carved++;
+  }
+}
+
+function buildRiverBrushOffsets(radius) {
+  if (radius <= 0) return [[0, 0]];
+  const offsets = [];
+  const r2 = radius * radius;
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if ((dx * dx + dy * dy) <= r2) {
+        offsets.push([dx, dy]);
+      }
+    }
+  }
+  return offsets;
+}
+
+function carveRiverBrush(terrain, w, h, centerIdx, offsets) {
+  const cx = centerIdx % w;
+  const cy = (centerIdx / w) | 0;
+  for (let i = 0; i < offsets.length; i++) {
+    const [dx, dy] = offsets[i];
+    const nx = cx + dx;
+    const ny = cy + dy;
+    if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+    const ni = ny * w + nx;
+    if (terrain[ni] !== DEEP_WATER) terrain[ni] = WATER;
   }
 }
 

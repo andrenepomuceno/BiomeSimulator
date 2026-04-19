@@ -25,6 +25,7 @@ export const MAP_PRESETS = [
       island_size_factor: 0.22,
       min_land_ratio: 0.35,
       river_count: 3,
+      river_width: 2,
     },
   },
   {
@@ -39,6 +40,7 @@ export const MAP_PRESETS = [
       island_size_factor: 0.24,
       min_land_ratio: 0.35,
       river_count: 4,
+      river_width: 2,
     },
   },
   {
@@ -53,6 +55,7 @@ export const MAP_PRESETS = [
       island_size_factor: 0.24,
       min_land_ratio: 0.35,
       river_count: 6,
+      river_width: 2,
     },
   },
 ];
@@ -94,6 +97,7 @@ export function buildDefaultParams() {
     island_size_factor: 0.24,
     min_land_ratio: 0.35,
     river_count: 4,
+    river_width: 2,
     seed: '',
     initial_population_fraction: DEFAULT_POPULATION_FRACTION,
     initial_animal_counts: buildProportionalAnimalCounts(n0, DEFAULT_MAX_ANIMAL_POPULATION),

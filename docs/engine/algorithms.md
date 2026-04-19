@@ -61,7 +61,7 @@ flowchart TD
     - `> sea - 0.15` → `WATER`
     - else → `DEEP_WATER`
 6. **Detail noise** — 3-octave FBM on SOIL tiles adds DIRT/ROCK variation
-7. **River carving** — optional `river_count` highland sources are traced downhill with meander noise and carved as `WATER`; lower-course widening adds natural river mouths
+7. **River carving** — optional `river_count` highland sources are traced downhill with meander noise and carved as `WATER`; channel thickness is controlled globally by `river_width`
 8. **Water proximity BFS** — flood fill from all WATER/DEEP_WATER tiles, 4-directional
 
 ### River Generation (`generateRivers`)
@@ -71,7 +71,7 @@ Rivers are carved after primary terrain classification and before water-proximit
 1. Candidate sources are sampled from `MOUNTAIN`/`ROCK` tiles
 2. Each source greedily descends to the lowest unvisited neighbor (8-way) with small random wiggle (`+ rng()*0.06`) to avoid perfectly straight channels
 3. A river is accepted only if it reaches existing water and path length ≥ 15 tiles
-4. Accepted paths are converted to `WATER`; downstream segments may widen sideways
+4. Accepted paths are carved to `WATER` with a fixed circular brush derived from `river_width` (`1..5`), producing globally thinner or thicker channels
 
 Because rivers are carved before water-proximity BFS, nearby banks naturally participate in later `MUD` and `FERTILE_SOIL` placement.
 

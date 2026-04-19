@@ -28,7 +28,7 @@ export default function GameMenuMapTab({ params, setParams, setParam, isMapSizeL
               <span className="gm-chip-title">{preset.label}</span>
               <span className="gm-chip-description">{preset.description}</span>
               <span className="gm-chip-meta">
-                {preset.values.map_width} x {preset.values.map_height} · Sea {preset.values.sea_level.toFixed(2)} · Islands {preset.values.island_count} · Rivers {preset.values.river_count}
+                {preset.values.map_width} x {preset.values.map_height} · Sea {preset.values.sea_level.toFixed(2)} · Islands {preset.values.island_count} · Rivers {preset.values.river_count} · Width {preset.values.river_width}
               </span>
             </button>
           ))}
@@ -133,6 +133,19 @@ export default function GameMenuMapTab({ params, setParams, setParam, isMapSizeL
             step={1}
             value={params.river_count ?? 0}
             onChange={(event) => setParam('river_count', +event.target.value)}
+          />
+        </div>
+
+        <div className="gm-field">
+          <label>River Width</label>
+          <div className="gm-field-value">{params.river_width ?? 2}</div>
+          <input
+            type="range"
+            min={1}
+            max={5}
+            step={1}
+            value={params.river_width ?? 2}
+            onChange={(event) => setParam('river_width', +event.target.value)}
           />
         </div>
       </div>

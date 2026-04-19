@@ -12,6 +12,12 @@ describe('generateTerrain', () => {
     seed: 42,
   };
 
+  const configWithRivers = {
+    ...config,
+    river_count: 5,
+    river_width: 2,
+  };
+
   it('returns terrain, waterProximity, and the seed', () => {
     const result = generateTerrain(config);
     expect(result.terrain).toBeInstanceOf(Uint8Array);
@@ -72,6 +78,41 @@ describe('generateTerrain', () => {
     // With min_land_ratio=0, result should still be valid terrain
     const { terrain } = generateTerrain({ ...config, min_land_ratio: 0, seed: 42 });
     expect(terrain).toHaveLength(64 * 64);
+  });
+
+  it('is deterministic for the same seed and river_width', () => {
+    const a = generateTerrain({ ...configWithRivers, river_width: 5, seed: 101 });
+    const b = generateTerrain({ ...configWithRivers, river_width: 5, seed: 101 });
+    expect(a.terrain).toEqual(b.terrain);
+    expect(a.waterProximity).toEqual(b.waterProximity);
+  });
+
+  it('carves more river water with higher river_width', () => {
+    const widthOne = generateTerrain({
+      ...configWithRivers,
+      map_width: 96,
+      map_height: 96,
+      river_count: 12,
+      river_width: 1,
+      seed: 77,
+    });
+    const widthFive = generateTerrain({
+      ...configWithRivers,
+      map_width: 96,
+      map_height: 96,
+      river_count: 12,
+      river_width: 5,
+      seed: 77,
+    });
+
+    let waterOne = 0;
+    let waterFive = 0;
+    for (let i = 0; i < widthOne.terrain.length; i++) {
+      if (widthOne.terrain[i] === WATER) waterOne++;
+      if (widthFive.terrain[i] === WATER) waterFive++;
+    }
+
+    expect(waterFive).toBeGreaterThan(waterOne);
   });
 });
 

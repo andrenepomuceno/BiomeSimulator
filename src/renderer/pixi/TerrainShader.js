@@ -7,7 +7,7 @@
  * computed per-fragment on the GPU.
  */
 import * as PIXI from 'pixi.js';
-import { TERRAIN_COLORS, TERRAIN_VAR_RGB, COASTAL_SHALLOW_WATER, COASTAL_WET_SAND } from '../utils/terrainColors.js';
+import { TERRAIN_COLORS, TERRAIN_VAR_RGB, COASTAL_SHALLOW_WATER, COASTAL_WET_SAND } from '../../utils/terrainColors.js';
 
 // ---------------------------------------------------------------------------
 // GLSL source

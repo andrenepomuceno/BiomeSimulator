@@ -1,4 +1,4 @@
-import useSimStore from '../store/simulationStore.js';
+import useSimStore from '../../store/simulationStore.js';
 
 /**
  * Encapsulates pointer, wheel, context-menu, and resize event handling

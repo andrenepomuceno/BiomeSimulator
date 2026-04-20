@@ -8,14 +8,14 @@ import { PlantLayer } from './PlantLayer.js';
 import { EntityLayer } from './EntityLayer.js';
 import { ItemLayer } from './ItemLayer.js';
 import { AnimationLayer } from './AnimationLayer.js';
-import useSimStore from '../store/simulationStore.js';
-import { RENDERER_CONFIG } from '../engine/config.js';
-import { TERRAIN_COLORS } from '../utils/terrainColors.js';
+import useSimStore from '../../store/simulationStore.js';
+import { RENDERER_CONFIG } from '../../engine/config.js';
+import { TERRAIN_COLORS } from '../../utils/terrainColors.js';
 import {
   generateEmojiTextures,
   generatePlantEmojiTextures,
   generateItemEmojiTextures,
-} from '../utils/emojiTextures.js';
+} from '../../utils/emojiTextures.js';
 
 export class GameRenderer {
   constructor(container, onViewportChange, onTileClick, onEffectEvent) {

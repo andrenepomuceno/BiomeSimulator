@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { PLANT_COLORS } from '../utils/terrainColors.js';
-import { buildPlantEmojiMap, buildTreeTypes } from '../engine/plantSpecies.js';
+import { PLANT_COLORS } from '../../utils/terrainColors.js';
+import { buildPlantEmojiMap, buildTreeTypes } from '../../engine/plantSpecies.js';
 import { createModelAssetLoader } from './modelAssetLoader.js';
 import { ThreePointLayer } from './threePointLayer.js';
 import { ThreeSpritePool } from './threeSpritePool.js';

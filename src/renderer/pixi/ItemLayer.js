@@ -8,10 +8,10 @@
  * - Pixel overlay Graphics for low-zoom rendering.
  */
 import * as PIXI from 'pixi.js';
-import { generateItemEmojiTextures } from '../utils/emojiTextures.js';
-import { FRAME_SIZE } from '../utils/spriteAtlas.js';
-import { buildMassDropMap } from '../engine/animalSpecies.js';
-import { buildFruitKeysBySource, buildSeedKeysBySource } from '../engine/plantSpecies.js';
+import { generateItemEmojiTextures } from '../../utils/emojiTextures.js';
+import { FRAME_SIZE } from '../../utils/spriteAtlas.js';
+import { buildMassDropMap } from '../../engine/animalSpecies.js';
+import { buildFruitKeysBySource, buildSeedKeysBySource } from '../../engine/plantSpecies.js';
 
 /** Minimum zoom to show item sprites instead of pixel dots. */
 const ITEM_SPRITE_ZOOM = 6;

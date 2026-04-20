@@ -55,6 +55,7 @@ export class ThreeModelPool {
     if (normalizeFn) normalizeFn(mesh);
 
     const root = new THREE.Group();
+    root.userData.modelKey = modelKey;
     root.add(mesh);
     this._parentGroup.add(root);
     this._instances.set(instanceKey, root);

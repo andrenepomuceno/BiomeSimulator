@@ -1,5 +1,5 @@
-import { GameRenderer } from './GameRenderer.js';
-import { ThreeRenderer } from './ThreeRenderer.js';
+import { GameRenderer } from './pixi/GameRenderer.js';
+import { ThreeRenderer } from './three/ThreeRenderer.js';
 
 export function createRenderer(mode, container, onViewportChange, onTileClick, onEffectEvent) {
   if (mode === 'three') {

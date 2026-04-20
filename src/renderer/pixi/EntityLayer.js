@@ -4,12 +4,12 @@
  * detail levels.
  */
 import * as PIXI from 'pixi.js';
-import { generateEmojiTextures } from '../utils/emojiTextures.js';
-import { getSleepingTextureKeyForSpecies } from '../utils/spriteGenerator.js';
-import { ENTITY_BARS_MIN_ZOOM } from '../constants/simulation.js';
-import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet, buildSpeciesVisualScale, buildSpeciesVocalProfile } from '../engine/animalSpecies.js';
-import { AnimalState, LifeStage } from '../engine/entities.js';
-import { FRAME_SIZE } from '../utils/spriteAtlas.js';
+import { generateEmojiTextures } from '../../utils/emojiTextures.js';
+import { getSleepingTextureKeyForSpecies } from '../../utils/spriteGenerator.js';
+import { ENTITY_BARS_MIN_ZOOM } from '../../constants/simulation.js';
+import { MAX_ANIMAL_ENERGY, buildAnimalColorMap, buildCanFlySet, buildSpeciesVisualScale, buildSpeciesVocalProfile } from '../../engine/animalSpecies.js';
+import { AnimalState, LifeStage } from '../../engine/entities.js';
+import { FRAME_SIZE } from '../../utils/spriteAtlas.js';
 
 const ATTACK_JUMP_DURATION = 18;
 const ATTACK_JUMP_HEIGHT = 0.22;

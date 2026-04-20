@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { TERRAIN_COLORS } from '../utils/terrainColors.js';
+import { TERRAIN_COLORS } from '../../utils/terrainColors.js';
 import { ViewCamera } from './ViewCamera.js';
 import {
   configureOrbitControls,
@@ -17,7 +17,7 @@ import { ThreePlantLayer } from './threePlantLayer.js';
 import { ThreeItemLayer } from './threeItemLayer.js';
 import { ThreeEntityLayer } from './threeEntityLayer.js';
 import { ThreeInputHandler } from './threeInputHandler.js';
-import useSimStore from '../store/simulationStore.js';
+import useSimStore from '../../store/simulationStore.js';
 
 export class ThreeRenderer {
   constructor(container, onViewportChange, onTileClick, onEffectEvent) {
@@ -275,7 +275,7 @@ export class ThreeRenderer {
       this._plantLayer.rebuildPoints(vp, zoom);
       this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
       this._itemLayer.rebuildPoints(vp, zoom);
-      this._itemLayer.rebuildSprites(vp, zoom, orbit);
+      this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
       this._entityLayer.rebuildPoints(vp, zoom);
       this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
       this._refreshSelectionMarker();

@@ -84,6 +84,31 @@ export const PLANT_MODEL_SCALE_MULTIPLIERS = {
 
 export const DEAD_TREE_MODEL_URL = '/model-assets/nature/stump_round.glb';
 
+// ---------------------------------------------------------------------------
+// Item 3D models (kenney_food-kit, CC0)
+// Keys match ITEM_TYPE constants from engine/items.js (MEAT=1, FRUIT=2, SEED=3).
+// Models face +Y forward, +Z up. Scale multipliers adjust to ~0.4–0.6 tile units.
+// ---------------------------------------------------------------------------
+
+export const ITEM_MODEL_URLS = {
+  1: '/model-assets/items/meat-cooked.glb',    // MEAT
+  2: '/model-assets/items/apple.glb',           // FRUIT
+  3: '/model-assets/items/pumpkin-basic.glb',   // SEED
+};
+
+export const ITEM_MODEL_SCALE_MULTIPLIERS = {
+  1: 0.45,   // meat – small slab on ground
+  2: 0.40,   // apple – small sphere
+  3: 0.35,   // seed/pumpkin – tiny on ground
+};
+
+// ---------------------------------------------------------------------------
+// Entity (animal) 3D models (kenney_cube-pets, CC0)
+// Keys match species IDs from ANIMAL_SPECIES.
+// Kenney cube-pets face +Y forward, +Z up; the engine's Direction enum
+// maps to yaw rotations in DIRECTION_YAW (threeEntityLayer.js).
+// ---------------------------------------------------------------------------
+
 export const ENTITY_MODEL_URLS = {
   RABBIT: '/model-assets/animals/animal-bunny.glb',
   SQUIRREL: '/model-assets/animals/animal-beaver.glb',

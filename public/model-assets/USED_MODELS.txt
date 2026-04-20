@@ -24,6 +24,13 @@
 /model-assets/animals/animal-crab.glb
 /model-assets/animals/Textures/colormap.png
 
+# Items (kenney_food-kit, CC0)
+/model-assets/items/meat-cooked.glb
+/model-assets/items/apple.glb
+/model-assets/items/pumpkin-basic.glb
+/model-assets/items/Textures/colormap.png
+
 # Licenses copied
 /model-assets/nature/LICENSE_kenney_nature-kit.txt
 /model-assets/animals/LICENSE_kenney_cube-pets.txt
+/model-assets/items/LICENSE_kenney_food-kit.txt

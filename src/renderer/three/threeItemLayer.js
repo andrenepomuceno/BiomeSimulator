@@ -1,22 +1,30 @@
+import * as THREE from 'three';
+import { createModelAssetLoader } from './modelAssetLoader.js';
 import { ThreePointLayer } from './threePointLayer.js';
 import { ThreeSpritePool } from './threeSpritePool.js';
+import { ThreeModelPool } from './threeModelPool.js';
 import {
   MAX_VISIBLE_ITEM_POINTS,
   MAX_VISIBLE_ITEM_SPRITES,
   ITEM_SPRITE_ZOOM_THRESHOLD,
   ITEM_EMOJIS,
   ITEM_COLORS,
+  ITEM_MODEL_URLS,
+  ITEM_MODEL_SCALE_MULTIPLIERS,
 } from './threeRendererConfig.js';
 
 /**
  * Item rendering layer for the Three.js renderer.
- * Manages item points (zoomed-out dots) and item sprites (emoji).
+ * Manages item points (zoomed-out dots), item sprites (emoji),
+ * and item 3D models (GLB).
  */
 export class ThreeItemLayer {
   constructor(worldGroup, emojiAtlas) {
+    this._worldGroup = worldGroup;
     this._itemsById = new Map();
     this._points = new ThreePointLayer(worldGroup, MAX_VISIBLE_ITEM_POINTS, 3.5, 2, 1);
     this._sprites = new ThreeSpritePool(worldGroup, emojiAtlas);
+    this._models = new ThreeModelPool(worldGroup, createModelAssetLoader());
   }
 
   get size() {
@@ -81,24 +89,57 @@ export class ThreeItemLayer {
     this._points.update(positions, colors, pointSize);
   }
 
-  // ---- Sprites (zoomed-in emoji) ----
+  // ---- Sprites & Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh) {
     const show = (orbitEnabled || zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
       && this._itemsById.size > 0;
     if (!show) {
       this._sprites.releaseAll();
+      this._models.releaseAll(() => null);
       return;
     }
 
     const { x0, y0, x1, y1 } = viewport;
-    const seen = new Set();
+    const seenSprites = new Set();
+    const seenModels = new Set();
     const scale = 0.55;
     let count = 0;
 
     for (const item of this._itemsById.values()) {
       if (!item || item.consumed) continue;
       if (item.x < x0 || item.x >= x1 || item.y < y0 || item.y >= y1) continue;
+      if (count >= MAX_VISIBLE_ITEM_SPRITES) break;
+
+      const modelUrl = ITEM_MODEL_URLS[item.type];
+      const modelKey = modelUrl ? `item_${item.type}` : null;
+
+      // Try 3D model first
+      if (modelKey && modelUrl) {
+        if (!this._models.isReady(modelKey)) {
+          this._models.ensureLoaded(modelKey, modelUrl, () => {
+            if (typeof onVisRefresh === 'function') onVisRefresh();
+          });
+        }
+
+        const model = this._models.acquire(item.id, modelKey, (mesh) => {
+          this._normalizeItemMesh(mesh, item.type);
+        });
+
+        if (model) {
+          if (this._sprites.has(item.id)) this._sprites.release(item.id);
+          const scaleMul = ITEM_MODEL_SCALE_MULTIPLIERS[item.type] || 0.5;
+          const s = scaleMul * (orbitEnabled ? 1.4 : 1);
+          model.scale.set(s, s, s);
+          model.position.set(item.x + 0.5, item.y + 0.5, 0);
+          model.visible = true;
+          seenModels.add(item.id);
+          count++;
+          continue;
+        }
+      }
+
+      // Fallback: emoji sprite
       const emoji = ITEM_EMOJIS[item.type] || '📦';
       const sprite = this._sprites.acquire(item.id, emoji);
       sprite.position.set(item.x + 0.5, item.y + 0.5, 2.5);
@@ -106,17 +147,28 @@ export class ThreeItemLayer {
       sprite.material.opacity = 0.92;
       sprite.renderOrder = 50;
       sprite.visible = true;
-      seen.add(item.id);
+      seenSprites.add(item.id);
       count++;
-      if (count >= MAX_VISIBLE_ITEM_SPRITES) break;
     }
 
-    this._sprites.prune(seen);
+    this._sprites.prune(seenSprites);
+    this._models.prune(seenModels, (m) => m.userData.modelKey ?? null);
+  }
+
+  /** Normalize a freshly-cloned item mesh (center, upright). */
+  _normalizeItemMesh(mesh) {
+    const box = new THREE.Box3().setFromObject(mesh);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    mesh.position.sub(center);
+    mesh.scale.multiplyScalar(1 / maxDim);
   }
 
   destroy() {
     this._points.destroy();
     this._sprites.destroy();
+    this._models.destroy();
     this._itemsById.clear();
   }
 }

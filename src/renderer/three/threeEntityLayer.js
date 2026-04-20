@@ -1,6 +1,6 @@
-import { SPECIES_INFO } from '../utils/terrainColors.js';
-import { AnimalState, Direction, LifeStage } from '../engine/entities.js';
-import { buildAnimalColorMap, buildSpeciesVisualScale } from '../engine/animalSpecies.js';
+import { SPECIES_INFO } from '../../utils/terrainColors.js';
+import { AnimalState, Direction, LifeStage } from '../../engine/entities.js';
+import { buildAnimalColorMap, buildSpeciesVisualScale } from '../../engine/animalSpecies.js';
 import { createModelAssetLoader } from './modelAssetLoader.js';
 import { ThreePointLayer } from './threePointLayer.js';
 import { ThreeSpritePool } from './threeSpritePool.js';
@@ -202,7 +202,7 @@ export class ThreeEntityLayer {
         let model = this._models.get(a.id);
         if (!model && this._models.isReady(species)) {
           model = this._models.acquire(a.id, species);
-          if (model) model.userData = { species };
+          if (model) model.userData.species = species;
         }
         if (model) {
           // Release sprite fallback

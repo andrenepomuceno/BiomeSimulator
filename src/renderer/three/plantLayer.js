@@ -49,6 +49,9 @@ export class ThreePlantLayer {
       opacity: 0.2,
       depthWrite: false,
     });
+
+    // Growth pulse tracking: idx → timestamp of growth event
+    this._growthPulse = new Map();
   }
 
   setData(plantType, plantStage, mapWidth, mapHeight) {
@@ -66,12 +69,18 @@ export class ThreePlantLayer {
   /** Apply incremental changes to the cached plant arrays. */
   applyChanges(changes) {
     if (!this._plantType || !this._plantStage) return;
+    const now = performance.now();
     for (const change of changes) {
       const [x, y, ptype, stage] = change;
       if (x < 0 || y < 0 || x >= this._mapWidth || y >= this._mapHeight) continue;
       const idx = y * this._mapWidth + x;
+      const oldStage = this._plantStage[idx];
       this._plantType[idx] = ptype;
       this._plantStage[idx] = stage;
+      // Track stage increase for growth pulse
+      if (stage > oldStage && stage > 0 && oldStage > 0) {
+        this._growthPulse.set(idx, now);
+      }
     }
   }
 
@@ -128,6 +137,9 @@ export class ThreePlantLayer {
     const seenShadows = new Set();
     const scale = 0.82;
     let count = 0;
+    const now = performance.now();
+    const swayTime = now * 0.001; // seconds for sway
+    const GROWTH_PULSE_DURATION = 600; // ms
 
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) {
@@ -135,6 +147,20 @@ export class ThreePlantLayer {
         const t = this._plantType[idx];
         const s = this._plantStage[idx];
         if (t === 0 || s === 0) continue;
+
+        // Growth pulse scale factor
+        let growthScale = 1;
+        const pulseStart = this._growthPulse.get(idx);
+        if (pulseStart !== undefined) {
+          const elapsed = now - pulseStart;
+          if (elapsed < GROWTH_PULSE_DURATION) {
+            const t01 = elapsed / GROWTH_PULSE_DURATION;
+            // Elastic ease-out: overshoot then settle
+            growthScale = 1 + 0.2 * Math.sin(t01 * Math.PI) * (1 - t01);
+          } else {
+            this._growthPulse.delete(idx);
+          }
+        }
 
         if (this._isModelRenderable(t, s)) {
           const modelKey = this._getModelKey(t, s);
@@ -149,9 +175,15 @@ export class ThreePlantLayer {
 
           if (model) {
             if (this._sprites.has(idx)) this._sprites.release(idx);
-            const modelScale = this._getModelScale(t, s, orbitEnabled);
+            const modelScale = this._getModelScale(t, s, orbitEnabled) * growthScale;
             model.position.set(x + 0.5, y + 0.5, 0.02);
             model.scale.set(modelScale, modelScale, modelScale);
+
+            // Subtle sway: Z-rotation using position hash for per-plant phase offset
+            const swayPhase = (x * 13 + y * 37) * 0.1;
+            const swayAmount = 0.03 + (s >= 4 ? 0.02 : 0); // larger trees sway more
+            model.rotation.z = Math.sin(swayTime * 1.2 + swayPhase) * swayAmount;
+
             model.visible = true;
             seenModels.add(idx);
 
@@ -169,7 +201,8 @@ export class ThreePlantLayer {
         const emoji = this._getEmoji(t, s);
         const sprite = this._sprites.acquire(idx, emoji);
         sprite.position.set(x + 0.5, y + 0.5, 0.5);
-        sprite.scale.set(scale, scale, 1);
+        const sprScale = scale * growthScale;
+        sprite.scale.set(sprScale, sprScale, 1);
         sprite.material.opacity = s === 1 ? 0.75 : s === 2 ? 0.85 : s === 3 ? 0.92 : s === 5 ? 0.96 : 1.0;
         sprite.renderOrder = 20;
         sprite.visible = true;

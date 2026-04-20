@@ -109,6 +109,12 @@ export class ThreeRenderer {
     this._selectionLine = null;
     this._selectedTile = null;
     this._selectedEntityId = null;
+    this._selectionTick = 0;
+
+    // ---- Brush preview ----
+    this._brushPreviewMesh = null;
+    this._brushPreviewMaterial = null;
+    this._brushPreviewSignature = '';
 
     // ---- FPS tracking ----
     this._frameLastAt = performance.now();
@@ -159,6 +165,8 @@ export class ThreeRenderer {
       }
       this._particles.tick();
       this._terrainShader.tick(1);
+      this._updateBrushPreview();
+      this._updateSelectionPulse();
       this._tickFps();
       this.renderer.render(this.scene, this._activeCamera3D);
       if (this._nightMaterial.opacity > 0.002) {
@@ -594,6 +602,54 @@ export class ThreeRenderer {
     this.worldGroup.add(this._selectionLine);
   }
 
+  _updateSelectionPulse() {
+    if (!this._selectionLine) return;
+    this._selectionTick++;
+    const pulse = 0.85 + 0.15 * Math.sin(this._selectionTick * 0.1);
+    this._selectionLine.material.opacity = pulse;
+  }
+
+  _updateBrushPreview() {
+    const hover = this._input.lastHoverTile;
+    const state = useSimStore.getState();
+    if (!hover || state.tool !== 'PAINT_TERRAIN') {
+      if (this._brushPreviewMesh) this._brushPreviewMesh.visible = false;
+      this._brushPreviewSignature = '';
+      return;
+    }
+
+    const brushSize = Math.max(1, state.brushSize || 1);
+    const terrainType = state.paintTerrain || 0;
+    const sig = `${hover.x}:${hover.y}:${brushSize}:${terrainType}`;
+    if (sig === this._brushPreviewSignature && this._brushPreviewMesh?.visible) return;
+
+    const tColor = TERRAIN_COLORS[terrainType] || [83, 168, 182, 255];
+    const hexColor = (tColor[0] << 16) | (tColor[1] << 8) | tColor[2];
+    const size = brushSize * 2 - 1;
+    const startX = hover.x - brushSize + 1;
+    const startY = hover.y - brushSize + 1;
+
+    if (!this._brushPreviewMesh) {
+      this._brushPreviewMaterial = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.2,
+        depthTest: false,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const geo = new THREE.PlaneGeometry(1, 1);
+      this._brushPreviewMesh = new THREE.Mesh(geo, this._brushPreviewMaterial);
+      this._brushPreviewMesh.renderOrder = 25;
+      this.worldGroup.add(this._brushPreviewMesh);
+    }
+
+    this._brushPreviewMaterial.color.setHex(hexColor);
+    this._brushPreviewMesh.position.set(startX + size / 2, startY + size / 2, 3);
+    this._brushPreviewMesh.scale.set(size, size, 1);
+    this._brushPreviewMesh.visible = true;
+    this._brushPreviewSignature = sig;
+  }
+
   // ==================================================================
   // Orbit controls
   // ==================================================================
@@ -741,6 +797,15 @@ export class ThreeRenderer {
       this._selectionLine.geometry.dispose();
       this._selectionLine.material.dispose();
       this._selectionLine = null;
+    }
+
+    // Brush preview
+    if (this._brushPreviewMesh) {
+      this.worldGroup.remove(this._brushPreviewMesh);
+      this._brushPreviewMesh.geometry.dispose();
+      this._brushPreviewMaterial.dispose();
+      this._brushPreviewMesh = null;
+      this._brushPreviewMaterial = null;
     }
 
     // WebGL

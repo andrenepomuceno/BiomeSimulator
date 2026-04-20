@@ -32,6 +32,7 @@ export class ThreeInputHandler {
     this._bindPointerEvents();
     this._bindWheelEvent();
     this._bindContextMenu();
+    this._bindPointerLeave();
     this._bindResize(opts.onResize);
   }
 
@@ -166,6 +167,15 @@ export class ThreeInputHandler {
     window.addEventListener('pointerup', this._pointerUpHandler);
   }
 
+  // ---- Pointer leave ----
+
+  _bindPointerLeave() {
+    this._pointerLeaveHandler = () => {
+      this._lastHoverTile = null;
+    };
+    this._domElement.addEventListener('pointerleave', this._pointerLeaveHandler);
+  }
+
   // ---- Resize ----
 
   _bindResize(onResize) {
@@ -182,6 +192,7 @@ export class ThreeInputHandler {
     this._domElement.removeEventListener('wheel', this._wheelHandler);
     this._domElement.removeEventListener('contextmenu', this._contextMenuHandler);
     this._domElement.removeEventListener('pointerdown', this._pointerDownHandler);
+    this._domElement.removeEventListener('pointerleave', this._pointerLeaveHandler);
     window.removeEventListener('pointermove', this._pointerMoveHandler);
     window.removeEventListener('pointerup', this._pointerUpHandler);
   }

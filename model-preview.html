@@ -308,6 +308,19 @@
     const loader = new GLTFLoader();
     const thumbnails = [];
 
+    const MODEL_ROTATE_X_OVERRIDES = {
+      '/model-assets/nature/stump_round.glb': Math.PI / 2,
+      '/model-assets/animals/animal-beaver.glb': Math.PI / 2,
+      '/model-assets/animals/animal-cow.glb': Math.PI / 2,
+      '/model-assets/animals/animal-fox.glb': Math.PI / 2,
+      '/model-assets/animals/animal-dog.glb': Math.PI / 2,
+      '/model-assets/animals/animal-hog.glb': Math.PI / 2,
+      '/model-assets/animals/animal-polar.glb': Math.PI / 2,
+      '/model-assets/animals/animal-cat.glb': Math.PI / 2,
+      '/model-assets/animals/animal-parrot.glb': Math.PI / 2,
+      '/model-assets/animals/animal-crab.glb': Math.PI / 2,
+    };
+
     const THUMB_WIDTH = 320;
     const THUMB_HEIGHT = 220;
 
@@ -429,6 +442,35 @@
       return null;
     }
 
+    function normalizePreviewModel(root, modelPath) {
+      root.updateMatrixWorld(true);
+      let box = new THREE.Box3().setFromObject(root);
+      if (box.isEmpty()) return;
+
+      const size = new THREE.Vector3();
+      box.getSize(size);
+
+      // Same heuristic used by the runtime renderer: if Y dominates, model is likely sideways.
+      const rotateXOverride = MODEL_ROTATE_X_OVERRIDES[modelPath];
+
+      if (Number.isFinite(rotateXOverride)) {
+        root.rotation.x = rotateXOverride;
+        root.updateMatrixWorld(true);
+        box = new THREE.Box3().setFromObject(root);
+      } else if (size.y > size.z * 1.15) {
+        root.rotation.x = Math.PI / 2;
+        root.updateMatrixWorld(true);
+        box = new THREE.Box3().setFromObject(root);
+      }
+
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      root.position.x -= center.x;
+      root.position.y -= center.y;
+      root.position.z -= box.min.z;
+      root.updateMatrixWorld(true);
+    }
+
     function loadModel(modelPath) {
       return new Promise((resolve, reject) => {
         loader.load(
@@ -445,6 +487,7 @@
                 obj.receiveShadow = false;
               }
             });
+            normalizePreviewModel(root, modelPath);
             resolve(root);
           },
           undefined,

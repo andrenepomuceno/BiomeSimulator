@@ -16,6 +16,7 @@ import {
   ENTITY_MODEL_URLS,
   ENTITY_MODEL_SCALE_MULTIPLIERS,
 } from './threeRendererConfig.js';
+import { getModelRotateXOverride, shouldAutoRotateModel } from './threeModelProfiles.js';
 
 // Map engine direction to model rotation around Z-axis.
 // Models face +Y by default (forward).
@@ -24,20 +25,6 @@ const DIRECTION_YAW = {
   [Direction.RIGHT]: -Math.PI / 2,
   [Direction.LEFT]: Math.PI / 2,
   [Direction.DOWN]: Math.PI,
-};
-
-// Some Kenney animal models are authored Y-up and need an explicit axis correction.
-const ENTITY_ROTATE_X_OVERRIDES = {
-  SQUIRREL: Math.PI / 2,
-  GOAT: Math.PI / 2,
-  FOX: Math.PI / 2,
-  WOLF: Math.PI / 2,
-  BOAR: Math.PI / 2,
-  BEAR: Math.PI / 2,
-  RACCOON: Math.PI / 2,
-  CROW: Math.PI / 2,
-  HAWK: Math.PI / 2,
-  CROCODILE: Math.PI / 2,
 };
 
 /**
@@ -216,7 +203,7 @@ export class ThreeEntityLayer {
 
         let model = this._models.get(a.id);
         if (!model && this._models.isReady(species)) {
-          model = this._models.acquire(a.id, species, (mesh) => this._normalizeEntityMesh(mesh, species));
+          model = this._models.acquire(a.id, species, (mesh) => this._normalizeEntityMesh(mesh, url));
           if (model) model.userData.species = species;
         }
         if (model) {
@@ -285,20 +272,20 @@ export class ThreeEntityLayer {
     model.rotation.z = dir != null ? (DIRECTION_YAW[dir] ?? 0) : 0;
   }
 
-  _normalizeEntityMesh(mesh, species) {
+  _normalizeEntityMesh(mesh, modelUrl) {
     mesh.updateMatrixWorld(true);
     let box = new THREE.Box3().setFromObject(mesh);
     if (box.isEmpty()) return;
 
     const size = new THREE.Vector3();
     box.getSize(size);
-    const rotateXOverride = ENTITY_ROTATE_X_OVERRIDES[species];
+    const rotateXOverride = getModelRotateXOverride(modelUrl);
 
     if (Number.isFinite(rotateXOverride)) {
       mesh.rotation.x = rotateXOverride;
       mesh.updateMatrixWorld(true);
       box = new THREE.Box3().setFromObject(mesh);
-    } else if (size.y > size.z * 1.15) {
+    } else if (shouldAutoRotateModel(size)) {
       mesh.rotation.x = Math.PI / 2;
       mesh.updateMatrixWorld(true);
       box = new THREE.Box3().setFromObject(mesh);

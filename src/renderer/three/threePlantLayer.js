@@ -15,6 +15,7 @@ import {
   PLANT_MODEL_SCALE_MULTIPLIERS,
   DEAD_TREE_MODEL_URL,
 } from './threeRendererConfig.js';
+import { getModelRotateXOverride, shouldAutoRotateModel } from './threeModelProfiles.js';
 
 /**
  * Plant rendering layer for the Three.js renderer.
@@ -128,7 +129,7 @@ export class ThreePlantLayer {
 
           let model = this._models.get(idx);
           if (!model && this._models.isReady(modelKey)) {
-            model = this._models.acquire(idx, modelKey, (mesh) => this._normalizeMesh(mesh, modelKey));
+            model = this._models.acquire(idx, modelKey, (mesh) => this._normalizeMesh(mesh, url));
             if (model) model.userData = { treeTypeId: t, treeModelKey: modelKey };
           }
 
@@ -204,18 +205,19 @@ export class ThreePlantLayer {
     return this._emojiMap[`${typeId}_${stage}`] || '🌿';
   }
 
-  _normalizeMesh(mesh, modelKey = null) {
+  _normalizeMesh(mesh, modelUrl = null) {
     mesh.updateMatrixWorld(true);
     let box = new THREE.Box3().setFromObject(mesh);
     if (box.isEmpty()) return;
 
     const size = new THREE.Vector3();
     box.getSize(size);
-    if (modelKey === 'DEAD_STUMP') {
-      mesh.rotation.x = Math.PI / 2;
+    const rotateXOverride = getModelRotateXOverride(modelUrl);
+    if (Number.isFinite(rotateXOverride)) {
+      mesh.rotation.x = rotateXOverride;
       mesh.updateMatrixWorld(true);
       box = new THREE.Box3().setFromObject(mesh);
-    } else if (size.y > size.z * 1.15) {
+    } else if (shouldAutoRotateModel(size)) {
       mesh.rotation.x = Math.PI / 2;
       mesh.updateMatrixWorld(true);
       box = new THREE.Box3().setFromObject(mesh);

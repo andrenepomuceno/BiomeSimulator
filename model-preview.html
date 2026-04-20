@@ -295,6 +295,11 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+    import {
+      buildRuntimeModelCatalog,
+      getModelRotateXOverride,
+      shouldAutoRotateModel,
+    } from './src/renderer/three/threeModelProfiles.js';
 
     const statusEl = document.getElementById('status');
     const galleryEl = document.getElementById('gallery');
@@ -307,19 +312,6 @@
 
     const loader = new GLTFLoader();
     const thumbnails = [];
-
-    const MODEL_ROTATE_X_OVERRIDES = {
-      '/model-assets/nature/stump_round.glb': Math.PI / 2,
-      '/model-assets/animals/animal-beaver.glb': Math.PI / 2,
-      '/model-assets/animals/animal-cow.glb': Math.PI / 2,
-      '/model-assets/animals/animal-fox.glb': Math.PI / 2,
-      '/model-assets/animals/animal-dog.glb': Math.PI / 2,
-      '/model-assets/animals/animal-hog.glb': Math.PI / 2,
-      '/model-assets/animals/animal-polar.glb': Math.PI / 2,
-      '/model-assets/animals/animal-cat.glb': Math.PI / 2,
-      '/model-assets/animals/animal-parrot.glb': Math.PI / 2,
-      '/model-assets/animals/animal-crab.glb': Math.PI / 2,
-    };
 
     const THUMB_WIDTH = 320;
     const THUMB_HEIGHT = 220;
@@ -374,34 +366,8 @@
 
     let previewRoot = null;
     let activeThumbnailJob = Promise.resolve();
-
-    function parseModelList(text) {
-      const lines = text.split(/\r?\n/);
-      let currentCategory = 'Misc';
-      const categories = new Map();
-
-      for (const raw of lines) {
-        const line = raw.trim();
-        if (!line) continue;
-
-        if (line.startsWith('#')) {
-          const header = line.replace(/^#+/, '').trim();
-          if (header.toLowerCase() !== 'models used by threerenderer') {
-            currentCategory = header;
-          }
-          continue;
-        }
-
-        if (!line.toLowerCase().endsWith('.glb')) continue;
-
-        if (!categories.has(currentCategory)) {
-          categories.set(currentCategory, []);
-        }
-        categories.get(currentCategory).push(line);
-      }
-
-      return categories;
-    }
+    let doneThumbs = 0;
+    let failedThumbs = 0;
 
     function fitCameraToObject(camera, controls, object) {
       const box = new THREE.Box3().setFromObject(object);
@@ -450,14 +416,14 @@
       const size = new THREE.Vector3();
       box.getSize(size);
 
-      // Same heuristic used by the runtime renderer: if Y dominates, model is likely sideways.
-      const rotateXOverride = MODEL_ROTATE_X_OVERRIDES[modelPath];
+      // Uses the same shared orientation rules as the runtime renderer.
+      const rotateXOverride = getModelRotateXOverride(modelPath);
 
       if (Number.isFinite(rotateXOverride)) {
         root.rotation.x = rotateXOverride;
         root.updateMatrixWorld(true);
         box = new THREE.Box3().setFromObject(root);
-      } else if (size.y > size.z * 1.15) {
+      } else if (shouldAutoRotateModel(size)) {
         root.rotation.x = Math.PI / 2;
         root.updateMatrixWorld(true);
         box = new THREE.Box3().setFromObject(root);
@@ -606,10 +572,14 @@
           const dataUrl = await renderThumbnail(modelPath);
           thumbImg.src = dataUrl;
           loading.classList.add('hidden');
-          const done = thumbnails.filter((t) => t.img.src).length;
-          statusEl.textContent = `Rendered ${done}/${thumbnails.length} thumbnails...`;
+          doneThumbs += 1;
+          statusEl.textContent = `Rendered ${doneThumbs}/${thumbnails.length} thumbnails`;
+          if (failedThumbs > 0) statusEl.textContent += ` (${failedThumbs} failed)`;
+          statusEl.textContent += '...';
         } catch {
+          failedThumbs += 1;
           setError('Thumbnail failed');
+          statusEl.textContent = `Rendered ${doneThumbs}/${thumbnails.length} thumbnails (${failedThumbs} failed)...`;
         }
       });
 
@@ -619,7 +589,7 @@
     function buildGallery(categoryMap) {
       const categoryEntries = [...categoryMap.entries()];
       if (categoryEntries.length === 0) {
-        statusEl.textContent = 'No .glb entries found in USED_MODELS.txt';
+        statusEl.textContent = 'No GLB entries found in runtime renderer catalog.';
         return;
       }
 
@@ -641,6 +611,8 @@
       }
 
       const total = thumbnails.length;
+      doneThumbs = 0;
+      failedThumbs = 0;
       statusEl.textContent = `Rendered 0/${total} thumbnails...`;
     }
 
@@ -685,10 +657,7 @@
 
     async function init() {
       try {
-        const res = await fetch('/model-assets/USED_MODELS.txt', { cache: 'no-cache' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text = await res.text();
-        const categoryMap = parseModelList(text);
+        const categoryMap = buildRuntimeModelCatalog();
         buildGallery(categoryMap);
         updateLights(Number(lightStrengthEl.value));
         wireGlobalControls();

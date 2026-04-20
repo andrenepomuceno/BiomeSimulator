@@ -90,12 +90,15 @@ export class ThreeRenderer {
 
     // Add 3D axis helper to visualize world orientation
     // Red (X-axis), Green (Y-axis), Blue (Z-axis)
-    const axesHelper = new THREE.AxesHelper(50);
-    axesHelper.position.set(0, 0, 0);
-    this.worldGroup.add(axesHelper);
+    this._axesHelper = new THREE.AxesHelper(50);
+    this._axesHelper.position.set(0, 0, 0);
+    this.worldGroup.add(this._axesHelper);
 
     this._orbitControls = new OrbitControls(this._orbitCamera3D, this.renderer.domElement);
     configureOrbitControls(this._orbitControls);
+    this._orbitControls.addEventListener('change', () => {
+      if (this._orbitControlsEnabled) this._emitViewportChanged();
+    });
 
     this._raycaster = new THREE.Raycaster();
     this._pickPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
@@ -128,9 +131,10 @@ export class ThreeRenderer {
     this._fleeBuckets = new Set();
     this._fleeBucketTick = -1;
 
-    this._plantPoints = null;
-    this._itemPoints = null;
-    this._entityPoints = null;
+    // Pre-allocated point layers — geometry + material created once, updated via setDrawRange
+    this._plantPoints = this._createPointLayer(MAX_VISIBLE_PLANT_POINTS, 2.5, 1, 0.95);
+    this._itemPoints = this._createPointLayer(MAX_VISIBLE_ITEM_POINTS, 3.5, 2, 1);
+    this._entityPoints = this._createPointLayer(MAX_VISIBLE_ENTITY_POINTS, 4.5, 3, 1);
 
     // Plant sprites (zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
     this._plantEmojiMap = buildPlantEmojiMap();
@@ -193,7 +197,8 @@ export class ThreeRenderer {
       depthTest: false,
       depthWrite: false,
     });
-    this._overlayScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this._nightMaterial));
+    this._overlayMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this._nightMaterial);
+    this._overlayScene.add(this._overlayMesh);
 
     this._selectedTile = null;
     this._selectedEntityId = null;
@@ -485,25 +490,13 @@ export class ThreeRenderer {
     return texture;
   }
 
-  _disposePoints(points) {
-    if (!points) return;
-    points.geometry.dispose();
-    points.material.dispose();
-    this.worldGroup.remove(points);
-  }
-
-  _replacePoints(layerKey, positions, colors, size, z, opacity = 1) {
-    const old = this[layerKey];
-    if (old) this._disposePoints(old);
-
-    if (positions.length === 0) {
-      this[layerKey] = null;
-      return;
-    }
-
+  _createPointLayer(maxCount, size, z, opacity = 1) {
+    const positions = new Float32Array(maxCount * 3);
+    const colors = new Float32Array(maxCount * 3);
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setDrawRange(0, 0);
 
     const material = new THREE.PointsMaterial({
       size,
@@ -519,7 +512,29 @@ export class ThreeRenderer {
     points.position.set(0, 0, z);
     points.renderOrder = 10 + z;
     this.worldGroup.add(points);
-    this[layerKey] = points;
+    return points;
+  }
+
+  _disposePoints(points) {
+    if (!points) return;
+    points.geometry.dispose();
+    points.material.dispose();
+    this.worldGroup.remove(points);
+  }
+
+  _updatePoints(points, positionsArr, colorsArr, size) {
+    const posAttr = points.geometry.getAttribute('position');
+    const colAttr = points.geometry.getAttribute('color');
+    const count = positionsArr.length / 3;
+
+    for (let i = 0, len = positionsArr.length; i < len; i++) {
+      posAttr.array[i] = positionsArr[i];
+      colAttr.array[i] = colorsArr[i];
+    }
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
+    points.geometry.setDrawRange(0, count);
+    points.material.size = size;
   }
 
   // ---- FPS profiling ----
@@ -640,7 +655,7 @@ export class ThreeRenderer {
 
   _rebuildPlantPoints() {
     if (!this._plantType || !this._plantStage || this.mapWidth <= 0 || this.mapHeight <= 0) {
-      this._replacePoints('_plantPoints', [], [], 2.5, 1, 0.95);
+      this._updatePoints(this._plantPoints, [], [], 2.5);
       return;
     }
 
@@ -667,13 +682,13 @@ export class ThreeRenderer {
     }
 
     const pointSize = this.camera.zoom >= 6 ? 3.5 : 2.5;
-    this._replacePoints('_plantPoints', positions, colors, pointSize, 1, 0.95);
+    this._updatePoints(this._plantPoints, positions, colors, pointSize);
     this._rebuildPlantSprites();
   }
 
   _rebuildItemPoints() {
     if (this._itemsById.size === 0) {
-      this._replacePoints('_itemPoints', [], [], 3.5, 2, 1);
+      this._updatePoints(this._itemPoints, [], [], 3.5);
       return;
     }
 
@@ -693,13 +708,13 @@ export class ThreeRenderer {
     }
 
     const pointSize = this.camera.zoom >= 6 ? 4 : 3;
-    this._replacePoints('_itemPoints', positions, colors, pointSize, 2, 1);
+    this._updatePoints(this._itemPoints, positions, colors, pointSize);
     this._rebuildItemSprites();
   }
 
   _rebuildEntityPoints() {
     if (!this._animals || this._animals.length === 0) {
-      this._replacePoints('_entityPoints', [], [], 4.5, 3, 1);
+      this._updatePoints(this._entityPoints, [], [], 4.5);
       return;
     }
 
@@ -719,7 +734,7 @@ export class ThreeRenderer {
     }
 
     const pointSize = this.camera.zoom >= 6 ? 5 : 3.5;
-    this._replacePoints('_entityPoints', positions, colors, pointSize, 3, 1);
+    this._updatePoints(this._entityPoints, positions, colors, pointSize);
   }
 
   // --- Plant sprites ---
@@ -1451,7 +1466,8 @@ export class ThreeRenderer {
     }
     // Prune stale entries
     if (this._prevAnimalStates.size > this._animals.length * 2 + 100) {
-      const alive = new Set(this._animals.map(a => a?.id));
+      const alive = new Set();
+      for (const a of this._animals) if (a) alive.add(a.id);
       for (const id of this._prevAnimalStates.keys()) {
         if (!alive.has(id)) this._prevAnimalStates.delete(id);
       }
@@ -1466,7 +1482,7 @@ export class ThreeRenderer {
     }
 
     if (this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD) {
-      this._replacePoints('_entityPoints', [], [], 4.5, 3, 1);
+      this._updatePoints(this._entityPoints, [], [], 4.5);
       this._rebuildEntitySprites();
     } else {
       for (const sprite of this._entitySprites.values()) {
@@ -1673,6 +1689,13 @@ export class ThreeRenderer {
     this._itemPoints = null;
     this._entityPoints = null;
 
+    if (this._axesHelper) {
+      this.worldGroup.remove(this._axesHelper);
+      this._axesHelper.geometry.dispose();
+      this._axesHelper.material.dispose();
+      this._axesHelper = null;
+    }
+
     for (const sprite of this._entitySprites.values()) {
       this.worldGroup.remove(sprite);
       sprite.material.dispose();
@@ -1739,6 +1762,10 @@ export class ThreeRenderer {
     this._itemTextureCache.clear();
 
     this._nightMaterial.dispose();
+    if (this._overlayMesh) {
+      this._overlayMesh.geometry.dispose();
+      this._overlayMesh = null;
+    }
     this._particleMaterial.dispose();
     this._particleGeometry.dispose();
 

@@ -3,9 +3,9 @@ import { SPECIES_INFO } from '../../utils/terrainColors.js';
 import { AnimalState, Direction, LifeStage } from '../../engine/entities.js';
 import { buildAnimalColorMap, buildSpeciesVisualScale } from '../../engine/animalSpecies.js';
 import { createModelAssetLoader } from './modelAssetLoader.js';
-import { ThreePointLayer } from './threePointLayer.js';
-import { ThreeSpritePool } from './threeSpritePool.js';
-import { ThreeModelPool } from './threeModelPool.js';
+import { ThreePointLayer } from './pointLayer.js';
+import { ThreeSpritePool } from './spritePool.js';
+import { ThreeModelPool } from './modelPool.js';
 import {
   MAX_VISIBLE_ENTITY_POINTS,
   ENTITY_SPRITE_ZOOM_THRESHOLD,
@@ -15,8 +15,8 @@ import {
   ORBIT_ENTITY_MODEL_BOOST,
   ENTITY_MODEL_URLS,
   ENTITY_MODEL_SCALE_MULTIPLIERS,
-} from './threeRendererConfig.js';
-import { getModelRotateXOverride, shouldAutoRotateModel } from './threeModelProfiles.js';
+} from './rendererConfig.js';
+import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
 
 // Map engine direction to model rotation around Z-axis.
 // Models face +Y by default (forward).

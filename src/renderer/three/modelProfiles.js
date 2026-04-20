@@ -4,7 +4,7 @@ import {
   DEAD_TREE_MODEL_URL,
   ENTITY_MODEL_URLS,
   ITEM_MODEL_URLS,
-} from './threeRendererConfig.js';
+} from './rendererConfig.js';
 
 export const MODEL_SIDEWAYS_RATIO_THRESHOLD = 1.15;
 

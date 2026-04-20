@@ -7,17 +7,17 @@ import {
   buildOrbitViewportBounds,
   buildOrbitCameraPreset,
   clampCameraAboveGround,
-} from './threeRendererOrbit.js';
+} from './rendererOrbit.js';
 import {
   ENTITY_SPRITE_ZOOM_THRESHOLD,
   clamp,
-} from './threeRendererConfig.js';
-import { ThreeEmojiAtlas } from './threeEmojiAtlas.js';
-import { ThreeParticleSystem } from './threeParticleSystem.js';
-import { ThreePlantLayer } from './threePlantLayer.js';
-import { ThreeItemLayer } from './threeItemLayer.js';
-import { ThreeEntityLayer } from './threeEntityLayer.js';
-import { ThreeInputHandler } from './threeInputHandler.js';
+} from './rendererConfig.js';
+import { ThreeEmojiAtlas } from './emojiAtlas.js';
+import { ThreeParticleSystem } from './particleSystem.js';
+import { ThreePlantLayer } from './plantLayer.js';
+import { ThreeItemLayer } from './itemLayer.js';
+import { ThreeEntityLayer } from './entityLayer.js';
+import { ThreeInputHandler } from './inputHandler.js';
 import useSimStore from '../../store/simulationStore.js';
 
 export class ThreeRenderer {

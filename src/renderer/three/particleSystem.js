@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAX_PARTICLES, PARTICLE_DEFS } from './threeRendererConfig.js';
+import { MAX_PARTICLES, PARTICLE_DEFS } from './rendererConfig.js';
 
 /**
  * Self-contained particle system rendered as a single Points object.

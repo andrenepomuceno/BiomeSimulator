@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { PLANT_COLORS } from '../../utils/terrainColors.js';
 import { buildPlantEmojiMap, buildTreeTypes } from '../../engine/plantSpecies.js';
 import { createModelAssetLoader } from './modelAssetLoader.js';
-import { ThreePointLayer } from './threePointLayer.js';
-import { ThreeSpritePool } from './threeSpritePool.js';
-import { ThreeModelPool } from './threeModelPool.js';
+import { ThreePointLayer } from './pointLayer.js';
+import { ThreeSpritePool } from './spritePool.js';
+import { ThreeModelPool } from './modelPool.js';
 import {
   MAX_VISIBLE_PLANT_POINTS,
   MAX_VISIBLE_PLANT_SPRITES,
@@ -14,8 +14,8 @@ import {
   PLANT_MODEL_URLS,
   PLANT_MODEL_SCALE_MULTIPLIERS,
   DEAD_TREE_MODEL_URL,
-} from './threeRendererConfig.js';
-import { getModelRotateXOverride, shouldAutoRotateModel } from './threeModelProfiles.js';
+} from './rendererConfig.js';
+import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
 
 /**
  * Plant rendering layer for the Three.js renderer.

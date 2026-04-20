@@ -106,7 +106,7 @@ export const ITEM_MODEL_SCALE_MULTIPLIERS = {
 // Entity (animal) 3D models (kenney_cube-pets, CC0)
 // Keys match species IDs from ANIMAL_SPECIES.
 // Kenney cube-pets face +Y forward, +Z up; the engine's Direction enum
-// maps to yaw rotations in DIRECTION_YAW (threeEntityLayer.js).
+// maps to yaw rotations in DIRECTION_YAW (entityLayer.js).
 // ---------------------------------------------------------------------------
 
 export const ENTITY_MODEL_URLS = {

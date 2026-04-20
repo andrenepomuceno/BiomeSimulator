@@ -1,4 +1,4 @@
-import { MIN_ZOOM, MAX_ZOOM, clamp } from './threeRendererConfig.js';
+import { MIN_ZOOM, MAX_ZOOM, clamp } from './rendererConfig.js';
 
 export class ViewCamera {
   constructor(screen, onChanged) {

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { createModelAssetLoader } from './modelAssetLoader.js';
-import { ThreePointLayer } from './threePointLayer.js';
-import { ThreeSpritePool } from './threeSpritePool.js';
-import { ThreeModelPool } from './threeModelPool.js';
+import { ThreePointLayer } from './pointLayer.js';
+import { ThreeSpritePool } from './spritePool.js';
+import { ThreeModelPool } from './modelPool.js';
 import {
   MAX_VISIBLE_ITEM_POINTS,
   MAX_VISIBLE_ITEM_SPRITES,
@@ -11,8 +11,8 @@ import {
   ITEM_COLORS,
   ITEM_MODEL_URLS,
   ITEM_MODEL_SCALE_MULTIPLIERS,
-} from './threeRendererConfig.js';
-import { getModelRotateXOverride, shouldAutoRotateModel } from './threeModelProfiles.js';
+} from './rendererConfig.js';
+import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
 
 /**
  * Item rendering layer for the Three.js renderer.

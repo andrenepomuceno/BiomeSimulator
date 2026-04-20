@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { SPECIES_INFO } from '../../utils/terrainColors.js';
 import { AnimalState, Direction, LifeStage } from '../../engine/entities.js';
 import { buildAnimalColorMap, buildSpeciesVisualScale } from '../../engine/animalSpecies.js';
@@ -23,6 +24,20 @@ const DIRECTION_YAW = {
   [Direction.RIGHT]: -Math.PI / 2,
   [Direction.LEFT]: Math.PI / 2,
   [Direction.DOWN]: Math.PI,
+};
+
+// Some Kenney animal models are authored Y-up and need an explicit axis correction.
+const ENTITY_ROTATE_X_OVERRIDES = {
+  SQUIRREL: Math.PI / 2,
+  GOAT: Math.PI / 2,
+  FOX: Math.PI / 2,
+  WOLF: Math.PI / 2,
+  BOAR: Math.PI / 2,
+  BEAR: Math.PI / 2,
+  RACCOON: Math.PI / 2,
+  CROW: Math.PI / 2,
+  HAWK: Math.PI / 2,
+  CROCODILE: Math.PI / 2,
 };
 
 /**
@@ -201,7 +216,7 @@ export class ThreeEntityLayer {
 
         let model = this._models.get(a.id);
         if (!model && this._models.isReady(species)) {
-          model = this._models.acquire(a.id, species);
+          model = this._models.acquire(a.id, species, (mesh) => this._normalizeEntityMesh(mesh, species));
           if (model) model.userData.species = species;
         }
         if (model) {
@@ -268,6 +283,33 @@ export class ThreeEntityLayer {
     model.rotation.y = 0;
     const dir = Number.isFinite(a?.direction) ? a.direction : null;
     model.rotation.z = dir != null ? (DIRECTION_YAW[dir] ?? 0) : 0;
+  }
+
+  _normalizeEntityMesh(mesh, species) {
+    mesh.updateMatrixWorld(true);
+    let box = new THREE.Box3().setFromObject(mesh);
+    if (box.isEmpty()) return;
+
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const rotateXOverride = ENTITY_ROTATE_X_OVERRIDES[species];
+
+    if (Number.isFinite(rotateXOverride)) {
+      mesh.rotation.x = rotateXOverride;
+      mesh.updateMatrixWorld(true);
+      box = new THREE.Box3().setFromObject(mesh);
+    } else if (size.y > size.z * 1.15) {
+      mesh.rotation.x = Math.PI / 2;
+      mesh.updateMatrixWorld(true);
+      box = new THREE.Box3().setFromObject(mesh);
+    }
+
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    mesh.position.x -= center.x;
+    mesh.position.y -= center.y;
+    mesh.position.z -= box.min.z;
+    mesh.updateMatrixWorld(true);
   }
 
   destroy() {

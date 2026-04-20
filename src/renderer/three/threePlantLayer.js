@@ -128,7 +128,7 @@ export class ThreePlantLayer {
 
           let model = this._models.get(idx);
           if (!model && this._models.isReady(modelKey)) {
-            model = this._models.acquire(idx, modelKey, (mesh) => this._normalizeMesh(mesh));
+            model = this._models.acquire(idx, modelKey, (mesh) => this._normalizeMesh(mesh, modelKey));
             if (model) model.userData = { treeTypeId: t, treeModelKey: modelKey };
           }
 
@@ -204,14 +204,18 @@ export class ThreePlantLayer {
     return this._emojiMap[`${typeId}_${stage}`] || '🌿';
   }
 
-  _normalizeMesh(mesh) {
+  _normalizeMesh(mesh, modelKey = null) {
     mesh.updateMatrixWorld(true);
     let box = new THREE.Box3().setFromObject(mesh);
     if (box.isEmpty()) return;
 
     const size = new THREE.Vector3();
     box.getSize(size);
-    if (size.y > size.z * 1.15) {
+    if (modelKey === 'DEAD_STUMP') {
+      mesh.rotation.x = Math.PI / 2;
+      mesh.updateMatrixWorld(true);
+      box = new THREE.Box3().setFromObject(mesh);
+    } else if (size.y > size.z * 1.15) {
       mesh.rotation.x = Math.PI / 2;
       mesh.updateMatrixWorld(true);
       box = new THREE.Box3().setFromObject(mesh);

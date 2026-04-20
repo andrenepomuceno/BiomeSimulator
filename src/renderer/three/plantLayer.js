@@ -120,7 +120,7 @@ export class ThreePlantLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, cameraPos) {
     const show = (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
       && this._plantType && this._plantStage && this._mapWidth > 0;
 
@@ -141,12 +141,22 @@ export class ThreePlantLayer {
     const swayTime = now * 0.001; // seconds for sway
     const GROWTH_PULSE_DURATION = 600; // ms
 
+    // LOD: in orbit mode, skip sprites/models beyond distance threshold
+    const LOD_PLANT_DIST_SQ = 70 * 70;
+    const useLOD = orbitEnabled && cameraPos;
+
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) {
         const idx = y * this._mapWidth + x;
         const t = this._plantType[idx];
         const s = this._plantStage[idx];
         if (t === 0 || s === 0) continue;
+
+        if (useLOD) {
+          const dx = x - cameraPos.x;
+          const dy = y - cameraPos.y;
+          if (dx * dx + dy * dy > LOD_PLANT_DIST_SQ) continue;
+        }
 
         // Growth pulse scale factor
         let growthScale = 1;
@@ -201,9 +211,11 @@ export class ThreePlantLayer {
         const emoji = this._getEmoji(t, s);
         const sprite = this._sprites.acquire(idx, emoji);
         sprite.position.set(x + 0.5, y + 0.5, 0.5);
-        const sprScale = scale * growthScale;
+        const isDead = s > 5;
+        const sprScale = scale * growthScale * (isDead ? 0.5 : 1);
         sprite.scale.set(sprScale, sprScale, 1);
-        sprite.material.opacity = s === 1 ? 0.75 : s === 2 ? 0.85 : s === 3 ? 0.92 : s === 5 ? 0.96 : 1.0;
+        sprite.material.opacity = isDead ? 0.3
+          : s === 1 ? 0.75 : s === 2 ? 0.85 : s === 3 ? 0.92 : s === 5 ? 0.96 : 1.0;
         sprite.renderOrder = 20;
         sprite.visible = true;
         seenSprites.add(idx);

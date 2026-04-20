@@ -48,11 +48,14 @@ export class ThreeRenderer {
     this._activeCamera3D = this.camera3D;
     this._orbitControlsEnabled = false;
 
-    this._ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-    this._directionalLight = new THREE.DirectionalLight(0xffffff, 0.65);
-    this._directionalLight.position.set(0.5, -1, 2);
+    this._ambientLight = new THREE.HemisphereLight(0xd9f6ff, 0x24303f, 0.75);
+    this._keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    this._keyLight.position.set(0.5, -1, 2);
+    this._fillLight = new THREE.DirectionalLight(0x89c8ff, 0.35);
+    this._fillLight.position.set(-1, 0.8, 1.5);
     this.scene.add(this._ambientLight);
-    this.scene.add(this._directionalLight);
+    this.scene.add(this._keyLight);
+    this.scene.add(this._fillLight);
 
     this.cameraGroup = new THREE.Group();
     this.worldGroup = new THREE.Group();
@@ -61,6 +64,7 @@ export class ThreeRenderer {
 
     this._axesHelper = new THREE.AxesHelper(50);
     this._axesHelper.position.set(0, 0, 0);
+    this._axesHelper.visible = false; // debug only
     this.worldGroup.add(this._axesHelper);
 
     // ---- Orbit controls ----
@@ -290,12 +294,14 @@ export class ThreeRenderer {
       const orbit = this._orbitControlsEnabled;
       const onRefresh = () => this._scheduleVisibilityRefresh();
 
+      const camPos = orbit ? this._orbitCamera3D.position : null;
+
       this._plantLayer.rebuildPoints(vp, zoom);
-      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
+      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, camPos);
       this._itemLayer.rebuildPoints(vp, zoom);
       this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
       this._entityLayer.rebuildPoints(vp, zoom);
-      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick);
+      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, camPos);
       this._refreshSelectionMarker();
     });
   }
@@ -480,10 +486,12 @@ export class ThreeRenderer {
 
     const vpVis = this._getViewportBounds(1);
     if (this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD) {
+      const camPos = this._orbitControlsEnabled ? this._orbitCamera3D.position : null;
       this._entityLayer.rebuildSprites(
         vpVis, this.camera.zoom, this._orbitControlsEnabled,
         () => this._scheduleVisibilityRefresh(),
         tick || 0,
+        camPos,
       );
     } else {
       this._entityLayer.rebuildPoints(vpVis, this.camera.zoom);
@@ -537,6 +545,7 @@ export class ThreeRenderer {
 
   setSelectedEntity(id) {
     this._selectedEntityId = id;
+    this._entityLayer.setSelectedId(id);
     const selected = this._entityLayer.animals?.find((a) => a.id === id);
     if (selected && Number.isFinite(selected.x) && Number.isFinite(selected.y)) {
       this._selectedTile = { x: selected.x | 0, y: selected.y | 0 };
@@ -559,6 +568,7 @@ export class ThreeRenderer {
   clearSelection() {
     this._selectedEntityId = null;
     this._selectedTile = null;
+    this._entityLayer.setSelectedId(null);
     this._refreshSelectionMarker();
   }
 

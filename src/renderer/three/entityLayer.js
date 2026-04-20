@@ -114,6 +114,18 @@ export class ThreeEntityLayer {
 
     // --- Vocal event tracking ---
     this._lastIdleVocalTickByEntity = new Map();
+
+    // --- Selection ring ---
+    this._selectedId = null;
+    this._selectionTick = 0;
+    this._selectionRing = null;
+    this._selectionRingMat = new THREE.MeshBasicMaterial({
+      color: 0xffdd44,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
   }
 
   get animals() {
@@ -122,6 +134,14 @@ export class ThreeEntityLayer {
 
   setAnimals(animals) {
     this._animals = Array.isArray(animals) ? animals : [];
+  }
+
+  setSelectedId(id) {
+    this._selectedId = id ?? null;
+    this._selectionTick = 0;
+    if (!id && this._selectionRing) {
+      this._selectionRing.visible = false;
+    }
   }
 
   // ---- State-transition effects ----
@@ -272,7 +292,7 @@ export class ThreeEntityLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, cameraPos) {
     const showSprites = orbitEnabled || zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
     if (!showSprites) {
       this._sprites.releaseAll();
@@ -286,6 +306,10 @@ export class ThreeEntityLayer {
     const { showAnimalHpBars } = useSimStore.getState();
     const showBars = showAnimalHpBars !== false && zoom >= ENTITY_BARS_MIN_ZOOM;
 
+    // LOD: in orbit mode, skip models/sprites beyond this distance from camera
+    const LOD_SPRITE_DIST_SQ = 80 * 80;
+    const useLOD = orbitEnabled && cameraPos;
+
     const { x0, y0, x1, y1 } = viewport;
     const seenSprites = new Set();
     const seenModels = new Set();
@@ -294,6 +318,13 @@ export class ThreeEntityLayer {
     for (const a of this._animals) {
       if (!a) continue;
       if (a.x < x0 || a.x >= x1 || a.y < y0 || a.y >= y1) continue;
+
+      // LOD distance cull — entities beyond threshold rely on points layer only
+      if (useLOD) {
+        const dx = a.x - cameraPos.x;
+        const dy = a.y - cameraPos.y;
+        if (dx * dx + dy * dy > LOD_SPRITE_DIST_SQ) continue;
+      }
 
       seenIds.add(a.id);
 
@@ -320,14 +351,18 @@ export class ThreeEntityLayer {
       // --- Animations ---
       let posX = a.x;
       let posY = a.y;
-      let posZ = 0.4;
+      let posZ = 0.4; // sprite base Z (billboard above ground)
+      const isFlying = this._flyingSet.has(a.species);
+      let modelPosZ = isFlying ? 0.25 : 0.02; // models sit on ground, flying species hover
       let rotZ = 0;
 
       // Walk bobbing
       const moved = a.x !== anim.lastX || a.y !== anim.lastY;
       if (moved) {
         anim.walkPhase += WALK_BOB_SPEED;
-        posZ += Math.abs(Math.sin(anim.walkPhase)) * WALK_BOB_AMPLITUDE;
+        const bob = Math.abs(Math.sin(anim.walkPhase)) * WALK_BOB_AMPLITUDE;
+        posZ += bob;
+        modelPosZ += bob;
       } else {
         anim.walkPhase = 0;
       }
@@ -351,7 +386,9 @@ export class ThreeEntityLayer {
         const age = currentTick - anim.attackTick;
         if (age < ATTACK_JUMP_DURATION) {
           const t = age / ATTACK_JUMP_DURATION;
-          posZ += Math.sin(t * Math.PI) * ATTACK_JUMP_HEIGHT;
+          const jump = Math.sin(t * Math.PI) * ATTACK_JUMP_HEIGHT;
+          posZ += jump;
+          modelPosZ += jump;
           finalScale *= 1 + Math.sin(t * Math.PI) * 0.08;
         } else {
           anim.attackTick = null;
@@ -397,7 +434,7 @@ export class ThreeEntityLayer {
         if (model) {
           if (this._sprites.has(a.id)) this._sprites.release(a.id);
           const modelScale = this._getModelScale(a, finalScale, orbitEnabled);
-          model.position.set(posX, posY, posZ);
+          model.position.set(posX, posY, modelPosZ);
           model.scale.set(modelScale, modelScale, modelScale);
           this._setModelOrientation(model, a);
           model.visible = true;
@@ -448,6 +485,7 @@ export class ThreeEntityLayer {
     this._pruneShadows(seenIds);
     this._pruneHpBars(seenIds);
     this._pruneAnimState(seenIds);
+    this._updateSelectionRing();
   }
 
   // ---- Shadow management ----
@@ -574,6 +612,37 @@ export class ThreeEntityLayer {
     }
   }
 
+  // ---- Selection ring ----
+
+  _updateSelectionRing() {
+    if (!this._selectedId) {
+      if (this._selectionRing) this._selectionRing.visible = false;
+      return;
+    }
+
+    // Find selected entity position
+    const entity = this._animals.find(a => a && a.id === this._selectedId);
+    if (!entity) {
+      if (this._selectionRing) this._selectionRing.visible = false;
+      return;
+    }
+
+    // Lazy-create ring mesh
+    if (!this._selectionRing) {
+      const geo = new THREE.RingGeometry(0.38, 0.48, 24);
+      this._selectionRing = new THREE.Mesh(geo, this._selectionRingMat);
+      this._selectionRing.renderOrder = 150;
+      this._worldGroup.add(this._selectionRing);
+    }
+
+    this._selectionTick++;
+    const pulse = 0.9 + 0.1 * Math.sin(this._selectionTick * 0.12);
+    this._selectionRing.position.set(entity.x, entity.y, 0.03);
+    this._selectionRing.scale.set(pulse, pulse, 1);
+    this._selectionRingMat.opacity = 0.7 + 0.2 * Math.sin(this._selectionTick * 0.12);
+    this._selectionRing.visible = true;
+  }
+
   // ---- Helpers ----
 
   _getEmoji(a) {
@@ -646,6 +715,14 @@ export class ThreeEntityLayer {
     this._fleeBuckets.clear();
     this._animState.clear();
     this._lastIdleVocalTickByEntity.clear();
+
+    // Selection ring
+    if (this._selectionRing) {
+      this._worldGroup.remove(this._selectionRing);
+      this._selectionRing.geometry.dispose();
+      this._selectionRing = null;
+    }
+    this._selectionRingMat.dispose();
 
     // Clean up shadows
     for (const shadow of this._shadows.values()) {

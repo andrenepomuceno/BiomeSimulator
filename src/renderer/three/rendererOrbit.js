@@ -1,31 +1,31 @@
 import * as THREE from 'three';
 
-const ORBIT_MIN_POLAR_ANGLE = 0.05;
-const ORBIT_MAX_POLAR_ANGLE = Math.PI / 2 - 0.05;
+const ORBIT_MIN_POLAR_ANGLE = 0.15;
+const ORBIT_MAX_POLAR_ANGLE = Math.PI / 3; // ~60° from zenith — prevents horizon overload
 /** Minimum camera Z height above the ground plane. */
-const MIN_CAMERA_HEIGHT = 2;
+const MIN_CAMERA_HEIGHT = 4;
 
 export function configureOrbitControls(controls) {
   controls.enabled = false;
   controls.enableDamping = true;
-  controls.dampingFactor = 0.12;
+  controls.dampingFactor = 0.15;
   controls.enablePan = true;
   controls.enableRotate = true;
   controls.enableZoom = true;
   controls.zoomSpeed = 1.4;
-  controls.panSpeed = 1.2;
-  controls.rotateSpeed = 0.8;
+  controls.panSpeed = 1.4;
+  controls.rotateSpeed = 0.6;
   controls.minPolarAngle = ORBIT_MIN_POLAR_ANGLE;
   controls.maxPolarAngle = ORBIT_MAX_POLAR_ANGLE;
   controls.screenSpacePanning = false;
   controls.mouseButtons = {
-    LEFT: THREE.MOUSE.ROTATE,
+    LEFT: THREE.MOUSE.PAN,
     MIDDLE: THREE.MOUSE.DOLLY,
-    RIGHT: THREE.MOUSE.PAN,
+    RIGHT: THREE.MOUSE.ROTATE,
   };
   controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,
-    TWO: THREE.TOUCH.DOLLY_PAN,
+    ONE: THREE.TOUCH.PAN,
+    TWO: THREE.TOUCH.DOLLY_ROTATE,
   };
 }
 
@@ -75,7 +75,7 @@ export function buildOrbitCameraPreset(vp, clamp) {
   return {
     dist,
     minDistance: Math.max(4, dist * 0.05),
-    maxDistance: Math.max(500, dist * 8),
+    maxDistance: Math.min(800, Math.max(300, dist * 4)),
     offsetY: dist * 0.48,
     offsetZ: dist * 0.62,
   };

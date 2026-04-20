@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Model Preview</title>
+  <style>
+    :root {
+      --bg: #0d1b24;
+      --panel: #142634;
+      --panel-2: #0f1f2c;
+      --text: #ebf4ff;
+      --muted: #95adbf;
+      --accent: #3fc17a;
+      --border: #2f4b61;
+      --canvas-bg: radial-gradient(circle at 30% 20%, #20384a 0%, #101d29 60%, #0a1620 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(63, 193, 122, 0.2), transparent 35%),
+        radial-gradient(circle at 85% 90%, rgba(82, 161, 255, 0.15), transparent 40%),
+        var(--bg);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      min-height: 100vh;
+    }
+
+    .shell {
+      width: min(1400px, 94vw);
+      margin: 0 auto;
+      padding: 20px 0 36px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(160deg, rgba(20, 38, 52, 0.96), rgba(15, 31, 44, 0.96));
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(20px, 3vw, 30px);
+      letter-spacing: 0.03em;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .controls label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .controls input[type="range"] {
+      width: 140px;
+    }
+
+    .status {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(20, 38, 52, 0.88);
+      padding: 10px 12px;
+      margin-bottom: 20px;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 38px;
+    }
+
+    .category {
+      margin: 24px 0 12px;
+      font-size: 19px;
+      letter-spacing: 0.03em;
+      color: #d8ecff;
+      text-transform: uppercase;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(20, 38, 52, 0.96), rgba(11, 24, 35, 0.96));
+      overflow: hidden;
+      box-shadow: 0 12px 20px rgba(0, 0, 0, 0.22);
+    }
+
+    .canvas-wrap {
+      height: 205px;
+      background: var(--canvas-bg);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .canvas-wrap img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    .thumb-loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #b8cee0;
+      font-size: 12px;
+      letter-spacing: 0.03em;
+      background: rgba(8, 18, 28, 0.55);
+      transition: opacity 0.2s ease;
+    }
+
+    .thumb-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .preview-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 8, 13, 0.78);
+      z-index: 20;
+      backdrop-filter: blur(2px);
+      padding: 16px;
+    }
+
+    .preview-modal.open {
+      display: flex;
+    }
+
+    .preview-dialog {
+      width: min(1080px, 95vw);
+      height: min(760px, 86vh);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(20, 38, 52, 0.98), rgba(8, 17, 25, 0.98));
+      overflow: hidden;
+      box-shadow: 0 24px 36px rgba(0, 0, 0, 0.45);
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .preview-canvas-wrap {
+      min-height: 0;
+      background: var(--canvas-bg);
+      position: relative;
+    }
+
+    .preview-canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .model-meta {
+      padding: 10px 12px 12px;
+    }
+
+    .model-name {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 6px;
+      letter-spacing: 0.02em;
+      color: #eff9ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .model-path {
+      font-size: 11px;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 9px;
+      gap: 8px;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #11364d;
+      color: #dff4ff;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #155070;
+    }
+
+    .card-note {
+      font-size: 11px;
+      color: #83cf9c;
+    }
+
+    .error {
+      color: #ff9e9e;
+    }
+
+    @media (max-width: 720px) {
+      .canvas-wrap {
+        height: 220px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <h1 class="title">3D Model Preview</h1>
+        <p class="subtitle">Click Open 3D on a card. Orbit with left mouse, pan with right mouse, zoom with wheel.</p>
+      </div>
+      <div class="controls">
+        <label>
+          <input type="checkbox" id="auto-rotate" checked />
+          Auto rotate
+        </label>
+        <label>
+          Light
+          <input type="range" id="light-strength" min="0.3" max="2.2" value="1.2" step="0.1" />
+        </label>
+      </div>
+    </header>
+
+    <div id="status" class="status">Loading model list...</div>
+    <div id="gallery"></div>
+  </div>
+
+  <div id="preview-modal" class="preview-modal" role="dialog" aria-modal="true" aria-label="3D model preview">
+    <div class="preview-dialog">
+      <div class="preview-header">
+        <span id="preview-model-label">Model</span>
+        <button id="close-preview" class="btn" type="button">Close</button>
+      </div>
+      <div id="preview-canvas-wrap" class="preview-canvas-wrap"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+    const statusEl = document.getElementById('status');
+    const galleryEl = document.getElementById('gallery');
+    const autoRotateEl = document.getElementById('auto-rotate');
+    const lightStrengthEl = document.getElementById('light-strength');
+    const previewModalEl = document.getElementById('preview-modal');
+    const previewCanvasWrapEl = document.getElementById('preview-canvas-wrap');
+    const previewModelLabelEl = document.getElementById('preview-model-label');
+    const closePreviewBtn = document.getElementById('close-preview');
+
+    const loader = new GLTFLoader();
+    const thumbnails = [];
+
+    const THUMB_WIDTH = 320;
+    const THUMB_HEIGHT = 220;
+
+    const thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    thumbRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    thumbRenderer.setSize(THUMB_WIDTH, THUMB_HEIGHT, false);
+    thumbRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const thumbScene = new THREE.Scene();
+    const thumbCamera = new THREE.PerspectiveCamera(48, THUMB_WIDTH / THUMB_HEIGHT, 0.01, 1000);
+    thumbCamera.up.set(0, 0, 1);
+
+    const thumbHemi = new THREE.HemisphereLight(0xd9f6ff, 0x24303f, Number(lightStrengthEl.value) * 0.7);
+    const thumbKey = new THREE.DirectionalLight(0xffffff, Number(lightStrengthEl.value));
+    thumbKey.position.set(8, -10, 14);
+    const thumbFill = new THREE.DirectionalLight(0x89c8ff, Number(lightStrengthEl.value) * 0.4);
+    thumbFill.position.set(-10, 8, 8);
+    const thumbGrid = new THREE.GridHelper(12, 12, 0x5a90b6, 0x375269);
+    thumbGrid.rotation.x = Math.PI / 2;
+    thumbGrid.material.opacity = 0.32;
+    thumbGrid.material.transparent = true;
+    thumbScene.add(thumbHemi, thumbKey, thumbFill, thumbGrid);
+
+    const previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    previewRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    previewCanvasWrapEl.appendChild(previewRenderer.domElement);
+
+    const previewScene = new THREE.Scene();
+    const previewCamera = new THREE.PerspectiveCamera(48, 1, 0.01, 1000);
+    previewCamera.up.set(0, 0, 1);
+    const previewControls = new OrbitControls(previewCamera, previewRenderer.domElement);
+    previewControls.enableDamping = true;
+    previewControls.dampingFactor = 0.11;
+    previewControls.screenSpacePanning = false;
+    previewControls.minPolarAngle = 0.05;
+    previewControls.maxPolarAngle = Math.PI / 2 - 0.05;
+    previewControls.autoRotate = autoRotateEl.checked;
+    previewControls.autoRotateSpeed = 1.2;
+
+    const previewHemi = new THREE.HemisphereLight(0xd9f6ff, 0x24303f, Number(lightStrengthEl.value) * 0.7);
+    const previewKey = new THREE.DirectionalLight(0xffffff, Number(lightStrengthEl.value));
+    previewKey.position.set(8, -10, 14);
+    const previewFill = new THREE.DirectionalLight(0x89c8ff, Number(lightStrengthEl.value) * 0.4);
+    previewFill.position.set(-10, 8, 8);
+    const previewGrid = new THREE.GridHelper(12, 12, 0x5a90b6, 0x375269);
+    previewGrid.rotation.x = Math.PI / 2;
+    previewGrid.material.opacity = 0.32;
+    previewGrid.material.transparent = true;
+    previewScene.add(previewHemi, previewKey, previewFill, previewGrid);
+
+    let previewRoot = null;
+    let activeThumbnailJob = Promise.resolve();
+
+    function parseModelList(text) {
+      const lines = text.split(/\r?\n/);
+      let currentCategory = 'Misc';
+      const categories = new Map();
+
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line) continue;
+
+        if (line.startsWith('#')) {
+          const header = line.replace(/^#+/, '').trim();
+          if (header.toLowerCase() !== 'models used by threerenderer') {
+            currentCategory = header;
+          }
+          continue;
+        }
+
+        if (!line.toLowerCase().endsWith('.glb')) continue;
+
+        if (!categories.has(currentCategory)) {
+          categories.set(currentCategory, []);
+        }
+        categories.get(currentCategory).push(line);
+      }
+
+      return categories;
+    }
+
+    function fitCameraToObject(camera, controls, object) {
+      const box = new THREE.Box3().setFromObject(object);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxSize = Math.max(size.x, size.y, size.z, 0.5);
+
+      const fov = camera.fov * (Math.PI / 180);
+      const distance = maxSize / Math.tan(fov / 2);
+
+      camera.position.set(
+        center.x + distance * 0.5,
+        center.y - distance * 0.7,
+        center.z + distance * 0.55,
+      );
+      camera.near = Math.max(0.01, distance / 200);
+      camera.far = distance * 60;
+      camera.updateProjectionMatrix();
+
+      controls.target.copy(center);
+      controls.minDistance = Math.max(0.15, distance * 0.2);
+      controls.maxDistance = distance * 6;
+      controls.update();
+    }
+
+    function clearSceneObject(scene, rootRef) {
+      if (!rootRef) return null;
+      scene.remove(rootRef);
+      rootRef.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.geometry?.dispose?.();
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((m) => m?.dispose?.());
+        } else {
+          obj.material?.dispose?.();
+        }
+      });
+      return null;
+    }
+
+    function loadModel(modelPath) {
+      return new Promise((resolve, reject) => {
+        loader.load(
+          modelPath,
+          (gltf) => {
+            const root = gltf.scene || gltf.scenes?.[0];
+            if (!root) {
+              reject(new Error('Model has no scene'));
+              return;
+            }
+            root.traverse((obj) => {
+              if (obj.isMesh) {
+                obj.castShadow = false;
+                obj.receiveShadow = false;
+              }
+            });
+            resolve(root);
+          },
+          undefined,
+          () => reject(new Error('Failed to load')),
+        );
+      });
+    }
+
+    function queueThumbnail(task) {
+      activeThumbnailJob = activeThumbnailJob.then(task, task);
+      return activeThumbnailJob;
+    }
+
+    async function renderThumbnail(modelPath) {
+      const root = await loadModel(modelPath);
+      thumbScene.add(root);
+      fitCameraToObject(thumbCamera, { target: new THREE.Vector3(), minDistance: 0, maxDistance: 0, update: () => {} }, root);
+      thumbRenderer.render(thumbScene, thumbCamera);
+      const dataUrl = thumbRenderer.domElement.toDataURL('image/png');
+      clearSceneObject(thumbScene, root);
+      return dataUrl;
+    }
+
+    function updateLights(intensity) {
+      thumbKey.intensity = intensity;
+      thumbFill.intensity = intensity * 0.4;
+      thumbHemi.intensity = intensity * 0.7;
+      previewKey.intensity = intensity;
+      previewFill.intensity = intensity * 0.4;
+      previewHemi.intensity = intensity * 0.7;
+    }
+
+    function resizePreviewRenderer() {
+      const width = Math.max(10, previewCanvasWrapEl.clientWidth);
+      const height = Math.max(10, previewCanvasWrapEl.clientHeight);
+      previewRenderer.setSize(width, height, false);
+      previewCamera.aspect = width / height;
+      previewCamera.updateProjectionMatrix();
+    }
+
+    async function openInteractivePreview(modelPath) {
+      previewRoot = clearSceneObject(previewScene, previewRoot);
+      previewModelLabelEl.textContent = modelPath;
+      previewModalEl.classList.add('open');
+      resizePreviewRenderer();
+      try {
+        const root = await loadModel(modelPath);
+        previewScene.add(root);
+        previewRoot = root;
+        fitCameraToObject(previewCamera, previewControls, root);
+      } catch {
+        previewModelLabelEl.textContent = `${modelPath} (failed to load)`;
+      }
+    }
+
+    function createCard(categoryName, modelPath) {
+      const card = document.createElement('article');
+      card.className = 'card';
+
+      const canvasWrap = document.createElement('div');
+      canvasWrap.className = 'canvas-wrap';
+      const thumbImg = document.createElement('img');
+      thumbImg.alt = `Preview of ${modelPath}`;
+      const loading = document.createElement('div');
+      loading.className = 'thumb-loading';
+      loading.textContent = 'Rendering preview...';
+      canvasWrap.appendChild(thumbImg);
+      canvasWrap.appendChild(loading);
+
+      const meta = document.createElement('div');
+      meta.className = 'model-meta';
+
+      const modelName = modelPath.split('/').pop();
+      const modelNameEl = document.createElement('p');
+      modelNameEl.className = 'model-name';
+      modelNameEl.textContent = modelName;
+
+      const pathEl = document.createElement('p');
+      pathEl.className = 'model-path';
+      pathEl.textContent = modelPath;
+
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+
+      const resetBtn = document.createElement('button');
+      resetBtn.className = 'btn';
+      resetBtn.textContent = 'Open 3D';
+
+      const note = document.createElement('span');
+      note.className = 'card-note';
+      note.textContent = categoryName;
+
+      actions.appendChild(resetBtn);
+      actions.appendChild(note);
+      meta.appendChild(modelNameEl);
+      meta.appendChild(pathEl);
+      meta.appendChild(actions);
+      card.appendChild(canvasWrap);
+      card.appendChild(meta);
+
+      const setError = (message) => {
+        note.className = 'card-note error';
+        note.textContent = message;
+        loading.textContent = message;
+      };
+
+      resetBtn.addEventListener('click', () => {
+        openInteractivePreview(modelPath);
+      });
+
+      const thumb = { modelPath, img: thumbImg, loading, note };
+      thumbnails.push(thumb);
+
+      queueThumbnail(async () => {
+        try {
+          const dataUrl = await renderThumbnail(modelPath);
+          thumbImg.src = dataUrl;
+          loading.classList.add('hidden');
+          const done = thumbnails.filter((t) => t.img.src).length;
+          statusEl.textContent = `Rendered ${done}/${thumbnails.length} thumbnails...`;
+        } catch {
+          setError('Thumbnail failed');
+        }
+      });
+
+      return card;
+    }
+
+    function buildGallery(categoryMap) {
+      const categoryEntries = [...categoryMap.entries()];
+      if (categoryEntries.length === 0) {
+        statusEl.textContent = 'No .glb entries found in USED_MODELS.txt';
+        return;
+      }
+
+      for (const [category, models] of categoryEntries) {
+        const heading = document.createElement('h2');
+        heading.className = 'category';
+        heading.textContent = category;
+
+        const grid = document.createElement('section');
+        grid.className = 'grid';
+
+        for (const modelPath of models) {
+          const card = createCard(category, modelPath);
+          grid.appendChild(card);
+        }
+
+        galleryEl.appendChild(heading);
+        galleryEl.appendChild(grid);
+      }
+
+      const total = thumbnails.length;
+      statusEl.textContent = `Rendered 0/${total} thumbnails...`;
+    }
+
+    function wireGlobalControls() {
+      autoRotateEl.addEventListener('change', () => {
+        previewControls.autoRotate = autoRotateEl.checked;
+      });
+
+      lightStrengthEl.addEventListener('input', () => {
+        updateLights(Number(lightStrengthEl.value));
+      });
+
+      window.addEventListener('resize', () => {
+        resizePreviewRenderer();
+      });
+
+      closePreviewBtn.addEventListener('click', () => {
+        previewModalEl.classList.remove('open');
+      });
+
+      previewModalEl.addEventListener('click', (event) => {
+        if (event.target === previewModalEl) {
+          previewModalEl.classList.remove('open');
+        }
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          previewModalEl.classList.remove('open');
+        }
+      });
+    }
+
+    function animate() {
+      if (previewModalEl.classList.contains('open')) {
+        previewControls.update();
+        previewCamera.position.z = Math.max(0.2, previewCamera.position.z);
+        previewRenderer.render(previewScene, previewCamera);
+      }
+      requestAnimationFrame(animate);
+    }
+
+    async function init() {
+      try {
+        const res = await fetch('/model-assets/USED_MODELS.txt', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const categoryMap = parseModelList(text);
+        buildGallery(categoryMap);
+        updateLights(Number(lightStrengthEl.value));
+        wireGlobalControls();
+        animate();
+      } catch (error) {
+        statusEl.classList.add('error');
+        statusEl.textContent = `Could not load model list: ${error.message}`;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

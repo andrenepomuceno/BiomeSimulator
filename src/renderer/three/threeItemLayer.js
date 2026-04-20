@@ -12,6 +12,7 @@ import {
   ITEM_MODEL_URLS,
   ITEM_MODEL_SCALE_MULTIPLIERS,
 } from './threeRendererConfig.js';
+import { getModelRotateXOverride, shouldAutoRotateModel } from './threeModelProfiles.js';
 
 /**
  * Item rendering layer for the Three.js renderer.
@@ -123,7 +124,7 @@ export class ThreeItemLayer {
         }
 
         const model = this._models.acquire(item.id, modelKey, (mesh) => {
-          this._normalizeItemMesh(mesh, item.type);
+          this._normalizeItemMesh(mesh, modelUrl);
         });
 
         if (model) {
@@ -156,12 +157,29 @@ export class ThreeItemLayer {
   }
 
   /** Normalize a freshly-cloned item mesh (center, upright). */
-  _normalizeItemMesh(mesh) {
+  _normalizeItemMesh(mesh, modelUrl = null) {
+    mesh.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(mesh);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
+    if (box.isEmpty()) return;
+
+    const rotateXOverride = getModelRotateXOverride(modelUrl);
+    if (Number.isFinite(rotateXOverride)) {
+      mesh.rotation.x = rotateXOverride;
+      mesh.updateMatrixWorld(true);
+    } else {
+      const sizeForHeuristic = box.getSize(new THREE.Vector3());
+      if (shouldAutoRotateModel(sizeForHeuristic)) {
+        mesh.rotation.x = Math.PI / 2;
+        mesh.updateMatrixWorld(true);
+      }
+    }
+
+    const normalizedBox = new THREE.Box3().setFromObject(mesh);
+    const center = normalizedBox.getCenter(new THREE.Vector3());
+    const size = normalizedBox.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
     mesh.position.sub(center);
+    mesh.position.z -= normalizedBox.min.z;
     mesh.scale.multiplyScalar(1 / maxDim);
   }
 

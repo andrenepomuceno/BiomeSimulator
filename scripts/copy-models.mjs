@@ -51,6 +51,7 @@ const MANIFEST = {
   'kenney_food-kit': {
     'nature/tomato.glb':            'Models/GLB format/tomato.glb',
     'nature/pepper.glb':            'Models/GLB format/pepper.glb',
+    'nature/Textures/colormap.png': 'Models/GLB format/Textures/colormap.png',
     'items/meat-cooked.glb':        'Models/GLB format/meat-cooked.glb',
     'items/apple.glb':              'Models/GLB format/apple.glb',
     'items/pumpkin-basic.glb':      'Models/GLB format/pumpkin-basic.glb',

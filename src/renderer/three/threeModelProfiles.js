@@ -10,6 +10,15 @@ export const MODEL_SIDEWAYS_RATIO_THRESHOLD = 1.15;
 
 export const MODEL_ROTATE_X_OVERRIDES_BY_URL = {
   [DEAD_TREE_MODEL_URL]: Math.PI / 2,
+  '/model-assets/nature/crops_leafsStageA.glb': Math.PI / 2,
+  '/model-assets/nature/flower_purpleB.glb': Math.PI / 2,
+  '/model-assets/nature/flower_yellowC.glb': Math.PI / 2,
+  '/model-assets/nature/grass_leafs.glb': Math.PI / 2,
+  '/model-assets/nature/plant_bushDetailed.glb': Math.PI / 2,
+  '/model-assets/nature/plant_bushSmall.glb': Math.PI / 2,
+  '/model-assets/nature/tomato.glb': Math.PI / 2,
+  '/model-assets/nature/mushroom_red.glb': Math.PI / 2,
+  '/model-assets/nature/pepper.glb': Math.PI / 2,
   '/model-assets/animals/animal-beaver.glb': Math.PI / 2,
   '/model-assets/animals/animal-cow.glb': Math.PI / 2,
   '/model-assets/animals/animal-fox.glb': Math.PI / 2,
@@ -19,6 +28,9 @@ export const MODEL_ROTATE_X_OVERRIDES_BY_URL = {
   '/model-assets/animals/animal-cat.glb': Math.PI / 2,
   '/model-assets/animals/animal-parrot.glb': Math.PI / 2,
   '/model-assets/animals/animal-crab.glb': Math.PI / 2,
+  '/model-assets/items/apple.glb': Math.PI / 2,
+  '/model-assets/items/meat-cooked.glb': Math.PI / 2,
+  '/model-assets/items/pumpkin-basic.glb': Math.PI / 2,
 };
 
 function uniqueSorted(urls) {

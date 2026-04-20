@@ -37,6 +37,18 @@ export class ThreePlantLayer {
     this._points = new ThreePointLayer(worldGroup, MAX_VISIBLE_PLANT_POINTS, 2.5, 1, 0.95);
     this._sprites = new ThreeSpritePool(worldGroup, emojiAtlas);
     this._models = new ThreeModelPool(worldGroup, createModelAssetLoader());
+
+    // Shadow pool for plant/tree shadows
+    this._shadows = new Map(); // idx → Mesh
+    this._shadowPool = [];
+    this._shadowGeo = new THREE.CircleGeometry(0.5, 12);
+    this._shadowGeo.scale(1, 0.4, 1);
+    this._shadowMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.2,
+      depthWrite: false,
+    });
   }
 
   setData(plantType, plantStage, mapWidth, mapHeight) {
@@ -106,12 +118,14 @@ export class ThreePlantLayer {
     if (!show) {
       this._sprites.releaseAll();
       this._models.releaseAll((m) => m.userData?.treeModelKey);
+      this._hideAllShadows();
       return;
     }
 
     const { x0, y0, x1, y1 } = viewport;
     const seenSprites = new Set();
     const seenModels = new Set();
+    const seenShadows = new Set();
     const scale = 0.82;
     let count = 0;
 
@@ -134,13 +148,17 @@ export class ThreePlantLayer {
           }
 
           if (model) {
-            // Remove sprite fallback if model is now available
             if (this._sprites.has(idx)) this._sprites.release(idx);
             const modelScale = this._getModelScale(t, s, orbitEnabled);
             model.position.set(x + 0.5, y + 0.5, 0.02);
             model.scale.set(modelScale, modelScale, modelScale);
             model.visible = true;
             seenModels.add(idx);
+
+            // Shadow under plant model
+            this._updateShadow(idx, x + 0.5, y + 0.5, modelScale * 0.7);
+            seenShadows.add(idx);
+
             count++;
             if (count >= MAX_VISIBLE_PLANT_SPRITES) break;
             continue;
@@ -156,6 +174,11 @@ export class ThreePlantLayer {
         sprite.renderOrder = 20;
         sprite.visible = true;
         seenSprites.add(idx);
+
+        // Shadow under sprite
+        this._updateShadow(idx, x + 0.5, y + 0.5, scale * 0.4);
+        seenShadows.add(idx);
+
         count++;
         if (count >= MAX_VISIBLE_PLANT_SPRITES) break;
       }
@@ -164,6 +187,47 @@ export class ThreePlantLayer {
 
     this._sprites.prune(seenSprites);
     this._models.prune(seenModels, (m) => m.userData?.treeModelKey ?? m.userData?.treeTypeId);
+    this._pruneShadows(seenShadows);
+  }
+
+  // ---- Shadow management ----
+
+  _acquireShadow() {
+    if (this._shadowPool.length > 0) return this._shadowPool.pop();
+    const mesh = new THREE.Mesh(this._shadowGeo, this._shadowMat);
+    mesh.renderOrder = 1;
+    this._worldGroup.add(mesh);
+    return mesh;
+  }
+
+  _updateShadow(idx, x, y, scale) {
+    let shadow = this._shadows.get(idx);
+    if (!shadow) {
+      shadow = this._acquireShadow();
+      this._shadows.set(idx, shadow);
+    }
+    shadow.position.set(x, y, 0.01);
+    shadow.scale.set(scale, scale, 1);
+    shadow.visible = true;
+  }
+
+  _hideAllShadows() {
+    for (const shadow of this._shadows.values()) {
+      shadow.visible = false;
+      this._shadowPool.push(shadow);
+    }
+    this._shadows.clear();
+  }
+
+  _pruneShadows(seenIds) {
+    for (const id of this._shadows.keys()) {
+      if (!seenIds.has(id)) {
+        const shadow = this._shadows.get(id);
+        shadow.visible = false;
+        this._shadowPool.push(shadow);
+        this._shadows.delete(id);
+      }
+    }
   }
 
   // ---- Model helpers ----
@@ -235,5 +299,11 @@ export class ThreePlantLayer {
     this._points.destroy();
     this._sprites.destroy();
     this._models.destroy();
+    for (const shadow of this._shadows.values()) this._worldGroup.remove(shadow);
+    for (const shadow of this._shadowPool) this._worldGroup.remove(shadow);
+    this._shadows.clear();
+    this._shadowPool.length = 0;
+    if (this._shadowGeo) { this._shadowGeo.dispose(); this._shadowGeo = null; }
+    if (this._shadowMat) { this._shadowMat.dispose(); this._shadowMat = null; }
   }
 }

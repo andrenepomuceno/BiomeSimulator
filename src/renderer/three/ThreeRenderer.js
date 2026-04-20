@@ -18,6 +18,7 @@ import { ThreePlantLayer } from './plantLayer.js';
 import { ThreeItemLayer } from './itemLayer.js';
 import { ThreeEntityLayer } from './entityLayer.js';
 import { ThreeInputHandler } from './inputHandler.js';
+import { ThreeTerrainShader } from './terrainShader.js';
 import useSimStore from '../../store/simulationStore.js';
 
 export class ThreeRenderer {
@@ -93,6 +94,9 @@ export class ThreeRenderer {
     this._terrainMesh = null;
     this._terrainTexture = null;
     this._terrainPixels = null;
+    this._terrainShader = new ThreeTerrainShader();
+    this._heightmap = null;
+    this._waterProximity = null;
 
     // ---- Sub-systems ----
     this._emojiAtlas = new ThreeEmojiAtlas();
@@ -125,6 +129,7 @@ export class ThreeRenderer {
 
     // ---- Refresh flag ----
     this._refreshQueued = false;
+    this._lastTick = 0;
 
     // ---- Camera ----
     this.camera = new ViewCamera(this.screen, () => {
@@ -153,6 +158,7 @@ export class ThreeRenderer {
         clampCameraAboveGround(this._orbitCamera3D);
       }
       this._particles.tick();
+      this._terrainShader.tick(1);
       this._tickFps();
       this.renderer.render(this.scene, this._activeCamera3D);
       if (this._nightMaterial.opacity > 0.002) {
@@ -281,7 +287,7 @@ export class ThreeRenderer {
       this._itemLayer.rebuildPoints(vp, zoom);
       this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
       this._entityLayer.rebuildPoints(vp, zoom);
-      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
+      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick);
       this._refreshSelectionMarker();
     });
   }
@@ -314,8 +320,10 @@ export class ThreeRenderer {
   // Terrain
   // ==================================================================
 
-  setTerrain(terrainData, width, height) {
+  setTerrain(terrainData, width, height, heightmap, waterProximity) {
     this._terrainData = terrainData;
+    this._heightmap = heightmap || null;
+    this._waterProximity = waterProximity || null;
     this.mapWidth = width;
     this.mapHeight = height;
     this.camera.setWorldBounds(width, height);
@@ -323,7 +331,7 @@ export class ThreeRenderer {
     if (this._terrainMesh) {
       this.worldGroup.remove(this._terrainMesh);
       this._terrainMesh.geometry.dispose();
-      this._terrainMesh.material.dispose();
+      // Material disposed by terrainShader.destroy() below
       this._terrainMesh = null;
     }
     if (this._terrainTexture) {
@@ -331,9 +339,9 @@ export class ThreeRenderer {
       this._terrainTexture = null;
     }
 
-    this._terrainTexture = this._buildTerrainTexture(terrainData, width, height);
+    // Build GPU terrain shader with per-type patterns, noise, coastal & height effects
+    const material = this._terrainShader.build(terrainData, width, height, heightmap, waterProximity);
     const geometry = new THREE.PlaneGeometry(width, height);
-    const material = new THREE.MeshBasicMaterial({ map: this._terrainTexture });
     this._terrainMesh = new THREE.Mesh(geometry, material);
     this._terrainMesh.position.set(width / 2, height / 2, 0);
     this.worldGroup.add(this._terrainMesh);
@@ -362,21 +370,16 @@ export class ThreeRenderer {
   }
 
   updateTerrainTiles(changes) {
-    if (!Array.isArray(changes) || changes.length === 0 || !this._terrainTexture || !this._terrainPixels) return;
+    if (!Array.isArray(changes) || changes.length === 0) return;
+    this._terrainShader.updateTiles(changes, this._terrainData, this._heightmap);
+    // Also keep local terrainData in sync
     for (const change of changes) {
       const x = change.x | 0;
       const y = change.y | 0;
       if (x < 0 || y < 0 || x >= this.mapWidth || y >= this.mapHeight) continue;
       const idx = y * this.mapWidth + x;
-      const p = idx * 4;
-      const color = TERRAIN_COLORS[change.terrain] || [0, 0, 0, 255];
-      this._terrainPixels[p] = color[0];
-      this._terrainPixels[p + 1] = color[1];
-      this._terrainPixels[p + 2] = color[2];
-      this._terrainPixels[p + 3] = color[3];
       if (this._terrainData) this._terrainData[idx] = change.terrain;
     }
-    this._terrainTexture.needsUpdate = true;
   }
 
   // ==================================================================
@@ -450,6 +453,7 @@ export class ThreeRenderer {
     const t0 = profiling ? performance.now() : 0;
 
     this._entityLayer.setAnimals(animals);
+    this._lastTick = tick || 0;
     void nativeRenderer;
     void zoom;
 
@@ -471,6 +475,7 @@ export class ThreeRenderer {
       this._entityLayer.rebuildSprites(
         vpVis, this.camera.zoom, this._orbitControlsEnabled,
         () => this._scheduleVisibilityRefresh(),
+        tick || 0,
       );
     } else {
       this._entityLayer.rebuildPoints(vpVis, this.camera.zoom);
@@ -694,10 +699,10 @@ export class ThreeRenderer {
     this._input.destroy();
 
     // Terrain
+    this._terrainShader.destroy();
     if (this._terrainMesh) {
       this.worldGroup.remove(this._terrainMesh);
       this._terrainMesh.geometry.dispose();
-      this._terrainMesh.material.dispose();
       this._terrainMesh = null;
     }
     if (this._terrainTexture) {

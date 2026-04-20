@@ -1,15 +1,20 @@
 import * as THREE from 'three';
 
-const ORBIT_MIN_POLAR_ANGLE = 0;
-const ORBIT_MAX_POLAR_ANGLE = Math.PI / 2 - 0.02;
+const ORBIT_MIN_POLAR_ANGLE = 0.05;
+const ORBIT_MAX_POLAR_ANGLE = Math.PI / 2 - 0.05;
+/** Minimum camera Z height above the ground plane. */
+const MIN_CAMERA_HEIGHT = 2;
 
 export function configureOrbitControls(controls) {
   controls.enabled = false;
   controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
+  controls.dampingFactor = 0.12;
   controls.enablePan = true;
   controls.enableRotate = true;
   controls.enableZoom = true;
+  controls.zoomSpeed = 1.4;
+  controls.panSpeed = 1.2;
+  controls.rotateSpeed = 0.8;
   controls.minPolarAngle = ORBIT_MIN_POLAR_ANGLE;
   controls.maxPolarAngle = ORBIT_MAX_POLAR_ANGLE;
   controls.screenSpacePanning = false;
@@ -22,6 +27,16 @@ export function configureOrbitControls(controls) {
     ONE: THREE.TOUCH.ROTATE,
     TWO: THREE.TOUCH.DOLLY_PAN,
   };
+}
+
+/**
+ * Clamp the orbit camera position so it never goes below the ground plane.
+ * Call this after OrbitControls.update() each frame.
+ */
+export function clampCameraAboveGround(camera) {
+  if (camera.position.z < MIN_CAMERA_HEIGHT) {
+    camera.position.z = MIN_CAMERA_HEIGHT;
+  }
 }
 
 export function buildOrbitViewportBounds(samples, mapWidth, mapHeight, extra = 0) {
@@ -56,11 +71,11 @@ export function buildOrbitViewportBounds(samples, mapWidth, mapHeight, extra = 0
 
 export function buildOrbitCameraPreset(vp, clamp) {
   const diag = Math.hypot(vp.w, vp.h);
-  const dist = clamp(diag * 0.68, 42, 300);
+  const dist = clamp(diag * 0.68, 42, 500);
   return {
     dist,
-    minDistance: Math.max(14, dist * 0.2),
-    maxDistance: Math.max(220, dist * 5),
+    minDistance: Math.max(4, dist * 0.05),
+    maxDistance: Math.max(500, dist * 8),
     offsetY: dist * 0.48,
     offsetZ: dist * 0.62,
   };

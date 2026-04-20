@@ -1,5 +1,5 @@
-export const MIN_ZOOM = 1;
-export const MAX_ZOOM = 120;
+export const MIN_ZOOM = 0.25;
+export const MAX_ZOOM = 200;
 export const ANIMAL_SPRITE_SCALE_BOOST = 1.22;
 export const ANIMAL_MODEL_SCALE_BOOST = 1.28;
 export const ORBIT_TREE_SCALE_BOOST = 1.65;

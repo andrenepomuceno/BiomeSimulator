@@ -55,7 +55,7 @@ export class ViewCamera {
   onWheel(event) {
     event.preventDefault();
     const oldZoom = this.zoom;
-    const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
+    const factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
     this.zoom = clamp(this.zoom * factor, MIN_ZOOM, MAX_ZOOM);
 
     const rect = event.target.getBoundingClientRect();

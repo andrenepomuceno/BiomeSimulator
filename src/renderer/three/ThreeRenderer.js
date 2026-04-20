@@ -6,6 +6,7 @@ import {
   configureOrbitControls,
   buildOrbitViewportBounds,
   buildOrbitCameraPreset,
+  clampCameraAboveGround,
 } from './threeRendererOrbit.js';
 import {
   ENTITY_SPRITE_ZOOM_THRESHOLD,
@@ -147,7 +148,10 @@ export class ThreeRenderer {
     this._running = true;
     this._animate = () => {
       if (!this._running) return;
-      if (this._orbitControlsEnabled) this._orbitControls.update();
+      if (this._orbitControlsEnabled) {
+        this._orbitControls.update();
+        clampCameraAboveGround(this._orbitCamera3D);
+      }
       this._particles.tick();
       this._tickFps();
       this.renderer.render(this.scene, this._activeCamera3D);

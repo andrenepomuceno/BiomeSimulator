@@ -1,7 +1,7 @@
 /**
  * App — main layout wiring canvas, sidebar, toolbar, and all hooks together.
  */
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, Suspense } from 'react';
 import packageJson from '../package.json';
 import useSimStore from './store/simulationStore';
 import { useSimulation } from './hooks/useSimulation';
@@ -21,7 +21,13 @@ import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
 import HelpModal from './components/HelpModal';
 import SimulationConfigModal from './components/SimulationConfigModal';
-import { FF_AUDIO_LOG_UI, FF_CAPTURE_BRIDGE } from './config/featureFlags.js';
+import { IS_DEV, FF_AUDIO_LOG_UI, FF_CAPTURE_BRIDGE } from './config/featureFlags.js';
+
+// DevDebugModal is only loaded in dev; the dynamic import is never resolved in
+// production, so Rollup/Vite excludes the module from the production bundle.
+const DevDebugModal = IS_DEV
+  ? React.lazy(() => import('./components/DevDebugModal.jsx'))
+  : null;
 
 const MODALS = {
   MENU: 'menu',
@@ -29,6 +35,7 @@ const MODALS = {
   CONFIG: 'config',
   REPORT: 'report',
   ENTITIES: 'entities',
+  ...(IS_DEV ? { DEBUG: 'debug' } : {}),
 };
 
 const AUTO_PAUSE_MODAL_IDS = new Set([
@@ -647,6 +654,11 @@ export default function App() {
         onClose={_closeModal}
         onInspect={_handleInspectFromSummary}
       />
+      {IS_DEV && DevDebugModal && (
+        <Suspense fallback={null}>
+          <DevDebugModal open={activeModal === MODALS.DEBUG} onClose={_closeModal} />
+        </Suspense>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Toolbar
           appVersion={appVersion}
@@ -660,11 +672,13 @@ export default function App() {
           onReset={() => _handleReset()}
           onSpeedChange={_handleSpeedChange}
           onRendererModeChange={setRendererMode}
+          isDev={IS_DEV}
           onMenuToggle={() => _openModal(MODALS.MENU)}
           onGuideToggle={() => _openModal(MODALS.GUIDE)}
           onConfigToggle={() => _openModal(MODALS.CONFIG)}
           onReportToggle={() => _openModal(MODALS.REPORT)}
           onEntitiesToggle={() => _openModal(MODALS.ENTITIES)}
+          onDebugToggle={IS_DEV ? () => _openModal(MODALS.DEBUG) : undefined}
           onLeftSidebarToggle={() => _handleDrawerToggle('left')}
           onRightSidebarToggle={() => _handleDrawerToggle('right')}
         />

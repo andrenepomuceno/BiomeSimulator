@@ -76,6 +76,8 @@ vi.mock('../renderer/rendererFactory', () => ({
 }));
 
 vi.mock('../config/featureFlags.js', () => ({
+  IS_DEV: false,
+  IS_PROD: true,
   FF_AUDIO_LOG_UI: false,
   FF_CAPTURE_BRIDGE: false,
 }));
@@ -93,6 +95,7 @@ vi.mock('../components/SimulationReport', () => ({ default: () => null }));
 vi.mock('../components/EntitySummaryWindow', () => ({ default: () => null }));
 vi.mock('../components/HelpModal', () => ({ default: () => null }));
 vi.mock('../components/SimulationConfigModal', () => ({ default: () => null }));
+vi.mock('../components/DevDebugModal', () => ({ default: () => null }));
 
 import App from '../App.jsx';
 import useSimStore from '../store/simulationStore.js';

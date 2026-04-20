@@ -20,7 +20,7 @@ const SELECT_FILTERS = [
   { key: 'items', label: 'Items', icon: 'bi-box-seam-fill' },
 ];
 
-export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, rendererMode, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onRendererModeChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onLeftSidebarToggle, onRightSidebarToggle }) {
+export default function Toolbar({ appVersion, isDev, activeDrawer, isCompactLayout, rendererMode, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onRendererModeChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onDebugToggle, onLeftSidebarToggle, onRightSidebarToggle }) {
   const { paused, running, tps, clock, climate, tool, setTool, selectionTargets, setSelectionTarget } = useSimStore();
 
   return (
@@ -166,6 +166,12 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, ren
           <i className="bi bi-card-list toolbar-icon" aria-hidden="true" />
           <span>Entities</span>
         </button>
+        {isDev && (
+          <button className="btn btn-debug btn-sm" onClick={onDebugToggle} title="Dev Debug Dashboard">
+            <i className="bi bi-bug-fill toolbar-icon" aria-hidden="true" />
+            <span>Debug</span>
+          </button>
+        )}
         <span className="toolbar-version" title="Application version">
           v{appVersion}
         </span>

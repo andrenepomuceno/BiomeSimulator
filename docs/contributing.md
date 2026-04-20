@@ -205,6 +205,25 @@ npm run build
 
 ---
 
+## Dev Debug Dashboard
+
+A dedicated debug dialog is available **only in development builds** (`import.meta.env.DEV`). It is opened via the **Debug** button in the toolbar (visible only in dev).
+
+The modal is loaded through `React.lazy` + a dynamic import gated by `IS_DEV`, so Rollup/Vite excludes `src/components/DevDebugModal.jsx` from the production bundle entirely.
+
+### Sections
+
+| Section | What it shows |
+|---------|--------------|
+| **Runtime** | Sim state (running/paused/idle), speed (tps), clock tick/day, world size, live animal and plant counts |
+| **Performance** | Engine tick time, per-phase breakdown (plants / AI / spatial / cleanup / stats), renderer FPS and frame time, entity and plant update times |
+| **Renderer** | Active renderer mode, camera position, zoom, viewport dimensions |
+| **Feature Flags** | Current resolved values of `IS_DEV`, `FF_AUDIO_LOG_UI`, `FF_CAPTURE_BRIDGE` |
+
+> All data is read from the existing Zustand store — no new state or polling is added.
+
+---
+
 ## In-App Help Content
 
 Player-facing help is rendered by `src/components/HelpModal.jsx`. The text lives in `src/constants/helpContent.js`. Keep that file focused on short, player-facing explanations — treat `docs/` as the canonical technical source rather than a runtime dependency.

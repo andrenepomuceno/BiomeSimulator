@@ -1,9 +1,13 @@
-# Overview & Camera
+# Overview & Camera (Pixi)
 
 Navigation: [Documentation Home](../README.md) > [Renderer](README.md) > [Current Document](overview.md)
 Return to [Documentation Home](../README.md).
 
 ---
+
+This document is specific to the Pixi backend (`src/renderer/pixi/`).
+
+For Three.js details, see [Three.js Renderer Guide](threejs.md).
 
 ## GameRenderer
 
@@ -32,22 +36,8 @@ const renderer = new GameRenderer(container, onViewportChange, onTileClick);
 | Click + drag | Pan the viewport (default behavior) |
 | Left-click + drag in PLACE_ENTITY tool | Paint entities tile-by-tile via repeated `onTileClick(x, y)` on tile changes |
 | Click (no drag) | Converts screen→tile coordinates, fires `onTileClick(x, y)` |
-| `V` (Three backend) | Toggle Orbit mode |
-| Left drag (Three Orbit mode) | Orbit yaw around map |
-| Middle or right drag (Three Orbit mode) | Pan X/Y |
-| Mouse wheel (Three Orbit mode) | Zoom in/out |
 
 Entity brush notes:
-
-
-When Three Orbit mode is enabled, screen-to-tile conversion uses the inverse camera rotation so tile painting and selection remain accurate while the map is rotated.
-
-### Three Flora 3D
-
-- In the Three backend, flora now uses GLB models for all plant type IDs (`1..16`) when available.
-- Stage behavior: stages `1..5` use plant-specific models with stage-based scaling; stage `6` (dead) keeps stump rendering for tree types.
-- Runtime fallback remains enabled: if a GLB is missing or still loading, the renderer uses the existing emoji sprite path.
-- Model assets are served from `public/model-assets/nature`.
 
 ---
 
@@ -142,5 +132,6 @@ flowchart TD
 ## See Also
 
 - [Rendering Layers](layers.md) — detailed layer implementation, sprite pooling, animations, emoji textures
+- [Three.js Renderer Guide](threejs.md) — Three backend architecture and runtime behavior
 - [Architecture: Tick Pipeline](../architecture.md#simulation-tick) — full data flow from worker to screen
 - [Worker API: Messages](../api/messages.md) — tick message format consumed by the renderer

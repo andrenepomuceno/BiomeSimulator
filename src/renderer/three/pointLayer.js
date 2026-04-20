@@ -38,10 +38,8 @@ export class ThreePointLayer {
     const colAttr = this._points.geometry.getAttribute('color');
     const count = positionsArr.length / 3;
 
-    for (let i = 0, len = positionsArr.length; i < len; i++) {
-      posAttr.array[i] = positionsArr[i];
-      colAttr.array[i] = colorsArr[i];
-    }
+    posAttr.array.set(positionsArr);
+    colAttr.array.set(colorsArr);
     posAttr.needsUpdate = true;
     colAttr.needsUpdate = true;
     this._points.geometry.setDrawRange(0, count);

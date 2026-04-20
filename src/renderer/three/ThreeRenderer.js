@@ -96,8 +96,6 @@ export class ThreeRenderer {
     this.mapHeight = 0;
     this._terrainData = null;
     this._terrainMesh = null;
-    this._terrainTexture = null;
-    this._terrainPixels = null;
     this._terrainShader = new ThreeTerrainShader();
     this._heightmap = null;
     this._waterProximity = null;
@@ -111,6 +109,7 @@ export class ThreeRenderer {
 
     // ---- Selection ----
     this._selectionLine = null;
+    this._selectionLineKey = '';
     this._selectedTile = null;
     this._selectedEntityId = null;
     this._selectionTick = 0;
@@ -345,12 +344,8 @@ export class ThreeRenderer {
     if (this._terrainMesh) {
       this.worldGroup.remove(this._terrainMesh);
       this._terrainMesh.geometry.dispose();
-      // Material disposed by terrainShader.destroy() below
+      // Material disposed by this._terrainShader.build() → destroy() below
       this._terrainMesh = null;
-    }
-    if (this._terrainTexture) {
-      this._terrainTexture.dispose();
-      this._terrainTexture = null;
     }
 
     // Build GPU terrain shader with per-type patterns, noise, coastal & height effects
@@ -362,25 +357,6 @@ export class ThreeRenderer {
 
     this._syncWorldTransform();
     this._emitViewportChanged();
-  }
-
-  _buildTerrainTexture(terrainData, width, height) {
-    const pixels = new Uint8Array(width * height * 4);
-    for (let i = 0; i < terrainData.length; i++) {
-      const color = TERRAIN_COLORS[terrainData[i]] || [0, 0, 0, 255];
-      const p = i * 4;
-      pixels[p] = color[0];
-      pixels[p + 1] = color[1];
-      pixels[p + 2] = color[2];
-      pixels[p + 3] = color[3];
-    }
-    const texture = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat);
-    texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestFilter;
-    texture.flipY = false;
-    texture.needsUpdate = true;
-    this._terrainPixels = pixels;
-    return texture;
   }
 
   updateTerrainTiles(changes) {
@@ -536,7 +512,6 @@ export class ThreeRenderer {
 
     this._nightMaterial.opacity += (targetAlpha - this._nightMaterial.opacity) * 0.12;
     this._nightMaterial.color.setHex(targetColor);
-    this._nightMaterial.needsUpdate = true;
   }
 
   // ==================================================================
@@ -579,11 +554,16 @@ export class ThreeRenderer {
         this._selectionLine.geometry.dispose();
         this._selectionLine.material.dispose();
         this._selectionLine = null;
+        this._selectionLineKey = '';
       }
       return;
     }
 
     const { x, y } = this._selectedTile;
+    const key = `${x}:${y}`;
+    if (key === this._selectionLineKey && this._selectionLine) return;
+    this._selectionLineKey = key;
+
     const points = [
       x + 0.04, y + 0.04, 0,
       x + 0.96, y + 0.04, 0,
@@ -770,10 +750,6 @@ export class ThreeRenderer {
       this.worldGroup.remove(this._terrainMesh);
       this._terrainMesh.geometry.dispose();
       this._terrainMesh = null;
-    }
-    if (this._terrainTexture) {
-      this._terrainTexture.dispose();
-      this._terrainTexture = null;
     }
 
     // Axes

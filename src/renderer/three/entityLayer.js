@@ -745,5 +745,13 @@ export class ThreeEntityLayer {
     }
     this._hpBars.clear();
     this._hpBarPool.length = 0;
+
+    // Dispose shared HP bar geometries and materials
+    if (_barBgGeo) { _barBgGeo.dispose(); _barBgGeo = null; }
+    if (_barFillGeo) { _barFillGeo.dispose(); _barFillGeo = null; }
+    this._hpBarFillMaterials.high.dispose();
+    this._hpBarFillMaterials.mid.dispose();
+    this._hpBarFillMaterials.low.dispose();
+    this._hpBarBgMaterial.dispose();
   }
 }

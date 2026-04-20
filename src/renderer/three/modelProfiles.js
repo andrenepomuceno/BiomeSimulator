@@ -18,7 +18,7 @@ export const MODEL_ROTATE_X_OVERRIDES_BY_URL = {
   '/model-assets/nature/plant_bushSmall.glb': Math.PI / 2,
   '/model-assets/nature/tomato.glb': Math.PI / 2,
   '/model-assets/nature/mushroom_red.glb': Math.PI / 2,
-  '/model-assets/nature/pepper.glb': -Math.PI / 2,
+  '/model-assets/nature/pepper.glb': Math.PI / 2,
   '/model-assets/animals/animal-beaver.glb': Math.PI / 2,
   '/model-assets/animals/animal-cow.glb': Math.PI / 2,
   '/model-assets/animals/animal-fox.glb': Math.PI / 2,

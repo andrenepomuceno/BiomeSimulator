@@ -126,8 +126,8 @@ export default function Toolbar({ appVersion, isDev, activeDrawer, isCompactLayo
           onChange={(e) => onRendererModeChange?.(e.target.value)}
           aria-label="Renderer backend"
         >
-          <option value="pixi">Pixi</option>
-          <option value="three">Three</option>
+          <option value="pixi">2D</option>
+          <option value="three">3D</option>
         </select>
       </div>
 

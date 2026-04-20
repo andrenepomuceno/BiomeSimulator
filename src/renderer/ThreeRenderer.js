@@ -32,6 +32,8 @@ import {
   ITEM_EMOJIS,
   ITEM_COLORS,
   TREE_MODEL_URLS,
+  PLANT_MODEL_URLS,
+  PLANT_MODEL_SCALE_MULTIPLIERS,
   DEAD_TREE_MODEL_URL,
   ENTITY_MODEL_URLS,
   ENTITY_MODEL_SCALE_MULTIPLIERS,
@@ -732,27 +734,35 @@ export class ThreeRenderer {
   }
 
   _isTreeRenderable(typeId, stage) {
-    return this._treeTypeIds.has(typeId) && stage >= 3;
+    if (!typeId || stage <= 0) return false;
+    if (stage > 5) return this._treeTypeIds.has(typeId);
+    return Boolean(PLANT_MODEL_URLS[typeId] || TREE_MODEL_URLS[typeId]);
   }
 
   _getTreeModelKey(typeId, stage) {
-    return stage > 5 ? 'DEAD_STUMP' : typeId;
+    return stage > 5 ? 'DEAD_STUMP' : `PLANT_${typeId}`;
   }
 
   _getTreeModelUrl(typeId, stage) {
-    if (stage > 5) return DEAD_TREE_MODEL_URL;
-    return TREE_MODEL_URLS[typeId] || null;
+    if (stage > 5) return this._treeTypeIds.has(typeId) ? DEAD_TREE_MODEL_URL : null;
+    return PLANT_MODEL_URLS[typeId] || TREE_MODEL_URLS[typeId] || null;
   }
 
   _getTreeScale(typeId, stage) {
     if (stage > 5) return 0.62;
-    const stageScale = stage === 3 ? 0.75 : stage === 4 ? 1.05 : 1.2;
-    const orbitBoost = this._orbitControlsEnabled ? ORBIT_TREE_SCALE_BOOST : 1;
-    if (typeId === 4) return stageScale * 1.05 * orbitBoost;   // Apple
-    if (typeId === 5) return stageScale * 1.1 * orbitBoost;    // Mango
-    if (typeId === 10) return stageScale * 1.2 * orbitBoost;   // Oak
-    if (typeId === 12) return stageScale * 1.35 * orbitBoost;  // Coconut palm
-    return stageScale * orbitBoost;
+    const stageScale = stage === 1 ? 0.4
+      : stage === 2 ? 0.58
+      : stage === 3 ? 0.78
+      : stage === 4 ? 1.0
+      : 1.12;
+    const isTree = this._treeTypeIds.has(typeId);
+    const orbitBoost = this._orbitControlsEnabled ? (isTree ? ORBIT_TREE_SCALE_BOOST : 1.2) : 1;
+    const speciesBoost = PLANT_MODEL_SCALE_MULTIPLIERS[typeId] || 1;
+    if (typeId === 4) return stageScale * 1.05 * speciesBoost * orbitBoost;   // Apple
+    if (typeId === 5) return stageScale * 1.1 * speciesBoost * orbitBoost;    // Mango
+    if (typeId === 10) return stageScale * 1.2 * speciesBoost * orbitBoost;   // Oak
+    if (typeId === 12) return stageScale * 1.35 * speciesBoost * orbitBoost;  // Coconut palm
+    return stageScale * speciesBoost * orbitBoost;
   }
 
   _normalizeTreeMesh(mesh) {

@@ -49,6 +49,39 @@ export const TREE_MODEL_URLS = {
   15: '/model-assets/nature/tree_default.glb',
 };
 
+export const PLANT_MODEL_URLS = {
+  1: '/model-assets/nature/grass_leafs.glb',
+  2: '/model-assets/nature/plant_bushSmall.glb',
+  3: '/model-assets/nature/plant_bushDetailed.glb',
+  4: '/model-assets/nature/tree_oak.glb',
+  5: '/model-assets/nature/tree_detailed.glb',
+  6: '/model-assets/nature/crop_carrot.glb',
+  7: '/model-assets/nature/flower_yellowC.glb',
+  8: '/model-assets/nature/tomato.glb',
+  9: '/model-assets/nature/mushroom_red.glb',
+  10: '/model-assets/nature/tree_oak_dark.glb',
+  11: '/model-assets/nature/cactus_tall.glb',
+  12: '/model-assets/nature/tree_palm.glb',
+  13: '/model-assets/nature/crops_leafsStageA.glb',
+  14: '/model-assets/nature/pepper.glb',
+  15: '/model-assets/nature/tree_default.glb',
+  16: '/model-assets/nature/flower_purpleB.glb',
+};
+
+export const PLANT_MODEL_SCALE_MULTIPLIERS = {
+  1: 0.9,
+  2: 0.74,
+  3: 0.78,
+  6: 0.85,
+  7: 0.96,
+  8: 0.72,
+  9: 0.9,
+  11: 1.2,
+  13: 0.86,
+  14: 0.74,
+  16: 0.92,
+};
+
 export const DEAD_TREE_MODEL_URL = '/model-assets/nature/stump_round.glb';
 
 export const ENTITY_MODEL_URLS = {

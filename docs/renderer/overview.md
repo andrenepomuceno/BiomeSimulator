@@ -42,6 +42,13 @@ Entity brush notes:
 
 When Three Orbit mode is enabled, screen-to-tile conversion uses the inverse camera rotation so tile painting and selection remain accurate while the map is rotated.
 
+### Three Flora 3D
+
+- In the Three backend, flora now uses GLB models for all plant type IDs (`1..16`) when available.
+- Stage behavior: stages `1..5` use plant-specific models with stage-based scaling; stage `6` (dead) keeps stump rendering for tree types.
+- Runtime fallback remains enabled: if a GLB is missing or still loading, the renderer uses the existing emoji sprite path.
+- Model assets are served from `public/model-assets/nature`.
+
 ---
 
 ## Camera

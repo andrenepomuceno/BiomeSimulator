@@ -230,25 +230,45 @@ export class ThreeRenderer {
     if (!this._orbitControlsEnabled) {
       return this.camera.screenToTile(screenX, screenY);
     }
-    this._pointerNdc.set(
-      (screenX / this.screen.width) * 2 - 1,
-      -((screenY / this.screen.height) * 2 - 1),
-    );
-    this._raycaster.setFromCamera(this._pointerNdc, this._activeCamera3D);
-    const hit = this._raycaster.ray.intersectPlane(this._pickPlane, this._rayHitPoint);
+    // Mouse picking wants the actual terrain surface so clicks on hills
+    // don't fall through to the plane behind the peak.
+    const hit = this._raycastWorldPoint(screenX, screenY, true);
     if (!hit) return null;
-    this._localHitPoint.copy(this._rayHitPoint);
-    this.worldGroup.worldToLocal(this._localHitPoint);
-    return { x: Math.floor(this._localHitPoint.x), y: Math.floor(this._localHitPoint.y) };
+    return { x: Math.floor(hit.x), y: Math.floor(hit.y) };
   }
 
   _orbitScreenToWorld(screenX, screenY) {
     if (!this._orbitControlsEnabled) return null;
+    // Viewport-bounds callers (5 per camera-change event) use the flat
+    // ground plane — it's cheap and accurate enough to compute which
+    // tiles are visible. The terrain-mesh path has ~2M triangles, which
+    // would turn every orbit movement into a 5x heavy raycast.
+    return this._raycastWorldPoint(screenX, screenY, false);
+  }
+
+  /**
+   * Ray-cast from the mouse against the world.
+   * When `useTerrainMesh` is true, the displaced terrain is tested first so
+   * picking on hills/mountains returns the correct tile. Otherwise, only
+   * the ground plane is used (cheap, constant-time).
+   */
+  _raycastWorldPoint(screenX, screenY, useTerrainMesh) {
     this._pointerNdc.set(
       (screenX / this.screen.width) * 2 - 1,
       -((screenY / this.screen.height) * 2 - 1),
     );
     this._raycaster.setFromCamera(this._pointerNdc, this._activeCamera3D);
+
+    if (useTerrainMesh && this._terrainMesh) {
+      const hits = this._raycaster.intersectObject(this._terrainMesh, false);
+      if (hits && hits.length > 0) {
+        this._localHitPoint.copy(hits[0].point);
+        this.worldGroup.worldToLocal(this._localHitPoint);
+        return { x: this._localHitPoint.x, y: this._localHitPoint.y };
+      }
+    }
+
+    // Flat ground plane fallback / fast path.
     const hit = this._raycaster.ray.intersectPlane(this._pickPlane, this._rayHitPoint);
     if (!hit) return null;
     this._localHitPoint.copy(this._rayHitPoint);
@@ -735,7 +755,7 @@ export class ThreeRenderer {
     this._orbitControls.update();
   }
 
-  setOrbitControlsEnabled(enabled) {
+    setOrbitControlsEnabled(enabled) {
     const nextEnabled = Boolean(enabled);
     if (nextEnabled === this._orbitControlsEnabled) return;
     this._orbitControlsEnabled = nextEnabled;

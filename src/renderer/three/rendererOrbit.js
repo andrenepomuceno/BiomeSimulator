@@ -7,7 +7,7 @@ const ORBIT_MAX_POLAR_ANGLE = Math.PI * (80 / 180);
 /** Minimum camera Z height above the ground plane. */
 const MIN_CAMERA_HEIGHT = 4;
 /** Extra clearance kept between the camera and the terrain surface. */
-const CAMERA_TERRAIN_MARGIN = 1.5;
+const CAMERA_TERRAIN_MARGIN = 3;
 
 /**
  * Configure OrbitControls for the 3D orbit mode.

@@ -129,7 +129,7 @@ export class ThreePlantLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, cameraPos) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter) {
     const show = (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
       && this._plantType && this._plantStage && this._mapWidth > 0;
 
@@ -151,7 +151,7 @@ export class ThreePlantLayer {
     const GROWTH_PULSE_DURATION = 600; // ms
 
     // LOD: in orbit mode, skip sprites/models beyond distance threshold
-    const useLOD = orbitEnabled && cameraPos;
+    const useLOD = orbitEnabled && lodCenter;
 
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) {
@@ -161,8 +161,8 @@ export class ThreePlantLayer {
         if (t === 0 || s === 0) continue;
 
         if (useLOD) {
-          const dx = x - cameraPos.x;
-          const dy = y - cameraPos.y;
+          const dx = x - lodCenter.x;
+          const dy = y - lodCenter.y;
           if (dx * dx + dy * dy > LOD_PLANT_DIST_SQ) continue;
         }
 

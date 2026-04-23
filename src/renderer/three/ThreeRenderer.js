@@ -298,14 +298,17 @@ export class ThreeRenderer {
       const orbit = this._orbitControlsEnabled;
       const onRefresh = () => this._scheduleVisibilityRefresh();
 
-      const camPos = orbit ? this._orbitCamera3D.position : null;
+      // LOD is measured from the orbit TARGET (look-at point), not camera
+      // position — otherwise the culling ring drifts off to wherever the
+      // camera sits in the sky instead of staying on the focal tile.
+      const lodCenter = orbit ? this._orbitControls.target : null;
 
       this._plantLayer.rebuildPoints(vp, zoom);
-      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, camPos);
+      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter);
       this._itemLayer.rebuildPoints(vp, zoom);
       this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
       this._entityLayer.rebuildPoints(vp, zoom);
-      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, camPos);
+      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, lodCenter);
       this._refreshSelectionMarker();
     });
   }

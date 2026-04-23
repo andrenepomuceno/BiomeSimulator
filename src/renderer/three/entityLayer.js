@@ -298,7 +298,7 @@ export class ThreeEntityLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, cameraPos) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, lodCenter) {
     const showSprites = orbitEnabled || zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
     if (!showSprites) {
       this._sprites.releaseAll();
@@ -313,7 +313,7 @@ export class ThreeEntityLayer {
     const showBars = showAnimalHpBars !== false && zoom >= ENTITY_BARS_MIN_ZOOM;
 
     // LOD: in orbit mode, skip models/sprites beyond this distance from camera
-    const useLOD = orbitEnabled && cameraPos;
+    const useLOD = orbitEnabled && lodCenter;
 
     const { x0, y0, x1, y1 } = viewport;
     const seenSprites = new Set();
@@ -326,8 +326,8 @@ export class ThreeEntityLayer {
 
       // LOD distance cull — entities beyond threshold rely on points layer only
       if (useLOD) {
-        const dx = a.x - cameraPos.x;
-        const dy = a.y - cameraPos.y;
+        const dx = a.x - lodCenter.x;
+        const dy = a.y - lodCenter.y;
         if (dx * dx + dy * dy > LOD_ENTITY_DIST_SQ) continue;
       }
 

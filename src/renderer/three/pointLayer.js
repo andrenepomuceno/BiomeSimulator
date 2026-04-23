@@ -24,6 +24,9 @@ export class ThreePointLayer {
       depthTest: false,
       depthWrite: false,
       sizeAttenuation: false,
+      // Points act as a colored mini-map overlay at any distance — they
+      // must stay vivid and not fade into orbit fog.
+      fog: false,
     });
 
     this._points = new THREE.Points(geometry, material);

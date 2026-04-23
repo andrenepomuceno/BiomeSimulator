@@ -15,20 +15,26 @@ export const MAX_PARTICLES = 1200;
 
 // ---------------------------------------------------------------------------
 // Orbit-mode LOD distance thresholds (squared, in world/tile units).
-// Beyond these distances entities/plants drop to the point (single-pixel)
-// layer. Kept relatively tight so distant objects become cheap pixels early;
-// distant fog fades the transition so the cutoff is not jarring.
+// Measured from the orbit controls TARGET (look-at point), not camera
+// position, so the fade ring stays centered on what the player is looking at.
+// The fog far plane is tuned to match these cutoffs so models/sprites fade
+// fully into fog before being culled — no visible "ring of disappearance".
 // ---------------------------------------------------------------------------
-export const LOD_ENTITY_DIST_SQ = 90 * 90;
-export const LOD_PLANT_DIST_SQ = 80 * 80;
+export const LOD_ENTITY_DIST = 120;
+export const LOD_PLANT_DIST = 100;
+export const LOD_ENTITY_DIST_SQ = LOD_ENTITY_DIST * LOD_ENTITY_DIST;
+export const LOD_PLANT_DIST_SQ = LOD_PLANT_DIST * LOD_PLANT_DIST;
 
 // ---------------------------------------------------------------------------
 // Distance fog applied in orbit mode to hide the LOD cutoff and horizon.
 // Linear fog: fully visible at `FOG_NEAR`, fully faded at `FOG_FAR`.
+// FOG_FAR is aligned with the entity LOD cutoff so model→point transitions
+// happen under fully-opaque fog. The point layer disables fog, so distant
+// colored dots remain visible as a mini-map overlay.
 // ---------------------------------------------------------------------------
 export const ORBIT_FOG_COLOR = 0x0a0a1a;
-export const ORBIT_FOG_NEAR = 60;
-export const ORBIT_FOG_FAR = 160;
+export const ORBIT_FOG_NEAR = 50;
+export const ORBIT_FOG_FAR = LOD_ENTITY_DIST;
 
 // Particle spawn configs by type
 export const PARTICLE_DEFS = {

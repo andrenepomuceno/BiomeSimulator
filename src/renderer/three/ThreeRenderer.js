@@ -694,7 +694,26 @@ export class ThreeRenderer {
   }
 
   centerOn(x, y) {
+    // Keep the 2D ortho camera in sync so toggling out of orbit lands on the
+    // requested tile too.
     this.camera.centerOn(x, y);
+
+    if (this._orbitControlsEnabled) {
+      // Translate the orbit camera by the same delta applied to its target
+      // — preserves zoom, rotation, and tilt. Without this the minimap
+      // appears to do nothing in 3D (the underlying ortho moves but the
+      // active perspective camera stays put).
+      const target = this._orbitControls.target;
+      const dx = x - target.x;
+      const dy = y - target.y;
+      target.x = x;
+      target.y = y;
+      this._orbitCamera3D.position.x += dx;
+      this._orbitCamera3D.position.y += dy;
+      clampCameraAboveGround(this._orbitCamera3D);
+      this._orbitControls.update();
+      this._emitViewportChanged();
+    }
   }
 
   setZoom(z) {

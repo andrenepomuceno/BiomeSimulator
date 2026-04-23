@@ -53,6 +53,18 @@ export class ThreePlantLayer {
 
     // Growth pulse tracking: idx → timestamp of growth event
     this._growthPulse = new Map();
+
+    // Terrain height sampler (set by ThreeRenderer)
+    this._heightSampler = null;
+  }
+
+  /** Provide a terrain height sampler so plants follow the displaced surface. */
+  setHeightSampler(sampler) {
+    this._heightSampler = sampler || null;
+  }
+
+  _terrainZ(x, y) {
+    return this._heightSampler ? this._heightSampler.sampleAt(x, y) : 0;
   }
 
   setData(plantType, plantStage, mapWidth, mapHeight) {
@@ -115,7 +127,7 @@ export class ThreePlantLayer {
         if (this._isModelRenderable(t, s)) continue;
         const rgba = PLANT_COLORS[`${t}_${s}`] || [100, 200, 100, 180];
         const alpha = Math.max(0.35, Math.min(1, (rgba[3] || 180) / 255));
-        positions.push(x + 0.5, y + 0.5, 0);
+        positions.push(x + 0.5, y + 0.5, this._terrainZ(x + 0.5, y + 0.5) + 0.05);
         colors.push((rgba[0] / 255) * alpha, (rgba[1] / 255) * alpha, (rgba[2] / 255) * alpha);
         count++;
         if (count >= MAX_VISIBLE_PLANT_POINTS) break;
@@ -194,7 +206,7 @@ export class ThreePlantLayer {
           if (model) {
             if (this._sprites.has(idx)) this._sprites.release(idx);
             const modelScale = this._getModelScale(t, s, orbitEnabled) * growthScale;
-            model.position.set(x + 0.5, y + 0.5, 0.02);
+            model.position.set(x + 0.5, y + 0.5, this._terrainZ(x + 0.5, y + 0.5) + 0.02);
             model.scale.set(modelScale, modelScale, modelScale);
 
             // Subtle sway: Z-rotation using position hash for per-plant phase offset
@@ -218,7 +230,7 @@ export class ThreePlantLayer {
         // Sprite fallback
         const emoji = this._getEmoji(t, s);
         const sprite = this._sprites.acquire(idx, emoji);
-        sprite.position.set(x + 0.5, y + 0.5, 0.5);
+        sprite.position.set(x + 0.5, y + 0.5, this._terrainZ(x + 0.5, y + 0.5) + 0.5);
         const isDead = s > 5;
         const sprScale = scale * growthScale * (isDead ? 0.5 : 1);
         sprite.scale.set(sprScale, sprScale, 1);
@@ -259,7 +271,7 @@ export class ThreePlantLayer {
       shadow = this._acquireShadow();
       this._shadows.set(idx, shadow);
     }
-    shadow.position.set(x, y, 0.01);
+    shadow.position.set(x, y, this._terrainZ(x, y) + 0.01);
     shadow.scale.set(scale, scale, 1);
     shadow.visible = true;
   }

@@ -25,6 +25,16 @@ export const MAX_PARTICLES = 1200;
 export const LOD_DETAIL_DIST = 90;
 export const LOD_DETAIL_DIST_SQ = LOD_DETAIL_DIST * LOD_DETAIL_DIST;
 
+// ---------------------------------------------------------------------------
+// Terrain elevation (3D volume)
+// ---------------------------------------------------------------------------
+// Maximum vertical displacement (in world/tile units) applied to the terrain
+// mesh from the normalized [0,1] heightmap. Higher = more dramatic relief.
+// Land height is computed as `heightmap[i] * TERRAIN_HEIGHT_SCALE`, with
+// water tiles flattened to TERRAIN_WATER_BASE_Z so lakes/oceans stay level.
+export const TERRAIN_HEIGHT_SCALE = 30;
+export const TERRAIN_WATER_BASE_Z = 0;
+
 // Particle spawn configs by type
 export const PARTICLE_DEFS = {
   attack: { count: 10, color: 0xff4444, speed: 0.016, maxLife: 48, size: 3.5, gravity: 0 },

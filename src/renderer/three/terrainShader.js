@@ -20,8 +20,14 @@ import {
 
 const VERT_SRC = `
   varying vec2 v_uv;
+  varying vec3 v_normal;
   void main() {
     v_uv = uv;
+    // Normal is computed at displacement time on the geometry attribute.
+    // Transform into world space by the normal matrix; the world group has
+    // no rotation so the rotation portion is identity, but using normalMatrix
+    // keeps the shader correct under future scene transforms.
+    v_normal = normalize(normalMatrix * normal);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -30,10 +36,14 @@ const FRAG_SRC = `
   precision highp float;
 
   varying vec2 v_uv;
+  varying vec3 v_normal;
 
   uniform sampler2D u_terrain;
   uniform sampler2D u_heightmap;
   uniform sampler2D u_waterProx;
+  uniform vec3  u_lightDir;     // normalized, points TOWARD the light
+  uniform float u_lightStrength; // 0..1 lambert mix
+  uniform float u_ambient;       // base ambient floor
 
   uniform vec2  u_worldSize;
   uniform float u_time;
@@ -329,6 +339,13 @@ const FRAG_SRC = `
       }
     }
 
+    // 3D volumetric lighting from per-vertex normals (computed on the
+    // displaced terrain mesh). Land slopes catch / lose light to reveal
+    // hills, valleys and mountain ridges.
+    float ndl = max(0.0, dot(normalize(v_normal), normalize(u_lightDir)));
+    float lambert = mix(u_ambient, 1.0, ndl);
+    finalColor *= mix(1.0, lambert, u_lightStrength);
+
     finalColor = clamp(finalColor, 0.0, 1.0);
     gl_FragColor = vec4(finalColor, 1.0);
   }
@@ -450,8 +467,13 @@ export class ThreeTerrainShader {
         u_varAmps:      { value: varAmps },
         u_coastShallow: { value: colorToVec3(COASTAL_SHALLOW_WATER) },
         u_coastWetSand: { value: colorToVec3(COASTAL_WET_SAND) },
+        // Lighting (3D relief shading). Direction points TOWARD the light.
+        // Matches the scene key light coming from above and slightly south-east.
+        u_lightDir:      { value: new THREE.Vector3(0.45, -0.5, 1.0).normalize() },
+        u_lightStrength: { value: 0.65 },
+        u_ambient:       { value: 0.55 },
       },
-      depthWrite: false,
+      depthWrite: true,
     });
 
     return this.material;

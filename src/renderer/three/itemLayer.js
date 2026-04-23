@@ -26,6 +26,16 @@ export class ThreeItemLayer {
     this._points = new ThreePointLayer(worldGroup, MAX_VISIBLE_ITEM_POINTS, 3.5, 2, 1);
     this._sprites = new ThreeSpritePool(worldGroup, emojiAtlas);
     this._models = new ThreeModelPool(worldGroup, createModelAssetLoader());
+    this._heightSampler = null;
+  }
+
+  /** Provide a terrain height sampler so items follow the displaced surface. */
+  setHeightSampler(sampler) {
+    this._heightSampler = sampler || null;
+  }
+
+  _terrainZ(x, y) {
+    return this._heightSampler ? this._heightSampler.sampleAt(x, y) : 0;
   }
 
   get size() {
@@ -80,7 +90,7 @@ export class ThreeItemLayer {
       const r = ((hex >> 16) & 0xff) / 255;
       const g = ((hex >> 8) & 0xff) / 255;
       const b = (hex & 0xff) / 255;
-      positions.push(item.x + 0.5, item.y + 0.5, 0);
+      positions.push(item.x + 0.5, item.y + 0.5, this._terrainZ(item.x + 0.5, item.y + 0.5) + 0.05);
       colors.push(r, g, b);
       count++;
       if (count >= MAX_VISIBLE_ITEM_POINTS) break;
@@ -132,7 +142,7 @@ export class ThreeItemLayer {
           const scaleMul = ITEM_MODEL_SCALE_MULTIPLIERS[item.type] || 0.5;
           const s = scaleMul * (orbitEnabled ? 1.4 : 1);
           model.scale.set(s, s, s);
-          model.position.set(item.x + 0.5, item.y + 0.5, 0);
+          model.position.set(item.x + 0.5, item.y + 0.5, this._terrainZ(item.x + 0.5, item.y + 0.5));
           model.visible = true;
           seenModels.add(item.id);
           count++;
@@ -143,7 +153,7 @@ export class ThreeItemLayer {
       // Fallback: emoji sprite
       const emoji = ITEM_EMOJIS[item.type] || '📦';
       const sprite = this._sprites.acquire(item.id, emoji);
-      sprite.position.set(item.x + 0.5, item.y + 0.5, 2.5);
+      sprite.position.set(item.x + 0.5, item.y + 0.5, this._terrainZ(item.x + 0.5, item.y + 0.5) + 2.5);
       sprite.scale.set(scale, scale, 1);
       sprite.material.opacity = 0.92;
       sprite.renderOrder = 50;

@@ -127,6 +127,18 @@ export class ThreeEntityLayer {
       depthWrite: false,
       side: THREE.DoubleSide,
     });
+
+    // --- Terrain height sampler (set by ThreeRenderer.setTerrain) ---
+    this._heightSampler = null;
+  }
+
+  /** Provide a terrain height sampler so entities follow the displaced surface. */
+  setHeightSampler(sampler) {
+    this._heightSampler = sampler || null;
+  }
+
+  _terrainZ(x, y) {
+    return this._heightSampler ? this._heightSampler.sampleAt(x, y) : 0;
   }
 
   get animals() {
@@ -285,7 +297,7 @@ export class ThreeEntityLayer {
       const r = ((hex >> 16) & 0xff) / 255;
       const g = ((hex >> 8) & 0xff) / 255;
       const b = (hex & 0xff) / 255;
-      positions.push(a.x, a.y, 0);
+      positions.push(a.x, a.y, this._terrainZ(a.x + 0.5, a.y + 0.5) + 0.05);
       colors.push(r, g, b);
       count++;
       if (count >= MAX_VISIBLE_ENTITY_POINTS) break;
@@ -357,9 +369,10 @@ export class ThreeEntityLayer {
       // --- Animations ---
       let posX = a.x;
       let posY = a.y;
-      let posZ = 0.4; // sprite base Z (billboard above ground)
+      const groundZ = this._terrainZ(a.x + 0.5, a.y + 0.5);
+      let posZ = groundZ + 0.4; // sprite base Z (billboard above ground)
       const isFlying = this._flyingSet.has(a.species);
-      let modelPosZ = isFlying ? 0.25 : 0.02; // models sit on ground, flying species hover
+      let modelPosZ = groundZ + (isFlying ? 0.25 : 0.02); // models sit on ground, flying species hover
       let rotZ = 0;
 
       // Walk bobbing
@@ -511,7 +524,7 @@ export class ThreeEntityLayer {
       shadow = this._acquireShadow();
       this._shadows.set(id, shadow);
     }
-    shadow.position.set(x, y, 0.01);
+    shadow.position.set(x, y, this._terrainZ(x, y) + 0.01);
     shadow.scale.set(scale, scale, 1);
     shadow.visible = true;
   }
@@ -640,7 +653,7 @@ export class ThreeEntityLayer {
 
     this._selectionTick++;
     const pulse = 0.9 + 0.1 * Math.sin(this._selectionTick * 0.12);
-    this._selectionRing.position.set(entity.x, entity.y, 0.03);
+    this._selectionRing.position.set(entity.x, entity.y, this._terrainZ(entity.x, entity.y) + 0.03);
     this._selectionRing.scale.set(pulse, pulse, 1);
     this._selectionRingMat.opacity = 0.7 + 0.2 * Math.sin(this._selectionTick * 0.12);
     this._selectionRing.visible = true;

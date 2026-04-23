@@ -11,6 +11,7 @@ import {
 import {
   clamp,
   LOD_DETAIL_DIST,
+  TERRAIN_HEIGHT_SCALE,
 } from './rendererConfig.js';
 import { ThreeEmojiAtlas } from './emojiAtlas.js';
 import { ThreeParticleSystem } from './particleSystem.js';
@@ -19,6 +20,7 @@ import { ThreeItemLayer } from './itemLayer.js';
 import { ThreeEntityLayer } from './entityLayer.js';
 import { ThreeInputHandler } from './inputHandler.js';
 import { ThreeTerrainShader } from './terrainShader.js';
+import { buildHeightSampler } from './heightSampler.js';
 import useSimStore from '../../store/simulationStore.js';
 
 export class ThreeRenderer {
@@ -354,6 +356,19 @@ export class ThreeRenderer {
     this.mapHeight = height;
     this.camera.setWorldBounds(width, height);
 
+    // Build / refresh the world-space height sampler used by entities,
+    // plants, items and any caller that needs the terrain Z at (x,y).
+    this._heightSampler = buildHeightSampler(
+      this._heightmap,
+      this._terrainData,
+      width,
+      height,
+      TERRAIN_HEIGHT_SCALE,
+    );
+    this._entityLayer.setHeightSampler?.(this._heightSampler);
+    this._plantLayer.setHeightSampler?.(this._heightSampler);
+    this._itemLayer.setHeightSampler?.(this._heightSampler);
+
     if (this._terrainMesh) {
       this.worldGroup.remove(this._terrainMesh);
       this._terrainMesh.geometry.dispose();
@@ -363,7 +378,25 @@ export class ThreeRenderer {
 
     // Build GPU terrain shader with per-type patterns, noise, coastal & height effects
     const material = this._terrainShader.build(terrainData, width, height, heightmap, waterProximity);
-    const geometry = new THREE.PlaneGeometry(width, height);
+
+    // Subdivided plane (1 segment per tile) so we can displace each vertex
+    // from the heightmap. Vertex count = (w+1)*(h+1) — acceptable up to
+    // ~1000×1000 worlds (~1M verts).
+    const geometry = new THREE.PlaneGeometry(width, height, width, height);
+    const posAttr = geometry.attributes.position;
+    const sampler = this._heightSampler;
+    const halfW = width / 2;
+    const halfH = height / 2;
+    for (let k = 0; k < posAttr.count; k++) {
+      // Local plane coords -> tile-space corner coords (0..w, 0..h).
+      const tileX = posAttr.getX(k) + halfW;
+      const tileY = posAttr.getY(k) + halfH;
+      const z = sampler.sampleVertex(Math.round(tileX), Math.round(tileY));
+      posAttr.setZ(k, z);
+    }
+    posAttr.needsUpdate = true;
+    geometry.computeVertexNormals();
+
     this._terrainMesh = new THREE.Mesh(geometry, material);
     this._terrainMesh.position.set(width / 2, height / 2, 0);
     this.worldGroup.add(this._terrainMesh);
@@ -383,6 +416,41 @@ export class ThreeRenderer {
       const idx = y * this.mapWidth + x;
       if (this._terrainData) this._terrainData[idx] = change.terrain;
     }
+
+    // Re-displace the terrain mesh vertices around each edited tile so
+    // water/land toggles reshape the 3D surface live. Each tile touches
+    // up to 4 vertices (the 4 corners), so we touch a small 2x2 block.
+    if (this._terrainMesh && this._heightSampler) {
+      const geo = this._terrainMesh.geometry;
+      const posAttr = geo.attributes.position;
+      const stride = this.mapWidth + 1;
+      const sampler = this._heightSampler;
+      const seen = new Set();
+      for (const change of changes) {
+        const x = change.x | 0;
+        const y = change.y | 0;
+        for (let dy = 0; dy <= 1; dy++) {
+          for (let dx = 0; dx <= 1; dx++) {
+            const vx = x + dx;
+            const vy = y + dy;
+            if (vx < 0 || vy < 0 || vx > this.mapWidth || vy > this.mapHeight) continue;
+            // PlaneGeometry rows are stored top-row first (j=0 at +Y), so
+            // vertex (vx, vy) maps to array index ((h - vy) * stride + vx).
+            const arrayIdx = (this.mapHeight - vy) * stride + vx;
+            if (seen.has(arrayIdx)) continue;
+            seen.add(arrayIdx);
+            posAttr.setZ(arrayIdx, sampler.sampleVertex(vx, vy));
+          }
+        }
+      }
+      posAttr.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
+  }
+
+  /** World-space height (Z) at a tile coordinate, following the displaced terrain. */
+  getTerrainHeightAt(x, y) {
+    return this._heightSampler ? this._heightSampler.sampleAt(x, y) : 0;
   }
 
   // ==================================================================

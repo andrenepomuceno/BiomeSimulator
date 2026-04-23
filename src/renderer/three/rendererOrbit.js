@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 
 const ORBIT_MIN_POLAR_ANGLE = 0.15;
-const ORBIT_MAX_POLAR_ANGLE = Math.PI / 3; // ~60° from zenith — prevents horizon overload
+// ~50° from zenith — keeps the camera tilted but prevents it from descending
+// toward the horizon (which overloads rendering and reveals LOD/fog cutoffs).
+const ORBIT_MAX_POLAR_ANGLE = Math.PI * (50 / 180);
 /** Minimum camera Z height above the ground plane. */
 const MIN_CAMERA_HEIGHT = 4;
 

@@ -15,12 +15,20 @@ export const MAX_PARTICLES = 1200;
 
 // ---------------------------------------------------------------------------
 // Orbit-mode LOD distance thresholds (squared, in world/tile units).
-// Low-poly models mean GPU has plenty of headroom — these can be generous.
-// Entities/plants beyond these distances from the camera are skipped by
-// sprite/model rebuilds and rely on the point layer only.
+// Beyond these distances entities/plants drop to the point (single-pixel)
+// layer. Kept relatively tight so distant objects become cheap pixels early;
+// distant fog fades the transition so the cutoff is not jarring.
 // ---------------------------------------------------------------------------
-export const LOD_ENTITY_DIST_SQ = 160 * 160;
-export const LOD_PLANT_DIST_SQ = 140 * 140;
+export const LOD_ENTITY_DIST_SQ = 90 * 90;
+export const LOD_PLANT_DIST_SQ = 80 * 80;
+
+// ---------------------------------------------------------------------------
+// Distance fog applied in orbit mode to hide the LOD cutoff and horizon.
+// Linear fog: fully visible at `FOG_NEAR`, fully faded at `FOG_FAR`.
+// ---------------------------------------------------------------------------
+export const ORBIT_FOG_COLOR = 0x0a0a1a;
+export const ORBIT_FOG_NEAR = 60;
+export const ORBIT_FOG_FAR = 160;
 
 // Particle spawn configs by type
 export const PARTICLE_DEFS = {

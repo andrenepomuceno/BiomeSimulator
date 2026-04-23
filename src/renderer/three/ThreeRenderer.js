@@ -10,6 +10,9 @@ import {
 } from './rendererOrbit.js';
 import {
   clamp,
+  ORBIT_FOG_COLOR,
+  ORBIT_FOG_NEAR,
+  ORBIT_FOG_FAR,
 } from './rendererConfig.js';
 import { ThreeEmojiAtlas } from './emojiAtlas.js';
 import { ThreeParticleSystem } from './particleSystem.js';
@@ -55,6 +58,11 @@ export class ThreeRenderer {
     this.scene.add(this._hemiLight);
     this.scene.add(this._keyLight);
     this.scene.add(this._fillLight);
+
+    // Distance fog — only active in orbit mode to hide the LOD cutoff and
+    // horizon. Attached/detached to scene on mode toggle so the 2D ortho
+    // view is unaffected.
+    this._fog = new THREE.Fog(ORBIT_FOG_COLOR, ORBIT_FOG_NEAR, ORBIT_FOG_FAR);
 
     this.cameraGroup = new THREE.Group();
     this.worldGroup = new THREE.Group();
@@ -649,9 +657,11 @@ export class ThreeRenderer {
       this._syncOrbitCameraFromView();
       this._activeCamera3D = this._orbitCamera3D;
       this._orbitControls.enabled = true;
+      this.scene.fog = this._fog;
     } else {
       this._orbitControls.enabled = false;
       this._activeCamera3D = this.camera3D;
+      this.scene.fog = null;
       this._syncWorldTransform();
     }
     this._emitViewportChanged();

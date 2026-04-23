@@ -106,6 +106,15 @@ export const PLANT_MODEL_SCALE_MULTIPLIERS = {
 
 export const DEAD_TREE_MODEL_URL = '/model-assets/nature/stump_round.glb';
 
+// Dead non-tree plants (bushes, grass, flowers, crops). Small weathered stump
+// stands in as a generic dried/dead plant marker since the asset kit has no
+// "dead grass / dead bush" variants.
+export const DEAD_PLANT_MODEL_URL = '/model-assets/nature/stump_old.glb';
+
+// Dead animals — no grave/skull/bones models are available in the kit, so a
+// tall stone doubles as a tombstone/grave marker for all species.
+export const DEAD_ANIMAL_MODEL_URL = '/model-assets/nature/stone_tallA.glb';
+
 // ---------------------------------------------------------------------------
 // Item 3D models (kenney_food-kit, CC0)
 // Keys match ITEM_TYPE constants from engine/items.js (MEAT=1, FRUIT=2, SEED=3).

@@ -15,6 +15,7 @@ import {
   ORBIT_ENTITY_MODEL_BOOST,
   ENTITY_MODEL_URLS,
   ENTITY_MODEL_SCALE_MULTIPLIERS,
+  DEAD_ANIMAL_MODEL_URL,
 } from './rendererConfig.js';
 import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../../constants/simulation.js';
@@ -440,22 +441,37 @@ export class ThreeEntityLayer {
       }
 
       // Attempt 3D model
-      if (this._canUseModel(a)) {
-        const species = a.species;
-        const url = ENTITY_MODEL_URLS[species];
-        this._models.ensureLoaded(species, url, onVisRefresh);
+      const isDeadEntity = a.state === AnimalState.DEAD;
+      const wantsModel = isDeadEntity || this._canUseModel(a);
+      const modelKey = isDeadEntity ? 'DEAD_ANIMAL' : a.species;
+      const modelUrl = isDeadEntity ? DEAD_ANIMAL_MODEL_URL : ENTITY_MODEL_URLS[a.species];
+      if (wantsModel && modelUrl) {
+        this._models.ensureLoaded(modelKey, modelUrl, onVisRefresh);
 
         let model = this._models.get(a.id);
-        if (!model && this._models.isReady(species)) {
-          model = this._models.acquire(a.id, species, (mesh) => this._normalizeEntityMesh(mesh, url));
-          if (model) model.userData.species = species;
+        // Swap model when alive→dead (species → DEAD_ANIMAL) or vice versa.
+        if (model && model.userData.modelKey !== modelKey) {
+          this._models.release(a.id, model.userData.modelKey);
+          model = null;
+        }
+        if (!model && this._models.isReady(modelKey)) {
+          model = this._models.acquire(a.id, modelKey, (mesh) => this._normalizeEntityMesh(mesh, modelUrl));
+          if (model) model.userData.species = modelKey;
         }
         if (model) {
           if (this._sprites.has(a.id)) this._sprites.release(a.id);
-          const modelScale = this._getModelScale(a, finalScale, orbitEnabled);
+          const modelScale = isDeadEntity
+            ? this._getDeadModelScale(a, finalScale, orbitEnabled)
+            : this._getModelScale(a, finalScale, orbitEnabled);
           model.position.set(posX, posY, modelPosZ);
           model.scale.set(modelScale, modelScale, modelScale);
-          this._setModelOrientation(model, a);
+          if (isDeadEntity) {
+            // Tombstone: no direction yaw, just upright.
+            model.rotation.order = 'ZYX';
+            model.rotation.set(0, 0, 0);
+          } else {
+            this._setModelOrientation(model, a);
+          }
           model.visible = true;
           // Model opacity for dead/sleeping — materials are cloned per-instance
           // on first use so opacity changes don't leak across clones of the
@@ -463,8 +479,14 @@ export class ThreeEntityLayer {
           this._applyModelOpacity(model, opacity);
           seenModels.add(a.id);
 
-          // Shadow for model
-          this._updateShadow(a.id, posX, posY, modelScale * 1.2, a.state);
+          // Shadow for model (tombstone keeps a subtle shadow; _updateShadow
+          // hides live-animal shadows for DEAD state, so call with a non-DEAD
+          // sentinel when we want one under the grave marker).
+          if (isDeadEntity) {
+            this._updateShadow(a.id, posX, posY, modelScale * 0.9, AnimalState.IDLE);
+          } else {
+            this._updateShadow(a.id, posX, posY, modelScale * 1.2, a.state);
+          }
 
           // HP bar for model
           if (showBars && a.state !== AnimalState.DEAD && a.alive !== false) {
@@ -686,6 +708,15 @@ export class ThreeEntityLayer {
     const orbitBoost = orbitEnabled ? ORBIT_ENTITY_MODEL_BOOST : 1;
     const speciesModelBoost = ENTITY_MODEL_SCALE_MULTIPLIERS[a.species] || 1;
     return Math.max(0.14, Math.min(1.55, base * speciesFactor * stageFactor * fallbackFromSprite * ANIMAL_MODEL_SCALE_BOOST * orbitBoost * speciesModelBoost));
+  }
+
+  _getDeadModelScale(a, spriteScale, orbitEnabled) {
+    // Grave marker size is loosely tied to body size so a bear's headstone
+    // reads bigger than a mosquito's, but clamp tightly so everything still
+    // looks like a tombstone rather than a giant rock.
+    const speciesFactor = (this._visualScale[a.species] || 0.85) / 0.85;
+    const orbitBoost = orbitEnabled ? 1.1 : 1;
+    return Math.max(0.32, Math.min(0.7, 0.42 * speciesFactor * orbitBoost));
   }
 
   _applyModelOpacity(model, opacity) {

@@ -14,6 +14,7 @@ import {
   PLANT_MODEL_URLS,
   PLANT_MODEL_SCALE_MULTIPLIERS,
   DEAD_TREE_MODEL_URL,
+  DEAD_PLANT_MODEL_URL,
 
 } from './rendererConfig.js';
 import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
@@ -299,21 +300,26 @@ export class ThreePlantLayer {
 
   _isModelRenderable(typeId, stage) {
     if (!typeId || stage <= 0) return false;
-    if (stage > 5) return this._treeTypeIds.has(typeId);
+    if (stage > 5) return true; // dead: trees → stump_round, others → stump_old
     return Boolean(PLANT_MODEL_URLS[typeId] || TREE_MODEL_URLS[typeId]);
   }
 
   _getModelKey(typeId, stage) {
-    return stage > 5 ? 'DEAD_STUMP' : `PLANT_${typeId}`;
+    if (stage > 5) return this._treeTypeIds.has(typeId) ? 'DEAD_STUMP' : 'DEAD_PLANT';
+    return `PLANT_${typeId}`;
   }
 
   _getModelUrl(typeId, stage) {
-    if (stage > 5) return this._treeTypeIds.has(typeId) ? DEAD_TREE_MODEL_URL : null;
+    if (stage > 5) return this._treeTypeIds.has(typeId) ? DEAD_TREE_MODEL_URL : DEAD_PLANT_MODEL_URL;
     return PLANT_MODEL_URLS[typeId] || TREE_MODEL_URLS[typeId] || null;
   }
 
   _getModelScale(typeId, stage, orbitEnabled) {
-    if (stage > 5) return 0.62;
+    if (stage > 5) {
+      // Dead: tree stumps stay chunky; non-tree dead plants sit low to the ground.
+      if (this._treeTypeIds.has(typeId)) return 0.62;
+      return 0.32;
+    }
     const stageScale = stage === 1 ? 0.4
       : stage === 2 ? 0.58
       : stage === 3 ? 0.78

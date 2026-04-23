@@ -663,13 +663,17 @@ export class ThreeRenderer {
     // Lazy-create a reusable unit-square LineLoop; avoid dispose+recreate per tile.
     if (!this._selectionLine) {
       const geometry = new THREE.BufferGeometry();
+      // 4 corners — positions are rewritten every refresh so they can drape
+      // over the displaced terrain surface. Initial values are placeholders.
       const corners = new Float32Array([
         0.04, 0.04, 0,
         0.96, 0.04, 0,
         0.96, 0.96, 0,
         0.04, 0.96, 0,
       ]);
-      geometry.setAttribute('position', new THREE.BufferAttribute(corners, 3));
+      const attr = new THREE.BufferAttribute(corners, 3);
+      attr.setUsage(THREE.DynamicDrawUsage);
+      geometry.setAttribute('position', attr);
       this._selectionMaterial = new THREE.LineBasicMaterial({
         color: 0xffdd44,
         transparent: true,
@@ -681,8 +685,23 @@ export class ThreeRenderer {
       this.worldGroup.add(this._selectionLine);
     }
 
-    // Stay flush with ground in orbit mode (was z=4, floated above terrain).
-    this._selectionLine.position.set(x, y, 0.04);
+    // Drape the halo over the terrain surface by sampling height at each
+    // corner of the tile. `position` is in tile-local space, so we translate
+    // via the mesh and keep corner offsets inside [0.04, 0.96].
+    const sampler = this._heightSampler;
+    const zOffset = 0.08; // slight lift above surface to avoid z-fighting
+    const z00 = (sampler ? sampler.sampleAt(x + 0.04, y + 0.04) : 0) + zOffset;
+    const z10 = (sampler ? sampler.sampleAt(x + 0.96, y + 0.04) : 0) + zOffset;
+    const z11 = (sampler ? sampler.sampleAt(x + 0.96, y + 0.96) : 0) + zOffset;
+    const z01 = (sampler ? sampler.sampleAt(x + 0.04, y + 0.96) : 0) + zOffset;
+    const posAttr = this._selectionLine.geometry.attributes.position;
+    const arr = posAttr.array;
+    arr[2] = z00;
+    arr[5] = z10;
+    arr[8] = z11;
+    arr[11] = z01;
+    posAttr.needsUpdate = true;
+    this._selectionLine.position.set(x, y, 0);
     this._selectionLine.visible = true;
   }
 

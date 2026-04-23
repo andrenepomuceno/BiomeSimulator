@@ -15,6 +15,7 @@ import {
   ORBIT_ENTITY_MODEL_BOOST,
   ENTITY_MODEL_URLS,
   ENTITY_MODEL_SCALE_MULTIPLIERS,
+  LOD_ENTITY_DIST_SQ,
 } from './rendererConfig.js';
 import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../../constants/simulation.js';
@@ -83,6 +84,7 @@ export class ThreeEntityLayer {
     this._worldGroup = worldGroup;
 
     this._animals = [];
+    this._animalsById = new Map();
     this._colorMap = buildAnimalColorMap();
     this._visualScale = buildSpeciesVisualScale();
     this._vocalProfile = buildSpeciesVocalProfile();
@@ -134,6 +136,10 @@ export class ThreeEntityLayer {
 
   setAnimals(animals) {
     this._animals = Array.isArray(animals) ? animals : [];
+    this._animalsById.clear();
+    for (const a of this._animals) {
+      if (a && a.id != null) this._animalsById.set(a.id, a);
+    }
   }
 
   setSelectedId(id) {
@@ -307,7 +313,6 @@ export class ThreeEntityLayer {
     const showBars = showAnimalHpBars !== false && zoom >= ENTITY_BARS_MIN_ZOOM;
 
     // LOD: in orbit mode, skip models/sprites beyond this distance from camera
-    const LOD_SPRITE_DIST_SQ = 80 * 80;
     const useLOD = orbitEnabled && cameraPos;
 
     const { x0, y0, x1, y1 } = viewport;
@@ -323,7 +328,7 @@ export class ThreeEntityLayer {
       if (useLOD) {
         const dx = a.x - cameraPos.x;
         const dy = a.y - cameraPos.y;
-        if (dx * dx + dy * dy > LOD_SPRITE_DIST_SQ) continue;
+        if (dx * dx + dy * dy > LOD_ENTITY_DIST_SQ) continue;
       }
 
       seenIds.add(a.id);
@@ -438,13 +443,10 @@ export class ThreeEntityLayer {
           model.scale.set(modelScale, modelScale, modelScale);
           this._setModelOrientation(model, a);
           model.visible = true;
-          // Model opacity for dead/sleeping
-          model.traverse((child) => {
-            if (child.isMesh && child.material) {
-              child.material.transparent = opacity < 1;
-              child.material.opacity = opacity;
-            }
-          });
+          // Model opacity for dead/sleeping — materials are cloned per-instance
+          // on first use so opacity changes don't leak across clones of the
+          // same template (GLTF clone(true) shares materials by default).
+          this._applyModelOpacity(model, opacity);
           seenModels.add(a.id);
 
           // Shadow for model
@@ -620,8 +622,8 @@ export class ThreeEntityLayer {
       return;
     }
 
-    // Find selected entity position
-    const entity = this._animals.find(a => a && a.id === this._selectedId);
+    // Find selected entity position (O(1) via id map)
+    const entity = this._animalsById.get(this._selectedId);
     if (!entity) {
       if (this._selectionRing) this._selectionRing.visible = false;
       return;
@@ -672,6 +674,35 @@ export class ThreeEntityLayer {
     return Math.max(0.14, Math.min(1.55, base * speciesFactor * stageFactor * fallbackFromSprite * ANIMAL_MODEL_SCALE_BOOST * orbitBoost * speciesModelBoost));
   }
 
+  _applyModelOpacity(model, opacity) {
+    let mats = model.userData._instMaterials;
+    if (!mats) {
+      mats = [];
+      model.traverse((child) => {
+        if (!child.isMesh || !child.material) return;
+        if (Array.isArray(child.material)) {
+          const cloned = child.material.map((m) => m.clone());
+          child.material = cloned;
+          for (const m of cloned) mats.push(m);
+        } else {
+          const cloned = child.material.clone();
+          child.material = cloned;
+          mats.push(cloned);
+        }
+      });
+      model.userData._instMaterials = mats;
+      model.userData._lastOpacity = 1;
+    }
+    if (model.userData._lastOpacity === opacity) return;
+    const transparent = opacity < 1;
+    for (const m of mats) {
+      m.transparent = transparent;
+      m.opacity = opacity;
+      m.needsUpdate = true;
+    }
+    model.userData._lastOpacity = opacity;
+  }
+
   _setModelOrientation(model, a) {
     model.rotation.order = 'ZYX';
     model.rotation.x = 0;
@@ -711,6 +742,7 @@ export class ThreeEntityLayer {
     this._points.destroy();
     this._sprites.destroy();
     this._models.destroy();
+    this._animalsById.clear();
     this._prevStates.clear();
     this._fleeBuckets.clear();
     this._animState.clear();

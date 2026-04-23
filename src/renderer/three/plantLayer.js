@@ -14,6 +14,7 @@ import {
   PLANT_MODEL_URLS,
   PLANT_MODEL_SCALE_MULTIPLIERS,
   DEAD_TREE_MODEL_URL,
+  LOD_PLANT_DIST_SQ,
 } from './rendererConfig.js';
 import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
 
@@ -82,6 +83,14 @@ export class ThreePlantLayer {
         this._growthPulse.set(idx, now);
       }
     }
+    // Bound _growthPulse growth: plants off-screen never hit the rebuild loop
+    // where expired entries are pruned, so sweep when the map grows large.
+    if (this._growthPulse.size > 2048) {
+      const cutoff = now - 600;
+      for (const [k, t] of this._growthPulse) {
+        if (t < cutoff) this._growthPulse.delete(k);
+      }
+    }
   }
 
   // ---- Points (zoomed-out colored dots) ----
@@ -142,7 +151,6 @@ export class ThreePlantLayer {
     const GROWTH_PULSE_DURATION = 600; // ms
 
     // LOD: in orbit mode, skip sprites/models beyond distance threshold
-    const LOD_PLANT_DIST_SQ = 70 * 70;
     const useLOD = orbitEnabled && cameraPos;
 
     for (let y = y0; y < y1; y++) {

@@ -5,13 +5,22 @@ export const ANIMAL_MODEL_SCALE_BOOST = 1.28;
 export const ORBIT_TREE_SCALE_BOOST = 1.65;
 export const ORBIT_ENTITY_SPRITE_BOOST = 1.55;
 export const ORBIT_ENTITY_MODEL_BOOST = 1.8;
-export const MAX_VISIBLE_PLANT_POINTS = 18000;
-export const MAX_VISIBLE_ENTITY_POINTS = 5000;
+export const MAX_VISIBLE_PLANT_POINTS = 30000;
+export const MAX_VISIBLE_ENTITY_POINTS = 10000;
 export const MAX_VISIBLE_ITEM_POINTS = 5000;
-export const MAX_VISIBLE_PLANT_SPRITES = 8000;
+export const MAX_VISIBLE_PLANT_SPRITES = 12000;
 export const MAX_VISIBLE_ITEM_SPRITES = 5000;
 export const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
 export const MAX_PARTICLES = 1200;
+
+// ---------------------------------------------------------------------------
+// Orbit-mode LOD distance thresholds (squared, in world/tile units).
+// Low-poly models mean GPU has plenty of headroom — these can be generous.
+// Entities/plants beyond these distances from the camera are skipped by
+// sprite/model rebuilds and rely on the point layer only.
+// ---------------------------------------------------------------------------
+export const LOD_ENTITY_DIST_SQ = 160 * 160;
+export const LOD_PLANT_DIST_SQ = 140 * 140;
 
 // Particle spawn configs by type
 export const PARTICLE_DEFS = {

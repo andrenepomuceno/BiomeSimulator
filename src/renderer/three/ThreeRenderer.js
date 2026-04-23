@@ -9,7 +9,6 @@ import {
   clampCameraAboveGround,
 } from './rendererOrbit.js';
 import {
-  ENTITY_SPRITE_ZOOM_THRESHOLD,
   clamp,
 } from './rendererConfig.js';
 import { ThreeEmojiAtlas } from './emojiAtlas.js';
@@ -48,12 +47,12 @@ export class ThreeRenderer {
     this._activeCamera3D = this.camera3D;
     this._orbitControlsEnabled = false;
 
-    this._ambientLight = new THREE.HemisphereLight(0xd9f6ff, 0x24303f, 0.75);
+    this._hemiLight = new THREE.HemisphereLight(0xd9f6ff, 0x24303f, 0.75);
     this._keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
     this._keyLight.position.set(0.5, -1, 2);
     this._fillLight = new THREE.DirectionalLight(0x89c8ff, 0.35);
     this._fillLight.position.set(-1, 0.8, 1.5);
-    this.scene.add(this._ambientLight);
+    this.scene.add(this._hemiLight);
     this.scene.add(this._keyLight);
     this.scene.add(this._fillLight);
 
@@ -109,10 +108,9 @@ export class ThreeRenderer {
 
     // ---- Selection ----
     this._selectionLine = null;
-    this._selectionLineKey = '';
+    this._selectionMaterial = null;
     this._selectedTile = null;
     this._selectedEntityId = null;
-    this._selectionTick = 0;
 
     // ---- Brush preview ----
     this._brushPreviewMesh = null;
@@ -169,7 +167,6 @@ export class ThreeRenderer {
       this._particles.tick();
       this._terrainShader.tick(1);
       this._updateBrushPreview();
-      this._updateSelectionPulse();
       this._tickFps();
       this.renderer.render(this.scene, this._activeCamera3D);
       if (this._nightMaterial.opacity > 0.002) {
@@ -444,6 +441,8 @@ export class ThreeRenderer {
 
     this._entityLayer.setAnimals(animals);
     this._lastTick = tick || 0;
+    // nativeRenderer/zoom are retained for API compatibility with the Pixi
+    // renderer surface; Three.js reads zoom from this.camera directly.
     void nativeRenderer;
     void zoom;
 
@@ -460,19 +459,10 @@ export class ThreeRenderer {
       });
     }
 
-    const vpVis = this._getViewportBounds(1);
-    if (this.camera.zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD) {
-      const camPos = this._orbitControlsEnabled ? this._orbitCamera3D.position : null;
-      this._entityLayer.rebuildSprites(
-        vpVis, this.camera.zoom, this._orbitControlsEnabled,
-        () => this._scheduleVisibilityRefresh(),
-        tick || 0,
-        camPos,
-      );
-    } else {
-      this._entityLayer.rebuildPoints(vpVis, this.camera.zoom);
-    }
-    this._refreshSelectionMarker();
+    // Coalesce the per-entity rebuild into the next scheduled visibility
+    // refresh instead of doing the same work twice per frame. The scheduler
+    // already coordinates plant, item, and entity rebuilds together.
+    this._scheduleVisibilityRefresh();
   }
 
   _emitEffectEvent(event) {
@@ -549,54 +539,36 @@ export class ThreeRenderer {
 
   _refreshSelectionMarker() {
     if (!this._selectedTile) {
-      if (this._selectionLine) {
-        this.worldGroup.remove(this._selectionLine);
-        this._selectionLine.geometry.dispose();
-        this._selectionLine.material.dispose();
-        this._selectionLine = null;
-        this._selectionLineKey = '';
-      }
+      if (this._selectionLine) this._selectionLine.visible = false;
       return;
     }
 
     const { x, y } = this._selectedTile;
-    const key = `${x}:${y}`;
-    if (key === this._selectionLineKey && this._selectionLine) return;
-    this._selectionLineKey = key;
 
-    const points = [
-      x + 0.04, y + 0.04, 0,
-      x + 0.96, y + 0.04, 0,
-      x + 0.96, y + 0.96, 0,
-      x + 0.04, y + 0.96, 0,
-    ];
-
-    if (this._selectionLine) {
-      this.worldGroup.remove(this._selectionLine);
-      this._selectionLine.geometry.dispose();
-      this._selectionLine.material.dispose();
-      this._selectionLine = null;
+    // Lazy-create a reusable unit-square LineLoop; avoid dispose+recreate per tile.
+    if (!this._selectionLine) {
+      const geometry = new THREE.BufferGeometry();
+      const corners = new Float32Array([
+        0.04, 0.04, 0,
+        0.96, 0.04, 0,
+        0.96, 0.96, 0,
+        0.04, 0.96, 0,
+      ]);
+      geometry.setAttribute('position', new THREE.BufferAttribute(corners, 3));
+      this._selectionMaterial = new THREE.LineBasicMaterial({
+        color: 0xffdd44,
+        transparent: true,
+        opacity: 0.95,
+        depthTest: false,
+      });
+      this._selectionLine = new THREE.LineLoop(geometry, this._selectionMaterial);
+      this._selectionLine.renderOrder = 30;
+      this.worldGroup.add(this._selectionLine);
     }
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-    const material = new THREE.LineBasicMaterial({
-      color: 0xffdd44,
-      transparent: true,
-      opacity: 0.95,
-      depthTest: false,
-    });
-    this._selectionLine = new THREE.LineLoop(geometry, material);
-    this._selectionLine.position.set(0, 0, 4);
-    this._selectionLine.renderOrder = 30;
-    this.worldGroup.add(this._selectionLine);
-  }
-
-  _updateSelectionPulse() {
-    if (!this._selectionLine) return;
-    this._selectionTick++;
-    const pulse = 0.85 + 0.15 * Math.sin(this._selectionTick * 0.1);
-    this._selectionLine.material.opacity = pulse;
+    // Stay flush with ground in orbit mode (was z=4, floated above terrain).
+    this._selectionLine.position.set(x, y, 0.04);
+    this._selectionLine.visible = true;
   }
 
   _updateBrushPreview() {
@@ -634,7 +606,8 @@ export class ThreeRenderer {
     }
 
     this._brushPreviewMaterial.color.setHex(hexColor);
-    this._brushPreviewMesh.position.set(startX + size / 2, startY + size / 2, 3);
+    // Flush with ground (was z=3, floated above terrain in orbit mode).
+    this._brushPreviewMesh.position.set(startX + size / 2, startY + size / 2, 0.04);
     this._brushPreviewMesh.scale.set(size, size, 1);
     this._brushPreviewMesh.visible = true;
     this._brushPreviewSignature = sig;
@@ -781,8 +754,11 @@ export class ThreeRenderer {
     if (this._selectionLine) {
       this.worldGroup.remove(this._selectionLine);
       this._selectionLine.geometry.dispose();
-      this._selectionLine.material.dispose();
       this._selectionLine = null;
+    }
+    if (this._selectionMaterial) {
+      this._selectionMaterial.dispose();
+      this._selectionMaterial = null;
     }
 
     // Brush preview

@@ -5,6 +5,16 @@ const ORBIT_MAX_POLAR_ANGLE = Math.PI / 3; // ~60° from zenith — prevents hor
 /** Minimum camera Z height above the ground plane. */
 const MIN_CAMERA_HEIGHT = 4;
 
+/**
+ * Configure OrbitControls for the 3D orbit mode.
+ *
+ * Mouse binding convention: **RTS / City-Builder** (project standard).
+ *   LEFT   = pan (primary map-exploration gesture)
+ *   MIDDLE = dolly/zoom
+ *   RIGHT  = rotate
+ * This matches genre conventions players expect and is intentionally
+ * the permanent default — do not change without project-wide agreement.
+ */
 export function configureOrbitControls(controls) {
   controls.enabled = false;
   controls.enableDamping = true;
@@ -75,7 +85,7 @@ export function buildOrbitCameraPreset(vp, clamp) {
   return {
     dist,
     minDistance: Math.max(4, dist * 0.05),
-    maxDistance: Math.min(800, Math.max(300, dist * 4)),
+    maxDistance: Math.min(1600, Math.max(500, dist * 5)),
     offsetY: dist * 0.48,
     offsetZ: dist * 0.62,
   };

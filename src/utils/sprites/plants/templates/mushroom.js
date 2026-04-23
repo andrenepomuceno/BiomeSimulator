@@ -2,7 +2,7 @@
  * Mushroom template — mushroom (cap + stem).
  * Stages 2-5 at 64×64 design grid, 3 frames (slight cap wobble).
  */
-import { px, rect, darken, lighten, blend, gradientV, rimLight, ao, shadedEllipse } from '../../helpers.js';
+import { px, rect, darken, lighten, blend, shadedEllipse } from '../../helpers.js';
 import { drawCapTexture, drawMushroomCap, drawGroundBase } from '../bodyParts.js';
 
 export function drawMushroom(ctx, params, stage, frame) {
@@ -19,7 +19,6 @@ export function drawMushroom(ctx, params, stage, frame) {
     // Cap — rounder dome
     shadedEllipse(ctx, cx + 4, baseY - 12, 6, 5, cap, {
       highlight: lighten(cap, 0.20),
-      shadow:    darken(cap, 0.12),
     });
     drawCapTexture(ctx, cx - 1, baseY - 16, 11, 8, cap, capDark);
     if (spots) px(ctx, cx + 4, baseY - 14, spots);
@@ -32,7 +31,6 @@ export function drawMushroom(ctx, params, stage, frame) {
     // Cap — rounder dome with deeper ry and skirt flare
     shadedEllipse(ctx, cx + 4 + wobble, baseY - 22, 11, 10, cap, {
       highlight: lighten(cap, 0.22),
-      shadow:    darken(cap, 0.14),
     });
     // Skirt flare at brim
     for (let i = 0; i < 3; i++) {

@@ -3,7 +3,6 @@
  * Uses overlapping ellipses to produce a multi-lobe bushy silhouette.
  * Stages 2-5 at 64×64 design grid, 3 animation frames for sway.
  */
-import { ao } from '../../helpers.js';
 import { drawFoliageMound, drawSideLobe, drawGroundBase, drawFruit } from '../bodyParts.js';
 
 export function drawBush(ctx, params, stage, frame) {
@@ -25,7 +24,6 @@ export function drawBush(ctx, params, stage, frame) {
     // Medium wide mound, wider than tall
     mound(cx + swayOff, baseY - 18, 12, 11);
     drawGroundBase(ctx, cx - 10, baseY, 21, stem, 3);
-    ao(ctx, cx - 10, baseY + 2, 22, 3, 0.10);
 
   } else if (stage === 4) {
     // Multi-lobe adult bush: two side lobes (behind) + taller centre lobe (front)
@@ -33,7 +31,6 @@ export function drawBush(ctx, params, stage, frame) {
     sideLobe_(cx + 11 + swayOff, baseY - 20, 10, 10);
     mound(cx + swayOff, baseY - 22, 12, 13);
     drawGroundBase(ctx, cx - 17, baseY, 35, stem, 3);
-    ao(ctx, cx - 17, baseY + 2, 36, 3, 0.12);
 
   } else if (stage === 5) {
     // Multi-lobe bush with scattered fruit
@@ -47,6 +44,5 @@ export function drawBush(ctx, params, stage, frame) {
     drawFruit(ctx, cx + 13 + swayOff, baseY - 13, 5, fruit, fruitAccent);
     drawFruit(ctx, cx - 2  + swayOff, baseY - 14, 5, fruit, fruitAccent);
     drawGroundBase(ctx, cx - 17, baseY, 35, stem, 3);
-    ao(ctx, cx - 17, baseY + 2, 36, 3, 0.12);
   }
 }

@@ -2,7 +2,7 @@
  * Tree template — round-canopy trees (apple, mango, oak, olive).
  * Stages 2-5 at 64×64 design grid, 3 animation frames for sway.
  */
-import { px, rect, darken, lighten, gradientH, ao } from '../../helpers.js';
+import { px, rect, darken, lighten, gradientH } from '../../helpers.js';
 import { drawBarkTexture, drawTrunk, drawCanopyBase, drawFoliageMound, drawLeafHighlight, drawGroundBase, drawFruit } from '../bodyParts.js';
 
 function drawLowLeafBranch(ctx, x, y, w, branchColor, leafColor, leafDark) {
@@ -58,7 +58,6 @@ export function drawTree(ctx, params, stage, frame) {
     drawLeafHighlight(ctx, cx + 1 + swayOff,       baseY - th - ((ch * 0.85) | 0), 8, 6, lh);
     rect(ctx, cx + hw - 11 + swayOff, baseY - th - ((ch * 0.45) | 0), 6, 5, lh);
     drawGroundBase(ctx, cx - 6, baseY, 20, trunk);
-    ao(ctx, cx - 8, baseY + 2, 24, 3, 0.12);
   } else if (stage === 5) {
     drawTrunk(ctx, cx, baseY, th, 8, trunk, trunkDark);
     drawCanopyBase(ctx, cx, hw, cw, ch, baseY, th, swayOff, leaf, leafDark);
@@ -73,6 +72,5 @@ export function drawTree(ctx, params, stage, frame) {
     drawFruit(ctx, cx - hw + 6 + swayOff,  fy - 10, 6, fruitAccent || fruit, null);
     drawFruit(ctx, cx + hw - 8 + swayOff,  fy + 2,  6, fruitAccent || fruit, null);
     drawGroundBase(ctx, cx - 6, baseY, 20, trunk);
-    ao(ctx, cx - 8, baseY + 2, 24, 3, 0.12);
   }
 }

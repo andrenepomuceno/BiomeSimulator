@@ -6,6 +6,8 @@ const ORBIT_MIN_POLAR_ANGLE = 0.15;
 const ORBIT_MAX_POLAR_ANGLE = Math.PI * (80 / 180);
 /** Minimum camera Z height above the ground plane. */
 const MIN_CAMERA_HEIGHT = 4;
+/** Extra clearance kept between the camera and the terrain surface. */
+const CAMERA_TERRAIN_MARGIN = 1.5;
 
 /**
  * Configure OrbitControls for the 3D orbit mode.
@@ -42,12 +44,15 @@ export function configureOrbitControls(controls) {
 }
 
 /**
- * Clamp the orbit camera position so it never goes below the ground plane.
+ * Clamp the orbit camera position so it never crosses the terrain surface.
+ * `groundZ` is the world-space terrain height directly under the camera
+ * (sampled via the height sampler). Falls back to a flat floor when omitted.
  * Call this after OrbitControls.update() each frame.
  */
-export function clampCameraAboveGround(camera) {
-  if (camera.position.z < MIN_CAMERA_HEIGHT) {
-    camera.position.z = MIN_CAMERA_HEIGHT;
+export function clampCameraAboveGround(camera, groundZ = 0) {
+  const floor = Math.max(MIN_CAMERA_HEIGHT, groundZ + CAMERA_TERRAIN_MARGIN);
+  if (camera.position.z < floor) {
+    camera.position.z = floor;
   }
 }
 

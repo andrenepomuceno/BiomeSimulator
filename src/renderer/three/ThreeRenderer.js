@@ -165,7 +165,7 @@ export class ThreeRenderer {
       if (!this._running) return;
       if (this._orbitControlsEnabled) {
         this._orbitControls.update();
-        clampCameraAboveGround(this._orbitCamera3D);
+        clampCameraAboveGround(this._orbitCamera3D, this._groundUnderCamera());
       }
       this._particles.tick();
       this._terrainShader.tick(1);
@@ -451,6 +451,17 @@ export class ThreeRenderer {
   /** World-space height (Z) at a tile coordinate, following the displaced terrain. */
   getTerrainHeightAt(x, y) {
     return this._heightSampler ? this._heightSampler.sampleAt(x, y) : 0;
+  }
+
+  /**
+   * Terrain height directly under the orbit camera (clamped to the map),
+   * used to keep the camera from crossing the terrain surface.
+   */
+  _groundUnderCamera() {
+    if (!this._heightSampler || this.mapWidth <= 0 || this.mapHeight <= 0) return 0;
+    const cx = Math.max(0, Math.min(this.mapWidth, this._orbitCamera3D.position.x));
+    const cy = Math.max(0, Math.min(this.mapHeight, this._orbitCamera3D.position.y));
+    return this._heightSampler.sampleAt(cx, cy);
   }
 
   // ==================================================================
@@ -781,7 +792,7 @@ export class ThreeRenderer {
       target.y = y;
       this._orbitCamera3D.position.x += dx;
       this._orbitCamera3D.position.y += dy;
-      clampCameraAboveGround(this._orbitCamera3D);
+      clampCameraAboveGround(this._orbitCamera3D, this._groundUnderCamera());
       this._orbitControls.update();
       this._emitViewportChanged();
     }

@@ -14,27 +14,16 @@ export const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
 export const MAX_PARTICLES = 1200;
 
 // ---------------------------------------------------------------------------
-// Orbit-mode LOD distance thresholds (squared, in world/tile units).
-// Measured from the orbit controls TARGET (look-at point), not camera
-// position, so the fade ring stays centered on what the player is looking at.
-// The fog far plane is tuned to match these cutoffs so models/sprites fade
-// fully into fog before being culled — no visible "ring of disappearance".
+// Orbit-mode LOD distance threshold (in world/tile units, from the orbit
+// controls look-at target). Single value shared by plants and animals so
+// the visible "detail bubble" is consistent.
+//
+// The effective distance shrinks as the camera pulls further away, forcing
+// an earlier model→point transition at high altitudes (big-picture views
+// only need the colored point overlay; detail models would be a waste).
 // ---------------------------------------------------------------------------
-export const LOD_ENTITY_DIST = 120;
-export const LOD_PLANT_DIST = 100;
-export const LOD_ENTITY_DIST_SQ = LOD_ENTITY_DIST * LOD_ENTITY_DIST;
-export const LOD_PLANT_DIST_SQ = LOD_PLANT_DIST * LOD_PLANT_DIST;
-
-// ---------------------------------------------------------------------------
-// Distance fog applied in orbit mode to hide the LOD cutoff and horizon.
-// Linear fog: fully visible at `FOG_NEAR`, fully faded at `FOG_FAR`.
-// FOG_FAR is aligned with the entity LOD cutoff so model→point transitions
-// happen under fully-opaque fog. The point layer disables fog, so distant
-// colored dots remain visible as a mini-map overlay.
-// ---------------------------------------------------------------------------
-export const ORBIT_FOG_COLOR = 0x0a0a1a;
-export const ORBIT_FOG_NEAR = 50;
-export const ORBIT_FOG_FAR = LOD_ENTITY_DIST;
+export const LOD_DETAIL_DIST = 90;
+export const LOD_DETAIL_DIST_SQ = LOD_DETAIL_DIST * LOD_DETAIL_DIST;
 
 // Particle spawn configs by type
 export const PARTICLE_DEFS = {

@@ -10,9 +10,7 @@ import {
 } from './rendererOrbit.js';
 import {
   clamp,
-  ORBIT_FOG_COLOR,
-  ORBIT_FOG_NEAR,
-  ORBIT_FOG_FAR,
+  LOD_DETAIL_DIST,
 } from './rendererConfig.js';
 import { ThreeEmojiAtlas } from './emojiAtlas.js';
 import { ThreeParticleSystem } from './particleSystem.js';
@@ -58,11 +56,6 @@ export class ThreeRenderer {
     this.scene.add(this._hemiLight);
     this.scene.add(this._keyLight);
     this.scene.add(this._fillLight);
-
-    // Distance fog — only active in orbit mode to hide the LOD cutoff and
-    // horizon. Attached/detached to scene on mode toggle so the 2D ortho
-    // view is unaffected.
-    this._fog = new THREE.Fog(ORBIT_FOG_COLOR, ORBIT_FOG_NEAR, ORBIT_FOG_FAR);
 
     this.cameraGroup = new THREE.Group();
     this.worldGroup = new THREE.Group();
@@ -301,14 +294,26 @@ export class ThreeRenderer {
       // LOD is measured from the orbit TARGET (look-at point), not camera
       // position — otherwise the culling ring drifts off to wherever the
       // camera sits in the sky instead of staying on the focal tile.
-      const lodCenter = orbit ? this._orbitControls.target : null;
+      // The effective radius shrinks as the camera pulls further out so
+      // high-altitude overviews transition to colored points earlier.
+      let lodCenter = null;
+      let lodRadiusSq = 0;
+      if (orbit) {
+        lodCenter = this._orbitControls.target;
+        const camDist = this._orbitCamera3D.position.distanceTo(lodCenter);
+        // Radius scales 1.0→down as camera distance grows past the detail
+        // budget. Clamped to keep a usable detail bubble even up close.
+        const scale = clamp(LOD_DETAIL_DIST / Math.max(camDist, 1), 0.35, 1.0);
+        const effective = LOD_DETAIL_DIST * scale;
+        lodRadiusSq = effective * effective;
+      }
 
       this._plantLayer.rebuildPoints(vp, zoom);
-      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter);
+      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter, lodRadiusSq);
       this._itemLayer.rebuildPoints(vp, zoom);
       this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
       this._entityLayer.rebuildPoints(vp, zoom);
-      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, lodCenter);
+      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, lodCenter, lodRadiusSq);
       this._refreshSelectionMarker();
     });
   }
@@ -660,11 +665,9 @@ export class ThreeRenderer {
       this._syncOrbitCameraFromView();
       this._activeCamera3D = this._orbitCamera3D;
       this._orbitControls.enabled = true;
-      this.scene.fog = this._fog;
     } else {
       this._orbitControls.enabled = false;
       this._activeCamera3D = this.camera3D;
-      this.scene.fog = null;
       this._syncWorldTransform();
     }
     this._emitViewportChanged();

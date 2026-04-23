@@ -14,7 +14,7 @@ import {
   PLANT_MODEL_URLS,
   PLANT_MODEL_SCALE_MULTIPLIERS,
   DEAD_TREE_MODEL_URL,
-  LOD_PLANT_DIST_SQ,
+
 } from './rendererConfig.js';
 import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
 
@@ -129,7 +129,7 @@ export class ThreePlantLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter, lodRadiusSq) {
     const show = (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
       && this._plantType && this._plantStage && this._mapWidth > 0;
 
@@ -150,8 +150,8 @@ export class ThreePlantLayer {
     const swayTime = now * 0.001; // seconds for sway
     const GROWTH_PULSE_DURATION = 600; // ms
 
-    // LOD: in orbit mode, skip sprites/models beyond distance threshold
-    const useLOD = orbitEnabled && lodCenter;
+    // LOD: shared radius with entities (renderer computes it from camera altitude)
+    const useLOD = orbitEnabled && lodCenter && lodRadiusSq > 0;
 
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) {
@@ -163,7 +163,7 @@ export class ThreePlantLayer {
         if (useLOD) {
           const dx = x - lodCenter.x;
           const dy = y - lodCenter.y;
-          if (dx * dx + dy * dy > LOD_PLANT_DIST_SQ) continue;
+          if (dx * dx + dy * dy > lodRadiusSq) continue;
         }
 
         // Growth pulse scale factor

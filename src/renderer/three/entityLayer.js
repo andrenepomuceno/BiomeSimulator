@@ -15,7 +15,6 @@ import {
   ORBIT_ENTITY_MODEL_BOOST,
   ENTITY_MODEL_URLS,
   ENTITY_MODEL_SCALE_MULTIPLIERS,
-  LOD_ENTITY_DIST_SQ,
 } from './rendererConfig.js';
 import { getModelRotateXOverride, shouldAutoRotateModel } from './modelProfiles.js';
 import { ENTITY_BARS_MIN_ZOOM } from '../../constants/simulation.js';
@@ -298,7 +297,7 @@ export class ThreeEntityLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, lodCenter) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, lodCenter, lodRadiusSq) {
     const showSprites = orbitEnabled || zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
     if (!showSprites) {
       this._sprites.releaseAll();
@@ -312,8 +311,10 @@ export class ThreeEntityLayer {
     const { showAnimalHpBars } = useSimStore.getState();
     const showBars = showAnimalHpBars !== false && zoom >= ENTITY_BARS_MIN_ZOOM;
 
-    // LOD: in orbit mode, skip models/sprites beyond this distance from camera
-    const useLOD = orbitEnabled && lodCenter;
+    // LOD: in orbit mode, skip models/sprites beyond the effective radius.
+    // Radius is computed by the renderer from camera altitude so overviews
+    // cull more aggressively than close-ups.
+    const useLOD = orbitEnabled && lodCenter && lodRadiusSq > 0;
 
     const { x0, y0, x1, y1 } = viewport;
     const seenSprites = new Set();
@@ -328,7 +329,7 @@ export class ThreeEntityLayer {
       if (useLOD) {
         const dx = a.x - lodCenter.x;
         const dy = a.y - lodCenter.y;
-        if (dx * dx + dy * dy > LOD_ENTITY_DIST_SQ) continue;
+        if (dx * dx + dy * dy > lodRadiusSq) continue;
       }
 
       seenIds.add(a.id);

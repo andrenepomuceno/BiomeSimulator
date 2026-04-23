@@ -199,6 +199,13 @@ export class ThreePlantLayer {
           this._models.ensureLoaded(modelKey, url, onVisRefresh);
 
           let model = this._models.get(idx);
+          // Release stale model when the plant at this tile transitioned to a
+          // different modelKey (alive→dead, species swap, etc.). Without this
+          // the cached live-tree model would persist past the dead transition.
+          if (model && model.userData?.treeModelKey !== modelKey) {
+            this._models.release(idx, model.userData.treeModelKey);
+            model = null;
+          }
           if (!model && this._models.isReady(modelKey)) {
             model = this._models.acquire(idx, modelKey, (mesh) => this._normalizeMesh(mesh, url));
             if (model) model.userData = { treeTypeId: t, treeModelKey: modelKey };

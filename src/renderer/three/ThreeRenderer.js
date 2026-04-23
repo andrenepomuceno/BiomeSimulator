@@ -774,7 +774,7 @@ export class ThreeRenderer {
     this._orbitControls.update();
   }
 
-    setOrbitControlsEnabled(enabled) {
+  setOrbitControlsEnabled(enabled) {
     const nextEnabled = Boolean(enabled);
     if (nextEnabled === this._orbitControlsEnabled) return;
     this._orbitControlsEnabled = nextEnabled;

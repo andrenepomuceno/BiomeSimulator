@@ -374,7 +374,6 @@ export class ThreeEntityLayer {
       let posZ = groundZ + 0.4; // sprite base Z (billboard above ground)
       const isFlying = this._flyingSet.has(a.species);
       let modelPosZ = groundZ + (isFlying ? 0.25 : 0.02); // models sit on ground, flying species hover
-      let rotZ = 0;
 
       // Walk bobbing
       const moved = a.x !== anim.lastX || a.y !== anim.lastY;
@@ -546,7 +545,9 @@ export class ThreeEntityLayer {
       shadow = this._acquireShadow();
       this._shadows.set(id, shadow);
     }
-    shadow.position.set(x, y, this._terrainZ(x, y) + 0.01);
+    // Sample the terrain at the tile center (matches the model's groundZ)
+    // so the shadow sits at the same elevation as the entity on slopes.
+    shadow.position.set(x, y, this._terrainZ(x + 0.5, y + 0.5) + 0.01);
     shadow.scale.set(scale, scale, 1);
     shadow.visible = true;
   }

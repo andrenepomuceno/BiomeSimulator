@@ -100,11 +100,14 @@ export function buildOrbitViewportBounds(samples, mapWidth, mapHeight, extra = 0
 
 export function buildOrbitCameraPreset(vp, clamp) {
   const diag = Math.hypot(vp.w, vp.h);
-  const dist = clamp(diag * 0.68, 42, 500);
+  // 0.78 (was 0.68) leaves a little ocean padding around the island so the
+  // map sits visually centered even when the actual landmass is offset
+  // inside the square world bounds.
+  const dist = clamp(diag * 0.78, 42, 600);
   return {
     dist,
     minDistance: Math.max(4, dist * 0.05),
-    maxDistance: Math.min(1600, Math.max(500, dist * 5)),
+    maxDistance: Math.min(1800, Math.max(600, dist * 5)),
     offsetY: dist * 0.48,
     offsetZ: dist * 0.62,
   };

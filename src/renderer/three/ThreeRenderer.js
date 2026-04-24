@@ -357,17 +357,20 @@ export class ThreeRenderer {
       // LOD is measured from the orbit TARGET (look-at point), not camera
       // position — otherwise the culling ring drifts off to wherever the
       // camera sits in the sky instead of staying on the focal tile.
-      // The effective radius shrinks as the camera pulls further out so
-      // high-altitude overviews transition to colored points earlier.
+      // The effective radius GROWS with camera altitude so high-altitude
+      // overviews still cover a meaningful chunk of the world with sprites
+      // and 3D models, falling back to colored points only at the edges.
       let lodCenter = null;
       let lodRadiusSq = 0;
       if (orbit) {
         lodCenter = this._orbitControls.target;
         const camDist = this._orbitCamera3D.position.distanceTo(lodCenter);
-        // Radius scales 1.0→down as camera distance grows past the detail
-        // budget. Clamped to keep a usable detail bubble even up close.
-        const scale = clamp(LOD_DETAIL_DIST / Math.max(camDist, 1), 0.35, 1.0);
-        const effective = LOD_DETAIL_DIST * scale;
+        // Linear growth with camera distance, clamped between LOD_DETAIL_DIST*0.7
+        // (close-up: avoids a tiny detail bubble) and *3.0 (far view: caps the
+        // visible-plant budget so we don't blow MAX_VISIBLE_PLANT_SPRITES).
+        const minR = LOD_DETAIL_DIST * 0.7;
+        const maxR = LOD_DETAIL_DIST * 3.0;
+        const effective = clamp(camDist * 0.55, minR, maxR);
         lodRadiusSq = effective * effective;
       }
 
@@ -802,7 +805,11 @@ export class ThreeRenderer {
   }
 
   _syncOrbitCameraFromView() {
-    this._orbitTargetTmp.set(this.camera.centerX, this.camera.centerY, 0);
+    // Always look at the map's geometric center so the world is framed
+    // symmetrically on first render, regardless of where the 2D camera was.
+    const cx = this.mapWidth > 0 ? this.mapWidth * 0.5 : this.camera.centerX;
+    const cy = this.mapHeight > 0 ? this.mapHeight * 0.5 : this.camera.centerY;
+    this._orbitTargetTmp.set(cx, cy, 0);
     this._orbitControls.target.copy(this._orbitTargetTmp);
 
     // Frame the larger of (current 2D viewport, full map) so that when the

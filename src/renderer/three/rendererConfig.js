@@ -8,7 +8,7 @@ export const ORBIT_ENTITY_MODEL_BOOST = 1.8;
 export const MAX_VISIBLE_PLANT_POINTS = 30000;
 export const MAX_VISIBLE_ENTITY_POINTS = 10000;
 export const MAX_VISIBLE_ITEM_POINTS = 5000;
-export const MAX_VISIBLE_PLANT_SPRITES = 12000;
+export const MAX_VISIBLE_PLANT_SPRITES = 20000;
 export const MAX_VISIBLE_ITEM_SPRITES = 5000;
 export const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
 // Zoom at which sprites transition to full 3D GLB models. Below this zoom

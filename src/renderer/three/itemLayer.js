@@ -113,8 +113,9 @@ export class ThreeItemLayer {
 
   // ---- Sprites & Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, allowModels = true) {
-    const show = (orbitEnabled || zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, allowModels = true, allowSprites = true) {
+    const show = allowSprites
+      && (orbitEnabled || zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
       && this._itemsById.size > 0;
     if (!show) {
       this._sprites.releaseAll();

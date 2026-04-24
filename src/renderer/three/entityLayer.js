@@ -321,8 +321,8 @@ export class ThreeEntityLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, lodCenter, lodRadiusSq, allowModels = true) {
-    const showSprites = orbitEnabled || zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, lodCenter, lodRadiusSq, allowModels = true, allowSprites = true) {
+    const showSprites = allowSprites && (orbitEnabled || zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD);
     if (!showSprites) {
       this._sprites.releaseAll();
       this._models.releaseAll((m) => m.userData?.species);

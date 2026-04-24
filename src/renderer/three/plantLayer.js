@@ -165,8 +165,9 @@ export class ThreePlantLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter, lodRadiusSq, allowModels = true, lodRadius = 0) {
-    const show = (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter, lodRadiusSq, allowModels = true, lodRadius = 0, allowSprites = true) {
+    const show = allowSprites
+      && (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
       && this._plantType && this._plantStage && this._mapWidth > 0;
 
     if (!show) {

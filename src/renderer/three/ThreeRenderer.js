@@ -367,9 +367,11 @@ export class ThreeRenderer {
       // model spawning entirely — sprites and points already cover the world
       // affordably and GLTF instancing dominates the frame budget at altitude.
       let allowModels = true;
-      // Stride for the point layer scan. At far zoom a 1000x1000 viewport
-      // means ~1M tile checks per frame, which dominates the frame budget.
-      // Sampling every Nth tile yields a visually identical colored cloud.
+      // When far enough that 3D meshes are wasted, also stop emitting
+      // emoji/sprite quads — the colored point cloud is enough at that zoom
+      // and sprite scanning + per-frame texture reuse is what dominates the
+      // overview frame budget.
+      let allowSprites = true;
       let pointStride = 1;
       if (orbit) {
         lodCenter = this._orbitControls.target;
@@ -380,20 +382,22 @@ export class ThreeRenderer {
         lodRadiusSq = lodRadius * lodRadius;
         const MODEL_FAR_DISABLE_DIST = LOD_DETAIL_DIST * 2.2;
         allowModels = camDist < MODEL_FAR_DISABLE_DIST;
-        // Aim for ~40k tile samples max from the points scan regardless of
-        // viewport size. sqrt(area / 40000) gives a stride that keeps the
-        // worst case bounded even at full-map overviews.
+        // Sprites disappear a bit beyond the model threshold so there's a
+        // smooth band where 3D models are gone but sprites still hint at
+        // species before everything collapses to the point cloud.
+        const SPRITE_FAR_DISABLE_DIST = LOD_DETAIL_DIST * 2.6;
+        allowSprites = camDist < SPRITE_FAR_DISABLE_DIST;
         const vw = Math.max(1, vp.x1 - vp.x0);
         const vh = Math.max(1, vp.y1 - vp.y0);
         pointStride = Math.max(1, Math.round(Math.sqrt((vw * vh) / 40000)));
       }
 
       this._plantLayer.rebuildPoints(vp, zoom, orbit, pointStride);
-      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter, lodRadiusSq, allowModels, lodRadius);
+      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter, lodRadiusSq, allowModels, lodRadius, allowSprites);
       this._itemLayer.rebuildPoints(vp, zoom);
-      this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh, allowModels);
+      this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh, allowModels, allowSprites);
       this._entityLayer.rebuildPoints(vp, zoom);
-      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, lodCenter, lodRadiusSq, allowModels);
+      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, lodCenter, lodRadiusSq, allowModels, allowSprites);
       this._refreshSelectionMarker();
     });
   }

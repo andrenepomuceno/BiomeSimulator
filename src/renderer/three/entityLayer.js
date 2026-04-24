@@ -315,8 +315,10 @@ export class ThreeEntityLayer {
       if (count >= capacity || count >= MAX_VISIBLE_ENTITY_POINTS) break;
     }
 
-    const pointSize = zoom >= 6 ? 5 : 3.5;
-    this._points.commit(count, pointSize);
+    // Fixed point size — all entities render as same-sized dots regardless of
+    // species or zoom. 4 px keeps animals slightly larger than plant dots
+    // (3 px) so they remain distinguishable in the overview.
+    this._points.commit(count, 4);
   }
 
   // ---- Sprites + Models (zoomed-in) ----

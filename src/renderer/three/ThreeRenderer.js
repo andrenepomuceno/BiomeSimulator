@@ -13,6 +13,7 @@ import {
   clamp,
   LOD_DETAIL_DIST,
   TERRAIN_HEIGHT_SCALE,
+  MAX_VISIBLE_PLANT_POINTS,
 } from './rendererConfig.js';
 import { ThreeEmojiAtlas } from './emojiAtlas.js';
 import { ThreeParticleSystem } from './particleSystem.js';
@@ -372,7 +373,18 @@ export class ThreeRenderer {
       // bubble and as colored points everywhere else. This keeps the look
       // consistent and removes the per-tile texture/atlas cost of sprites.
       const allowSprites = false;
-      let pointStride = 1;
+
+      // Stride for the plant-point scan — applied in ALL modes (not just orbit).
+      // Without it, the 2D zoomed-out view covers 100k+ tiles while
+      // MAX_VISIBLE_PLANT_POINTS = 30k; the loop hits the cap and breaks mid-
+      // viewport, causing the tail end of the scan (dense grass etc.) to
+      // flicker as the cut-off shifts with every camera pan.
+      // ceil(sqrt(viewport_tiles / cap)) ensures sampled_tiles ≈ cap, and
+      // since plant density << 100%, actual drawn points stay well below cap.
+      const vw = Math.max(1, vp.x1 - vp.x0);
+      const vh = Math.max(1, vp.y1 - vp.y0);
+      const pointStride = Math.max(1, Math.ceil(Math.sqrt((vw * vh) / MAX_VISIBLE_PLANT_POINTS)));
+
       if (orbit) {
         lodCenter = this._orbitControls.target;
         const camDist = this._orbitCamera3D.position.distanceTo(lodCenter);
@@ -382,9 +394,6 @@ export class ThreeRenderer {
         lodRadiusSq = lodRadius * lodRadius;
         const MODEL_FAR_DISABLE_DIST = LOD_DETAIL_DIST * 2.2;
         allowModels = camDist < MODEL_FAR_DISABLE_DIST;
-        const vw = Math.max(1, vp.x1 - vp.x0);
-        const vh = Math.max(1, vp.y1 - vp.y0);
-        pointStride = Math.max(1, Math.round(Math.sqrt((vw * vh) / 40000)));
       }
 
       this._plantLayer.rebuildPoints(vp, zoom, orbit, pointStride);
@@ -557,7 +566,11 @@ export class ThreeRenderer {
       this.camera.setWorldBounds(width, height);
     }
     this._plantLayer.setData(plantType, plantStage, width, height);
-    this._plantLayer.rebuildPoints(this._getViewportBounds(1), this.camera.zoom, this._orbitControlsEnabled);
+    const vp = this._getViewportBounds(1);
+    const vw = Math.max(1, vp.x1 - vp.x0);
+    const vh = Math.max(1, vp.y1 - vp.y0);
+    const stride = Math.max(1, Math.ceil(Math.sqrt((vw * vh) / MAX_VISIBLE_PLANT_POINTS)));
+    this._plantLayer.rebuildPoints(vp, this.camera.zoom, this._orbitControlsEnabled, stride);
   }
 
   updatePlants(plantChanges) {
@@ -581,7 +594,11 @@ export class ThreeRenderer {
     }
 
     this._plantLayer.applyChanges(plantChanges);
-    this._plantLayer.rebuildPoints(this._getViewportBounds(1), this.camera.zoom, this._orbitControlsEnabled);
+    const vp2 = this._getViewportBounds(1);
+    const vw2 = Math.max(1, vp2.x1 - vp2.x0);
+    const vh2 = Math.max(1, vp2.y1 - vp2.y0);
+    const stride2 = Math.max(1, Math.ceil(Math.sqrt((vw2 * vh2) / MAX_VISIBLE_PLANT_POINTS)));
+    this._plantLayer.rebuildPoints(vp2, this.camera.zoom, this._orbitControlsEnabled, stride2);
 
     if (profiling) {
       store.setRendererProfile({

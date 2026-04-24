@@ -137,9 +137,18 @@ export class ThreePlantLayer {
     let p = 0;
     let c = 0;
 
-    outer: for (let y = y0; y < y1; y += step) {
+    // Snap loop origins to a multiple of step so the sampled grid stays
+    // fixed in world-tile space regardless of viewport scroll or camera pan.
+    // Without this, x0/y0 shift each frame → different tiles enter/leave the
+    // draw set → visible flickering of individual plants at distance.
+    const ys = step > 1 ? Math.floor(y0 / step) * step : y0;
+    const xs = step > 1 ? Math.floor(x0 / step) * step : x0;
+
+    outer: for (let y = ys; y < y1; y += step) {
+      if (y < y0) continue;
       const rowBase = y * mapWidth;
-      for (let x = x0; x < x1; x += step) {
+      for (let x = xs; x < x1; x += step) {
+        if (x < x0) continue;
         const idx = rowBase + x;
         const t = plantType[idx];
         if (t === 0) continue;
@@ -158,9 +167,10 @@ export class ThreePlantLayer {
       }
     }
 
-    // Compensate point size when striding so the dot cloud keeps similar
-    // visual coverage even when we sample fewer cells.
-    const pointSize = (zoom >= 6 ? 3.5 : 2.5) * Math.min(2.5, Math.sqrt(step));
+    // Scale point size with stride so that a strided point covers roughly the
+    // same screen area as the N×N tile block it represents. Clamped to avoid
+    // oversized blobs at very large strides.
+    const pointSize = step > 1 ? Math.min(8, 2.5 * Math.sqrt(step)) : 3;
     this._points.commit(count, pointSize);
   }
 

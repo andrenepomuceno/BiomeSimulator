@@ -322,7 +322,11 @@ export class ThreeEntityLayer {
   // ---- Sprites + Models (zoomed-in) ----
 
   rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, lodCenter, lodRadiusSq, allowModels = true, allowSprites = true) {
-    const showSprites = allowSprites && (orbitEnabled || zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD);
+    // Visible at all only if either render path is active. Sprites OR
+    // models can carry the layer; allowSprites=false alone should not
+    // disable models, because models live in the same loop.
+    const showSprites = (orbitEnabled || zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD)
+      && (allowSprites || allowModels);
     if (!showSprites) {
       this._sprites.releaseAll();
       this._models.releaseAll((m) => m.userData?.species);
@@ -366,7 +370,10 @@ export class ThreeEntityLayer {
       }
 
       const emoji = this._getEmoji(a);
-      const sprite = this._sprites.acquire(a.id, emoji);
+      // Defer sprite acquisition until we know we actually need the sprite
+      // fallback — when sprites are globally disabled and a model is in
+      // use, allocating a sprite here is pure waste and corrupts pruning.
+      let sprite = null;
 
       const speciesScale = this._visualScale[a.species] || 0.85;
       const stageFactor = a.lifeStage === LifeStage.EGG ? 0.4
@@ -511,6 +518,14 @@ export class ThreeEntityLayer {
       }
 
       // Sprite fallback
+      if (!allowSprites) {
+        // No model and no sprite — release any stale sprite/shadow/hp
+        // for this entity so it doesn't linger from a previous frame.
+        if (this._sprites.has(a.id)) this._sprites.release(a.id);
+        this._hideHpBar(a.id);
+        continue;
+      }
+      sprite = this._sprites.acquire(a.id, emoji);
       sprite.position.set(posX, posY, posZ);
       sprite.scale.set(finalScale, finalScale, 1);
       sprite.material.opacity = opacity;

@@ -114,9 +114,10 @@ export class ThreeItemLayer {
   // ---- Sprites & Models (zoomed-in) ----
 
   rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, allowModels = true, allowSprites = true) {
-    const show = allowSprites
-      && (orbitEnabled || zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
-      && this._itemsById.size > 0;
+    // Models and sprites share this loop; show as long as either is on.
+    const show = (orbitEnabled || zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
+      && this._itemsById.size > 0
+      && (allowSprites || allowModels);
     if (!show) {
       this._sprites.releaseAll();
       this._models.releaseAll(() => null);
@@ -163,7 +164,11 @@ export class ThreeItemLayer {
         }
       }
 
-      // Fallback: emoji sprite
+      // Fallback: emoji sprite (only when sprites are enabled)
+      if (!allowSprites) {
+        if (this._sprites.has(item.id)) this._sprites.release(item.id);
+        continue;
+      }
       const emoji = ITEM_EMOJIS[item.type] || '📦';
       const sprite = this._sprites.acquire(item.id, emoji);
       sprite.position.set(item.x + 0.5, item.y + 0.5, this._terrainZ(item.x + 0.5, item.y + 0.5) + 2.5);

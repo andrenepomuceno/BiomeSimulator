@@ -129,7 +129,9 @@ export class ThreePlantLayer {
     const mapWidth = this._mapWidth;
     const plantType = this._plantType;
     const plantStage = this._plantStage;
-    const spriteLayerCoversEverything = !orbitEnabled && zoom >= PLANT_SPRITE_ZOOM_THRESHOLD;
+    // All plants are emitted as points; 3D models (when active) overlay on
+    // top inside the LOD bubble. Emoji sprites have been removed so there
+    // is no longer a sprite layer that "covers" plants and lets us skip them.
     const step = Math.max(1, stride | 0);
     let count = 0;
     let p = 0;
@@ -143,7 +145,6 @@ export class ThreePlantLayer {
         if (t === 0) continue;
         const s = plantStage[idx];
         if (s === 0) continue;
-        if (spriteLayerCoversEverything && this._isModelRenderable(t, s)) continue;
         const rgba = PLANT_COLORS[`${t}_${s}`] || [100, 200, 100, 180];
         const alpha = Math.max(0.35, Math.min(1, (rgba[3] || 180) / 255));
         positions[p++] = x + 0.5;
@@ -166,9 +167,13 @@ export class ThreePlantLayer {
   // ---- Sprites + Models (zoomed-in) ----
 
   rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter, lodRadiusSq, allowModels = true, lodRadius = 0, allowSprites = true) {
-    const show = allowSprites
-      && (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
+    // The function name says "sprites" but it also drives 3D model placement.
+    // We bail out only when nothing in either branch could render — if
+    // sprites are disabled but models are still allowed (e.g. zoomed in or
+    // inside the LOD bubble) we must keep going to spawn the GLB models.
+    const visible = (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
       && this._plantType && this._plantStage && this._mapWidth > 0;
+    const show = visible && (allowSprites || allowModels);
 
     if (!show) {
       this._sprites.releaseAll();
@@ -275,7 +280,9 @@ export class ThreePlantLayer {
           }
         }
 
-        // Sprite fallback
+        // Sprite fallback (only when sprites are enabled — otherwise the
+        // plant is represented by the colored point cloud below).
+        if (!allowSprites) continue;
         const emoji = this._getEmoji(t, s);
         const sprite = this._sprites.acquire(idx, emoji);
         sprite.position.set(x + 0.5, y + 0.5, this._terrainZ(x + 0.5, y + 0.5) + 0.5);

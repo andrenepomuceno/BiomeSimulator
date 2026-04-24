@@ -367,11 +367,11 @@ export class ThreeRenderer {
       // model spawning entirely — sprites and points already cover the world
       // affordably and GLTF instancing dominates the frame budget at altitude.
       let allowModels = true;
-      // When far enough that 3D meshes are wasted, also stop emitting
-      // emoji/sprite quads — the colored point cloud is enough at that zoom
-      // and sprite scanning + per-frame texture reuse is what dominates the
-      // overview frame budget.
-      let allowSprites = true;
+      // Emoji sprites are intentionally disabled across the renderer:
+      // entities, plants and items render as 3D models inside the LOD
+      // bubble and as colored points everywhere else. This keeps the look
+      // consistent and removes the per-tile texture/atlas cost of sprites.
+      const allowSprites = false;
       let pointStride = 1;
       if (orbit) {
         lodCenter = this._orbitControls.target;
@@ -382,11 +382,6 @@ export class ThreeRenderer {
         lodRadiusSq = lodRadius * lodRadius;
         const MODEL_FAR_DISABLE_DIST = LOD_DETAIL_DIST * 2.2;
         allowModels = camDist < MODEL_FAR_DISABLE_DIST;
-        // Sprites disappear a bit beyond the model threshold so there's a
-        // smooth band where 3D models are gone but sprites still hint at
-        // species before everything collapses to the point cloud.
-        const SPRITE_FAR_DISABLE_DIST = LOD_DETAIL_DIST * 2.6;
-        allowSprites = camDist < SPRITE_FAR_DISABLE_DIST;
         const vw = Math.max(1, vp.x1 - vp.x0);
         const vh = Math.max(1, vp.y1 - vp.y0);
         pointStride = Math.max(1, Math.round(Math.sqrt((vw * vh) / 40000)));

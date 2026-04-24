@@ -721,6 +721,7 @@ export class ThreeRenderer {
       this._selectedTile = { x, y };
     }
     this._selectedEntityId = null;
+    this._entityLayer.setSelectedId(null);
     this._refreshSelectionMarker();
   }
 

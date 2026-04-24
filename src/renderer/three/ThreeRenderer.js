@@ -186,6 +186,9 @@ export class ThreeRenderer {
       onResize: () => this._handleResize(),
     });
 
+    // 3D mode starts directly in orbit camera — no need to press V.
+    this.setOrbitControlsEnabled(true);
+
     // ---- Animation loop ----
     this._running = true;
     this._animate = () => {
@@ -413,6 +416,11 @@ export class ThreeRenderer {
     this.mapWidth = width;
     this.mapHeight = height;
     this.camera.setWorldBounds(width, height);
+    // Orbit starts enabled before the map loads, so re-center the orbit
+    // camera/target on the map once the world bounds are known.
+    if (this._orbitControlsEnabled) {
+      this._syncOrbitCameraFromView();
+    }
 
     // Build / refresh the world-space height sampler used by entities,
     // plants, items and any caller that needs the terrain Z at (x,y).

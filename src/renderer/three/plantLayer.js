@@ -129,10 +129,12 @@ export class ThreePlantLayer {
     const mapWidth = this._mapWidth;
     const plantType = this._plantType;
     const plantStage = this._plantStage;
-    // When the sprite/model layer is NOT rendering (zoomed out), include
-    // model-capable plants in the point overlay so trees/bushes stay visible
-    // as colored dots from high altitude — mirrors entity/item behaviour.
-    const spriteLayerVisible = orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD;
+    // Only skip model-renderable plants when the sprite/model layer is
+    // guaranteed to cover the full viewport. In orbit mode the sprite layer
+    // uses an LOD bubble around the focal point, so plants outside that
+    // bubble must still appear as points — otherwise wide overviews show
+    // only a tiny circle of 3D trees with nothing around them.
+    const spriteLayerCoversEverything = !orbitEnabled && zoom >= PLANT_SPRITE_ZOOM_THRESHOLD;
     let count = 0;
     let p = 0;
     let c = 0;
@@ -145,7 +147,7 @@ export class ThreePlantLayer {
         if (t === 0) continue;
         const s = plantStage[idx];
         if (s === 0) continue;
-        if (spriteLayerVisible && this._isModelRenderable(t, s)) continue;
+        if (spriteLayerCoversEverything && this._isModelRenderable(t, s)) continue;
         const rgba = PLANT_COLORS[`${t}_${s}`] || [100, 200, 100, 180];
         const alpha = Math.max(0.35, Math.min(1, (rgba[3] || 180) / 255));
         positions[p++] = x + 0.5;

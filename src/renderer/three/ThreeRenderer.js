@@ -805,8 +805,13 @@ export class ThreeRenderer {
     this._orbitTargetTmp.set(this.camera.centerX, this.camera.centerY, 0);
     this._orbitControls.target.copy(this._orbitTargetTmp);
 
-    const vp = this.camera.getViewportTiles();
-    const preset = buildOrbitCameraPreset(vp, clamp);
+    // Frame the larger of (current 2D viewport, full map) so that when the
+    // renderer is freshly created the whole island fits on screen instead
+    // of being cropped to whatever the default 2D zoom happens to frame.
+    const viewTiles = this.camera.getViewportTiles();
+    const fitW = Math.max(viewTiles.w, this.mapWidth || 0);
+    const fitH = Math.max(viewTiles.h, this.mapHeight || 0);
+    const preset = buildOrbitCameraPreset({ w: fitW, h: fitH }, clamp);
     this._orbitControls.minDistance = preset.minDistance;
     this._orbitControls.maxDistance = preset.maxDistance;
     this._orbitCamera3D.position.set(

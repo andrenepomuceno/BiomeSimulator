@@ -7,6 +7,7 @@ import {
   buildOrbitViewportBounds,
   buildOrbitCameraPreset,
   clampCameraAboveGround,
+  ORBIT_TILT_SCALE,
 } from './rendererOrbit.js';
 import {
   clamp,
@@ -75,6 +76,27 @@ export class ThreeRenderer {
     this._orbitControls.addEventListener('change', () => {
       if (this._orbitControlsEnabled) this._emitViewportChanged();
     });
+    this._orbitZoomRefDistance = 1;
+    this._orbitZoomRefValue = this.camera?.zoom ?? 4;
+
+    // ---- Tilt-correction helpers (zero-alloc hot path) ----
+    // Right-drag produces free azimuth rotation and only a *slight* polar tilt.
+    // After each OrbitControls.update() the polar (vertical) delta is scaled
+    // down by ORBIT_TILT_SCALE while the azimuth delta is left untouched.
+    // All THREE objects are preallocated here so _applyTiltCorrection() is
+    // allocation-free every frame.
+    //
+    // OrbitControls uses a Y-up spherical internally regardless of camera.up.
+    // _tiltQuat / _tiltQuatInv map between Z-up world space and Y-up spherical
+    // space so phi (polar angle) can be read and written correctly.
+    this._tiltOffset = new THREE.Vector3();
+    this._tiltSph    = new THREE.Spherical();
+    this._tiltQuat   = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 0, 1), // camera.up (Z-up world)
+      new THREE.Vector3(0, 1, 0), // Y-up (OrbitControls spherical space)
+    );
+    this._tiltQuatInv  = this._tiltQuat.clone().invert();
+    this._prevCamPolar = 0; // phi at end of last corrected frame
 
     // ---- Raycasting temps ----
     this._raycaster = new THREE.Raycaster();
@@ -165,6 +187,7 @@ export class ThreeRenderer {
       if (!this._running) return;
       if (this._orbitControlsEnabled) {
         this._orbitControls.update();
+        this._applyTiltCorrection();
         clampCameraAboveGround(this._orbitCamera3D, this._groundUnderCamera());
       }
       this._particles.tick();
@@ -203,9 +226,19 @@ export class ThreeRenderer {
 
   _emitViewportChanged() {
     if (this.onViewportChange) {
-      this.onViewportChange({ ...this.camera.getViewportTiles(), zoom: this.camera.zoom });
+      this.onViewportChange(this.getViewportTiles());
     }
     this._scheduleVisibilityRefresh();
+  }
+
+  _getOrbitViewportZoom() {
+    const target = this._orbitControls?.target;
+    if (!target) return this.camera.zoom;
+    const dist = this._orbitCamera3D.position.distanceTo(target);
+    const refDist = Math.max(this._orbitZoomRefDistance || 1, 1e-3);
+    const refZoom = this._orbitZoomRefValue || this.camera.zoom;
+    const zoom = refZoom * (refDist / Math.max(dist, 1e-3));
+    return clamp(zoom, 0.1, 64);
   }
 
   _syncWorldTransform() {
@@ -783,6 +816,11 @@ export class ThreeRenderer {
       this._syncOrbitCameraFromView();
       this._activeCamera3D = this._orbitCamera3D;
       this._orbitControls.enabled = true;
+      const orbitDist = this._orbitCamera3D.position.distanceTo(this._orbitControls.target);
+      this._orbitZoomRefDistance = Math.max(orbitDist, 1e-3);
+      this._orbitZoomRefValue = this.camera.zoom;
+      // Seed _prevCamPolar so the first frame's correction delta is zero.
+      this._initTiltTracking();
     } else {
       this._orbitControls.enabled = false;
       this._activeCamera3D = this.camera3D;
@@ -794,6 +832,59 @@ export class ThreeRenderer {
   toggleOrbitControls() {
     this.setOrbitControlsEnabled(!this._orbitControlsEnabled);
     return this._orbitControlsEnabled;
+  }
+
+  /**
+   * Record the current polar angle so the next _applyTiltCorrection() frame
+   * starts with a zero delta. Must be called after the orbit camera position
+   * is initialised (i.e. after _syncOrbitCameraFromView).
+   */
+  _initTiltTracking() {
+    this._tiltOffset.copy(this._orbitCamera3D.position).sub(this._orbitControls.target);
+    this._tiltOffset.applyQuaternion(this._tiltQuat);
+    this._tiltSph.setFromVector3(this._tiltOffset);
+    this._prevCamPolar = this._tiltSph.phi;
+  }
+
+  /**
+   * Scale down the vertical (polar/tilt) component of the camera movement
+   * produced by OrbitControls.update() this frame, leaving horizontal
+   * (azimuth) rotation unchanged.
+   *
+   * Strategy: read the polar angle OrbitControls just applied, compute the
+   * delta from the previous corrected polar, apply only ORBIT_TILT_SCALE of
+   * that delta, then write the camera position back. Because OrbitControls
+   * re-derives its internal spherical from camera.position at the START of
+   * every update(), the correction is stable across frames.
+   */
+  _applyTiltCorrection() {
+    const cam    = this._orbitCamera3D;
+    const target = this._orbitControls.target;
+
+    // Compute current polar angle in OrbitControls' Y-up spherical space.
+    this._tiltOffset.copy(cam.position).sub(target);
+    this._tiltOffset.applyQuaternion(this._tiltQuat);
+    this._tiltSph.setFromVector3(this._tiltOffset);
+
+    const currentPhi = this._tiltSph.phi;
+    const delta = currentPhi - this._prevCamPolar;
+
+    if (Math.abs(delta) > 1e-6) {
+      // Reduce the polar change to ORBIT_TILT_SCALE fraction.
+      const correctedPhi = this._prevCamPolar + delta * ORBIT_TILT_SCALE;
+      const clampedPhi   = Math.max(
+        this._orbitControls.minPolarAngle,
+        Math.min(this._orbitControls.maxPolarAngle, correctedPhi),
+      );
+      this._tiltSph.phi = clampedPhi;
+      this._tiltOffset.setFromSpherical(this._tiltSph);
+      this._tiltOffset.applyQuaternion(this._tiltQuatInv); // back to Z-up
+      cam.position.copy(target).add(this._tiltOffset);
+      cam.lookAt(target);
+      this._prevCamPolar = clampedPhi;
+    } else {
+      this._prevCamPolar = currentPhi;
+    }
   }
 
   // ==================================================================
@@ -809,7 +900,13 @@ export class ThreeRenderer {
 
   getViewportTiles() {
     if (this._orbitControlsEnabled) {
-      return { x: 0, y: 0, w: this.mapWidth, h: this.mapHeight, zoom: this.camera.zoom };
+      return {
+        x: 0,
+        y: 0,
+        w: this.mapWidth,
+        h: this.mapHeight,
+        zoom: this._getOrbitViewportZoom(),
+      };
     }
     return { ...this.camera.getViewportTiles(), zoom: this.camera.zoom };
   }
@@ -839,6 +936,12 @@ export class ThreeRenderer {
 
   setZoom(z) {
     this.camera.setZoom(z);
+    if (this._orbitControlsEnabled) {
+      const orbitDist = this._orbitCamera3D.position.distanceTo(this._orbitControls.target);
+      this._orbitZoomRefDistance = Math.max(orbitDist, 1e-3);
+      this._orbitZoomRefValue = this.camera.zoom;
+      this._emitViewportChanged();
+    }
   }
 
   captureViewport() {

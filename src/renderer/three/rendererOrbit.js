@@ -1,9 +1,18 @@
 import * as THREE from 'three';
 
-const ORBIT_MIN_POLAR_ANGLE = 0.15;
-// ~60° from zenith — keeps the camera tilted but limits how far it can lean
-// toward the horizon (which overloads rendering and reveals LOD/fog cutoffs).
-const ORBIT_MAX_POLAR_ANGLE = Math.PI * (60 / 180);
+// ~16° from zenith: prevents a fully overhead view that loses 3D depth.
+const ORBIT_MIN_POLAR_ANGLE = 0.28;
+// ~50° from zenith: enough perspective without flattening terrain or revealing
+// LOD/fog cutoffs near the horizon.
+const ORBIT_MAX_POLAR_ANGLE = Math.PI * (50 / 180);
+
+/**
+ * Fraction of vertical right-drag movement applied as polar tilt.
+ * Horizontal (azimuth) rotation is always full-speed; this constant keeps the
+ * up/down tilt feeling subtle — the user can still control it deliberately but
+ * it resists accidental large swings.
+ */
+export const ORBIT_TILT_SCALE = 0.38;
 /** Minimum camera Z height above the ground plane. */
 const MIN_CAMERA_HEIGHT = 4;
 /** Extra clearance kept between the camera and the terrain surface. */
@@ -13,9 +22,12 @@ const CAMERA_TERRAIN_MARGIN = 3;
  * Configure OrbitControls for the 3D orbit mode.
  *
  * Mouse binding convention: **RTS / City-Builder** (project standard).
- *   LEFT   = pan (primary map-exploration gesture)
+ *   LEFT   = pan  (primary map-exploration gesture)
  *   MIDDLE = dolly/zoom
- *   RIGHT  = rotate
+ *   RIGHT  = rotate — free azimuth spin + slight polar tilt
+ *            (horizontal drag: full-speed orbit around the focal point;
+ *             vertical drag: scaled by ORBIT_TILT_SCALE for subtle tilt)
+ *
  * This matches genre conventions players expect and is intentionally
  * the permanent default — do not change without project-wide agreement.
  */

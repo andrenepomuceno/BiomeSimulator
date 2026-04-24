@@ -7,6 +7,7 @@ import {
   MAX_VISIBLE_ITEM_POINTS,
   MAX_VISIBLE_ITEM_SPRITES,
   ITEM_SPRITE_ZOOM_THRESHOLD,
+  MODEL_ZOOM_THRESHOLD,
   ITEM_EMOJIS,
   ITEM_COLORS,
   ITEM_MODEL_URLS,
@@ -125,6 +126,7 @@ export class ThreeItemLayer {
     const seenSprites = this._seenSprites; seenSprites.clear();
     const seenModels = this._seenModels; seenModels.clear();
     const scale = 0.55;
+    const modelsAllowed = orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD;
     let count = 0;
 
     for (const item of this._itemsById.values()) {
@@ -135,8 +137,8 @@ export class ThreeItemLayer {
       const modelUrl = ITEM_MODEL_URLS[item.type];
       const modelKey = modelUrl ? `item_${item.type}` : null;
 
-      // Try 3D model first
-      if (modelKey && modelUrl) {
+      // Try 3D model first (only at close zoom / orbit mode)
+      if (modelsAllowed && modelKey && modelUrl) {
         if (!this._models.isReady(modelKey)) {
           this._models.ensureLoaded(modelKey, modelUrl, () => {
             if (typeof onVisRefresh === 'function') onVisRefresh();

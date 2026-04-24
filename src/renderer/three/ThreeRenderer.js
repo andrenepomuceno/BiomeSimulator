@@ -368,7 +368,7 @@ export class ThreeRenderer {
         lodRadiusSq = effective * effective;
       }
 
-      this._plantLayer.rebuildPoints(vp, zoom);
+      this._plantLayer.rebuildPoints(vp, zoom, orbit);
       this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter, lodRadiusSq);
       this._itemLayer.rebuildPoints(vp, zoom);
       this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
@@ -533,7 +533,7 @@ export class ThreeRenderer {
       this.camera.setWorldBounds(width, height);
     }
     this._plantLayer.setData(plantType, plantStage, width, height);
-    this._plantLayer.rebuildPoints(this._getViewportBounds(1), this.camera.zoom);
+    this._plantLayer.rebuildPoints(this._getViewportBounds(1), this.camera.zoom, this._orbitControlsEnabled);
   }
 
   updatePlants(plantChanges) {
@@ -557,7 +557,7 @@ export class ThreeRenderer {
     }
 
     this._plantLayer.applyChanges(plantChanges);
-    this._plantLayer.rebuildPoints(this._getViewportBounds(1), this.camera.zoom);
+    this._plantLayer.rebuildPoints(this._getViewportBounds(1), this.camera.zoom, this._orbitControlsEnabled);
 
     if (profiling) {
       store.setRendererProfile({

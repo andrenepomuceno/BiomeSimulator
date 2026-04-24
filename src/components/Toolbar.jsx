@@ -127,7 +127,7 @@ export default function Toolbar({ appVersion, isDev, activeDrawer, isCompactLayo
           aria-label="Renderer backend"
         >
           <option value="pixi">2D</option>
-          <option value="three">3D</option>
+          <option value="three">3D (Experimental)</option>
         </select>
       </div>
 

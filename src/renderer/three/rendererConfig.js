@@ -11,6 +11,13 @@ export const MAX_VISIBLE_ITEM_POINTS = 5000;
 export const MAX_VISIBLE_PLANT_SPRITES = 12000;
 export const MAX_VISIBLE_ITEM_SPRITES = 5000;
 export const ENTITY_SPRITE_ZOOM_THRESHOLD = 6;
+// Zoom at which sprites transition to full 3D GLB models. Below this zoom
+// (and when not in orbit mode) entities/plants/items render as simple sprites
+// to keep a high object density affordable. Orbit mode still uses its own
+// LOD radius (LOD_DETAIL_DIST) so far-away orbit views naturally degrade to
+// points even though the apparent zoom may exceed this threshold at the
+// focal point.
+export const MODEL_ZOOM_THRESHOLD = 10;
 export const MAX_PARTICLES = 1200;
 
 // ---------------------------------------------------------------------------

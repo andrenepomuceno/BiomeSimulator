@@ -9,6 +9,7 @@ import { ThreeModelPool } from './modelPool.js';
 import {
   MAX_VISIBLE_ENTITY_POINTS,
   ENTITY_SPRITE_ZOOM_THRESHOLD,
+  MODEL_ZOOM_THRESHOLD,
   ANIMAL_SPRITE_SCALE_BOOST,
   ANIMAL_MODEL_SCALE_BOOST,
   ORBIT_ENTITY_SPRITE_BOOST,
@@ -449,9 +450,11 @@ export class ThreeEntityLayer {
         opacity = 0.68;
       }
 
-      // Attempt 3D model
+      // Attempt 3D model (gated by zoom — below MODEL_ZOOM_THRESHOLD, or
+      // outside orbit's LOD bubble, fall back to a cheap sprite billboard).
       const isDeadEntity = a.state === AnimalState.DEAD;
-      const wantsModel = isDeadEntity || this._canUseModel(a);
+      const modelsAllowed = orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD;
+      const wantsModel = modelsAllowed && (isDeadEntity || this._canUseModel(a));
       const modelKey = isDeadEntity ? 'DEAD_ANIMAL' : a.species;
       const modelUrl = isDeadEntity ? DEAD_ANIMAL_MODEL_URL : ENTITY_MODEL_URLS[a.species];
       if (wantsModel && modelUrl) {

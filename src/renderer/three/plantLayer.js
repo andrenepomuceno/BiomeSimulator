@@ -9,6 +9,7 @@ import {
   MAX_VISIBLE_PLANT_POINTS,
   MAX_VISIBLE_PLANT_SPRITES,
   PLANT_SPRITE_ZOOM_THRESHOLD,
+  MODEL_ZOOM_THRESHOLD,
   ORBIT_TREE_SCALE_BOOST,
   TREE_MODEL_URLS,
   PLANT_MODEL_URLS,
@@ -113,7 +114,7 @@ export class ThreePlantLayer {
 
   // ---- Points (zoomed-out colored dots) ----
 
-  rebuildPoints(viewport, zoom) {
+  rebuildPoints(viewport, zoom, orbitEnabled = false) {
     if (!this._plantType || !this._plantStage || this._mapWidth <= 0) {
       this._points.clear();
       return;
@@ -128,6 +129,10 @@ export class ThreePlantLayer {
     const mapWidth = this._mapWidth;
     const plantType = this._plantType;
     const plantStage = this._plantStage;
+    // When the sprite/model layer is NOT rendering (zoomed out), include
+    // model-capable plants in the point overlay so trees/bushes stay visible
+    // as colored dots from high altitude — mirrors entity/item behaviour.
+    const spriteLayerVisible = orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD;
     let count = 0;
     let p = 0;
     let c = 0;
@@ -140,7 +145,7 @@ export class ThreePlantLayer {
         if (t === 0) continue;
         const s = plantStage[idx];
         if (s === 0) continue;
-        if (this._isModelRenderable(t, s)) continue;
+        if (spriteLayerVisible && this._isModelRenderable(t, s)) continue;
         const rgba = PLANT_COLORS[`${t}_${s}`] || [100, 200, 100, 180];
         const alpha = Math.max(0.35, Math.min(1, (rgba[3] || 180) / 255));
         positions[p++] = x + 0.5;
@@ -211,7 +216,10 @@ export class ThreePlantLayer {
           }
         }
 
-        if (this._isModelRenderable(t, s)) {
+        // Gate 3D models by zoom — below MODEL_ZOOM_THRESHOLD we keep the
+        // sprite fallback so dense plant fields stay affordable.
+        const modelsAllowed = orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD;
+        if (modelsAllowed && this._isModelRenderable(t, s)) {
           const modelKey = this._getModelKey(t, s);
           const url = this._getModelUrl(t, s);
           this._models.ensureLoaded(modelKey, url, onVisRefresh);

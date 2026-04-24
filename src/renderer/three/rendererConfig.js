@@ -70,31 +70,38 @@ export const ITEM_COLORS = {
   3: 0xaa8833,
 };
 
+function assetUrl(assetPath) {
+  const base = import.meta?.env?.BASE_URL || '/';
+  const withLeading = base.startsWith('/') ? base : `/${base}`;
+  const normalizedBase = withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
+  return `${normalizedBase}${assetPath.replace(/^\/+/, '')}`;
+}
+
 export const TREE_MODEL_URLS = {
-  4: '/model-assets/nature/tree_oak.glb',
-  5: '/model-assets/nature/tree_detailed.glb',
-  10: '/model-assets/nature/tree_oak_dark.glb',
-  12: '/model-assets/nature/tree_palm.glb',
-  15: '/model-assets/nature/tree_default.glb',
+  4: assetUrl('model-assets/nature/tree_oak.glb'),
+  5: assetUrl('model-assets/nature/tree_detailed.glb'),
+  10: assetUrl('model-assets/nature/tree_oak_dark.glb'),
+  12: assetUrl('model-assets/nature/tree_palm.glb'),
+  15: assetUrl('model-assets/nature/tree_default.glb'),
 };
 
 export const PLANT_MODEL_URLS = {
-  1: '/model-assets/nature/grass_leafs.glb',
-  2: '/model-assets/nature/plant_bushSmall.glb',
-  3: '/model-assets/nature/plant_bushDetailed.glb',
-  4: '/model-assets/nature/tree_oak.glb',
-  5: '/model-assets/nature/tree_detailed.glb',
-  6: '/model-assets/nature/crop_carrot.glb',
-  7: '/model-assets/nature/flower_yellowC.glb',
-  8: '/model-assets/nature/tomato.glb',
-  9: '/model-assets/nature/mushroom_red.glb',
-  10: '/model-assets/nature/tree_oak_dark.glb',
-  11: '/model-assets/nature/cactus_tall.glb',
-  12: '/model-assets/nature/tree_palm.glb',
-  13: '/model-assets/nature/crops_leafsStageA.glb',
-  14: '/model-assets/nature/pepper.glb',
-  15: '/model-assets/nature/tree_default.glb',
-  16: '/model-assets/nature/flower_purpleB.glb',
+  1: assetUrl('model-assets/nature/grass_leafs.glb'),
+  2: assetUrl('model-assets/nature/plant_bushSmall.glb'),
+  3: assetUrl('model-assets/nature/plant_bushDetailed.glb'),
+  4: assetUrl('model-assets/nature/tree_oak.glb'),
+  5: assetUrl('model-assets/nature/tree_detailed.glb'),
+  6: assetUrl('model-assets/nature/crop_carrot.glb'),
+  7: assetUrl('model-assets/nature/flower_yellowC.glb'),
+  8: assetUrl('model-assets/nature/tomato.glb'),
+  9: assetUrl('model-assets/nature/mushroom_red.glb'),
+  10: assetUrl('model-assets/nature/tree_oak_dark.glb'),
+  11: assetUrl('model-assets/nature/cactus_tall.glb'),
+  12: assetUrl('model-assets/nature/tree_palm.glb'),
+  13: assetUrl('model-assets/nature/crops_leafsStageA.glb'),
+  14: assetUrl('model-assets/nature/pepper.glb'),
+  15: assetUrl('model-assets/nature/tree_default.glb'),
+  16: assetUrl('model-assets/nature/flower_purpleB.glb'),
 };
 
 export const PLANT_MODEL_SCALE_MULTIPLIERS = {
@@ -111,16 +118,16 @@ export const PLANT_MODEL_SCALE_MULTIPLIERS = {
   16: 0.92,
 };
 
-export const DEAD_TREE_MODEL_URL = '/model-assets/nature/stump_round.glb';
+export const DEAD_TREE_MODEL_URL = assetUrl('model-assets/nature/stump_round.glb');
 
 // Dead non-tree plants (bushes, grass, flowers, crops). Small weathered stump
 // stands in as a generic dried/dead plant marker since the asset kit has no
 // "dead grass / dead bush" variants.
-export const DEAD_PLANT_MODEL_URL = '/model-assets/nature/stump_old.glb';
+export const DEAD_PLANT_MODEL_URL = assetUrl('model-assets/nature/stump_old.glb');
 
 // Dead animals — no grave/skull/bones models are available in the kit, so a
 // tall stone doubles as a tombstone/grave marker for all species.
-export const DEAD_ANIMAL_MODEL_URL = '/model-assets/nature/stone_tallA.glb';
+export const DEAD_ANIMAL_MODEL_URL = assetUrl('model-assets/nature/stone_tallA.glb');
 
 // ---------------------------------------------------------------------------
 // Item 3D models (kenney_food-kit, CC0)
@@ -129,9 +136,9 @@ export const DEAD_ANIMAL_MODEL_URL = '/model-assets/nature/stone_tallA.glb';
 // ---------------------------------------------------------------------------
 
 export const ITEM_MODEL_URLS = {
-  1: '/model-assets/items/meat-cooked.glb',    // MEAT
-  2: '/model-assets/items/apple.glb',           // FRUIT
-  3: '/model-assets/items/pumpkin-basic.glb',   // SEED
+  1: assetUrl('model-assets/items/meat-cooked.glb'),    // MEAT
+  2: assetUrl('model-assets/items/apple.glb'),           // FRUIT
+  3: assetUrl('model-assets/items/pumpkin-basic.glb'),   // SEED
 };
 
 export const ITEM_MODEL_SCALE_MULTIPLIERS = {
@@ -148,25 +155,27 @@ export const ITEM_MODEL_SCALE_MULTIPLIERS = {
 // ---------------------------------------------------------------------------
 
 export const ENTITY_MODEL_URLS = {
-  RABBIT: '/model-assets/animals/animal-bunny.glb',
-  SQUIRREL: '/model-assets/animals/animal-beaver.glb',
-  BEETLE: '/model-assets/animals/animal-bee.glb',
-  GOAT: '/model-assets/animals/animal-cow.glb',
-  DEER: '/model-assets/animals/animal-deer.glb',
-  FOX: '/model-assets/animals/animal-fox.glb',
-  WOLF: '/model-assets/animals/animal-dog.glb',
-  BOAR: '/model-assets/animals/animal-hog.glb',
-  BEAR: '/model-assets/animals/animal-polar.glb',
-  RACCOON: '/model-assets/animals/animal-cat.glb',
-  CROW: '/model-assets/animals/animal-parrot.glb',
-  MOSQUITO: '/model-assets/animals/animal-bee.glb',
-  CATERPILLAR: '/model-assets/animals/animal-caterpillar.glb',
-  CRICKET: '/model-assets/animals/animal-bee.glb',
-  LIZARD: '/model-assets/animals/animal-caterpillar.glb',
-  SNAKE: '/model-assets/animals/animal-caterpillar.glb',
-  HAWK: '/model-assets/animals/animal-parrot.glb',
-  CROCODILE: '/model-assets/animals/animal-hog.glb',
+  RABBIT: assetUrl('model-assets/animals/animal-bunny.glb'),
+  SQUIRREL: assetUrl('model-assets/animals/animal-beaver.glb'),
+  BEETLE: assetUrl('model-assets/animals/animal-bee.glb'),
+  GOAT: assetUrl('model-assets/animals/animal-cow.glb'),
+  DEER: assetUrl('model-assets/animals/animal-deer.glb'),
+  FOX: assetUrl('model-assets/animals/animal-fox.glb'),
+  WOLF: assetUrl('model-assets/animals/animal-dog.glb'),
+  BOAR: assetUrl('model-assets/animals/animal-hog.glb'),
+  BEAR: assetUrl('model-assets/animals/animal-polar.glb'),
+  RACCOON: assetUrl('model-assets/animals/animal-cat.glb'),
+  CROW: assetUrl('model-assets/animals/animal-parrot.glb'),
+  MOSQUITO: assetUrl('model-assets/animals/animal-bee.glb'),
+  CATERPILLAR: assetUrl('model-assets/animals/animal-caterpillar.glb'),
+  CRICKET: assetUrl('model-assets/animals/animal-bee.glb'),
+  LIZARD: assetUrl('model-assets/animals/animal-caterpillar.glb'),
+  SNAKE: assetUrl('model-assets/animals/animal-caterpillar.glb'),
+  HAWK: assetUrl('model-assets/animals/animal-parrot.glb'),
+  CROCODILE: assetUrl('model-assets/animals/animal-hog.glb'),
 };
+
+export const ANIMAL_CRAB_MODEL_URL = assetUrl('model-assets/animals/animal-crab.glb');
 
 export const ENTITY_MODEL_SCALE_MULTIPLIERS = {
   MOSQUITO: 1.85,

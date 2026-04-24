@@ -5,6 +5,7 @@ import {
   DEAD_PLANT_MODEL_URL,
   DEAD_ANIMAL_MODEL_URL,
   ENTITY_MODEL_URLS,
+  ANIMAL_CRAB_MODEL_URL,
   ITEM_MODEL_URLS,
 } from './rendererConfig.js';
 
@@ -32,7 +33,7 @@ export const MODEL_ROTATE_X_OVERRIDES_BY_URL = {
   [ENTITY_MODEL_URLS.BEAR]:     Math.PI / 2,  // animal-polar
   [ENTITY_MODEL_URLS.RACCOON]:  Math.PI / 2,  // animal-cat
   [ENTITY_MODEL_URLS.CROW]:     Math.PI / 2,  // animal-parrot (also used by HAWK)
-  '/model-assets/animals/animal-crab.glb': Math.PI / 2,
+  [ANIMAL_CRAB_MODEL_URL]: Math.PI / 2,
   [ITEM_MODEL_URLS[2]]: Math.PI / 2,  // apple
   [ITEM_MODEL_URLS[1]]: Math.PI / 2,  // meat-cooked
   [ITEM_MODEL_URLS[3]]: Math.PI / 2,  // pumpkin-basic

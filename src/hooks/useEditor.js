@@ -43,7 +43,7 @@ export function useEditor(rendererRef) {
         state.pushTerrainHistoryEntry({ undo, redo });
         // Instant visual feedback
         if (rendererRef.current) {
-          rendererRef.current.terrainLayer.updateTiles(redo);
+          rendererRef.current.updateTerrainTiles(redo);
         }
         break;
       }

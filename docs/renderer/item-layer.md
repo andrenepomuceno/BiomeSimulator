@@ -1,7 +1,9 @@
-# ItemLayer
+# ItemLayer (Pixi)
 
 Navigation: [Documentation Home](../README.md) > [Renderer](README.md) > [Current Document](item-layer.md)
 Return to [Documentation Home](../README.md).
+
+This page documents `src/renderer/pixi/ItemLayer.js`. For Three item rendering (`ThreeItemLayer`) see [Three.js Renderer Guide](threejs.md).
 
 ---
 

@@ -1,14 +1,14 @@
 /**
  * App — main layout wiring canvas, sidebar, toolbar, and all hooks together.
  */
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, Suspense } from 'react';
 import packageJson from '../package.json';
 import useSimStore from './store/simulationStore';
 import { useSimulation } from './hooks/useSimulation';
 import { useEditor } from './hooks/useEditor';
 import { useAudio } from './hooks/useAudio';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { GameRenderer } from './renderer/GameRenderer';
+import { createRenderer } from './renderer/rendererFactory';
 import Toolbar from './components/Toolbar';
 import GameMenu from './components/GameMenu';
 import TerrainEditor from './components/TerrainEditor';
@@ -21,7 +21,13 @@ import SimulationReport from './components/SimulationReport';
 import EntitySummaryWindow from './components/EntitySummaryWindow';
 import HelpModal from './components/HelpModal';
 import SimulationConfigModal from './components/SimulationConfigModal';
-import { FF_AUDIO_LOG_UI, FF_CAPTURE_BRIDGE } from './config/featureFlags.js';
+import { IS_DEV, FF_AUDIO_LOG_UI, FF_CAPTURE_BRIDGE } from './config/featureFlags.js';
+
+// DevDebugModal is only loaded in dev; the dynamic import is never resolved in
+// production, so Rollup/Vite excludes the module from the production bundle.
+const DevDebugModal = IS_DEV
+  ? React.lazy(() => import('./components/DevDebugModal.jsx'))
+  : null;
 
 const MODALS = {
   MENU: 'menu',
@@ -29,6 +35,7 @@ const MODALS = {
   CONFIG: 'config',
   REPORT: 'report',
   ENTITIES: 'entities',
+  ...(IS_DEV ? { DEBUG: 'debug' } : {}),
 };
 
 const AUTO_PAUSE_MODAL_IDS = new Set([
@@ -74,12 +81,13 @@ export default function App() {
   const autoPausedByBackgroundRef = useRef(false);
   const autoPausedByModalRef = useRef(false);
   const lastPreparedWorldVersionRef = useRef(0);
+  const hasGeneratedInitialWorldRef = useRef(false);
 
   const {
     terrainData, mapWidth, mapHeight, animals, plantChanges, itemChanges,
     clock, stats, worldReady, worldReadyVersion, plantSnapshot, itemSnapshot, selectedEntity, selectedTile, selectedItem,
     isGeneratingWorld, isPreparingAssets, assetPreparationTitle, assetPreparationSubtitle,
-    autoPauseOnModalOpen,
+    autoPauseOnModalOpen, rendererMode, setRendererMode,
   } = useSimStore();
 
   useEffect(() => {
@@ -94,7 +102,7 @@ export default function App() {
     return () => window.removeEventListener('resize', updateLayoutMode);
   }, []);
 
-  // Initialize renderer
+  // Initialize renderer and allow runtime mode switching.
   useEffect(() => {
     if (!canvasContainerRef.current) return;
 
@@ -107,12 +115,28 @@ export default function App() {
       handleTileClick(x, y);
     };
 
-    const renderer = new GameRenderer(
-      canvasContainerRef.current,
-      onViewportChange,
-      onTileClick,
-      playWorldEffect,
-    );
+    let renderer;
+    try {
+      renderer = createRenderer(
+        rendererMode,
+        canvasContainerRef.current,
+        onViewportChange,
+        onTileClick,
+        playWorldEffect,
+      );
+    } catch (error) {
+      console.error('[Renderer] Failed to initialize renderer mode:', rendererMode, error);
+      const store = useSimStore.getState();
+      store.pushUiToast({
+        variant: 'warning',
+        title: 'Renderer fallback',
+        message: 'Three renderer failed to initialize. Falling back to Pixi.',
+      });
+      if (rendererMode !== 'pixi') {
+        store.setRendererMode('pixi');
+      }
+      return;
+    }
     rendererRef.current = renderer;
 
     // Dev-only automation bridge for capture scripts
@@ -139,16 +163,45 @@ export default function App() {
       };
     }
 
-    // Generate initial map via worker
-    useSimStore.getState().setGeneratingWorld(true);
-    postCmd('generate');
+    // Generate initial map once; renderer mode switches reuse current world snapshots.
+    if (!hasGeneratedInitialWorldRef.current) {
+      hasGeneratedInitialWorldRef.current = true;
+      useSimStore.getState().setGeneratingWorld(true);
+      postCmd('generate');
+    }
+
+    // Rehydrate existing world state when switching renderer mode.
+    if (worldReady) {
+      const { terrain, plantType, plantStage, width, height, heightmap, waterProximity } = worldReady;
+      renderer.setTerrain(terrain, width, height, heightmap, waterProximity);
+      renderer.setPlantSnapshot(plantType, plantStage, width, height);
+      renderer.setItems(itemSnapshot?.items || []);
+      const nativeRenderer = renderer.getNativeRenderer ? renderer.getNativeRenderer() : renderer.app?.renderer;
+      renderer.updateEntities(animals, nativeRenderer, clock.tick, renderer.camera.zoom);
+      renderer.updateDayNight(clock);
+
+      if (selectedEntity) {
+        renderer.setSelectedEntity(selectedEntity.id);
+      } else if (selectedItem) {
+        renderer.setSelectedTile(selectedItem.x | 0, selectedItem.y | 0);
+      } else if (selectedTile) {
+        renderer.setSelectedTile(selectedTile.x, selectedTile.y);
+      }
+    }
 
     return () => {
       if (FF_CAPTURE_BRIDGE) delete window.__ecoCapture;
       renderer.destroy();
       rendererRef.current = null;
+      // If the world hasn't loaded yet (e.g. React StrictMode double-invoke),
+      // reset the flag so the next mount re-issues the generate command.
+      // When switching renderer modes worldReady already exists, so we preserve it.
+      if (!useSimStore.getState().worldReady) {
+        hasGeneratedInitialWorldRef.current = false;
+        useSimStore.getState().setGeneratingWorld(false);
+      }
     };
-  }, []);
+  }, [rendererMode]);
 
   // When world is ready from worker, set up renderer and prepare visual/audio assets.
   useEffect(() => {
@@ -158,7 +211,7 @@ export default function App() {
     const { terrain, plantType, plantStage, width, height, heightmap, waterProximity } = worldReady;
 
     rendererRef.current.setTerrain(terrain, width, height, heightmap, waterProximity);
-    rendererRef.current.plantLayer.setFromArrays(plantType, plantStage, width, height);
+    rendererRef.current.setPlantSnapshot(plantType, plantStage, width, height);
     rendererRef.current.setItems([]);
 
     let cancelled = false;
@@ -200,9 +253,11 @@ export default function App() {
   // Update entities when animals change
   useEffect(() => {
     if (rendererRef.current) {
-      const app = rendererRef.current.app;
       const zoom = rendererRef.current.camera.zoom;
-      rendererRef.current.updateEntities(animals, app.renderer, clock.tick, zoom);
+      const nativeRenderer = rendererRef.current.getNativeRenderer
+        ? rendererRef.current.getNativeRenderer()
+        : rendererRef.current.app?.renderer;
+      rendererRef.current.updateEntities(animals, nativeRenderer, clock.tick, zoom);
     }
   }, [animals]);
 
@@ -228,7 +283,7 @@ export default function App() {
 
   useEffect(() => {
     if (!rendererRef.current || !plantSnapshot) return;
-    rendererRef.current.plantLayer.setFromArrays(
+    rendererRef.current.setPlantSnapshot(
       plantSnapshot.plantType,
       plantSnapshot.plantStage,
       plantSnapshot.width,
@@ -504,7 +559,7 @@ export default function App() {
       playUiClick();
       store.applyTerrainChanges(entry.undo);
       if (store.worker) store.worker.postMessage({ cmd: 'editTerrain', changes: entry.undo });
-      if (rendererRef.current) rendererRef.current.terrainLayer.updateTiles(entry.undo);
+      if (rendererRef.current) rendererRef.current.updateTerrainTiles(entry.undo);
     }
   }
 
@@ -539,7 +594,7 @@ export default function App() {
         store.worker.postMessage({ cmd: 'editTerrain', changes: entry.redo });
       }
       if (rendererRef.current) {
-        rendererRef.current.terrainLayer.updateTiles(entry.redo);
+        rendererRef.current.updateTerrainTiles(entry.redo);
       }
     }
   }
@@ -599,22 +654,31 @@ export default function App() {
         onClose={_closeModal}
         onInspect={_handleInspectFromSummary}
       />
+      {IS_DEV && DevDebugModal && (
+        <Suspense fallback={null}>
+          <DevDebugModal open={activeModal === MODALS.DEBUG} onClose={_closeModal} />
+        </Suspense>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Toolbar
           appVersion={appVersion}
           activeDrawer={activeDrawer}
           isCompactLayout={isCompactLayout}
+          rendererMode={rendererMode}
           onStart={_handleStart}
           onPause={_handlePause}
           onResume={_handleResume}
           onStep={_handleStep}
           onReset={() => _handleReset()}
           onSpeedChange={_handleSpeedChange}
+          onRendererModeChange={setRendererMode}
+          isDev={IS_DEV}
           onMenuToggle={() => _openModal(MODALS.MENU)}
           onGuideToggle={() => _openModal(MODALS.GUIDE)}
           onConfigToggle={() => _openModal(MODALS.CONFIG)}
           onReportToggle={() => _openModal(MODALS.REPORT)}
           onEntitiesToggle={() => _openModal(MODALS.ENTITIES)}
+          onDebugToggle={IS_DEV ? () => _openModal(MODALS.DEBUG) : undefined}
           onLeftSidebarToggle={() => _handleDrawerToggle('left')}
           onRightSidebarToggle={() => _handleDrawerToggle('right')}
         />

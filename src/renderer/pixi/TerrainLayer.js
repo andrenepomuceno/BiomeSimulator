@@ -12,9 +12,9 @@ import {
   TERRAIN_COLORS, TERRAIN_VAR_RGB, TRANSITION_TINT,
   COASTAL_SHALLOW_WATER, COASTAL_WET_SAND,
   tileHash,
-} from '../utils/terrainColors.js';
+} from '../../utils/terrainColors.js';
 import { TerrainShader } from './TerrainShader.js';
-import { RENDERER_CONFIG } from '../engine/config.js';
+import { RENDERER_CONFIG } from '../../engine/config.js';
 
 function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
 

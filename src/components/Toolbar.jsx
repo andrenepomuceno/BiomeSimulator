@@ -20,7 +20,7 @@ const SELECT_FILTERS = [
   { key: 'items', label: 'Items', icon: 'bi-box-seam-fill' },
 ];
 
-export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onLeftSidebarToggle, onRightSidebarToggle }) {
+export default function Toolbar({ appVersion, isDev, activeDrawer, isCompactLayout, rendererMode, onStart, onPause, onResume, onStep, onReset, onSpeedChange, onRendererModeChange, onMenuToggle, onGuideToggle, onConfigToggle, onReportToggle, onEntitiesToggle, onDebugToggle, onLeftSidebarToggle, onRightSidebarToggle }) {
   const { paused, running, tps, clock, climate, tool, setTool, selectionTargets, setSelectionTarget } = useSimStore();
 
   return (
@@ -116,6 +116,21 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
         <span>{tps} tps</span>
       </div>
 
+      <div className="toolbar-divider" aria-hidden="true" />
+
+      <div className="toolbar-group" title="Renderer backend">
+        <span>Renderer:</span>
+        <select
+          className="form-select form-select-sm"
+          value={rendererMode || 'pixi'}
+          onChange={(e) => onRendererModeChange?.(e.target.value)}
+          aria-label="Renderer backend"
+        >
+          <option value="pixi">2D</option>
+          <option value="three">3D (Experimental)</option>
+        </select>
+      </div>
+
       {isCompactLayout && (
         <>
           <div className="toolbar-divider" aria-hidden="true" />
@@ -151,6 +166,12 @@ export default function Toolbar({ appVersion, activeDrawer, isCompactLayout, onS
           <i className="bi bi-card-list toolbar-icon" aria-hidden="true" />
           <span>Entities</span>
         </button>
+        {isDev && (
+          <button className="btn btn-debug btn-sm" onClick={onDebugToggle} title="Dev Debug Dashboard">
+            <i className="bi bi-bug-fill toolbar-icon" aria-hidden="true" />
+            <span>Debug</span>
+          </button>
+        )}
         <span className="toolbar-version" title="Application version">
           v{appVersion}
         </span>

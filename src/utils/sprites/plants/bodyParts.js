@@ -7,7 +7,7 @@ import {
   px, rect, ellipse,
   darken, lighten, blend,
   gradientH, gradientV,
-  rimLight, ao,
+  rimLight,
   speckle, anisotropicSpeckle,
   shadedEllipse,
 } from '../helpers.js';
@@ -51,9 +51,7 @@ export function drawCapTexture(ctx, x, y, w, h, cap, capDark) {
  * @param {number} h     - rect height (default 4)
  */
 export function drawGroundBase(ctx, cx, baseY, w, stemColor, h = 4) {
-  // Renderer already draws world shadows; keep only a very subtle contact hint.
-  const hintW = Math.max(1, w - 2);
-  rect(ctx, cx + 1, baseY, hintW, 1, 'rgba(0,0,0,0.06)');
+  // Intentionally empty in 2D mode: plant sprites should render without ground shadows.
 }
 
 // ─── Bush foliage ───────────────────────────────────────────────────────────
@@ -81,11 +79,6 @@ function drawEllipseLeafTexture(ctx, mCx, mCy, rx, ry, leaf, leafDark) {
 export function drawFoliageMound(ctx, mCx, topY, rx, ry, leaf, leafDark) {
   const mCy = topY + ry;
   ellipse(ctx, mCx, mCy, rx, ry, leaf);
-  // Gradient shadow on lower half
-  for (let dy = 2; dy <= ry; dy++) {
-    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
-    if (hw > 0) rect(ctx, mCx - hw, mCy + dy, hw * 2 + 1, 1, darken(leaf, 0.05 + dy * 0.005));
-  }
   // Top highlight
   const hiRx = Math.max(2, Math.floor(rx * 0.52));
   const hiRy = Math.max(1, Math.floor(ry * 0.30));
@@ -93,8 +86,6 @@ export function drawFoliageMound(ctx, mCx, topY, rx, ry, leaf, leafDark) {
   // Leaf texture
   // Leaf texture — clipped to ellipse to avoid rectangular artifacts
   drawEllipseLeafTexture(ctx, mCx, mCy, rx, ry, leaf, leafDark);
-  // Ground contact AO
-  ao(ctx, mCx - rx + 2, mCy + ry - 2, rx * 2 - 3, 4, 0.12);
 }
 
 /**
@@ -103,11 +94,6 @@ export function drawFoliageMound(ctx, mCx, topY, rx, ry, leaf, leafDark) {
 export function drawSideLobe(ctx, mCx, topY, rx, ry, leafDark) {
   const mCy = topY + ry;
   ellipse(ctx, mCx, mCy, rx, ry, leafDark);
-  // Underside shadow
-  for (let dy = Math.floor(ry * 0.5); dy <= ry; dy++) {
-    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
-    if (hw > 0) rect(ctx, mCx - hw, mCy + dy, hw * 2 + 1, 1, darken(leafDark, 0.04 + dy * 0.004));
-  }
   // Top highlight
   const hiRx = Math.max(1, Math.floor(rx * 0.45));
   const hiRy = Math.max(1, Math.floor(ry * 0.28));
@@ -155,12 +141,6 @@ export function drawCanopyBase(ctx, cx, hw, cw, ch, baseY, th, swayOff, leaf, le
   // Round canopy ellipse
   ellipse(ctx, mCx, mCy, hw, ry, leaf);
 
-  // Gradient shadow — lower half darkens toward trunk
-  for (let dy = 1; dy <= ry; dy++) {
-    const ehw = Math.round(hw * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
-    if (ehw > 0) rect(ctx, mCx - ehw, mCy + dy, ehw * 2 + 1, 1, darken(leaf, 0.04 + dy * 0.018));
-  }
-
   // Top highlight ellipse (sun-lit crown)
   const hiRx = Math.max(3, (hw * 0.52) | 0);
   const hiRy = Math.max(2, (ry * 0.30) | 0);
@@ -205,7 +185,6 @@ export function drawMushroomCap(ctx, cx, baseY, capColor, capDark, stemColor, st
 
   shadedEllipse(ctx, capCX, domeY, rx, ry, capColor, {
     highlight: lighten(capColor, 0.22),
-    shadow:    capDark,
   });
 
   // Skirt flare — cap brim widens as it curves down to the gill edge
@@ -245,7 +224,6 @@ export function drawMushroomCap(ctx, cx, baseY, capColor, capDark, stemColor, st
  */
 export function drawFruit(ctx, x, y, size, fruitColor, fruitAccent) {
   const hi   = fruitAccent || lighten(fruitColor, 0.22);
-  const sh   = darken(fruitColor, 0.22);
   const cx_  = x + Math.floor(size / 2);
   const cy_  = y + Math.floor(size / 2);
   const rx   = Math.max(2, Math.floor(size / 2));
@@ -253,10 +231,6 @@ export function drawFruit(ctx, x, y, size, fruitColor, fruitAccent) {
 
   // Base circle
   ellipse(ctx, cx_, cy_, rx, ry, fruitColor);
-
-  // Shadow crescent (bottom-right quadrant — one darker ring)
-  ellipse(ctx, cx_ + 1, cy_ + 1, Math.max(1, rx - 1), Math.max(1, ry - 1), sh);
-  ellipse(ctx, cx_,     cy_,     Math.max(1, rx - 1), Math.max(1, ry - 1), fruitColor);
 
   // Specular highlight (top-left)
   px(ctx, cx_ - 1, cy_ - 1, hi);
@@ -334,12 +308,6 @@ export function drawHerbCanopy(ctx, x, y, w, h, leaf, leafDark) {
   ellipse(ctx, cx, cy, rx, ry, leaf);
   ellipse(ctx, cx, cy - Math.max(1, Math.floor(ry * 0.85)), Math.max(2, Math.floor(rx * 0.72)), Math.max(1, Math.floor(ry * 0.62)), lighten(leaf, 0.15));
 
-  // Lower shade for depth
-  for (let dy = Math.max(1, Math.floor(ry * 0.25)); dy <= ry; dy++) {
-    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
-    if (hw > 0) rect(ctx, cx - hw, cy + dy, hw * 2 + 1, 1, darken(leaf, 0.06 + dy * 0.012));
-  }
-
   // Texture clipped to each lobe to avoid rectangular artifacts.
   const frontCols = [leafDark, darken(leaf, 0.10), lighten(leaf, 0.06)];
   const backCols = [darken(leafDark, 0.08), lighten(leafDark, 0.05)];
@@ -347,7 +315,6 @@ export function drawHerbCanopy(ctx, x, y, w, h, leaf, leafDark) {
   texEllipse(cx - Math.max(2, Math.floor(rx * 0.9)), cy + 1, Math.max(2, Math.floor(rx * 0.95)), ry, backCols, 0.17);
   texEllipse(cx + Math.max(2, Math.floor(rx * 0.9)), cy + 1, Math.max(2, Math.floor(rx * 0.95)), ry, backCols, 0.17);
 
-  ao(ctx, cx - Math.floor(rx * 1.9), y + h - 1, Math.max(2, Math.floor(rx * 3.8)), 2, 0.08);
 }
 
 /**

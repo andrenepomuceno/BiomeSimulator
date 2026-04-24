@@ -45,6 +45,11 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function supportsOrbitControls(renderer) {
+  return renderer
+    && typeof renderer.toggleOrbitControls === 'function';
+}
+
 export function useKeyboardShortcuts({
   rendererRef,
   activeModal,
@@ -205,6 +210,15 @@ export function useKeyboardShortcuts({
       }
 
       if (configRef.current.activeModal) {
+        return;
+      }
+
+      if (event.code === 'KeyV') {
+        const renderer = configRef.current.rendererRef.current;
+        if (supportsOrbitControls(renderer)) {
+          event.preventDefault();
+          renderer.toggleOrbitControls();
+        }
         return;
       }
 

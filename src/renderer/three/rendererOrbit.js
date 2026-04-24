@@ -1,0 +1,114 @@
+import * as THREE from 'three';
+
+// ~16° from zenith: prevents a fully overhead view that loses 3D depth.
+const ORBIT_MIN_POLAR_ANGLE = 0.28;
+// ~50° from zenith: enough perspective without flattening terrain or revealing
+// LOD/fog cutoffs near the horizon.
+const ORBIT_MAX_POLAR_ANGLE = Math.PI * (50 / 180);
+
+/**
+ * Fraction of vertical right-drag movement applied as polar tilt.
+ * Horizontal (azimuth) rotation is always full-speed; this constant keeps the
+ * up/down tilt feeling subtle — the user can still control it deliberately but
+ * it resists accidental large swings.
+ */
+export const ORBIT_TILT_SCALE = 0.38;
+/** Minimum camera Z height above the ground plane. */
+const MIN_CAMERA_HEIGHT = 4;
+/** Extra clearance kept between the camera and the terrain surface. */
+const CAMERA_TERRAIN_MARGIN = 3;
+
+/**
+ * Configure OrbitControls for the 3D orbit mode.
+ *
+ * Mouse binding convention: **RTS / City-Builder** (project standard).
+ *   LEFT   = pan  (primary map-exploration gesture)
+ *   MIDDLE = dolly/zoom
+ *   RIGHT  = rotate — free azimuth spin + slight polar tilt
+ *            (horizontal drag: full-speed orbit around the focal point;
+ *             vertical drag: scaled by ORBIT_TILT_SCALE for subtle tilt)
+ *
+ * This matches genre conventions players expect and is intentionally
+ * the permanent default — do not change without project-wide agreement.
+ */
+export function configureOrbitControls(controls) {
+  controls.enabled = false;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.15;
+  controls.enablePan = true;
+  controls.enableRotate = true;
+  controls.enableZoom = true;
+  controls.zoomSpeed = 1.4;
+  controls.panSpeed = 1.4;
+  controls.rotateSpeed = 0.6;
+  controls.minPolarAngle = ORBIT_MIN_POLAR_ANGLE;
+  controls.maxPolarAngle = ORBIT_MAX_POLAR_ANGLE;
+  controls.screenSpacePanning = false;
+  controls.mouseButtons = {
+    LEFT: THREE.MOUSE.PAN,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.ROTATE,
+  };
+  controls.touches = {
+    ONE: THREE.TOUCH.PAN,
+    TWO: THREE.TOUCH.DOLLY_ROTATE,
+  };
+}
+
+/**
+ * Clamp the orbit camera position so it never crosses the terrain surface.
+ * `groundZ` is the world-space terrain height directly under the camera
+ * (sampled via the height sampler). Falls back to a flat floor when omitted.
+ * Call this after OrbitControls.update() each frame.
+ */
+export function clampCameraAboveGround(camera, groundZ = 0) {
+  const floor = Math.max(MIN_CAMERA_HEIGHT, groundZ + CAMERA_TERRAIN_MARGIN);
+  if (camera.position.z < floor) {
+    camera.position.z = floor;
+  }
+}
+
+export function buildOrbitViewportBounds(samples, mapWidth, mapHeight, extra = 0) {
+  if (!samples || samples.length === 0) {
+    return { x0: 0, y0: 0, x1: mapWidth, y1: mapHeight };
+  }
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const p of samples) {
+    if (!p) continue;
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+
+  const x0 = Math.max(0, Math.floor(minX - extra));
+  const y0 = Math.max(0, Math.floor(minY - extra));
+  const x1 = Math.min(mapWidth, Math.ceil(maxX + extra));
+  const y1 = Math.min(mapHeight, Math.ceil(maxY + extra));
+
+  if (x1 <= x0 || y1 <= y0) {
+    return { x0: 0, y0: 0, x1: mapWidth, y1: mapHeight };
+  }
+
+  return { x0, y0, x1, y1 };
+}
+
+export function buildOrbitCameraPreset(vp, clamp) {
+  const diag = Math.hypot(vp.w, vp.h);
+  // 0.78 (was 0.68) leaves a little ocean padding around the island so the
+  // map sits visually centered even when the actual landmass is offset
+  // inside the square world bounds.
+  const dist = clamp(diag * 0.78, 42, 600);
+  return {
+    dist,
+    minDistance: Math.max(4, dist * 0.05),
+    maxDistance: Math.min(1800, Math.max(600, dist * 5)),
+    offsetY: dist * 0.48,
+    offsetZ: dist * 0.62,
+  };
+}

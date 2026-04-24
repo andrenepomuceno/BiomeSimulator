@@ -11,9 +11,9 @@
  * Animation: frame-based (3 frames per stage) cycled via tick for sway plants.
  */
 import * as PIXI from 'pixi.js';
-import { PLANT_COLORS } from '../utils/terrainColors.js';
-import { buildFloraAtlasSync, FRAME_SIZE } from '../utils/spriteAtlas.js';
-import { buildSwayStages, buildTreeTypes, buildLowPlantTypes } from '../engine/plantSpecies.js';
+import { PLANT_COLORS } from '../../utils/terrainColors.js';
+import { buildFloraAtlasSync, FRAME_SIZE } from '../../utils/spriteAtlas.js';
+import { buildSwayStages, buildTreeTypes, buildLowPlantTypes } from '../../engine/plantSpecies.js';
 
 const EMOJI_ZOOM_THRESHOLD = 6;
 const EMOJI_OVERLAY_FADE_RANGE = 2;

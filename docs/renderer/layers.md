@@ -1,7 +1,9 @@
-# Rendering Layers
+# Rendering Layers (Pixi)
 
 Navigation: [Documentation Home](../README.md) > [Renderer](README.md) > [Current Document](layers.md)
 Return to [Documentation Home](../README.md).
+
+This document describes the Pixi backend only. For the Three.js layer model (points, sprites, GLB pools), see [Three.js Renderer Guide](threejs.md).
 
 ---
 

@@ -2,7 +2,7 @@
  * Dead template — universal stage 6 for all plant species.
  * 64×64 design grid.
  */
-import { px, rect, ellipse, speckle, darken, lighten, blend, quadraticThick, thickLine, ao } from '../../helpers.js';
+import { px, rect, ellipse, speckle, darken, lighten, blend, quadraticThick, thickLine } from '../../helpers.js';
 import { drawGroundBase, drawGrassBlade, drawCactusColumn, drawCactusSpines, drawCapTexture, drawPalmTrunk, drawPalmFrond } from '../bodyParts.js';
 
 export function drawDead(ctx, params, frame) {
@@ -24,7 +24,6 @@ export function drawDead(ctx, params, frame) {
     drawGrassBlade(ctx, 40 + leanX, baseY,  7,  7, dStem, dLeaf, dDark, true);
     speckle(ctx, 12, baseY + 1, 30, 2, [dLeaf, dDark, '#c8b060'], 0.18);
     drawGroundBase(ctx, 12, baseY, 30, dDark, 2);
-    ao(ctx, 12, baseY + 2, 30, 2, 0.08);
     return;
   }
 
@@ -61,7 +60,6 @@ export function drawDead(ctx, params, frame) {
     px(ctx, cx - 1 + leanX, baseY, ash);
 
     drawGroundBase(ctx, cx - 15 + leanX, baseY, 30, dryDark, 2);
-    ao(ctx, cx - 15 + leanX, baseY + 2, 30, 3, 0.11);
     return;
   }
 
@@ -81,7 +79,6 @@ export function drawDead(ctx, params, frame) {
     speckle(ctx, cx - 9, baseY - 3, 10, 4, [dDark, darken(dBody, 0.10)], 0.22);
     drawCactusSpines(ctx, cx - 9, baseY - 3, 10, 4, spine);
     drawGroundBase(ctx, cx - 4, baseY, 16, dDark, 3);
-    ao(ctx, cx - 10, baseY + 2, 22, 3, 0.10);
     return;
   }
 
@@ -102,7 +99,6 @@ export function drawDead(ctx, params, frame) {
     // Underside of cap (dark fringe)
     rect(ctx, cx - 10, baseY - 6, 22, 2, darken(dCap, 0.10));
     drawGroundBase(ctx, cx - 8, baseY, 20, stemDark, 2);
-    ao(ctx, cx - 10, baseY + 2, 24, 3, 0.12);
     return;
   }
 
@@ -119,7 +115,6 @@ export function drawDead(ctx, params, frame) {
     drawPalmFrond(ctx, cx + 4 + leanX, baseY - 40, 14,  1, 12, dLeaf, dLeafDark);
     drawPalmFrond(ctx, cx + 4 + leanX, baseY - 40, 10,  0, 10, dLeaf, dLeafDark);
     drawGroundBase(ctx, cx - 4 + leanX, baseY, 16, darken(trunkDark, 0.10), 3);
-    ao(ctx, cx - 6, baseY + 2, 18, 3, 0.10);
     return;
   }
 
@@ -167,5 +162,4 @@ export function drawDead(ctx, params, frame) {
   rect(ctx, cx + 1, baseY + 3, 4, 2, brown);
 
   drawGroundBase(ctx, cx - 4, baseY, 14, darkBrown, 2);
-  ao(ctx, cx - 8, baseY + 2, 24, 3, 0.10);
 }

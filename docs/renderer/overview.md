@@ -1,9 +1,13 @@
-# Overview & Camera
+# Overview & Camera (Pixi)
 
 Navigation: [Documentation Home](../README.md) > [Renderer](README.md) > [Current Document](overview.md)
 Return to [Documentation Home](../README.md).
 
 ---
+
+This document is specific to the Pixi backend (`src/renderer/pixi/`).
+
+For Three.js details, see [Three.js Renderer Guide](threejs.md).
 
 ## GameRenderer
 
@@ -34,9 +38,6 @@ const renderer = new GameRenderer(container, onViewportChange, onTileClick);
 | Click (no drag) | Converts screen→tile coordinates, fires `onTileClick(x, y)` |
 
 Entity brush notes:
-
-- Duplicate placement on the same tile is suppressed while dragging.
-- The pointer-up click fallback is skipped when the brush already placed during the same gesture.
 
 ---
 
@@ -131,5 +132,6 @@ flowchart TD
 ## See Also
 
 - [Rendering Layers](layers.md) — detailed layer implementation, sprite pooling, animations, emoji textures
+- [Three.js Renderer Guide](threejs.md) — Three backend architecture and runtime behavior
 - [Architecture: Tick Pipeline](../architecture.md#simulation-tick) — full data flow from worker to screen
 - [Worker API: Messages](../api/messages.md) — tick message format consumed by the renderer

@@ -31,7 +31,7 @@ function makeWorker() {
 
 /** A mock renderer ref with terrain update tracking. */
 function makeRendererRef() {
-  return { current: { terrainLayer: { updateTiles: vi.fn() } } };
+  return { current: { updateTerrainTiles: vi.fn() } };
 }
 
 // Reset the store before each test so state does not bleed between scenarios.
@@ -184,12 +184,12 @@ describe('useEditor — PAINT_TERRAIN tool', () => {
     expect(terrainData[idx]).toBe(5); // changed to FERTILE_SOIL
   });
 
-  it('calls rendererRef.current.terrainLayer.updateTiles', () => {
+  it('calls rendererRef.current.updateTerrainTiles', () => {
     const worker = setupPaint(1);
     const rendererRef = makeRendererRef();
     const { handleTileClick } = useEditor(rendererRef);
     handleTileClick(5, 5);
-    expect(rendererRef.current.terrainLayer.updateTiles).toHaveBeenCalledOnce();
+    expect(rendererRef.current.updateTerrainTiles).toHaveBeenCalledOnce();
   });
 });
 

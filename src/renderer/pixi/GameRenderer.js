@@ -8,14 +8,14 @@ import { PlantLayer } from './PlantLayer.js';
 import { EntityLayer } from './EntityLayer.js';
 import { ItemLayer } from './ItemLayer.js';
 import { AnimationLayer } from './AnimationLayer.js';
-import useSimStore from '../store/simulationStore.js';
-import { RENDERER_CONFIG } from '../engine/config.js';
-import { TERRAIN_COLORS } from '../utils/terrainColors.js';
+import useSimStore from '../../store/simulationStore.js';
+import { RENDERER_CONFIG } from '../../engine/config.js';
+import { TERRAIN_COLORS } from '../../utils/terrainColors.js';
 import {
   generateEmojiTextures,
   generatePlantEmojiTextures,
   generateItemEmojiTextures,
-} from '../utils/emojiTextures.js';
+} from '../../utils/emojiTextures.js';
 
 export class GameRenderer {
   constructor(container, onViewportChange, onTileClick, onEffectEvent) {
@@ -196,6 +196,10 @@ export class GameRenderer {
     this.plantLayer.init(width, height);
     this.camera.setWorldBounds(width, height);
     this._onViewportChanged();
+  }
+
+  setPlantSnapshot(plantType, plantStage, width, height) {
+    this.plantLayer.setFromArrays(plantType, plantStage, width, height);
   }
 
   updatePlants(plantChanges) {
@@ -588,6 +592,14 @@ export class GameRenderer {
         viewport,
       },
     };
+  }
+
+  getNativeRenderer() {
+    return this.app.renderer;
+  }
+
+  updateTerrainTiles(changes) {
+    this.terrainLayer.updateTiles(changes);
   }
 
   destroy() {

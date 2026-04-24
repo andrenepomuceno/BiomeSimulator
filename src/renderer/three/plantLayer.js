@@ -167,7 +167,7 @@ export class ThreePlantLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter, lodRadiusSq) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter, lodRadiusSq, allowModels = true) {
     const show = (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
       && this._plantType && this._plantStage && this._mapWidth > 0;
 
@@ -219,8 +219,10 @@ export class ThreePlantLayer {
         }
 
         // Gate 3D models by zoom — below MODEL_ZOOM_THRESHOLD we keep the
-        // sprite fallback so dense plant fields stay affordable.
-        const modelsAllowed = orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD;
+        // sprite fallback so dense plant fields stay affordable. The renderer
+        // also forces allowModels=false when the orbit camera is far enough
+        // that 3D meshes stop being worth their cost.
+        const modelsAllowed = allowModels && (orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD);
         if (modelsAllowed && this._isModelRenderable(t, s)) {
           const modelKey = this._getModelKey(t, s);
           const url = this._getModelUrl(t, s);

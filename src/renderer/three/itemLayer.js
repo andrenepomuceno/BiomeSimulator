@@ -113,7 +113,7 @@ export class ThreeItemLayer {
 
   // ---- Sprites & Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, allowModels = true) {
     const show = (orbitEnabled || zoom >= ITEM_SPRITE_ZOOM_THRESHOLD)
       && this._itemsById.size > 0;
     if (!show) {
@@ -126,7 +126,7 @@ export class ThreeItemLayer {
     const seenSprites = this._seenSprites; seenSprites.clear();
     const seenModels = this._seenModels; seenModels.clear();
     const scale = 0.55;
-    const modelsAllowed = orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD;
+    const modelsAllowed = allowModels && (orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD);
     let count = 0;
 
     for (const item of this._itemsById.values()) {

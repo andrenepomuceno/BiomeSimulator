@@ -362,6 +362,10 @@ export class ThreeRenderer {
       // and 3D models, falling back to colored points only at the edges.
       let lodCenter = null;
       let lodRadiusSq = 0;
+      // When the camera pulls back beyond MODEL_FAR_DISABLE_DIST we skip 3D
+      // model spawning entirely — sprites and points already cover the world
+      // affordably and GLTF instancing dominates the frame budget at altitude.
+      let allowModels = true;
       if (orbit) {
         lodCenter = this._orbitControls.target;
         const camDist = this._orbitCamera3D.position.distanceTo(lodCenter);
@@ -372,14 +376,18 @@ export class ThreeRenderer {
         const maxR = LOD_DETAIL_DIST * 3.0;
         const effective = clamp(camDist * 0.55, minR, maxR);
         lodRadiusSq = effective * effective;
+        // Threshold roughly matches the point of the LOD-radius clamp where
+        // the bubble is already saturated; beyond it, 3D meshes are wasted.
+        const MODEL_FAR_DISABLE_DIST = LOD_DETAIL_DIST * 2.2;
+        allowModels = camDist < MODEL_FAR_DISABLE_DIST;
       }
 
       this._plantLayer.rebuildPoints(vp, zoom, orbit);
-      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter, lodRadiusSq);
+      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter, lodRadiusSq, allowModels);
       this._itemLayer.rebuildPoints(vp, zoom);
-      this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh);
+      this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh, allowModels);
       this._entityLayer.rebuildPoints(vp, zoom);
-      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, lodCenter, lodRadiusSq);
+      this._entityLayer.rebuildSprites(vp, zoom, orbit, onRefresh, this._lastTick, lodCenter, lodRadiusSq, allowModels);
       this._refreshSelectionMarker();
     });
   }

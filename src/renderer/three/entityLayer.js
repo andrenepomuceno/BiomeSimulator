@@ -321,7 +321,7 @@ export class ThreeEntityLayer {
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, lodCenter, lodRadiusSq) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, tick, lodCenter, lodRadiusSq, allowModels = true) {
     const showSprites = orbitEnabled || zoom >= ENTITY_SPRITE_ZOOM_THRESHOLD;
     if (!showSprites) {
       this._sprites.releaseAll();
@@ -453,7 +453,7 @@ export class ThreeEntityLayer {
       // Attempt 3D model (gated by zoom — below MODEL_ZOOM_THRESHOLD, or
       // outside orbit's LOD bubble, fall back to a cheap sprite billboard).
       const isDeadEntity = a.state === AnimalState.DEAD;
-      const modelsAllowed = orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD;
+      const modelsAllowed = allowModels && (orbitEnabled || zoom >= MODEL_ZOOM_THRESHOLD);
       const wantsModel = modelsAllowed && (isDeadEntity || this._canUseModel(a));
       const modelKey = isDeadEntity ? 'DEAD_ANIMAL' : a.species;
       const modelUrl = isDeadEntity ? DEAD_ANIMAL_MODEL_URL : ENTITY_MODEL_URLS[a.species];

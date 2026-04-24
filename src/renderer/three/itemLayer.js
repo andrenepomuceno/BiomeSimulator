@@ -27,6 +27,10 @@ export class ThreeItemLayer {
     this._sprites = new ThreeSpritePool(worldGroup, emojiAtlas);
     this._models = new ThreeModelPool(worldGroup, createModelAssetLoader());
     this._heightSampler = null;
+
+    // Reusable scratch Sets (reduce per-frame allocation/GC)
+    this._seenSprites = new Set();
+    this._seenModels = new Set();
   }
 
   /** Provide a terrain height sampler so items follow the displaced surface. */
@@ -79,25 +83,31 @@ export class ThreeItemLayer {
     }
 
     const { x0, y0, x1, y1 } = viewport;
-    const positions = [];
-    const colors = [];
+    const buf = this._points.beginUpdate();
+    const positions = buf.positions;
+    const colors = buf.colors;
+    const capacity = buf.capacity;
+    const cap = Math.min(capacity, MAX_VISIBLE_ITEM_POINTS);
     let count = 0;
+    let p = 0;
+    let c = 0;
 
     for (const item of this._itemsById.values()) {
       if (!item || item.consumed) continue;
       if (item.x < x0 || item.x >= x1 || item.y < y0 || item.y >= y1) continue;
       const hex = ITEM_COLORS[item.type] || 0xcccccc;
-      const r = ((hex >> 16) & 0xff) / 255;
-      const g = ((hex >> 8) & 0xff) / 255;
-      const b = (hex & 0xff) / 255;
-      positions.push(item.x + 0.5, item.y + 0.5, this._terrainZ(item.x + 0.5, item.y + 0.5) + 0.05);
-      colors.push(r, g, b);
+      positions[p++] = item.x + 0.5;
+      positions[p++] = item.y + 0.5;
+      positions[p++] = this._terrainZ(item.x + 0.5, item.y + 0.5) + 0.05;
+      colors[c++] = ((hex >> 16) & 0xff) / 255;
+      colors[c++] = ((hex >> 8) & 0xff) / 255;
+      colors[c++] = (hex & 0xff) / 255;
       count++;
-      if (count >= MAX_VISIBLE_ITEM_POINTS) break;
+      if (count >= cap) break;
     }
 
     const pointSize = zoom >= 6 ? 4 : 3;
-    this._points.update(positions, colors, pointSize);
+    this._points.commit(count, pointSize);
   }
 
   // ---- Sprites & Models (zoomed-in) ----
@@ -112,8 +122,8 @@ export class ThreeItemLayer {
     }
 
     const { x0, y0, x1, y1 } = viewport;
-    const seenSprites = new Set();
-    const seenModels = new Set();
+    const seenSprites = this._seenSprites; seenSprites.clear();
+    const seenModels = this._seenModels; seenModels.clear();
     const scale = 0.55;
     let count = 0;
 

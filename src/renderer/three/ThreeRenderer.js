@@ -38,7 +38,12 @@ export class ThreeRenderer {
 
     // ---- WebGL renderer ----
     this.renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
-    this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+    // Cap device pixel ratio — on hi-DPI / retina screens the native DPR is
+    // often 2–3, which multiplies fragment work 4–9× with no visual gain for
+    // our pixel-art sprites and point overlays. 1.5 keeps edges crisp enough
+    // while slashing fragment-shader cost on terrain + sprites.
+    this._maxPixelRatio = 1.5;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this._maxPixelRatio));
     this.renderer.setSize(this.screen.width, this.screen.height, false);
     this.renderer.setClearColor(0x0a0a1a, 1);
     container.appendChild(this.renderer.domElement);

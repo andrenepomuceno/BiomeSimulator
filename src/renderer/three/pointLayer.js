@@ -8,6 +8,7 @@ import * as THREE from 'three';
 export class ThreePointLayer {
   constructor(parentGroup, maxCount, size, z, opacity = 1) {
     this._parentGroup = parentGroup;
+    this._maxCount = maxCount;
 
     const positions = new Float32Array(maxCount * 3);
     const colors = new Float32Array(maxCount * 3);
@@ -15,6 +16,8 @@ export class ThreePointLayer {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setDrawRange(0, 0);
+    this._posAttr = geometry.getAttribute('position');
+    this._colAttr = geometry.getAttribute('color');
 
     const material = new THREE.PointsMaterial({
       size,
@@ -37,14 +40,34 @@ export class ThreePointLayer {
 
   /** Overwrite buffer contents and adjust draw range. */
   update(positionsArr, colorsArr, size) {
-    const posAttr = this._points.geometry.getAttribute('position');
-    const colAttr = this._points.geometry.getAttribute('color');
+    const posAttr = this._posAttr;
+    const colAttr = this._colAttr;
     const count = positionsArr.length / 3;
 
     posAttr.array.set(positionsArr);
     colAttr.array.set(colorsArr);
     posAttr.needsUpdate = true;
     colAttr.needsUpdate = true;
+    this._points.geometry.setDrawRange(0, count);
+    this._points.material.size = size;
+  }
+
+  /**
+   * Zero-allocation update path. Returns the internal Float32Arrays so the
+   * caller can write `count * 3` floats directly, then call `commit(count, size)`
+   * to flip needsUpdate/drawRange. Avoids building throwaway JS arrays.
+   */
+  beginUpdate() {
+    return {
+      positions: this._posAttr.array,
+      colors: this._colAttr.array,
+      capacity: this._maxCount,
+    };
+  }
+
+  commit(count, size) {
+    this._posAttr.needsUpdate = true;
+    this._colAttr.needsUpdate = true;
     this._points.geometry.setDrawRange(0, count);
     this._points.material.size = size;
   }

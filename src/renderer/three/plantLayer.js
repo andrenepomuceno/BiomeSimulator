@@ -57,6 +57,11 @@ export class ThreePlantLayer {
 
     // Terrain height sampler (set by ThreeRenderer)
     this._heightSampler = null;
+
+    // Reusable scratch Sets (reduce per-frame allocation/GC)
+    this._seenSprites = new Set();
+    this._seenModels = new Set();
+    this._seenShadows = new Set();
   }
 
   /** Provide a terrain height sampler so plants follow the displaced surface. */
@@ -115,29 +120,42 @@ export class ThreePlantLayer {
     }
 
     const { x0, y0, x1, y1 } = viewport;
-    const positions = [];
-    const colors = [];
+    const buf = this._points.beginUpdate();
+    const positions = buf.positions;
+    const colors = buf.colors;
+    const capacity = buf.capacity;
+    const cap = Math.min(capacity, MAX_VISIBLE_PLANT_POINTS);
+    const mapWidth = this._mapWidth;
+    const plantType = this._plantType;
+    const plantStage = this._plantStage;
     let count = 0;
+    let p = 0;
+    let c = 0;
 
-    for (let y = y0; y < y1; y++) {
+    outer: for (let y = y0; y < y1; y++) {
+      const rowBase = y * mapWidth;
       for (let x = x0; x < x1; x++) {
-        const idx = y * this._mapWidth + x;
-        const t = this._plantType[idx];
-        const s = this._plantStage[idx];
-        if (t === 0 || s === 0) continue;
+        const idx = rowBase + x;
+        const t = plantType[idx];
+        if (t === 0) continue;
+        const s = plantStage[idx];
+        if (s === 0) continue;
         if (this._isModelRenderable(t, s)) continue;
         const rgba = PLANT_COLORS[`${t}_${s}`] || [100, 200, 100, 180];
         const alpha = Math.max(0.35, Math.min(1, (rgba[3] || 180) / 255));
-        positions.push(x + 0.5, y + 0.5, this._terrainZ(x + 0.5, y + 0.5) + 0.05);
-        colors.push((rgba[0] / 255) * alpha, (rgba[1] / 255) * alpha, (rgba[2] / 255) * alpha);
+        positions[p++] = x + 0.5;
+        positions[p++] = y + 0.5;
+        positions[p++] = this._terrainZ(x + 0.5, y + 0.5) + 0.05;
+        colors[c++] = (rgba[0] / 255) * alpha;
+        colors[c++] = (rgba[1] / 255) * alpha;
+        colors[c++] = (rgba[2] / 255) * alpha;
         count++;
-        if (count >= MAX_VISIBLE_PLANT_POINTS) break;
+        if (count >= cap) break outer;
       }
-      if (count >= MAX_VISIBLE_PLANT_POINTS) break;
     }
 
     const pointSize = zoom >= 6 ? 3.5 : 2.5;
-    this._points.update(positions, colors, pointSize);
+    this._points.commit(count, pointSize);
   }
 
   // ---- Sprites + Models (zoomed-in) ----
@@ -154,9 +172,9 @@ export class ThreePlantLayer {
     }
 
     const { x0, y0, x1, y1 } = viewport;
-    const seenSprites = new Set();
-    const seenModels = new Set();
-    const seenShadows = new Set();
+    const seenSprites = this._seenSprites; seenSprites.clear();
+    const seenModels = this._seenModels; seenModels.clear();
+    const seenShadows = this._seenShadows; seenShadows.clear();
     const scale = 0.82;
     let count = 0;
     const now = performance.now();

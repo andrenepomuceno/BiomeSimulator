@@ -131,6 +131,11 @@ export class ThreeEntityLayer {
 
     // --- Terrain height sampler (set by ThreeRenderer.setTerrain) ---
     this._heightSampler = null;
+
+    // --- Reusable scratch Sets (reduce per-frame allocation/GC) ---
+    this._seenSprites = new Set();
+    this._seenModels = new Set();
+    this._seenIds = new Set();
   }
 
   /** Provide a terrain height sampler so entities follow the displaced surface. */
@@ -287,25 +292,30 @@ export class ThreeEntityLayer {
     }
 
     const { x0, y0, x1, y1 } = viewport;
-    const positions = [];
-    const colors = [];
+    const buf = this._points.beginUpdate();
+    const positions = buf.positions;
+    const colors = buf.colors;
+    const capacity = buf.capacity;
     let count = 0;
+    let p = 0;
+    let c = 0;
 
     for (const a of this._animals) {
       if (!a || a.alive === false || a.state === AnimalState.DEAD) continue;
       if (a.x < x0 || a.x >= x1 || a.y < y0 || a.y >= y1) continue;
       const hex = this._colorMap[a.species] || 0xcccccc;
-      const r = ((hex >> 16) & 0xff) / 255;
-      const g = ((hex >> 8) & 0xff) / 255;
-      const b = (hex & 0xff) / 255;
-      positions.push(a.x, a.y, this._terrainZ(a.x + 0.5, a.y + 0.5) + 0.05);
-      colors.push(r, g, b);
+      positions[p++] = a.x;
+      positions[p++] = a.y;
+      positions[p++] = this._terrainZ(a.x + 0.5, a.y + 0.5) + 0.05;
+      colors[c++] = ((hex >> 16) & 0xff) / 255;
+      colors[c++] = ((hex >> 8) & 0xff) / 255;
+      colors[c++] = (hex & 0xff) / 255;
       count++;
-      if (count >= MAX_VISIBLE_ENTITY_POINTS) break;
+      if (count >= capacity || count >= MAX_VISIBLE_ENTITY_POINTS) break;
     }
 
     const pointSize = zoom >= 6 ? 5 : 3.5;
-    this._points.update(positions, colors, pointSize);
+    this._points.commit(count, pointSize);
   }
 
   // ---- Sprites + Models (zoomed-in) ----
@@ -330,9 +340,9 @@ export class ThreeEntityLayer {
     const useLOD = orbitEnabled && lodCenter && lodRadiusSq > 0;
 
     const { x0, y0, x1, y1 } = viewport;
-    const seenSprites = new Set();
-    const seenModels = new Set();
-    const seenIds = new Set();
+    const seenSprites = this._seenSprites; seenSprites.clear();
+    const seenModels = this._seenModels; seenModels.clear();
+    const seenIds = this._seenIds; seenIds.clear();
 
     for (const a of this._animals) {
       if (!a) continue;

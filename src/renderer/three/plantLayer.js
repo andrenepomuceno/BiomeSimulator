@@ -114,7 +114,7 @@ export class ThreePlantLayer {
 
   // ---- Points (zoomed-out colored dots) ----
 
-  rebuildPoints(viewport, zoom, orbitEnabled = false) {
+  rebuildPoints(viewport, zoom, orbitEnabled = false, stride = 1) {
     if (!this._plantType || !this._plantStage || this._mapWidth <= 0) {
       this._points.clear();
       return;
@@ -129,19 +129,15 @@ export class ThreePlantLayer {
     const mapWidth = this._mapWidth;
     const plantType = this._plantType;
     const plantStage = this._plantStage;
-    // Only skip model-renderable plants when the sprite/model layer is
-    // guaranteed to cover the full viewport. In orbit mode the sprite layer
-    // uses an LOD bubble around the focal point, so plants outside that
-    // bubble must still appear as points — otherwise wide overviews show
-    // only a tiny circle of 3D trees with nothing around them.
     const spriteLayerCoversEverything = !orbitEnabled && zoom >= PLANT_SPRITE_ZOOM_THRESHOLD;
+    const step = Math.max(1, stride | 0);
     let count = 0;
     let p = 0;
     let c = 0;
 
-    outer: for (let y = y0; y < y1; y++) {
+    outer: for (let y = y0; y < y1; y += step) {
       const rowBase = y * mapWidth;
-      for (let x = x0; x < x1; x++) {
+      for (let x = x0; x < x1; x += step) {
         const idx = rowBase + x;
         const t = plantType[idx];
         if (t === 0) continue;
@@ -161,13 +157,15 @@ export class ThreePlantLayer {
       }
     }
 
-    const pointSize = zoom >= 6 ? 3.5 : 2.5;
+    // Compensate point size when striding so the dot cloud keeps similar
+    // visual coverage even when we sample fewer cells.
+    const pointSize = (zoom >= 6 ? 3.5 : 2.5) * Math.min(2.5, Math.sqrt(step));
     this._points.commit(count, pointSize);
   }
 
   // ---- Sprites + Models (zoomed-in) ----
 
-  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter, lodRadiusSq, allowModels = true) {
+  rebuildSprites(viewport, zoom, orbitEnabled, onVisRefresh, lodCenter, lodRadiusSq, allowModels = true, lodRadius = 0) {
     const show = (orbitEnabled || zoom >= PLANT_SPRITE_ZOOM_THRESHOLD)
       && this._plantType && this._plantStage && this._mapWidth > 0;
 
@@ -178,7 +176,21 @@ export class ThreePlantLayer {
       return;
     }
 
-    const { x0, y0, x1, y1 } = viewport;
+    let { x0, y0, x1, y1 } = viewport;
+    const useLOD = orbitEnabled && lodCenter && lodRadiusSq > 0;
+    // Restrict the tile scan to the LOD bbox when in orbit. Without this,
+    // far-zoom overviews scan ~1M tiles per frame even though only the
+    // detail bubble produces sprites/models. Clip to the viewport to keep
+    // off-screen culling correct.
+    if (useLOD && lodRadius > 0) {
+      const r = Math.ceil(lodRadius) + 1;
+      const cx = lodCenter.x;
+      const cy = lodCenter.y;
+      x0 = Math.max(x0, Math.floor(cx - r));
+      y0 = Math.max(y0, Math.floor(cy - r));
+      x1 = Math.min(x1, Math.ceil(cx + r));
+      y1 = Math.min(y1, Math.ceil(cy + r));
+    }
     const seenSprites = this._seenSprites; seenSprites.clear();
     const seenModels = this._seenModels; seenModels.clear();
     const seenShadows = this._seenShadows; seenShadows.clear();
@@ -187,9 +199,6 @@ export class ThreePlantLayer {
     const now = performance.now();
     const swayTime = now * 0.001; // seconds for sway
     const GROWTH_PULSE_DURATION = 600; // ms
-
-    // LOD: shared radius with entities (renderer computes it from camera altitude)
-    const useLOD = orbitEnabled && lodCenter && lodRadiusSq > 0;
 
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) {

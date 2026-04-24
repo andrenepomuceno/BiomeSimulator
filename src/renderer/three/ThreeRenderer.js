@@ -362,28 +362,34 @@ export class ThreeRenderer {
       // and 3D models, falling back to colored points only at the edges.
       let lodCenter = null;
       let lodRadiusSq = 0;
+      let lodRadius = 0;
       // When the camera pulls back beyond MODEL_FAR_DISABLE_DIST we skip 3D
       // model spawning entirely — sprites and points already cover the world
       // affordably and GLTF instancing dominates the frame budget at altitude.
       let allowModels = true;
+      // Stride for the point layer scan. At far zoom a 1000x1000 viewport
+      // means ~1M tile checks per frame, which dominates the frame budget.
+      // Sampling every Nth tile yields a visually identical colored cloud.
+      let pointStride = 1;
       if (orbit) {
         lodCenter = this._orbitControls.target;
         const camDist = this._orbitCamera3D.position.distanceTo(lodCenter);
-        // Linear growth with camera distance, clamped between LOD_DETAIL_DIST*0.7
-        // (close-up: avoids a tiny detail bubble) and *3.0 (far view: caps the
-        // visible-plant budget so we don't blow MAX_VISIBLE_PLANT_SPRITES).
         const minR = LOD_DETAIL_DIST * 0.7;
         const maxR = LOD_DETAIL_DIST * 3.0;
-        const effective = clamp(camDist * 0.55, minR, maxR);
-        lodRadiusSq = effective * effective;
-        // Threshold roughly matches the point of the LOD-radius clamp where
-        // the bubble is already saturated; beyond it, 3D meshes are wasted.
+        lodRadius = clamp(camDist * 0.55, minR, maxR);
+        lodRadiusSq = lodRadius * lodRadius;
         const MODEL_FAR_DISABLE_DIST = LOD_DETAIL_DIST * 2.2;
         allowModels = camDist < MODEL_FAR_DISABLE_DIST;
+        // Aim for ~40k tile samples max from the points scan regardless of
+        // viewport size. sqrt(area / 40000) gives a stride that keeps the
+        // worst case bounded even at full-map overviews.
+        const vw = Math.max(1, vp.x1 - vp.x0);
+        const vh = Math.max(1, vp.y1 - vp.y0);
+        pointStride = Math.max(1, Math.round(Math.sqrt((vw * vh) / 40000)));
       }
 
-      this._plantLayer.rebuildPoints(vp, zoom, orbit);
-      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter, lodRadiusSq, allowModels);
+      this._plantLayer.rebuildPoints(vp, zoom, orbit, pointStride);
+      this._plantLayer.rebuildSprites(vp, zoom, orbit, onRefresh, lodCenter, lodRadiusSq, allowModels, lodRadius);
       this._itemLayer.rebuildPoints(vp, zoom);
       this._itemLayer.rebuildSprites(vp, zoom, orbit, onRefresh, allowModels);
       this._entityLayer.rebuildPoints(vp, zoom);

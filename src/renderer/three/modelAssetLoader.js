@@ -5,6 +5,57 @@ export function createModelAssetLoader() {
   const cache = new Map();
   const pending = new Set();
 
+  const buildFallbackUrls = (url) => {
+    const out = [];
+    const add = (candidate) => {
+      if (typeof candidate !== 'string' || !candidate) return;
+      if (!out.includes(candidate)) out.push(candidate);
+    };
+
+    const raw = String(url || '').trim();
+    const noOrigin = raw.replace(/^https?:\/\/[^/]+/i, '');
+    const noBiomePrefix = noOrigin.replace(/^\/BiomeSimulator\//, '/');
+    const noLeadingSlash = noBiomePrefix.replace(/^\/+/, '');
+
+    const rootVariant = `/${noLeadingSlash}`;
+    const biomeVariant = `/BiomeSimulator/${noLeadingSlash}`;
+    const relativeVariant = noLeadingSlash;
+
+    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const prefersBiome = path.startsWith('/BiomeSimulator/');
+
+    // Try the most likely host base first to reduce noisy 404s in console.
+    if (prefersBiome) {
+      add(biomeVariant);
+      add(rootVariant);
+    } else {
+      add(rootVariant);
+      add(biomeVariant);
+    }
+
+    add(url);
+
+    // Keep a relative fallback as last resort for unusual hosting setups.
+    add(relativeVariant);
+
+    return out;
+  };
+
+  const loadWithFallback = (urls, onSuccess, onError, index = 0) => {
+    if (index >= urls.length) {
+      onError?.();
+      return;
+    }
+
+    const candidate = urls[index];
+    loader.load(
+      candidate,
+      (gltf) => onSuccess?.(gltf),
+      undefined,
+      () => loadWithFallback(urls, onSuccess, onError, index + 1)
+    );
+  };
+
   const ensureLoaded = (key, url, onReady) => {
     if (cache.has(key) || pending.has(key)) return;
     if (!url) {
@@ -13,8 +64,9 @@ export function createModelAssetLoader() {
     }
 
     pending.add(key);
-    loader.load(
-      url,
+    const urlCandidates = buildFallbackUrls(url);
+    loadWithFallback(
+      urlCandidates,
       (gltf) => {
         const template = gltf?.scene || gltf?.scenes?.[0] || null;
         if (template) {
@@ -33,7 +85,6 @@ export function createModelAssetLoader() {
         pending.delete(key);
         onReady?.(key, template);
       },
-      undefined,
       () => {
         cache.set(key, null);
         pending.delete(key);
